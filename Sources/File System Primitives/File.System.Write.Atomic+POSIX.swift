@@ -225,8 +225,7 @@
                 #endif
 
                 // Encode to hex (Foundation-free via RFC_4648)
-                // Small allocation (12 bytes) acceptable for the Array API compatibility
-                return Array(buffer).hex.encoded()
+                return Span(_unsafeElements: buffer).hex.encoded()
             }
         }
     }
