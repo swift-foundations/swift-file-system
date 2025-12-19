@@ -28,7 +28,7 @@ jobs:
         run: swift --version
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .build
           key: macos-swift62-spm-${{ hashFiles('Package.swift', 'Package@*.swift') }}
@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .build
           key: linux-swift62-spm-${{ hashFiles('Package.swift', 'Package@*.swift') }}
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Cache Swift packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .build
           key: linux-swift62-compat-spm-${{ hashFiles('Package.swift', 'Package@*.swift') }}
