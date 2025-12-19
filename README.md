@@ -400,7 +400,7 @@ Your results will vary based on hardware, filesystem, and workload characteristi
 | macOS | Full | APFS cloning, `copyfile()`, kernel-assisted copy |
 | iOS | Full | Same as macOS |
 | Linux | Full | `copy_file_range`, `sendfile` |
-| Windows | Blocked | See note below |
+| Windows | WIP | `CopyFileW`, see note below |
 
 ### Async I/O
 
@@ -409,7 +409,7 @@ Your results will vary based on hardware, filesystem, and workload characteristi
 | macOS | Full | Cooperative and dedicated thread models |
 | iOS | Full | Same as macOS |
 | Linux | Full | Same as macOS |
-| Windows | Blocked | See note below |
+| Windows | WIP | Executor architecture ready |
 
 ### File Watching
 
@@ -418,13 +418,11 @@ Your results will vary based on hardware, filesystem, and workload characteristi
 | macOS | Planned | FSEvents integration pending |
 | iOS | Planned | FSEvents integration pending |
 | Linux | Planned | inotify integration pending |
-| Windows | Blocked | See note below |
+| Windows | Planned | ReadDirectoryChangesW pending |
 
 ### Windows Status
 
-Windows native builds are currently blocked due to a dependency ([swift-standards](https://github.com/swift-standards/swift-standards)) using filenames with `<` and `>` characters (e.g., `Collection<UInt8>.swift`). These characters are not allowed on NTFS filesystems, preventing Git from checking out the repository on Windows.
-
-The library code itself is designed to support Windows (with `CopyFileW`, Windows path handling, etc.), but cannot be built until dependencies use Windows-compatible filenames.
+Windows support is work in progress. The library code is designed for Windows (with `CopyFileW`, Windows path handling, etc.), but builds are currently blocked by a dependency ([swift-standards](https://github.com/swift-standards/swift-standards)) using filenames with `<` and `>` characters that NTFS does not support.
 
 ## Non-goals
 
