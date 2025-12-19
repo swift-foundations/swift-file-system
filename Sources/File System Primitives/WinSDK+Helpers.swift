@@ -10,46 +10,36 @@ import WinSDK
 
 // MARK: - DWORD Conversion Helpers
 
-/// Converts a DWORD value to DWORD (identity).
-@inline(__always)
-internal func _dword(_ value: DWORD) -> DWORD { value }
+// Note: On Windows, DWORD is a typealias for UInt32, so we only need one overload.
+// The Int32 overload handles constants that may be typed as signed integers.
 
-/// Converts a UInt32 value to DWORD.
-/// Use for WinSDK constants that are typed as UInt32 (e.g., GENERIC_READ).
+/// Converts a UInt32/DWORD value to DWORD.
+/// Use for WinSDK constants (e.g., GENERIC_READ, FILE_SHARE_READ).
 @inline(__always)
-internal func _dword(_ value: UInt32) -> DWORD { DWORD(value) }
+internal func _dword(_ value: UInt32) -> DWORD { value }
 
 /// Converts an Int32 value to DWORD using bit-preserving conversion.
-/// Use for WinSDK constants that are typed as Int32.
+/// Use for WinSDK constants that may be typed as Int32.
 @inline(__always)
 internal func _dword(_ value: Int32) -> DWORD { DWORD(bitPattern: value) }
 
 // MARK: - Mask Helpers for Bitwise Operations
 
-/// Converts a DWORD value to DWORD for mask operations (identity).
+/// Converts a UInt32/DWORD value to DWORD for mask operations.
+/// Use for WinSDK flag constants.
 @inline(__always)
-internal func _mask(_ value: DWORD) -> DWORD { value }
-
-/// Converts a UInt32 value to DWORD for mask operations.
-/// Use for WinSDK flag constants that are typed as UInt32.
-@inline(__always)
-internal func _mask(_ value: UInt32) -> DWORD { DWORD(value) }
+internal func _mask(_ value: UInt32) -> DWORD { value }
 
 /// Converts an Int32 value to DWORD for mask operations using bit-preserving conversion.
-/// Use for WinSDK flag constants that are typed as Int32.
+/// Use for WinSDK flag constants that may be typed as Int32.
 @inline(__always)
 internal func _mask(_ value: Int32) -> DWORD { DWORD(bitPattern: value) }
 
 // MARK: - Boolean Adapter
 
-/// Converts a Bool to Bool (identity).
-/// Used to normalize Windows API return types which may vary between Bool and WindowsBool.
-@inline(__always)
-internal func _ok(_ value: Bool) -> Bool { value }
-
 /// Converts a WindowsBool to Bool.
-/// Used to normalize Windows API return types which may vary between Bool and WindowsBool.
+/// Windows APIs return WindowsBool which needs conversion to Swift Bool.
 @inline(__always)
-internal func _ok(_ value: WindowsBool) -> Bool { value.boolValue }
+internal func _ok(_ value: WindowsBool) -> Bool { value != 0 }
 
 #endif

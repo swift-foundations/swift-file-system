@@ -23,6 +23,17 @@ extension File.System.Test.Unit {
             }
         }
 
+        /// Writes bytes in-place using a file handle (doesn't replace the file).
+        /// This is important for hard link tests where we need to preserve the inode.
+        private func writeBytesInPlace(_ bytes: [UInt8], to path: File.Path) throws {
+            var handle = try File.Handle.open(path, mode: .write, options: [.truncate])
+            try bytes.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try handle.write(span)
+            }
+            try handle.close()
+        }
+
         private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
             let path = "/tmp/hardlink-test-\(Int.random(in: 0..<Int.max)).bin"
             try writeBytes(content, to: try File.Path(path))
@@ -92,10 +103,10 @@ extension File.System.Test.Unit {
 
             try File.System.Link.Hard.create(at: link, to: existing)
 
-            // Modify through the link
-            try writeBytes([10, 20, 30], to: try File.Path(linkPath))
+            // Modify through the link using in-place write (not atomic write which replaces the file)
+            try writeBytesInPlace([10, 20, 30], to: try File.Path(linkPath))
 
-            // Original should also be modified
+            // Original should also be modified (same inode)
             let originalData = try File.System.Read.Full.read(from: try File.Path(existingPath))
             #expect(originalData == [10, 20, 30])
         }
