@@ -101,22 +101,18 @@
 
             // Make relative paths absolute using current working directory
             if !result.hasPrefix("/") {
-                var cwd = [CChar](repeating: 0, count: Int(PATH_MAX))
-                if getcwd(&cwd, cwd.count) != nil {
-                    let cwdStr = cwd.withUnsafeBufferPointer { buffer in
-                        // Find null terminator
-                        let length = buffer.firstIndex(of: 0) ?? buffer.count
-                        return String(
-                            decoding: buffer[..<length].map { UInt8(bitPattern: $0) },
-                            as: UTF8.self
-                        )
-                    }
-                    if result == "." {
-                        result = cwdStr
-                    } else if result.hasPrefix("./") {
-                        result = cwdStr + String(result.dropFirst())
-                    } else {
-                        result = cwdStr + "/" + result
+                // Use stack allocation for getcwd buffer
+                withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
+                    if getcwd(buffer.baseAddress!, buffer.count) != nil {
+                        // cwd is already null-terminated by getcwd - use String(cString:) directly
+                        let cwdStr = String(cString: buffer.baseAddress!)
+                        if result == "." {
+                            result = cwdStr
+                        } else if result.hasPrefix("./") {
+                            result = cwdStr + String(result.dropFirst())
+                        } else {
+                            result = cwdStr + "/" + result
+                        }
                     }
                 }
             }
@@ -184,13 +180,54 @@
             return "\(parent)/.\(baseName).atomic.\(random).tmp"
         }
 
-        /// Generates a random hex token.
+        /// Generates a random hex token using platform CSPRNG.
+        /// Uses stack allocation and arc4random_buf/getrandom for better performance
+        /// and cryptographic security compared to UInt8.random loop.
         private static func randomToken(length: Int) -> String {
-            var bytes = [UInt8](repeating: 0, count: length)
-            for i in 0..<length {
-                bytes[i] = UInt8.random(in: 0...255)
+            // Token length is fixed at 12 bytes
+            precondition(length == 12, "randomToken expects fixed length of 12")
+
+            return withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length) { buffer in
+                let base = buffer.baseAddress!
+
+                #if canImport(Darwin)
+                // arc4random_buf never fails
+                arc4random_buf(base, length)
+
+                #elseif canImport(Glibc)
+                // getrandom can return partial reads or fail; loop until filled
+                var filled = 0
+                while filled < length {
+                    let result = getrandom(base.advanced(by: filled), length - filled, 0)
+                    if result > 0 {
+                        filled += result
+                    } else if result == -1 {
+                        let e = errno
+                        if e == EINTR { continue }  // Retry on interrupt
+                        // CSPRNG failure is fatal - temp file creation must not proceed
+                        preconditionFailure("getrandom failed: \(e)")
+                    }
+                }
+
+                #elseif canImport(Musl)
+                // Musl also has getrandom
+                var filled = 0
+                while filled < length {
+                    let result = getrandom(base.advanced(by: filled), length - filled, 0)
+                    if result > 0 {
+                        filled += result
+                    } else if result == -1 {
+                        let e = errno
+                        if e == EINTR { continue }
+                        preconditionFailure("getrandom failed: \(e)")
+                    }
+                }
+                #endif
+
+                // Encode to hex (Foundation-free via RFC_4648)
+                // Small allocation (12 bytes) acceptable for the Array API compatibility
+                return Array(buffer).hex.encoded()
             }
-            return bytes.hex.encoded()
         }
     }
 
@@ -644,87 +681,155 @@
 
                 if listSize == 0 { return }  // No xattrs
 
-                // Read the name list
-                var nameList = [CChar](repeating: 0, count: listSize)
-                let gotSize = srcPath.withCString { path in
-                    nameList.withUnsafeMutableBufferPointer { buf in
-                        listxattr(path, buf.baseAddress, listSize, 0)
-                    }
-                }
+                // Stack threshold for xattr buffers
+                let stackThreshold = 4096
 
-                if gotSize < 0 {
-                    let e = errno
-                    throw .metadataPreservationFailed(
-                        operation: "listxattr(read)",
-                        errno: e,
-                        message: File.System.Write.Atomic.errorMessage(for: e)
-                    )
-                }
-
-                // Parse null-terminated names and copy each xattr
-                var offset = 0
-                while offset < gotSize {
-                    // Find end of this name
-                    var end = offset
-                    while end < gotSize && nameList[end] != 0 { end += 1 }
-
-                    let name = String(
-                        decoding: nameList[offset..<end].map { UInt8(bitPattern: $0) },
-                        as: UTF8.self
-                    )
-                    offset = end + 1
-
-                    // Get xattr value
-                    let valueSize = srcPath.withCString { path in
-                        name.withCString { n in
-                            getxattr(path, n, nil, 0, 0, 0)
-                        }
+                // Helper to process xattr list with a given buffer
+                func processXattrList(
+                    nameListBuffer: UnsafeMutableBufferPointer<CChar>
+                ) throws(File.System.Write.Atomic.Error) {
+                    // Read the name list
+                    let gotSize = srcPath.withCString { path in
+                        listxattr(path, nameListBuffer.baseAddress, listSize, 0)
                     }
 
-                    if valueSize < 0 {
+                    if gotSize < 0 {
                         let e = errno
-                        if e == ENOATTR { continue }  // Attribute disappeared
                         throw .metadataPreservationFailed(
-                            operation: "getxattr(\(name))",
+                            operation: "listxattr(read)",
                             errno: e,
                             message: File.System.Write.Atomic.errorMessage(for: e)
                         )
                     }
 
-                    var value = [UInt8](repeating: 0, count: valueSize)
-                    let gotValue = srcPath.withCString { path in
-                        name.withCString { n in
-                            value.withUnsafeMutableBufferPointer { buf in
-                                getxattr(path, n, buf.baseAddress, valueSize, 0, 0)
+                    // Parse null-terminated names and copy each xattr
+                    var offset = 0
+                    while offset < gotSize {
+                        // Find end of this name
+                        var end = offset
+                        while end < gotSize && nameListBuffer[end] != 0 { end += 1 }
+
+                        // Decode xattr name without intermediate .map allocation
+                        let start = nameListBuffer.baseAddress!.advanced(by: offset)
+                        let count = end - offset
+                        // Rebind CChar pointer to UInt8 for UTF-8 decoding
+                        let name = start.withMemoryRebound(to: UInt8.self, capacity: count) { utf8Start in
+                            let utf8Buf = UnsafeBufferPointer(start: utf8Start, count: count)
+                            return String(decoding: utf8Buf, as: UTF8.self)
+                        }
+                        offset = end + 1
+
+                        // Get xattr value
+                        let valueSize = srcPath.withCString { path in
+                            name.withCString { n in
+                                getxattr(path, n, nil, 0, 0, 0)
                             }
                         }
-                    }
 
-                    if gotValue < 0 {
-                        let e = errno
-                        throw .metadataPreservationFailed(
-                            operation: "getxattr(\(name),read)",
-                            errno: e,
-                            message: File.System.Write.Atomic.errorMessage(for: e)
-                        )
-                    }
+                        if valueSize < 0 {
+                            let e = errno
+                            if e == ENOATTR { continue }  // Attribute disappeared
+                            throw .metadataPreservationFailed(
+                                operation: "getxattr(\(name))",
+                                errno: e,
+                                message: File.System.Write.Atomic.errorMessage(for: e)
+                            )
+                        }
 
-                    // Set xattr on destination
-                    let setRc = name.withCString { n in
-                        value.withUnsafeBufferPointer { buf in
-                            fsetxattr(dstFd, n, buf.baseAddress, gotValue, 0, 0)
+                        // Helper to read and set xattr with a given buffer
+                        func copyXattrValue(
+                            buffer: UnsafeMutableBufferPointer<UInt8>
+                        ) throws(File.System.Write.Atomic.Error) -> Int {
+                            let gotValue = srcPath.withCString { path in
+                                name.withCString { n in
+                                    getxattr(path, n, buffer.baseAddress, valueSize, 0, 0)
+                                }
+                            }
+
+                            if gotValue < 0 {
+                                let e = errno
+                                throw .metadataPreservationFailed(
+                                    operation: "getxattr(\(name),read)",
+                                    errno: e,
+                                    message: File.System.Write.Atomic.errorMessage(for: e)
+                                )
+                            }
+
+                            // Set xattr on destination
+                            let setRc = name.withCString { n in
+                                fsetxattr(dstFd, n, buffer.baseAddress, gotValue, 0, 0)
+                            }
+
+                            if setRc < 0 {
+                                let e = errno
+                                if e == ENOTSUP {
+                                    // Destination doesn't support this xattr, skip
+                                    return gotValue
+                                }
+                                throw .metadataPreservationFailed(
+                                    operation: "fsetxattr(\(name))",
+                                    errno: e,
+                                    message: File.System.Write.Atomic.errorMessage(for: e)
+                                )
+                            }
+
+                            return gotValue
+                        }
+
+                        // Use error capture pattern to work around typed throws in closures
+                        var xattrError: File.System.Write.Atomic.Error? = nil
+
+                        if valueSize <= stackThreshold {
+                            // Stack allocation for small xattrs
+                            withUnsafeTemporaryAllocation(of: UInt8.self, capacity: valueSize) { buffer in
+                                do throws(File.System.Write.Atomic.Error) {
+                                    _ = try copyXattrValue(buffer: buffer)
+                                } catch {
+                                    xattrError = error
+                                }
+                            }
+                        } else {
+                            // Heap allocation for large xattrs
+                            var value = [UInt8](repeating: 0, count: valueSize)
+                            value.withUnsafeMutableBufferPointer { buffer in
+                                do throws(File.System.Write.Atomic.Error) {
+                                    _ = try copyXattrValue(buffer: buffer)
+                                } catch {
+                                    xattrError = error
+                                }
+                            }
+                        }
+
+                        if let error = xattrError {
+                            throw error
                         }
                     }
+                }
+ 
+                var listError: File.System.Write.Atomic.Error? = nil
 
-                    if setRc != 0 {
-                        let e = errno
-                        if e == ENOTSUP { continue }  // Destination doesn't support this xattr
-                        throw .metadataPreservationFailed(
-                            operation: "fsetxattr(\(name))",
-                            errno: e,
-                            message: File.System.Write.Atomic.errorMessage(for: e)
-                        )
+                // Use stack allocation for small name lists, heap for large ones
+                if listSize <= stackThreshold {
+                    withUnsafeTemporaryAllocation(of: CChar.self, capacity: listSize) { buffer in
+                        do throws(File.System.Write.Atomic.Error) {
+                            try processXattrList(nameListBuffer: buffer)
+                        } catch {
+                            listError = error
+                        }
                     }
+                } else {
+                    var nameList = [CChar](repeating: 0, count: listSize)
+                    nameList.withUnsafeMutableBufferPointer { buffer in
+                        do throws(File.System.Write.Atomic.Error) {
+                            try processXattrList(nameListBuffer: buffer)
+                        } catch {
+                            listError = error
+                        }
+                    }
+                }
+
+                if let error = listError {
+                    throw error
                 }
             }
         #endif

@@ -87,7 +87,10 @@ extension File.Handle {
         }
 
         deinit {
-            if !isClosed {
+            // Only warn and cleanup if:
+            // 1. We didn't explicitly call close()
+            // 2. The handle is still in the store (not already cleaned up by shutdown)
+            if !isClosed && io.isHandleValid(id) {
                 #if DEBUG
                     print(
                         "Warning: File.Handle.Async deallocated without close() for path: \(path)"

@@ -79,6 +79,7 @@
         private static func normalizePath(_ path: String) -> String {
             // Convert forward slashes to backslashes manually (no Foundation)
             var result = ""
+            result.reserveCapacity(path.utf8.count)  // Pre-reserve to avoid reallocations
             for char in path {
                 if char == "/" {
                     result.append("\\")
@@ -399,50 +400,53 @@
             }
             defer { _ = CloseHandle(tempHandle) }
 
-            // Build FILE_RENAME_INFO structure
-            var destWide = Array(destPath.utf16) + [0]
-            let nameByteCount = destWide.count * MemoryLayout<WCHAR>.size
+            // Use withCString to avoid intermediate Array allocation for destPath
+            return destPath.withCString(encodedAs: UTF16.self) { destWide in
+                let nameByteCount = (destPath.utf16.count + 1) * MemoryLayout<WCHAR>.size
 
-            // Allocate buffer for the variable-length structure
-            // FILE_RENAME_INFO has: BOOLEAN ReplaceIfExists, HANDLE RootDirectory, ULONG FileNameLength, WCHAR FileName[1]
-            let structSize = MemoryLayout<FILE_RENAME_INFO>.stride
-            let totalSize = structSize + nameByteCount
+                // Calculate struct offset carefully - offset(of:) may not work for C-imported structs
+                // If offset(of:) returns nil, fail loudly
+                guard let fileNameOffset = MemoryLayout<FILE_RENAME_INFO>.offset(of: \.FileName) else {
+                    preconditionFailure("FILE_RENAME_INFO.FileName offset unavailable")
+                }
+                let totalSize = fileNameOffset + nameByteCount
 
-            let buffer = UnsafeMutableRawPointer.allocate(
-                byteCount: totalSize,
-                alignment: MemoryLayout<Int>.alignment
-            )
-            defer { buffer.deallocate() }
+                // Use correct alignment for the struct
+                let alignment = max(MemoryLayout<FILE_RENAME_INFO>.alignment, MemoryLayout<WCHAR>.alignment)
+                let buffer = UnsafeMutableRawPointer.allocate(byteCount: totalSize, alignment: alignment)
+                defer { buffer.deallocate() }
 
-            // Zero initialize
-            buffer.initializeMemory(as: UInt8.self, repeating: 0, count: totalSize)
+                // Initialize only the header portion, not the entire buffer
+                // (avoiding large zero-init that we're eliminating elsewhere)
+                let headerSize = MemoryLayout<FILE_RENAME_INFO>.size
+                buffer.initializeMemory(as: UInt8.self, repeating: 0, count: min(headerSize, totalSize))
 
-            // Fill in the structure using proper offsets
-            let info = buffer.assumingMemoryBound(to: FILE_RENAME_INFO.self)
-            info.pointee.Flags = replace ? _dword(FILE_RENAME_FLAG_REPLACE_IF_EXISTS) : 0
-            info.pointee.RootDirectory = nil
-            info.pointee.FileNameLength = DWORD(
-                truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size
-            )  // Exclude null terminator
+                // Fill in the structure
+                let info = buffer.assumingMemoryBound(to: FILE_RENAME_INFO.self)
+                info.pointee.Flags = replace ? _dword(FILE_RENAME_FLAG_REPLACE_IF_EXISTS) : 0
+                info.pointee.RootDirectory = nil
+                info.pointee.FileNameLength = DWORD(truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size)
 
-            // Copy filename after the fixed part of the structure
-            let fileNameOffset = MemoryLayout.offset(of: \FILE_RENAME_INFO.FileName)!
-            let fileNamePtr = buffer.advanced(by: fileNameOffset).assumingMemoryBound(
-                to: WCHAR.self
-            )
-            destWide.withUnsafeBufferPointer { src in
-                guard let srcBase = src.baseAddress else { return }
-                fileNamePtr.update(from: srcBase, count: destWide.count)
+                // Copy UTF-16 path into struct tail
+                let fileNamePtr = buffer.advanced(by: fileNameOffset).assumingMemoryBound(to: WCHAR.self)
+                var i = 0
+                var ptr = destWide
+                while ptr.pointee != 0 {
+                    fileNamePtr[i] = WCHAR(ptr.pointee)
+                    ptr += 1
+                    i += 1
+                }
+                fileNamePtr[i] = 0  // null terminator
+
+                let success = SetFileInformationByHandle(
+                    tempHandle,
+                    FileRenameInfoEx,
+                    buffer,
+                    DWORD(truncatingIfNeeded: totalSize)
+                )
+
+                return _ok(success)
             }
-
-            let success = SetFileInformationByHandle(
-                tempHandle,
-                FileRenameInfoEx,
-                buffer,
-                DWORD(truncatingIfNeeded: totalSize)
-            )
-
-            return _ok(success)
         }
 
         /// Flushes directory to persist rename.
@@ -559,18 +563,16 @@
     extension WindowsAtomic {
 
         /// Executes a closure with a wide (UTF-16) string.
+        /// Uses String.withCString(encodedAs:) to avoid intermediate Array allocation.
         private static func withWideString<T>(
             _ string: String,
             _ body: (UnsafePointer<WCHAR>) -> T
         ) -> T {
-            var wideChars = Array(string.utf16) + [0]
-            return wideChars.withUnsafeBufferPointer { buffer in
-                // Buffer always has at least 1 element (null terminator)
-                guard let base = buffer.baseAddress else {
-                    preconditionFailure("Buffer with count \(buffer.count) has nil baseAddress")
-                }
-                return base.withMemoryRebound(to: WCHAR.self, capacity: buffer.count) { ptr in
-                    body(ptr)
+            string.withCString(encodedAs: UTF16.self) { utf16Ptr in
+                // UTF16.CodeUnit is UInt16, WCHAR is also UInt16 on Windows
+                // withCString provides null-terminated buffer
+                utf16Ptr.withMemoryRebound(to: WCHAR.self, capacity: string.utf16.count + 1) { wcharPtr in
+                    body(wcharPtr)
                 }
             }
         }

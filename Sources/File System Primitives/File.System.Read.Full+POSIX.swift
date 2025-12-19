@@ -44,44 +44,52 @@
                 return []
             }
 
-            // Allocate buffer and read
-            var buffer = [UInt8](repeating: 0, count: fileSize)
-            var totalRead = 0
+            // Capture error state from non-throwing closure
+            var readError: Error? = nil
 
-            while totalRead < fileSize {
-                let remaining = fileSize - totalRead
-                #if canImport(Darwin)
-                    let bytesRead = buffer.withUnsafeMutableBufferPointer { ptr -> Int in
-                        guard let base = ptr.baseAddress else { return 0 }
-                        return Darwin.read(fd, base.advanced(by: totalRead), remaining)
-                    }
-                #elseif canImport(Glibc)
-                    let bytesRead = buffer.withUnsafeMutableBufferPointer { ptr -> Int in
-                        guard let base = ptr.baseAddress else { return 0 }
-                        return Glibc.read(fd, base.advanced(by: totalRead), remaining)
-                    }
-                #elseif canImport(Musl)
-                    let bytesRead = buffer.withUnsafeMutableBufferPointer { ptr -> Int in
-                        guard let base = ptr.baseAddress else { return 0 }
-                        return Musl.read(fd, base.advanced(by: totalRead), remaining)
-                    }
-                #endif
-
-                if bytesRead > 0 {
-                    totalRead += bytesRead
-                } else if bytesRead == 0 {
-                    // EOF reached earlier than expected
-                    buffer.removeLast(fileSize - totalRead)
-                    break
-                } else {
-                    // Error
-                    if errno == EINTR {
-                        continue  // Interrupted, retry
-                    }
-                    throw _mapErrno(errno, path: path)
+            // Allocate uninitialized buffer and read directly into it
+            let buffer = [UInt8](unsafeUninitializedCapacity: fileSize) { buffer, initializedCount in
+                guard let base = buffer.baseAddress else {
+                    initializedCount = 0
+                    return
                 }
+
+                var totalRead = 0
+
+                while totalRead < fileSize {
+                    let remaining = fileSize - totalRead
+                    #if canImport(Darwin)
+                    let bytesRead = Darwin.read(fd, base.advanced(by: totalRead), remaining)
+                    #elseif canImport(Glibc)
+                    let bytesRead = Glibc.read(fd, base.advanced(by: totalRead), remaining)
+                    #elseif canImport(Musl)
+                    let bytesRead = Musl.read(fd, base.advanced(by: totalRead), remaining)
+                    #endif
+
+                    if bytesRead > 0 {
+                        totalRead += bytesRead
+                    } else if bytesRead == 0 {
+                        // EOF reached earlier than expected (file may have shrunk)
+                        break
+                    } else {
+                        // Error
+                        let e = errno
+                        if e == EINTR {
+                            continue  // Interrupted, retry
+                        }
+                        readError = _mapErrno(e, path: path)
+                        // Set initializedCount to totalRead for memory correctness
+                        initializedCount = totalRead
+                        return
+                    }
+                }
+
+                initializedCount = totalRead
             }
 
+            if let error = readError {
+                throw error
+            }
             return buffer
         }
 

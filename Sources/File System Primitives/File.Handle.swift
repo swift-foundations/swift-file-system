@@ -157,56 +157,84 @@ extension File.Handle {
 
     /// Reads up to `count` bytes from the file.
     ///
+    /// This is a single-syscall primitive. It returns whatever bytes are available
+    /// up to `count`, which may be fewer than requested even before EOF.
+    /// Callers who need exactly `count` bytes should loop or use `Read.Full`.
+    ///
     /// - Parameter count: Maximum number of bytes to read.
-    /// - Returns: The bytes read (may be fewer than requested at EOF).
+    /// - Returns: The bytes read (may be fewer than requested at EOF or partial read).
     /// - Throws: `File.Handle.Error` on failure.
     public mutating func read(count: Int) throws(Error) -> [UInt8] {
         guard _descriptor.isValid else {
             throw .invalidHandle
         }
-
-        var buffer = [UInt8](repeating: 0, count: count)
+        guard count > 0 else { return [] }
 
         #if os(Windows)
-            var bytesRead: DWORD = 0
-            let success = buffer.withUnsafeMutableBufferPointer { ptr -> Bool in
-                guard let base = ptr.baseAddress, let handle = _descriptor.rawHandle else {
-                    return false
-                }
-                return _ok(
-                    ReadFile(handle, base, DWORD(truncatingIfNeeded: count), &bytesRead, nil)
-                )
-            }
-            guard success else {
-                throw .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
-            }
-            if Int(bytesRead) < count {
-                buffer.removeLast(count - Int(bytesRead))
-            }
-        #elseif canImport(Darwin)
-            let bytesRead = buffer.withUnsafeMutableBufferPointer { ptr -> Int in
-                guard let base = ptr.baseAddress else { return 0 }
-                return Darwin.read(_descriptor.rawValue, base, count)
-            }
-            if bytesRead < 0 {
-                throw .readFailed(errno: errno, message: String(cString: strerror(errno)))
-            }
-            if bytesRead < count {
-                buffer.removeLast(count - bytesRead)
-            }
-        #elseif canImport(Glibc)
-            let bytesRead = buffer.withUnsafeMutableBufferPointer { ptr -> Int in
-                guard let base = ptr.baseAddress else { return 0 }
-                return Glibc.read(_descriptor.rawValue, base, count)
-            }
-            if bytesRead < 0 {
-                throw .readFailed(errno: errno, message: String(cString: strerror(errno)))
-            }
-            if bytesRead < count {
-                buffer.removeLast(count - bytesRead)
-            }
+        // Validate count fits in DWORD to avoid truncation bug
+        guard count <= Int(DWORD.max) else {
+            throw .readFailed(errno: Int32(ERROR_INVALID_PARAMETER), message: "count exceeds DWORD.max")
+        }
         #endif
 
+        // Capture error state from non-throwing closure
+        var readError: Error? = nil
+
+        let buffer = [UInt8](unsafeUninitializedCapacity: count) { buffer, initializedCount in
+            guard let base = buffer.baseAddress else {
+                initializedCount = 0
+                return
+            }
+
+            #if os(Windows)
+            var bytesRead: DWORD = 0
+            guard let handle = _descriptor.rawHandle else {
+                readError = .invalidHandle
+                initializedCount = 0
+                return
+            }
+            if !_ok(ReadFile(handle, base, DWORD(count), &bytesRead, nil)) {
+                readError = .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
+                initializedCount = 0
+                return
+            }
+            initializedCount = Int(bytesRead)
+
+            #elseif canImport(Darwin)
+            let result = Darwin.read(_descriptor.rawValue, base, count)
+            if result < 0 {
+                let e = errno
+                readError = .readFailed(errno: e, message: String(cString: strerror(e)))
+                initializedCount = 0
+                return
+            }
+            initializedCount = result
+
+            #elseif canImport(Glibc)
+            let result = Glibc.read(_descriptor.rawValue, base, count)
+            if result < 0 {
+                let e = errno
+                readError = .readFailed(errno: e, message: String(cString: strerror(e)))
+                initializedCount = 0
+                return
+            }
+            initializedCount = result
+
+            #elseif canImport(Musl)
+            let result = Musl.read(_descriptor.rawValue, base, count)
+            if result < 0 {
+                let e = errno
+                readError = .readFailed(errno: e, message: String(cString: strerror(e)))
+                initializedCount = 0
+                return
+            }
+            initializedCount = result
+            #endif
+        }
+
+        if let error = readError {
+            throw error
+        }
         return buffer
     }
 
