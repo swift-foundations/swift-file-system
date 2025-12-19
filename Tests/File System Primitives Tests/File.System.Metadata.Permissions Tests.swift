@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,14 +15,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile() throws -> String {
-            let path = "/tmp/perms-test-\(UUID().uuidString).txt"
-            FileManager.default.createFile(atPath: path, contents: nil)
+            let path = "/tmp/perms-test-\(Int.random(in: 0..<Int.max)).txt"
+            try writeBytes([], to: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - OptionSet Values
@@ -159,7 +166,7 @@ extension File.System.Test.Unit {
 
         @Test("Get permissions of non-existent file throws pathNotFound")
         func getPermissionsOfNonExistentFileThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(path)) {
@@ -169,7 +176,7 @@ extension File.System.Test.Unit {
 
         @Test("Set permissions of non-existent file throws pathNotFound")
         func setPermissionsOfNonExistentFileThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(path)) {

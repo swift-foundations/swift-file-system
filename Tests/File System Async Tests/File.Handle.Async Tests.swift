@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Async
@@ -17,14 +16,16 @@ extension File.IO.Test.Unit {
         // MARK: - Test Fixtures
 
         private func createTempFile(content: [UInt8] = []) throws -> File.Path {
-            let path = "/tmp/async-handle-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
-            return try File.Path(path)
+            let path = try File.Path("/tmp/async-handle-test-\(Int.random(in: 0..<Int.max)).bin")
+            try content.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+            return path
         }
 
         private func cleanup(_ path: File.Path) {
-            try? FileManager.default.removeItem(atPath: path.string)
+            try? File.System.Delete.delete(at: path)
         }
 
         // MARK: - Opening
@@ -118,7 +119,7 @@ extension File.IO.Test.Unit {
             try await handle.write(data)
             try await handle.close()
 
-            let readBack = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path.string)))
+            let readBack = try await File.System.Read.Full.read(from: path)
             #expect(readBack == data)
         }
 

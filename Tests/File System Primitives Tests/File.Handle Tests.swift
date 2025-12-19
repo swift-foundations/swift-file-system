@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,15 +15,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = []) throws -> String {
-            let path = "/tmp/handle-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/handle-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Opening
@@ -88,20 +94,20 @@ extension File.System.Test.Unit {
 
         @Test("Open with create option")
         func openWithCreate() throws {
-            let path = "/tmp/handle-create-\(UUID().uuidString).txt"
+            let path = "/tmp/handle-create-\(Int.random(in: 0..<Int.max)).txt"
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
             var handle = try File.Handle.open(filePath, mode: .write, options: [.create])
             let isValid = handle.isValid
             #expect(isValid)
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
             try handle.close()
         }
 
         @Test("Open non-existing file throws pathNotFound")
         func openNonExisting() throws {
-            let path = "/tmp/non-existing-\(UUID().uuidString).txt"
+            let path = "/tmp/non-existing-\(Int.random(in: 0..<Int.max)).txt"
             let filePath = try File.Path(path)
 
             #expect(throws: File.Handle.Error.self) {
@@ -188,7 +194,7 @@ extension File.System.Test.Unit {
             }
             try handle.close()
 
-            let readBack = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readBack = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readBack == data)
         }
 
@@ -207,7 +213,7 @@ extension File.System.Test.Unit {
             }
             try handle.close()
 
-            let readBack = try Data(contentsOf: URL(fileURLWithPath: path))
+            let readBack = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readBack.isEmpty)
         }
 
@@ -286,7 +292,7 @@ extension File.System.Test.Unit {
 
         @Test("Sync flushes to disk")
         func syncToDisk() throws {
-            let path = "/tmp/handle-sync-\(UUID().uuidString).txt"
+            let path = "/tmp/handle-sync-\(Int.random(in: 0..<Int.max)).txt"
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
@@ -301,7 +307,7 @@ extension File.System.Test.Unit {
             try handle.close()
 
             // File should exist and have content
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
         }
 
         // MARK: - Error descriptions

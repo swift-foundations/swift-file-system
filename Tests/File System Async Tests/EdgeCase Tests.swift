@@ -5,25 +5,24 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Async
+
+#if canImport(Foundation)
+import Foundation
 
 extension File.IO.Test.EdgeCase {
     // MARK: - Test Fixtures
 
     private func createTempPath() -> String {
-        "/tmp/async-edge-test-\(UUID().uuidString)"
+        "/tmp/async-edge-test-\(Int.random(in: 0..<Int.max))"
     }
 
     private func createTempDir() throws -> File.Path {
-        let path = createTempPath()
-        try FileManager.default.createDirectory(
-            atPath: path,
-            withIntermediateDirectories: true
-        )
-        return try File.Path(path)
+        let path = try File.Path(createTempPath())
+        try File.System.Create.Directory.create(at: path)
+        return path
     }
 
     private func createFile(at path: File.Path, content: [UInt8] = []) throws {
@@ -37,11 +36,11 @@ extension File.IO.Test.EdgeCase {
     }
 
     private func cleanup(_ path: String) {
-        try? FileManager.default.removeItem(atPath: path)
+        try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
     }
 
     private func cleanupPath(_ path: File.Path) {
-        try? FileManager.default.removeItem(atPath: path.string)
+        try? File.System.Delete.delete(at: path, options: .init(recursive: true))
     }
 
     // MARK: - Executor Edge Cases
@@ -139,7 +138,7 @@ extension File.IO.Test.EdgeCase {
             // Add new files during iteration (may or may not be seen)
             if count == 5 {
                 let newPath = try File.Path(
-                    "\(dir.string)/added-during-\(UUID().uuidString).txt"
+                    "\(dir.string)/added-during-\(Int.random(in: 0..<Int.max)).txt"
                 )
                 try createFile(at: newPath)
             }
@@ -271,10 +270,7 @@ extension File.IO.Test.EdgeCase {
 
         // Create subdirectory
         let subPath = try File.Path("\(root.string)/subdir")
-        try FileManager.default.createDirectory(
-            atPath: subPath.string,
-            withIntermediateDirectories: true
-        )
+        try await File.System.Create.Directory.create(at: subPath)
 
         // Create symlink to parent (cycle)
         let linkPath = try File.Path("\(subPath.string)/parent-link")
@@ -304,10 +300,7 @@ extension File.IO.Test.EdgeCase {
 
         // Create subdirectory
         let subPath = try File.Path("\(root.string)/subdir")
-        try FileManager.default.createDirectory(
-            atPath: subPath.string,
-            withIntermediateDirectories: true
-        )
+        try await File.System.Create.Directory.create(at: subPath)
 
         // Create symlink to parent (cycle)
         let linkPath = try File.Path("\(subPath.string)/parent-link")
@@ -338,7 +331,7 @@ extension File.IO.Test.EdgeCase {
         let io = File.IO.Executor()
         defer { Task { await io.shutdown() } }
 
-        let path = try File.Path("/tmp/non-existent-\(UUID().uuidString)")
+        let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
         let walk = File.Directory.Async(io: io).walk(at: path)
 
@@ -366,10 +359,7 @@ extension File.IO.Test.EdgeCase {
 
         // Create subdirectory
         let subPath = try File.Path("\(root.string)/subdir")
-        try FileManager.default.createDirectory(
-            atPath: subPath.string,
-            withIntermediateDirectories: true
-        )
+        try await File.System.Create.Directory.create(at: subPath)
 
         // Create symlink to file
         let linkPath = try File.Path("\(root.string)/link")
@@ -463,7 +453,7 @@ extension File.IO.Test.EdgeCase {
         let io = File.IO.Executor()
         defer { Task { await io.shutdown() } }
 
-        let path = try File.Path("/tmp/non-existent-\(UUID().uuidString)")
+        let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
         let stream = File.Stream.Async(io: io).bytes(from: path)
 
@@ -854,7 +844,7 @@ extension File.IO.Test.EdgeCase {
         let io = File.IO.Executor()
         defer { Task { await io.shutdown() } }
 
-        let path = try File.Path("/tmp/non-existent-\(UUID().uuidString)")
+        let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
         let exists = await File.System.Stat.exists(at: path, io: io)
 
@@ -950,3 +940,5 @@ extension File.IO.Test.EdgeCase {
     }
 
 }
+
+#endif

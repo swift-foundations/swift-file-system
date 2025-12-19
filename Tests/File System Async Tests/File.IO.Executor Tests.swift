@@ -5,10 +5,12 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Async
+
+#if canImport(Foundation)
+import Foundation
 
 extension File.IO.Test.Unit {
     @Suite("File.IO.Executor")
@@ -707,3 +709,5 @@ extension ManagedAtomic where T == Int {
         return _value
     }
 }
+
+#endif

@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,15 +15,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-            let path = "/tmp/move-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/move-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Basic Move
@@ -32,29 +38,29 @@ extension File.System.Test.Unit {
         @Test("Move file to new location")
         func moveFileToNewLocation() throws {
             let sourcePath = try createTempFile(content: [10, 20, 30, 40])
-            let destPath = "/tmp/move-dest-\(UUID().uuidString).bin"
+            let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
             }
 
-            let originalData = try Data(contentsOf: URL(fileURLWithPath: sourcePath))
+            let originalData = try File.System.Read.Full.read(from: try File.Path(sourcePath))
 
             let source = try File.Path(sourcePath)
             let dest = try File.Path(destPath)
 
             try File.System.Move.move(from: source, to: dest)
 
-            #expect(FileManager.default.fileExists(atPath: destPath))
+            #expect(File.System.Stat.exists(at: try File.Path(destPath)))
 
-            let destData = try Data(contentsOf: URL(fileURLWithPath: destPath))
+            let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
             #expect(originalData == destData)
         }
 
         @Test("Move removes source file")
         func moveRemovesSourceFile() throws {
             let sourcePath = try createTempFile(content: [1, 2, 3])
-            let destPath = "/tmp/move-dest-\(UUID().uuidString).bin"
+            let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
@@ -66,13 +72,13 @@ extension File.System.Test.Unit {
             try File.System.Move.move(from: source, to: dest)
 
             // Source should no longer exist
-            #expect(!FileManager.default.fileExists(atPath: sourcePath))
+            #expect(!File.System.Stat.exists(at: try File.Path(sourcePath)))
         }
 
         @Test("Move empty file")
         func moveEmptyFile() throws {
             let sourcePath = try createTempFile(content: [])
-            let destPath = "/tmp/move-dest-\(UUID().uuidString).bin"
+            let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
@@ -83,14 +89,14 @@ extension File.System.Test.Unit {
 
             try File.System.Move.move(from: source, to: dest)
 
-            let destData = try Data(contentsOf: URL(fileURLWithPath: destPath))
+            let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
             #expect(destData.isEmpty)
         }
 
         @Test("Rename file in same directory")
         func renameFileInSameDirectory() throws {
             let sourcePath = try createTempFile(content: [1, 2, 3])
-            let destPath = "/tmp/renamed-\(UUID().uuidString).bin"
+            let destPath = "/tmp/renamed-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
@@ -101,8 +107,8 @@ extension File.System.Test.Unit {
 
             try File.System.Move.move(from: source, to: dest)
 
-            #expect(!FileManager.default.fileExists(atPath: sourcePath))
-            #expect(FileManager.default.fileExists(atPath: destPath))
+            #expect(!File.System.Stat.exists(at: try File.Path(sourcePath)))
+            #expect(File.System.Stat.exists(at: try File.Path(destPath)))
         }
 
         // MARK: - Options
@@ -122,7 +128,7 @@ extension File.System.Test.Unit {
             let options = File.System.Move.Options(overwrite: true)
             try File.System.Move.move(from: source, to: dest, options: options)
 
-            let destData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: destPath)))
+            let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
             #expect(destData == [1, 2, 3])
         }
 
@@ -160,8 +166,8 @@ extension File.System.Test.Unit {
 
         @Test("Move non-existent source throws sourceNotFound")
         func moveNonExistentSourceThrows() throws {
-            let sourcePath = "/tmp/non-existent-\(UUID().uuidString).bin"
-            let destPath = "/tmp/move-dest-\(UUID().uuidString).bin"
+            let sourcePath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).bin"
+            let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer { cleanup(destPath) }
 
             let source = try File.Path(sourcePath)

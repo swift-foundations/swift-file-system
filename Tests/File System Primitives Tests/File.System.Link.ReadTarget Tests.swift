@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,21 +15,28 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-            let path = "/tmp/readtarget-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/readtarget-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func createTempDir() throws -> String {
-            let path = "/tmp/readtarget-dir-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            let path = "/tmp/readtarget-dir-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Read Target
@@ -38,15 +44,15 @@ extension File.System.Test.Unit {
         @Test("Read target of symlink to file")
         func readTargetOfSymlinkToFile() throws {
             let targetPath = try createTempFile()
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
             }
 
-            try FileManager.default.createSymbolicLink(
-                atPath: linkPath,
-                withDestinationPath: targetPath
+            try File.System.Link.Symbolic.create(
+                at: try File.Path(linkPath),
+                pointingTo: try File.Path(targetPath)
             )
 
             let link = try File.Path(linkPath)
@@ -58,15 +64,15 @@ extension File.System.Test.Unit {
         @Test("Read target of symlink to directory")
         func readTargetOfSymlinkToDirectory() throws {
             let targetPath = try createTempDir()
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
             }
 
-            try FileManager.default.createSymbolicLink(
-                atPath: linkPath,
-                withDestinationPath: targetPath
+            try File.System.Link.Symbolic.create(
+                at: try File.Path(linkPath),
+                pointingTo: try File.Path(targetPath)
             )
 
             let link = try File.Path(linkPath)
@@ -77,15 +83,15 @@ extension File.System.Test.Unit {
 
         @Test("Read target of dangling symlink")
         func readTargetOfDanglingSymlink() throws {
-            let targetPath = "/tmp/non-existent-\(UUID().uuidString)"
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let targetPath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(linkPath)
             }
 
-            try FileManager.default.createSymbolicLink(
-                atPath: linkPath,
-                withDestinationPath: targetPath
+            try File.System.Link.Symbolic.create(
+                at: try File.Path(linkPath),
+                pointingTo: try File.Path(targetPath)
             )
 
             let link = try File.Path(linkPath)
@@ -104,12 +110,12 @@ extension File.System.Test.Unit {
             }
 
             // Create target file
-            FileManager.default.createFile(atPath: targetPath, contents: nil)
+            try writeBytes([], to: try File.Path(targetPath))
 
             // Create relative symlink
-            try FileManager.default.createSymbolicLink(
-                atPath: linkPath,
-                withDestinationPath: "target.txt"
+            try File.System.Link.Symbolic.create(
+                at: try File.Path(linkPath),
+                pointingTo: try File.Path("target.txt")
             )
 
             let link = try File.Path(linkPath)
@@ -146,7 +152,7 @@ extension File.System.Test.Unit {
 
         @Test("Read target of non-existent path throws pathNotFound")
         func readTargetOfNonExistentPathThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             #expect(throws: File.System.Link.ReadTarget.Error.pathNotFound(path)) {

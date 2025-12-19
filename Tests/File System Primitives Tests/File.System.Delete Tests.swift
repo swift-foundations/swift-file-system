@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,38 +15,42 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: String = "test") throws -> String {
-            let path = "/tmp/delete-test-\(UUID().uuidString).txt"
-            try content.write(toFile: path, atomically: true, encoding: .utf8)
+            let path = "/tmp/delete-test-\(Int.random(in: 0..<Int.max)).txt"
+            try writeBytes(Array(content.utf8), to: try File.Path(path))
             return path
         }
 
         private func createTempDirectory() throws -> String {
-            let path = "/tmp/delete-test-dir-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            let path = "/tmp/delete-test-dir-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(path))
             return path
         }
 
         private func createNestedDirectory() throws -> String {
-            let basePath = "/tmp/delete-test-nested-\(UUID().uuidString)"
+            let basePath = "/tmp/delete-test-nested-\(Int.random(in: 0..<Int.max))"
             let nestedPath = "\(basePath)/a/b/c"
-            try FileManager.default.createDirectory(
-                atPath: nestedPath,
-                withIntermediateDirectories: true
+            try File.System.Create.Directory.create(
+                at: try File.Path(nestedPath),
+                options: .init(createIntermediates: true)
             )
             // Add some files
-            try "file1".write(toFile: "\(basePath)/file1.txt", atomically: true, encoding: .utf8)
-            try "file2".write(toFile: "\(basePath)/a/file2.txt", atomically: true, encoding: .utf8)
-            try "file3".write(
-                toFile: "\(basePath)/a/b/file3.txt",
-                atomically: true,
-                encoding: .utf8
-            )
+            try writeBytes(Array("file1".utf8), to: try File.Path("\(basePath)/file1.txt"))
+            try writeBytes(Array("file2".utf8), to: try File.Path("\(basePath)/a/file2.txt"))
+            try writeBytes(Array("file3".utf8), to: try File.Path("\(basePath)/a/b/file3.txt"))
             return basePath
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Delete file
@@ -59,12 +62,12 @@ extension File.System.Test.Unit {
             let filePath = try File.Path(path)
             try File.System.Delete.delete(at: filePath)
 
-            #expect(!FileManager.default.fileExists(atPath: path))
+            #expect(!File.System.Stat.exists(at: try File.Path(path)))
         }
 
         @Test("Delete non-existing file throws pathNotFound")
         func deleteNonExistingFile() throws {
-            let path = "/tmp/non-existing-\(UUID().uuidString).txt"
+            let path = "/tmp/non-existing-\(Int.random(in: 0..<Int.max)).txt"
             let filePath = try File.Path(path)
 
             #expect(throws: File.System.Delete.Error.self) {
@@ -81,7 +84,7 @@ extension File.System.Test.Unit {
             let filePath = try File.Path(path)
             try File.System.Delete.delete(at: filePath)
 
-            #expect(!FileManager.default.fileExists(atPath: path))
+            #expect(!File.System.Stat.exists(at: try File.Path(path)))
         }
 
         @Test("Delete non-empty directory without recursive throws")
@@ -96,7 +99,7 @@ extension File.System.Test.Unit {
             }
 
             // Directory should still exist
-            #expect(FileManager.default.fileExists(atPath: basePath))
+            #expect(File.System.Stat.exists(at: try File.Path(basePath)))
         }
 
         @Test("Delete non-empty directory with recursive option")
@@ -107,7 +110,7 @@ extension File.System.Test.Unit {
             let options = File.System.Delete.Options(recursive: true)
             try File.System.Delete.delete(at: filePath, options: options)
 
-            #expect(!FileManager.default.fileExists(atPath: basePath))
+            #expect(!File.System.Stat.exists(at: try File.Path(basePath)))
         }
 
         // MARK: - Options
@@ -133,7 +136,7 @@ extension File.System.Test.Unit {
             let filePath = try File.Path(path)
             try await File.System.Delete.delete(at: filePath)
 
-            #expect(!FileManager.default.fileExists(atPath: path))
+            #expect(!File.System.Stat.exists(at: try File.Path(path)))
         }
 
         @Test("Async delete directory with options")
@@ -144,7 +147,7 @@ extension File.System.Test.Unit {
             let options = File.System.Delete.Options(recursive: true)
             try await File.System.Delete.delete(at: filePath, options: options)
 
-            #expect(!FileManager.default.fileExists(atPath: basePath))
+            #expect(!File.System.Stat.exists(at: try File.Path(basePath)))
         }
 
         // MARK: - Error descriptions

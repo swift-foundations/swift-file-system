@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System
@@ -17,14 +16,17 @@ extension File.System.Test.Unit {
         // MARK: - Test Fixtures
 
         private func createTempFile(content: [UInt8] = []) throws -> String {
-            let path = "/tmp/handle-convenience-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/handle-convenience-test-\(Int.random(in: 0..<Int.max)).bin"
+            let filePath = try File.Path(path)
+            try content.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path))
         }
 
         // MARK: - withOpen
@@ -58,7 +60,7 @@ extension File.System.Test.Unit {
                 }
             }
 
-            let readBack = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readBack = try File.System.Read.Full.read(from: filePath)
             #expect(readBack == dataToWrite)
         }
 
@@ -128,11 +130,11 @@ extension File.System.Test.Unit {
 
         @Test("withOpen with create option creates file")
         func withOpenCreatesFile() throws {
-            let path = "/tmp/handle-convenience-create-\(UUID().uuidString).txt"
+            let path = "/tmp/handle-convenience-create-\(Int.random(in: 0..<Int.max)).txt"
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            #expect(!FileManager.default.fileExists(atPath: path))
+            #expect(!File.System.Stat.exists(at: filePath))
 
             try File.Handle.withOpen(filePath, mode: .write, options: [.create]) { handle in
                 let bytes: [UInt8] = [72, 105]  // "Hi"
@@ -142,12 +144,12 @@ extension File.System.Test.Unit {
                 }
             }
 
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: filePath))
         }
 
         @Test("withOpen propagates open error")
         func withOpenPropagatesOpenError() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString).txt"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).txt"
             let filePath = try File.Path(nonExistent)
 
             #expect(throws: File.Handle.Error.self) {
@@ -315,7 +317,7 @@ extension File.System.Test.Unit {
                 }
             }
 
-            let readBack = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readBack = try File.System.Read.Full.read(from: filePath)
             #expect(readBack == dataToWrite)
         }
 
@@ -335,7 +337,7 @@ extension File.System.Test.Unit {
                 }
             }
 
-            let readBack = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readBack = try File.System.Read.Full.read(from: filePath)
             #expect(readBack == [1, 2, 3, 4, 5, 6])
         }
 
@@ -363,7 +365,7 @@ extension File.System.Test.Unit {
 
             #expect(result == [1, 2, 3])
 
-            let readBack = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readBack = try File.System.Read.Full.read(from: filePath)
             #expect(readBack == [10, 20, 30, 4, 5])
         }
     }

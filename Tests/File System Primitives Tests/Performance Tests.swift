@@ -5,11 +5,14 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 import TestingPerformance
 
 @testable import File_System_Primitives
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 extension File.System.Test.Performance {
 
@@ -19,8 +22,12 @@ extension File.System.Test.Performance {
 
         @Test(.timed(iterations: 10, warmup: 2))
         func `Sequential read 1MB file`() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_read_1mb_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_read_1mb_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup: create 1MB file
             let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
@@ -39,8 +46,12 @@ extension File.System.Test.Performance {
 
         @Test("Sequential write 1MB file", .timed(iterations: 10, warmup: 2))
         func sequentialWrite1MB() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_write_1mb_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_write_1mb_\(Int.random(in: 0..<Int.max)).bin")
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -60,8 +71,12 @@ extension File.System.Test.Performance {
 
         @Test("Buffer-based read into preallocated buffer", .timed(iterations: 50, warmup: 5))
         func bufferBasedRead() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_buffer_read_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_buffer_read_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup: create 64KB file
             let size = 64 * 1024
@@ -86,8 +101,12 @@ extension File.System.Test.Performance {
 
         @Test("Small write throughput (4KB blocks)", .timed(iterations: 20, warmup: 3))
         func smallWriteThroughput() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_small_writes_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_small_writes_\(Int.random(in: 0..<Int.max)).bin")
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -113,8 +132,12 @@ extension File.System.Test.Performance {
 
         @Test("Seek operations (random access pattern)", .timed(iterations: 50, warmup: 5))
         func seekPerformance() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_seek_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_seek_\(Int.random(in: 0..<Int.max)).bin")
 
             // Create a 1MB file for seeking
             let size = 1_000_000
@@ -145,8 +168,12 @@ extension File.System.Test.Performance {
 
         @Test("File.System.Write.Atomic.write (1MB)", .timed(iterations: 10, warmup: 2))
         func systemWrite1MB() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_syswrite_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_syswrite_\(Int.random(in: 0..<Int.max)).bin")
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -159,8 +186,12 @@ extension File.System.Test.Performance {
 
         @Test("File.System.Read.Full.read (1MB)", .timed(iterations: 10, warmup: 2))
         func systemRead1MB() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_sysread_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_sysread_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let oneMB = [UInt8](repeating: 0xBE, count: 1_000_000)
@@ -176,8 +207,12 @@ extension File.System.Test.Performance {
 
         @Test("File.System.Stat.info", .timed(iterations: 100, warmup: 10))
         func statInfo() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_stat_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_stat_\(Int.random(in: 0..<Int.max)).txt")
 
             // Create file
             let data = [UInt8](repeating: 0x00, count: 1000)
@@ -193,8 +228,12 @@ extension File.System.Test.Performance {
 
         @Test("File.System.Stat.exists check", .timed(iterations: 100, warmup: 10))
         func existsCheck() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_exists_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_exists_\(Int.random(in: 0..<Int.max)).txt")
 
             // Create file
             let data = [UInt8](repeating: 0x00, count: 100)
@@ -211,9 +250,13 @@ extension File.System.Test.Performance {
 
         @Test("File.System.Copy.copy (1MB)", .timed(iterations: 10, warmup: 2))
         func copyFile1MB() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let sourcePath = tempDir.appending("perf_copy_src_\(UUID().uuidString).bin")
-            let destPath = tempDir.appending("perf_copy_dst_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let sourcePath = tempDir.appending("perf_copy_src_\(Int.random(in: 0..<Int.max)).bin")
+            let destPath = tempDir.appending("perf_copy_dst_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)
@@ -238,8 +281,12 @@ extension File.System.Test.Performance {
 
         @Test("Directory iteration (100 files)", .timed(iterations: 20, warmup: 3))
         func directoryIteration100Files() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_dir_100_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_dir_100_\(Int.random(in: 0..<Int.max))")
 
             // Setup: create directory with 100 files
             try File.System.Create.Directory.create(at: testDir)
@@ -268,8 +315,12 @@ extension File.System.Test.Performance {
 
         @Test("Directory contents listing (100 files)", .timed(iterations: 20, warmup: 3))
         func directoryContents100Files() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_contents_100_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_contents_100_\(Int.random(in: 0..<Int.max))")
 
             // Setup: create directory with 100 files
             try File.System.Create.Directory.create(at: testDir)
@@ -291,8 +342,12 @@ extension File.System.Test.Performance {
 
         @Test("Create and delete directory", .timed(iterations: 50, warmup: 5))
         func createDeleteDirectory() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_mkdir_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_mkdir_\(Int.random(in: 0..<Int.max))")
 
             try File.System.Create.Directory.create(at: testDir)
             try File.System.Delete.delete(at: testDir)
@@ -335,8 +390,12 @@ extension File.System.Test.Performance {
         // Note: threshold increased to accommodate Linux runtime overhead
         @Test("Buffer read is zero-allocation", .timed(iterations: 10, maxAllocations: 256_000))
         func bufferReadZeroAllocation() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_alloc_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_alloc_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let size = 64 * 1024
@@ -360,8 +419,12 @@ extension File.System.Test.Performance {
 
         @Test("Stat operations minimal allocation", .timed(iterations: 20, maxAllocations: 50_000))
         func statMinimalAllocation() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_stat_alloc_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt")
 
             // Setup
             let data = [UInt8](repeating: 0x00, count: 100)
@@ -389,8 +452,12 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
         )
         func largeFileWrite() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_large_write_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_large_write_\(Int.random(in: 0..<Int.max)).bin")
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -406,8 +473,12 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
         )
         func largeFileRead() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_large_read_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_large_read_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let tenMB = [UInt8](repeating: 0xFF, count: 10_000_000)
@@ -426,8 +497,12 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(10))
         )
         func manySmallFiles() throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_many_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_many_\(Int.random(in: 0..<Int.max))")
 
             try File.System.Create.Directory.create(at: testDir)
             defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }

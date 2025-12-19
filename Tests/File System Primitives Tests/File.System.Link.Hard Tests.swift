@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,15 +15,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-            let path = "/tmp/hardlink-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/hardlink-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Create Hard Link
@@ -32,7 +38,7 @@ extension File.System.Test.Unit {
         @Test("Create hard link to file")
         func createHardLinkToFile() throws {
             let existingPath = try createTempFile(content: [1, 2, 3])
-            let linkPath = "/tmp/hardlink-\(UUID().uuidString)"
+            let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(existingPath)
                 cleanup(linkPath)
@@ -43,18 +49,18 @@ extension File.System.Test.Unit {
 
             try File.System.Link.Hard.create(at: link, to: existing)
 
-            #expect(FileManager.default.fileExists(atPath: linkPath))
+            #expect(File.System.Stat.exists(at: try File.Path(linkPath)))
 
             // Both files should have same content
-            let existingData = try Data(contentsOf: URL(fileURLWithPath: existingPath))
-            let linkData = try Data(contentsOf: URL(fileURLWithPath: linkPath))
+            let existingData = try File.System.Read.Full.read(from: try File.Path(existingPath))
+            let linkData = try File.System.Read.Full.read(from: try File.Path(linkPath))
             #expect(existingData == linkData)
         }
 
         @Test("Hard link shares inode with original")
         func hardLinkSharesInode() throws {
             let existingPath = try createTempFile(content: [1, 2, 3])
-            let linkPath = "/tmp/hardlink-\(UUID().uuidString)"
+            let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(existingPath)
                 cleanup(linkPath)
@@ -65,20 +71,17 @@ extension File.System.Test.Unit {
 
             try File.System.Link.Hard.create(at: link, to: existing)
 
-            // Get inode numbers
-            let existingAttrs = try FileManager.default.attributesOfItem(atPath: existingPath)
-            let linkAttrs = try FileManager.default.attributesOfItem(atPath: linkPath)
+            // Get inode numbers using our stat API
+            let existingInfo = try File.System.Stat.info(at: try File.Path(existingPath))
+            let linkInfo = try File.System.Stat.info(at: try File.Path(linkPath))
 
-            let existingInode = existingAttrs[.systemFileNumber] as? UInt64
-            let linkInode = linkAttrs[.systemFileNumber] as? UInt64
-
-            #expect(existingInode == linkInode)
+            #expect(existingInfo.inode == linkInfo.inode)
         }
 
         @Test("Modifying hard link modifies original")
         func modifyingHardLinkModifiesOriginal() throws {
             let existingPath = try createTempFile(content: [1, 2, 3])
-            let linkPath = "/tmp/hardlink-\(UUID().uuidString)"
+            let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(existingPath)
                 cleanup(linkPath)
@@ -90,17 +93,17 @@ extension File.System.Test.Unit {
             try File.System.Link.Hard.create(at: link, to: existing)
 
             // Modify through the link
-            try Data([10, 20, 30]).write(to: URL(fileURLWithPath: linkPath))
+            try writeBytes([10, 20, 30], to: try File.Path(linkPath))
 
             // Original should also be modified
-            let originalData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: existingPath)))
+            let originalData = try File.System.Read.Full.read(from: try File.Path(existingPath))
             #expect(originalData == [10, 20, 30])
         }
 
         @Test("Deleting original does not delete hard link")
         func deletingOriginalDoesNotDeleteHardLink() throws {
             let existingPath = try createTempFile(content: [1, 2, 3])
-            let linkPath = "/tmp/hardlink-\(UUID().uuidString)"
+            let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(linkPath)
             }
@@ -111,11 +114,11 @@ extension File.System.Test.Unit {
             try File.System.Link.Hard.create(at: link, to: existing)
 
             // Delete original
-            try FileManager.default.removeItem(atPath: existingPath)
+            try File.System.Delete.delete(at: try File.Path(existingPath))
 
             // Hard link should still exist and have the data
-            #expect(FileManager.default.fileExists(atPath: linkPath))
-            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: linkPath)))
+            #expect(File.System.Stat.exists(at: try File.Path(linkPath)))
+            let data = try File.System.Read.Full.read(from: try File.Path(linkPath))
             #expect(data == [1, 2, 3])
         }
 
@@ -123,8 +126,8 @@ extension File.System.Test.Unit {
 
         @Test("Create hard link to non-existent file throws sourceNotFound")
         func createHardLinkToNonExistentThrows() throws {
-            let existingPath = "/tmp/non-existent-\(UUID().uuidString)"
-            let linkPath = "/tmp/hardlink-\(UUID().uuidString)"
+            let existingPath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
+            let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
 
             let existing = try File.Path(existingPath)
             let link = try File.Path(linkPath)

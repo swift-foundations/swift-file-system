@@ -5,10 +5,13 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 extension File.System.Test.Unit {
     @Suite("File.System.Copy")
@@ -16,15 +19,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-            let path = "/tmp/copy-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/copy-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Basic Copy
@@ -32,7 +42,7 @@ extension File.System.Test.Unit {
         @Test("Copy file to new location")
         func copyFileToNewLocation() throws {
             let sourcePath = try createTempFile(content: [10, 20, 30, 40])
-            let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+            let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
@@ -43,17 +53,17 @@ extension File.System.Test.Unit {
 
             try File.System.Copy.copy(from: source, to: dest)
 
-            #expect(FileManager.default.fileExists(atPath: destPath))
+            #expect(File.System.Stat.exists(at: try File.Path(destPath)))
 
-            let sourceData = try Data(contentsOf: URL(fileURLWithPath: sourcePath))
-            let destData = try Data(contentsOf: URL(fileURLWithPath: destPath))
+            let sourceData = try File.System.Read.Full.read(from: try File.Path(sourcePath))
+            let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
             #expect(sourceData == destData)
         }
 
         @Test("Copy preserves source file")
         func copyPreservesSourceFile() throws {
             let sourcePath = try createTempFile(content: [1, 2, 3])
-            let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+            let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
@@ -65,13 +75,13 @@ extension File.System.Test.Unit {
             try File.System.Copy.copy(from: source, to: dest)
 
             // Source should still exist
-            #expect(FileManager.default.fileExists(atPath: sourcePath))
+            #expect(File.System.Stat.exists(at: try File.Path(sourcePath)))
         }
 
         @Test("Copy empty file")
         func copyEmptyFile() throws {
             let sourcePath = try createTempFile(content: [])
-            let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+            let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer {
                 cleanup(sourcePath)
                 cleanup(destPath)
@@ -82,7 +92,7 @@ extension File.System.Test.Unit {
 
             try File.System.Copy.copy(from: source, to: dest)
 
-            let destData = try Data(contentsOf: URL(fileURLWithPath: destPath))
+            let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
             #expect(destData.isEmpty)
         }
 
@@ -103,7 +113,7 @@ extension File.System.Test.Unit {
             let options = File.System.Copy.Options(overwrite: true)
             try File.System.Copy.copy(from: source, to: dest, options: options)
 
-            let destData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: destPath)))
+            let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
             #expect(destData == [1, 2, 3])
         }
 
@@ -149,8 +159,8 @@ extension File.System.Test.Unit {
 
         @Test("Copy non-existent source throws sourceNotFound")
         func copyNonExistentSourceThrows() throws {
-            let sourcePath = "/tmp/non-existent-\(UUID().uuidString).bin"
-            let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+            let sourcePath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).bin"
+            let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
             defer { cleanup(destPath) }
 
             let source = try File.Path(sourcePath)
@@ -235,15 +245,16 @@ extension File.System.Test.Unit {
         // MARK: - Darwin-specific Edge Cases
 
         #if canImport(Darwin)
-            @Suite("EdgeCase")
-            struct EdgeCase {
+            #if canImport(Foundation)
+                @Suite("EdgeCase")
+                struct EdgeCase {
 
-                private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-                    let path = "/tmp/copy-test-\(UUID().uuidString).bin"
-                    let data = Data(content)
-                    try data.write(to: URL(fileURLWithPath: path))
-                    return path
-                }
+                    private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
+                        let path = "/tmp/copy-test-\(Int.random(in: 0..<Int.max)).bin"
+                        let data = Data(content)
+                        try data.write(to: URL(fileURLWithPath: path))
+                        return path
+                    }
 
                 private func cleanup(_ path: String) {
                     try? FileManager.default.removeItem(atPath: path)
@@ -252,7 +263,7 @@ extension File.System.Test.Unit {
                 @Test("Overwrite when destination is directory fails appropriately")
                 func overwriteDestinationDirectoryFails() throws {
                     let sourcePath = try createTempFile(content: [1, 2, 3])
-                    let destDir = "/tmp/copy-dest-dir-\(UUID().uuidString)"
+                    let destDir = "/tmp/copy-dest-dir-\(Int.random(in: 0..<Int.max))"
                     try FileManager.default.createDirectory(
                         atPath: destDir,
                         withIntermediateDirectories: false
@@ -280,7 +291,7 @@ extension File.System.Test.Unit {
                 func overwriteDestinationSymlink() throws {
                     let sourcePath = try createTempFile(content: [10, 20, 30])
                     let targetPath = try createTempFile(content: [99])
-                    let symlinkPath = "/tmp/copy-symlink-\(UUID().uuidString).link"
+                    let symlinkPath = "/tmp/copy-symlink-\(Int.random(in: 0..<Int.max)).link"
 
                     try FileManager.default.createSymbolicLink(
                         atPath: symlinkPath,
@@ -315,8 +326,8 @@ extension File.System.Test.Unit {
                 @Test("COPYFILE_NOFOLLOW with symlink source copies symlink itself")
                 func copySymlinkWithoutFollowing() throws {
                     let targetPath = try createTempFile(content: [99, 88, 77])
-                    let symlinkPath = "/tmp/copy-source-symlink-\(UUID().uuidString).link"
-                    let destPath = "/tmp/copy-symlink-dest-\(UUID().uuidString).link"
+                    let symlinkPath = "/tmp/copy-source-symlink-\(Int.random(in: 0..<Int.max)).link"
+                    let destPath = "/tmp/copy-symlink-dest-\(Int.random(in: 0..<Int.max)).link"
 
                     try FileManager.default.createSymbolicLink(
                         atPath: symlinkPath,
@@ -349,7 +360,7 @@ extension File.System.Test.Unit {
                 @Test("copyAttributes=true preserves permissions and timestamps")
                 func copyAttributesPreservesMetadata() throws {
                     let sourcePath = try createTempFile(content: [1, 2, 3, 4, 5])
-                    let destPath = "/tmp/copy-attrs-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-attrs-dest-\(Int.random(in: 0..<Int.max)).bin"
 
                     // Set specific permissions and modification date on source
                     let sourceURL = URL(fileURLWithPath: sourcePath)
@@ -392,7 +403,7 @@ extension File.System.Test.Unit {
                 @Test("copyAttributes=false copies only data")
                 func copyAttributesFalseSkipsMetadata() throws {
                     let sourcePath = try createTempFile(content: [10, 20, 30, 40])
-                    let destPath = "/tmp/copy-no-attrs-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-no-attrs-dest-\(Int.random(in: 0..<Int.max)).bin"
 
                     // Set specific permissions on source
                     try FileManager.default.setAttributes(
@@ -438,7 +449,7 @@ extension File.System.Test.Unit {
                     }
 
                     let sourcePath = try createTempFile(content: largeContent)
-                    let destPath = "/tmp/copy-large-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-large-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(sourcePath)
                         cleanup(destPath)
@@ -466,23 +477,25 @@ extension File.System.Test.Unit {
                     )
                 }
             }
+            #endif
         #endif
 
         // MARK: - Linux-specific Edge Cases
 
         #if os(Linux)
-            @Suite("EdgeCase")
-            struct EdgeCase {
+            #if canImport(Foundation)
+                @Suite("EdgeCase")
+                struct EdgeCase {
 
-                private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-                    let path = "/tmp/copy-test-\(UUID().uuidString).bin"
-                    let data = Data(content)
-                    try data.write(to: URL(fileURLWithPath: path))
-                    return path
-                }
+                    private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
+                        let path = "/tmp/copy-test-\(Int.random(in: 0..<Int.max)).bin"
+                        let data = Data(content)
+                        try data.write(to: URL(fileURLWithPath: path))
+                        return path
+                    }
 
                 private func createLargeFile(sizeInMB: Int) throws -> String {
-                    let path = "/tmp/copy-large-\(UUID().uuidString).bin"
+                    let path = "/tmp/copy-large-\(Int.random(in: 0..<Int.max)).bin"
                     let chunkSize = 1024 * 1024  // 1MB chunks
                     let chunk = Data(repeating: 0xAB, count: chunkSize)
 
@@ -509,7 +522,7 @@ extension File.System.Test.Unit {
                     // This tests that the loop correctly handles partial copies when
                     // copy_file_range doesn't copy all requested bytes in one call
                     let sourcePath = try createLargeFile(sizeInMB: 100)
-                    let destPath = "/tmp/copy-large-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-large-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(sourcePath)
                         cleanup(destPath)
@@ -540,7 +553,7 @@ extension File.System.Test.Unit {
                 func veryLargeFileCopyUsesKernelPath() throws {
                     // Create a 500MB file to test kernel-assisted copy performance
                     let sourcePath = try createLargeFile(sizeInMB: 500)
-                    let destPath = "/tmp/copy-xlarge-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-xlarge-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(sourcePath)
                         cleanup(destPath)
@@ -579,7 +592,7 @@ extension File.System.Test.Unit {
                     // at the time of copy, but doesn't lock it. This is expected behavior.
                     // TOCTOU race conditions are possible but documented.
                     let sourcePath = try createTempFile(content: Array(repeating: 1, count: 1024))
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(sourcePath)
                         cleanup(destPath)
@@ -604,7 +617,7 @@ extension File.System.Test.Unit {
                 @Test("Copy to directory path throws error")
                 func copyToDirectoryPathThrows() throws {
                     let sourcePath = try createTempFile(content: [1, 2, 3])
-                    let destDirPath = "/tmp/copy-dest-dir-\(UUID().uuidString)"
+                    let destDirPath = "/tmp/copy-dest-dir-\(Int.random(in: 0..<Int.max))"
                     defer {
                         cleanup(sourcePath)
                         try? FileManager.default.removeItem(atPath: destDirPath)
@@ -631,8 +644,8 @@ extension File.System.Test.Unit {
 
                 @Test("Copy from directory throws isDirectory error")
                 func copyFromDirectoryThrows() throws {
-                    let sourceDirPath = "/tmp/copy-source-dir-\(UUID().uuidString)"
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let sourceDirPath = "/tmp/copy-source-dir-\(Int.random(in: 0..<Int.max))"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         try? FileManager.default.removeItem(atPath: sourceDirPath)
                         cleanup(destPath)
@@ -658,8 +671,8 @@ extension File.System.Test.Unit {
                 @Test("Copy with followSymlinks=true copies symlink target")
                 func copyFollowsSymlinkWhenRequested() throws {
                     let targetPath = try createTempFile(content: [10, 20, 30])
-                    let linkPath = "/tmp/copy-link-\(UUID().uuidString).link"
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let linkPath = "/tmp/copy-link-\(Int.random(in: 0..<Int.max)).link"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(targetPath)
                         cleanup(linkPath)
@@ -694,8 +707,8 @@ extension File.System.Test.Unit {
                 @Test("Copy with followSymlinks=false copies symlink itself")
                 func copySymlinkWithoutFollowing() throws {
                     let targetPath = try createTempFile(content: [10, 20, 30])
-                    let linkPath = "/tmp/copy-link-\(UUID().uuidString).link"
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).link"
+                    let linkPath = "/tmp/copy-link-\(Int.random(in: 0..<Int.max)).link"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).link"
                     defer {
                         cleanup(targetPath)
                         cleanup(linkPath)
@@ -729,7 +742,7 @@ extension File.System.Test.Unit {
                 func copyToExistingSymlinkReplaces() throws {
                     let sourcePath = try createTempFile(content: [100, 200])
                     let targetPath = try createTempFile(content: [1, 2, 3])
-                    let linkPath = "/tmp/copy-link-\(UUID().uuidString).link"
+                    let linkPath = "/tmp/copy-link-\(Int.random(in: 0..<Int.max)).link"
                     defer {
                         cleanup(sourcePath)
                         cleanup(targetPath)
@@ -766,7 +779,7 @@ extension File.System.Test.Unit {
                 @Test("Empty file copies correctly through fast path")
                 func emptyFileCopiesThroughFastPath() throws {
                     let sourcePath = try createTempFile(content: [])
-                    let destPath = "/tmp/copy-empty-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-empty-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(sourcePath)
                         cleanup(destPath)
@@ -803,7 +816,7 @@ extension File.System.Test.Unit {
                         ofItemAtPath: sourcePath
                     )
 
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer { cleanup(destPath) }
 
                     let source = try File.Path(sourcePath)
@@ -844,7 +857,7 @@ extension File.System.Test.Unit {
                     // Wait a moment to ensure new file has different timestamp
                     Thread.sleep(forTimeInterval: 0.1)
 
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer { cleanup(destPath) }
 
                     let source = try File.Path(sourcePath)
@@ -881,7 +894,7 @@ extension File.System.Test.Unit {
                         ofItemAtPath: sourcePath
                     )
 
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer { cleanup(destPath) }
 
                     let source = try File.Path(sourcePath)
@@ -916,7 +929,7 @@ extension File.System.Test.Unit {
                         ofItemAtPath: sourcePath
                     )
 
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer { cleanup(destPath) }
 
                     let source = try File.Path(sourcePath)
@@ -948,7 +961,7 @@ extension File.System.Test.Unit {
                     // The implementation should fall back to sendfile or manual copy
 
                     let sourcePath = try createTempFile(content: [1, 2, 3, 4, 5])
-                    let destPath = "/tmp/copy-dest-\(UUID().uuidString).bin"
+                    let destPath = "/tmp/copy-dest-\(Int.random(in: 0..<Int.max)).bin"
                     defer {
                         cleanup(sourcePath)
                         cleanup(destPath)
@@ -967,6 +980,7 @@ extension File.System.Test.Unit {
                     #expect(sourceData == destData)
                 }
             }
+            #endif
         #endif
     }
 }

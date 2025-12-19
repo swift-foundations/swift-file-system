@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,27 +15,34 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8]) throws -> String {
-            let path = "/tmp/read-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/read-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func createTempFile(string: String) throws -> String {
-            let path = "/tmp/read-test-\(UUID().uuidString).txt"
-            try string.write(toFile: path, atomically: true, encoding: .utf8)
+            let path = "/tmp/read-test-\(Int.random(in: 0..<Int.max)).txt"
+            try writeBytes(Array(string.utf8), to: try File.Path(path))
             return path
         }
 
         private func createTempDirectory() throws -> String {
-            let path = "/tmp/read-test-dir-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            let path = "/tmp/read-test-dir-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Basic read
@@ -121,7 +127,7 @@ extension File.System.Test.Unit {
 
         @Test("Read non-existing file throws pathNotFound")
         func readNonExistingFile() throws {
-            let path = "/tmp/non-existing-\(UUID().uuidString).txt"
+            let path = "/tmp/non-existing-\(Int.random(in: 0..<Int.max)).txt"
             let filePath = try File.Path(path)
 
             #expect(throws: File.System.Read.Full.Error.self) {

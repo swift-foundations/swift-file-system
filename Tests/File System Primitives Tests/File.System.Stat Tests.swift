@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,20 +15,28 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: String = "test") throws -> String {
-            let path = "/tmp/stat-test-\(UUID().uuidString).txt"
-            try content.write(toFile: path, atomically: true, encoding: .utf8)
+            let path = "/tmp/stat-test-\(Int.random(in: 0..<Int.max)).txt"
+            try writeBytes(Array(content.utf8), to: try File.Path(path))
             return path
         }
 
         private func createTempDirectory() throws -> String {
-            let path = "/tmp/stat-test-dir-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            let path = "/tmp/stat-test-dir-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - exists()
@@ -54,7 +61,7 @@ extension File.System.Test.Unit {
 
         @Test("exists returns false for non-existing path")
         func existsReturnsFalseForNonExisting() throws {
-            let filePath = try File.Path("/tmp/non-existing-\(UUID().uuidString)")
+            let filePath = try File.Path("/tmp/non-existing-\(Int.random(in: 0..<Int.max))")
             #expect(File.System.Stat.exists(at: filePath) == false)
         }
 
@@ -82,7 +89,7 @@ extension File.System.Test.Unit {
 
         @Test("info throws for non-existing path")
         func infoThrowsForNonExisting() throws {
-            let filePath = try File.Path("/tmp/non-existing-\(UUID().uuidString)")
+            let filePath = try File.Path("/tmp/non-existing-\(Int.random(in: 0..<Int.max))")
             #expect(throws: File.System.Stat.Error.self) {
                 _ = try File.System.Stat.info(at: filePath)
             }
@@ -91,15 +98,15 @@ extension File.System.Test.Unit {
         @Test("lstatInfo returns symbolicLink type for symlink")
         func lstatInfoReturnsSymlinkForSymlink() throws {
             let targetPath = try createTempFile()
-            let linkPath = "/tmp/stat-test-link-\(UUID().uuidString)"
+            let linkPath = "/tmp/stat-test-link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
             }
 
-            try FileManager.default.createSymbolicLink(
-                atPath: linkPath,
-                withDestinationPath: targetPath
+            try File.System.Link.Symbolic.create(
+                at: try File.Path(linkPath),
+                pointingTo: try File.Path(targetPath)
             )
 
             let filePath = try File.Path(linkPath)
@@ -155,15 +162,15 @@ extension File.System.Test.Unit {
         @Test("info returns correct type for symlink")
         func infoReturnsCorrectTypeForSymlink() throws {
             let targetPath = try createTempFile()
-            let linkPath = "/tmp/stat-test-link-\(UUID().uuidString)"
+            let linkPath = "/tmp/stat-test-link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
             }
 
-            try FileManager.default.createSymbolicLink(
-                atPath: linkPath,
-                withDestinationPath: targetPath
+            try File.System.Link.Symbolic.create(
+                at: try File.Path(linkPath),
+                pointingTo: try File.Path(targetPath)
             )
 
             let filePath = try File.Path(linkPath)
@@ -222,8 +229,8 @@ extension File.System.Test.Unit {
 
         @Test("lstatInfo returns symbolicLink type for symlink")
         func lstatInfoReturnsSymlinkType() throws {
-            let targetPath = try File.Path("/tmp/stat-lstat-target-\(UUID().uuidString).txt")
-            let linkPath = try File.Path("/tmp/stat-lstat-test-\(UUID().uuidString)")
+            let targetPath = try File.Path("/tmp/stat-lstat-target-\(Int.random(in: 0..<Int.max)).txt")
+            let linkPath = try File.Path("/tmp/stat-lstat-test-\(Int.random(in: 0..<Int.max))")
             defer {
                 try? File.System.Delete.delete(at: targetPath)
                 try? File.System.Delete.delete(at: linkPath)
@@ -254,8 +261,8 @@ extension File.System.Test.Unit {
 
         @Test("lstatInfo returns different inode than info for symlink")
         func lstatInfoReturnsDifferentInodeForSymlink() throws {
-            let targetPath = try File.Path("/tmp/stat-inode-target-\(UUID().uuidString).txt")
-            let linkPath = try File.Path("/tmp/stat-inode-test-\(UUID().uuidString)")
+            let targetPath = try File.Path("/tmp/stat-inode-target-\(Int.random(in: 0..<Int.max)).txt")
+            let linkPath = try File.Path("/tmp/stat-inode-test-\(Int.random(in: 0..<Int.max))")
             defer {
                 try? File.System.Delete.delete(at: targetPath)
                 try? File.System.Delete.delete(at: linkPath)
@@ -291,7 +298,7 @@ extension File.System.Test.Unit {
 
         @Test("lstatInfo same as info for regular file")
         func lstatInfoSameAsInfoForRegularFile() throws {
-            let filePath = try File.Path("/tmp/stat-lstat-regular-\(UUID().uuidString).txt")
+            let filePath = try File.Path("/tmp/stat-lstat-regular-\(Int.random(in: 0..<Int.max)).txt")
             defer { try? File.System.Delete.delete(at: filePath) }
 
             // Create file using our API

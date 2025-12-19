@@ -6,11 +6,13 @@
 //
 
 import File_System_Primitives
-import Foundation
 import Testing
 import TestingPerformance
 
 @testable import File_System_Async
+
+#if canImport(Foundation)
+import Foundation
 
 extension File.IO.Test.Performance {
 
@@ -99,8 +101,12 @@ extension File.IO.Test.Performance {
 
         @Test("Handle registration and destruction", .timed(iterations: 20, warmup: 3))
         func handleRegistrationDestruction() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_handle_reg_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_handle_reg_\(Int.random(in: 0..<Int.max)).txt")
 
             let data = [UInt8](repeating: 0x00, count: 100)
             try data.withUnsafeBufferPointer { buffer in
@@ -125,8 +131,12 @@ extension File.IO.Test.Performance {
 
         @Test("withHandle access pattern", .timed(iterations: 20, warmup: 3))
         func withHandleAccess() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_withhandle_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_withhandle_\(Int.random(in: 0..<Int.max)).txt")
 
             let data = [UInt8](repeating: 0x42, count: 1000)
             try data.withUnsafeBufferPointer { buffer in
@@ -164,8 +174,12 @@ extension File.IO.Test.Performance {
 
         @Test("Async directory contents (100 files)", .timed(iterations: 10, warmup: 2))
         func asyncDirectoryContents() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_async_dir_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_async_dir_\(Int.random(in: 0..<Int.max))")
 
             // Setup
             try await File.System.Create.Directory.create(at: testDir)
@@ -183,8 +197,12 @@ extension File.IO.Test.Performance {
 
         @Test("Directory entries streaming (100 files)", .timed(iterations: 10, warmup: 2))
         func directoryEntriesStreaming() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_async_entries_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_async_entries_\(Int.random(in: 0..<Int.max))")
 
             // Setup
             try await File.System.Create.Directory.create(at: testDir)
@@ -205,8 +223,12 @@ extension File.IO.Test.Performance {
 
         @Test("Directory walk (shallow tree: 10 dirs × 10 files)", .timed(iterations: 5, warmup: 1))
         func directoryWalkShallow() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_walk_shallow_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
 
             // Setup: 10 subdirs, each with 10 files = 100 files total + 10 dirs
             try await File.System.Create.Directory.create(at: testDir)
@@ -234,8 +256,12 @@ extension File.IO.Test.Performance {
 
         @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 5, warmup: 1))
         func directoryWalkDeep() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_walk_deep_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_walk_deep_\(Int.random(in: 0..<Int.max))")
 
             // Setup: 5 levels deep with 3 files per level
             try await File.System.Create.Directory.create(at: testDir)
@@ -279,8 +305,12 @@ extension File.IO.Test.Performance {
 
         @Test("Stream 1MB file (64KB chunks)", .timed(iterations: 5, warmup: 1))
         func stream1MBFile() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_stream_1mb_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
@@ -304,8 +334,12 @@ extension File.IO.Test.Performance {
 
         @Test("Stream 1MB file (4KB chunks)", .timed(iterations: 5, warmup: 1))
         func stream1MBSmallChunks() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_stream_small_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_stream_small_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let oneMB = [UInt8](repeating: 0xCD, count: 1_000_000)
@@ -334,8 +368,12 @@ extension File.IO.Test.Performance {
 
         @Test("Early termination streaming", .timed(iterations: 20, warmup: 3))
         func earlyTermination() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_stream_early_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_stream_early_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup: larger file
             let fiveMB = [UInt8](repeating: 0xEF, count: 5_000_000)
@@ -370,8 +408,12 @@ extension File.IO.Test.Performance {
 
         @Test("Async stat operations", .timed(iterations: 20, warmup: 3))
         func asyncStatOperations() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_async_stat_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_async_stat_\(Int.random(in: 0..<Int.max)).txt")
 
             let data = [UInt8](repeating: 0x00, count: 1000)
             try data.withUnsafeBufferPointer { buffer in
@@ -393,9 +435,13 @@ extension File.IO.Test.Performance {
 
         @Test("Async file copy (1MB)", .timed(iterations: 5, warmup: 1))
         func asyncFileCopy() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let sourcePath = tempDir.appending("perf_async_copy_src_\(UUID().uuidString).bin")
-            let destPath = tempDir.appending("perf_async_copy_dst_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let sourcePath = tempDir.appending("perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin")
+            let destPath = tempDir.appending("perf_async_copy_dst_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)
@@ -426,8 +472,12 @@ extension File.IO.Test.Performance {
 
         @Test("Concurrent file reads (10 files)", .timed(iterations: 5, warmup: 1))
         func concurrentFileReads() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_concurrent_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_concurrent_\(Int.random(in: 0..<Int.max))")
 
             // Setup: 10 files, 100KB each
             try await File.System.Create.Directory.create(at: testDir)
@@ -470,8 +520,12 @@ extension File.IO.Test.Performance {
 
         @Test("Mixed read/write operations", .timed(iterations: 5, warmup: 1))
         func mixedReadWriteOperations() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let testDir = tempDir.appending("perf_mixed_\(UUID().uuidString)")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_mixed_\(Int.random(in: 0..<Int.max))")
 
             try await File.System.Create.Directory.create(at: testDir)
             defer { Task { try? await File.System.Delete.delete(at: testDir, options: .init(recursive: true)) } }
@@ -534,8 +588,12 @@ extension File.IO.Test.Performance {
             .timed(iterations: 3, maxAllocations: 5_000_000)
         )
         func streamingMemoryBounded() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_mem_stream_\(UUID().uuidString).bin")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin")
 
             // Create 1MB file
             let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
@@ -561,8 +619,12 @@ extension File.IO.Test.Performance {
 
         @Test("Handle store cleanup", .timed(iterations: 5))
         func handleStoreCleanup() async throws {
+            #if canImport(Foundation)
             let tempDir = try File.Path(NSTemporaryDirectory())
-            let filePath = tempDir.appending("perf_handle_cleanup_\(UUID().uuidString).txt")
+            #else
+            let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_handle_cleanup_\(Int.random(in: 0..<Int.max)).txt")
 
             let data = [UInt8](repeating: 0x00, count: 100)
             try data.withUnsafeBufferPointer { buffer in
@@ -587,3 +649,5 @@ extension File.IO.Test.Performance {
         }
     }
 }
+
+#endif

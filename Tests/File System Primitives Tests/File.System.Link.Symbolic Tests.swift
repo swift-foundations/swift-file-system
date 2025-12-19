@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,21 +15,28 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-            let path = "/tmp/symlink-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/symlink-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func createTempDir() throws -> String {
-            let path = "/tmp/symlink-dir-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            let path = "/tmp/symlink-dir-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Create Symlink
@@ -38,7 +44,7 @@ extension File.System.Test.Unit {
         @Test("Create symlink to file")
         func createSymlinkToFile() throws {
             let targetPath = try createTempFile(content: [1, 2, 3])
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
@@ -50,18 +56,17 @@ extension File.System.Test.Unit {
             try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
             // Verify symlink exists
-            var isDir: ObjCBool = false
-            #expect(FileManager.default.fileExists(atPath: linkPath, isDirectory: &isDir))
+            #expect(File.System.Stat.exists(at: try File.Path(linkPath)))
 
-            // Verify it's a symlink
-            let attrs = try FileManager.default.attributesOfItem(atPath: linkPath)
-            #expect(attrs[.type] as? FileAttributeType == .typeSymbolicLink)
+            // Verify it's a symlink using lstatInfo
+            let info = try File.System.Stat.lstatInfo(at: try File.Path(linkPath))
+            #expect(info.type == .symbolicLink)
         }
 
         @Test("Create symlink to directory")
         func createSymlinkToDirectory() throws {
             let targetPath = try createTempDir()
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
@@ -72,14 +77,14 @@ extension File.System.Test.Unit {
 
             try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
-            let attrs = try FileManager.default.attributesOfItem(atPath: linkPath)
-            #expect(attrs[.type] as? FileAttributeType == .typeSymbolicLink)
+            let info = try File.System.Stat.lstatInfo(at: try File.Path(linkPath))
+            #expect(info.type == .symbolicLink)
         }
 
         @Test("Symlink points to correct target")
         func symlinkPointsToCorrectTarget() throws {
             let targetPath = try createTempFile(content: [10, 20, 30])
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(targetPath)
                 cleanup(linkPath)
@@ -91,14 +96,14 @@ extension File.System.Test.Unit {
             try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
             // Read through symlink
-            let data = try Data(contentsOf: URL(fileURLWithPath: linkPath))
-            #expect([UInt8](data) == [10, 20, 30])
+            let data = try File.System.Read.Full.read(from: try File.Path(linkPath))
+            #expect(data == [10, 20, 30])
         }
 
         @Test("Create symlink to non-existent target succeeds")
         func createSymlinkToNonExistentTarget() throws {
-            let targetPath = "/tmp/non-existent-target-\(UUID().uuidString)"
-            let linkPath = "/tmp/link-\(UUID().uuidString)"
+            let targetPath = "/tmp/non-existent-target-\(Int.random(in: 0..<Int.max))"
+            let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
             defer {
                 cleanup(linkPath)
             }
@@ -110,8 +115,8 @@ extension File.System.Test.Unit {
             // (it's a dangling symlink, but that's allowed)
             try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
-            let attrs = try FileManager.default.attributesOfItem(atPath: linkPath)
-            #expect(attrs[.type] as? FileAttributeType == .typeSymbolicLink)
+            let info = try File.System.Stat.lstatInfo(at: try File.Path(linkPath))
+            #expect(info.type == .symbolicLink)
         }
 
         // MARK: - Error Cases

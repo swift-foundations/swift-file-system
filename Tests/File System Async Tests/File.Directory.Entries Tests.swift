@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Async
@@ -17,29 +16,27 @@ extension File.IO.Test.Unit {
         // MARK: - Test Fixtures
 
         private func createTempDir() throws -> File.Path {
-            let path = "/tmp/async-entries-test-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(
-                atPath: path,
-                withIntermediateDirectories: true
-            )
-            return try File.Path(path)
+            let path = try File.Path("/tmp/async-entries-test-\(Int.random(in: 0..<Int.max))")
+            try File.System.Create.Directory.create(at: path)
+            return path
         }
 
         private func createFile(in dir: File.Path, name: String, content: String = "") throws {
-            let filePath = dir.string + "/" + name
-            try content.write(toFile: filePath, atomically: true, encoding: .utf8)
+            let filePath = try File.Path(dir.string + "/" + name)
+            let bytes = Array(content.utf8)
+            try bytes.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
         }
 
         private func createSubdir(in dir: File.Path, name: String) throws {
-            let subPath = dir.string + "/" + name
-            try FileManager.default.createDirectory(
-                atPath: subPath,
-                withIntermediateDirectories: true
-            )
+            let subPath = try File.Path(dir.string + "/" + name)
+            try File.System.Create.Directory.create(at: subPath)
         }
 
         private func cleanup(_ path: File.Path) {
-            try? FileManager.default.removeItem(atPath: path.string)
+            try? File.System.Delete.delete(at: path, options: .init(recursive: true))
         }
 
         // MARK: - Basic Iteration
@@ -146,7 +143,7 @@ extension File.IO.Test.Unit {
             let io = File.IO.Executor()
             defer { Task { await io.shutdown() } }
 
-            let path = try File.Path("/tmp/nonexistent-\(UUID().uuidString)")
+            let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max))")
 
             let entries = File.Directory.Async(io: io).entries(at: path)
 
@@ -249,7 +246,7 @@ extension File.IO.Test.Unit {
 
             // Create 100 files
             for i in 0..<100 {
-                try createFile(in: dir, name: "file\(String(format: "%03d", i)).txt")
+                try createFile(in: dir, name: "file\(i).txt")
             }
 
             let entries = File.Directory.Async(io: io).entries(at: dir)

@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -17,11 +16,11 @@ extension File.System.Test.Unit {
         // MARK: - Test Fixtures
 
         private func uniquePath(extension ext: String = "txt") -> String {
-            "/tmp/atomic-test-\(UUID().uuidString).\(ext)"
+            "/tmp/atomic-test-\(Int.random(in: 0..<Int.max)).\(ext)"
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path))
         }
 
         private func writeBytes(
@@ -48,7 +47,7 @@ extension File.System.Test.Unit {
 
             try writeBytes(testData, to: path)
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == testData)
         }
 
@@ -59,7 +58,7 @@ extension File.System.Test.Unit {
 
             try writeBytes([], to: path)
 
-            let readData = try Data(contentsOf: URL(fileURLWithPath: path))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData.isEmpty)
         }
 
@@ -72,7 +71,7 @@ extension File.System.Test.Unit {
 
             try writeBytes(binaryData, to: path)
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == binaryData)
         }
 
@@ -86,7 +85,7 @@ extension File.System.Test.Unit {
 
             try writeBytes(largeData, to: path)
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == largeData)
         }
 
@@ -120,7 +119,7 @@ extension File.System.Test.Unit {
             let newData: [UInt8] = [4, 5, 6, 7, 8]
             try writeBytes(newData, to: path)
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == newData)
         }
 
@@ -135,7 +134,7 @@ extension File.System.Test.Unit {
             let newData: [UInt8] = [7, 8, 9]
             try writeBytes(newData, to: path, options: options)
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == newData)
         }
 
@@ -156,7 +155,7 @@ extension File.System.Test.Unit {
             }
 
             // Original content should be preserved
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == [1, 2, 3])
         }
 
@@ -169,7 +168,7 @@ extension File.System.Test.Unit {
             let data: [UInt8] = [1, 2, 3]
             try writeBytes(data, to: path, options: options)
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == data)
         }
 
@@ -235,7 +234,7 @@ extension File.System.Test.Unit {
                 try File.System.Write.Atomic.write(span, to: filePath)
             }
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == testData)
         }
 
@@ -254,7 +253,7 @@ extension File.System.Test.Unit {
                 try File.System.Write.Atomic.write(span, to: filePath, options: options)
             }
 
-            let readData = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let readData = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(readData == data)
         }
 

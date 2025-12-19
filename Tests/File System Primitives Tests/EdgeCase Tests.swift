@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -20,15 +19,15 @@ extension File.System.Test.EdgeCase {
     // MARK: - Test Fixtures
 
     private func createTempPath() -> String {
-        "/tmp/edge-test-\(UUID().uuidString)"
+        "/tmp/edge-test-\(Int.random(in: 0..<Int.max))"
     }
 
     private func cleanup(_ path: String) {
-        try? FileManager.default.removeItem(atPath: path)
+        try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
     }
 
     private func cleanupPath(_ path: File.Path) {
-        try? File.System.Delete.delete(at: path)
+        try? File.System.Delete.delete(at: path, options: .init(recursive: true))
     }
 
     // MARK: - Empty File Operations
@@ -118,7 +117,7 @@ extension File.System.Test.EdgeCase {
     @Test("Path with newline in name is rejected")
     func pathWithNewline() throws {
         // Paths with control characters (like newlines) are rejected for safety
-        let pathString = "/tmp/edge-test-with\nnewline-\(UUID().uuidString)"
+        let pathString = "/tmp/edge-test-with\nnewline-\(Int.random(in: 0..<Int.max))"
         var didThrow = false
         do {
             _ = try File.Path(pathString)
@@ -412,7 +411,7 @@ extension File.System.Test.EdgeCase {
     @Test("Delete non-empty directory fails without recursive")
     func deleteNonEmptyDirectory() throws {
         let dir = try File.Path(createTempPath())
-        defer { try? FileManager.default.removeItem(atPath: dir.string) }
+        defer { try? File.System.Delete.delete(at: dir, options: .init(recursive: true)) }
 
         try File.System.Create.Directory.create(at: dir)
 

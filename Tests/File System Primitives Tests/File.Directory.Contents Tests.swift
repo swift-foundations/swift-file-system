@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,14 +15,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempDir() throws -> String {
-            let path = "/tmp/contents-test-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(atPath: path, withIntermediateDirectories: true)
+            let path = "/tmp/contents-test-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - Listing
@@ -44,9 +51,9 @@ extension File.System.Test.Unit {
             defer { cleanup(dirPath) }
 
             // Create some files
-            FileManager.default.createFile(atPath: "\(dirPath)/file1.txt", contents: nil)
-            FileManager.default.createFile(atPath: "\(dirPath)/file2.txt", contents: nil)
-            FileManager.default.createFile(atPath: "\(dirPath)/file3.txt", contents: nil)
+            try writeBytes([], to: try File.Path("\(dirPath)/file1.txt"))
+            try writeBytes([], to: try File.Path("\(dirPath)/file2.txt"))
+            try writeBytes([], to: try File.Path("\(dirPath)/file3.txt"))
 
             let path = try File.Path(dirPath)
             let entries = try File.Directory.Contents.list(at: path)
@@ -62,14 +69,8 @@ extension File.System.Test.Unit {
             defer { cleanup(dirPath) }
 
             // Create subdirectories
-            try FileManager.default.createDirectory(
-                atPath: "\(dirPath)/subdir1",
-                withIntermediateDirectories: true
-            )
-            try FileManager.default.createDirectory(
-                atPath: "\(dirPath)/subdir2",
-                withIntermediateDirectories: true
-            )
+            try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir1"))
+            try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir2"))
 
             let path = try File.Path(dirPath)
             let entries = try File.Directory.Contents.list(at: path)
@@ -86,13 +87,10 @@ extension File.System.Test.Unit {
             defer { cleanup(dirPath) }
 
             // Create file
-            FileManager.default.createFile(atPath: "\(dirPath)/file.txt", contents: nil)
+            try writeBytes([], to: try File.Path("\(dirPath)/file.txt"))
 
             // Create subdirectory
-            try FileManager.default.createDirectory(
-                atPath: "\(dirPath)/subdir",
-                withIntermediateDirectories: true
-            )
+            try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir"))
 
             let path = try File.Path(dirPath)
             let entries = try File.Directory.Contents.list(at: path)
@@ -110,7 +108,7 @@ extension File.System.Test.Unit {
             let dirPath = try createTempDir()
             defer { cleanup(dirPath) }
 
-            FileManager.default.createFile(atPath: "\(dirPath)/regular.txt", contents: nil)
+            try writeBytes([], to: try File.Path("\(dirPath)/regular.txt"))
 
             let path = try File.Path(dirPath)
             let entries = try File.Directory.Contents.list(at: path)
@@ -126,12 +124,12 @@ extension File.System.Test.Unit {
             defer { cleanup(dirPath) }
 
             // Create a regular file
-            FileManager.default.createFile(atPath: "\(dirPath)/target.txt", contents: nil)
+            try writeBytes([], to: try File.Path("\(dirPath)/target.txt"))
 
             // Create a symlink
-            try FileManager.default.createSymbolicLink(
-                atPath: "\(dirPath)/link.txt",
-                withDestinationPath: "\(dirPath)/target.txt"
+            try File.System.Link.Symbolic.create(
+                at: try File.Path("\(dirPath)/link.txt"),
+                pointingTo: try File.Path("\(dirPath)/target.txt")
             )
 
             let path = try File.Path(dirPath)
@@ -149,7 +147,7 @@ extension File.System.Test.Unit {
             let dirPath = try createTempDir()
             defer { cleanup(dirPath) }
 
-            FileManager.default.createFile(atPath: "\(dirPath)/test.txt", contents: nil)
+            try writeBytes([], to: try File.Path("\(dirPath)/test.txt"))
 
             let path = try File.Path(dirPath)
             let entries = try File.Directory.Contents.list(at: path)
@@ -164,7 +162,7 @@ extension File.System.Test.Unit {
 
         @Test("List non-existent directory throws pathNotFound")
         func listNonExistentDirectoryThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             #expect(throws: File.Directory.Contents.Error.self) {
@@ -174,10 +172,10 @@ extension File.System.Test.Unit {
 
         @Test("List file throws notADirectory")
         func listFileThrowsNotADirectory() throws {
-            let filePath = "/tmp/contents-file-\(UUID().uuidString).txt"
-            defer { try? FileManager.default.removeItem(atPath: filePath) }
+            let filePath = "/tmp/contents-file-\(Int.random(in: 0..<Int.max)).txt"
+            defer { try? File.System.Delete.delete(at: try! File.Path(filePath)) }
 
-            FileManager.default.createFile(atPath: filePath, contents: nil)
+            try writeBytes([], to: try File.Path(filePath))
 
             let path = try File.Path(filePath)
 

@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -16,15 +15,22 @@ extension File.System.Test.Unit {
 
         // MARK: - Test Fixtures
 
+        private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
+            var bytes = bytes
+            try bytes.withUnsafeMutableBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: path)
+            }
+        }
+
         private func createTempFile(content: [UInt8] = []) throws -> String {
-            let path = "/tmp/append-test-\(UUID().uuidString).bin"
-            let data = Data(content)
-            try data.write(to: URL(fileURLWithPath: path))
+            let path = "/tmp/append-test-\(Int.random(in: 0..<Int.max)).bin"
+            try writeBytes(content, to: try File.Path(path))
             return path
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         private func appendBytes(_ bytes: [UInt8], to pathString: String) throws {
@@ -45,20 +51,20 @@ extension File.System.Test.Unit {
 
             try appendBytes([4, 5, 6], to: path)
 
-            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let data = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(data == [1, 2, 3, 4, 5, 6])
         }
 
         @Test("Append creates file if not exists")
         func appendCreatesFileIfNotExists() throws {
-            let path = "/tmp/append-new-\(UUID().uuidString).bin"
+            let path = "/tmp/append-new-\(Int.random(in: 0..<Int.max)).bin"
             defer { cleanup(path) }
 
             try appendBytes([10, 20, 30], to: path)
 
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
 
-            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let data = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(data == [10, 20, 30])
         }
 
@@ -69,7 +75,7 @@ extension File.System.Test.Unit {
 
             try appendBytes([], to: path)
 
-            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let data = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(data == [1, 2, 3])
         }
 
@@ -82,7 +88,7 @@ extension File.System.Test.Unit {
             try appendBytes([3, 4], to: path)
             try appendBytes([5, 6], to: path)
 
-            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let data = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(data == [1, 2, 3, 4, 5, 6])
         }
 
@@ -93,7 +99,7 @@ extension File.System.Test.Unit {
 
             try appendBytes([1, 2, 3], to: path)
 
-            let data = try [UInt8](Data(contentsOf: URL(fileURLWithPath: path)))
+            let data = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(data == [1, 2, 3])
         }
 
@@ -105,7 +111,7 @@ extension File.System.Test.Unit {
             let largeData = [UInt8](repeating: 42, count: 100_000)
             try appendBytes(largeData, to: path)
 
-            let data = try Data(contentsOf: URL(fileURLWithPath: path))
+            let data = try File.System.Read.Full.read(from: try File.Path(path))
             #expect(data.count == 100_000)
         }
 
@@ -113,11 +119,8 @@ extension File.System.Test.Unit {
 
         @Test("Append to directory throws isDirectory")
         func appendToDirectoryThrows() throws {
-            let dirPath = "/tmp/append-dir-\(UUID().uuidString)"
-            try FileManager.default.createDirectory(
-                atPath: dirPath,
-                withIntermediateDirectories: true
-            )
+            let dirPath = "/tmp/append-dir-\(Int.random(in: 0..<Int.max))"
+            try File.System.Create.Directory.create(at: try File.Path(dirPath))
             defer { cleanup(dirPath) }
 
             let path = try File.Path(dirPath)

@@ -5,10 +5,13 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 extension File.System.Test.Unit {
     @Suite("File.System.Metadata.Ownership")
@@ -17,13 +20,23 @@ extension File.System.Test.Unit {
         // MARK: - Test Fixtures
 
         private func createTempFile() throws -> String {
-            let path = "/tmp/ownership-test-\(UUID().uuidString).txt"
+            #if canImport(Foundation)
+            let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
             FileManager.default.createFile(atPath: path, contents: nil)
             return path
+            #else
+            let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
+            let filePath = try File.Path(path)
+            try [].withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+            return path
+            #endif
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path))
         }
 
         // MARK: - Initialization
@@ -86,7 +99,7 @@ extension File.System.Test.Unit {
 
         @Test("Get ownership of non-existent file throws pathNotFound")
         func getOwnershipOfNonExistentFileThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
@@ -96,7 +109,7 @@ extension File.System.Test.Unit {
 
         @Test("Set ownership of non-existent file throws pathNotFound")
         func setOwnershipOfNonExistentFileThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             let ownership = File.System.Metadata.Ownership(uid: 0, gid: 0)

@@ -5,11 +5,14 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 @_spi(Internal) import StandardTime
 import Testing
 
 @testable import File_System_Primitives
+
+#if canImport(Foundation)
+import Foundation
+#endif
 
 extension File.System.Test.Unit {
     @Suite("File.System.Metadata.Timestamps")
@@ -18,13 +21,23 @@ extension File.System.Test.Unit {
         // MARK: - Test Fixtures
 
         private func createTempFile() throws -> String {
-            let path = "/tmp/timestamps-test-\(UUID().uuidString).txt"
+            #if canImport(Foundation)
+            let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
             FileManager.default.createFile(atPath: path, contents: nil)
             return path
+            #else
+            let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
+            let filePath = try File.Path(path)
+            try [].withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+            return path
+            #endif
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path))
         }
 
         // MARK: - Initialization
@@ -74,6 +87,7 @@ extension File.System.Test.Unit {
 
         @Test("Modification time updates on file write")
         func modificationTimeUpdatesOnWrite() throws {
+            #if canImport(Foundation)
             let path = try createTempFile()
             defer { cleanup(path) }
 
@@ -90,6 +104,9 @@ extension File.System.Test.Unit {
                 afterWrite.modificationTime.secondsSinceEpoch
                     >= beforeWrite.modificationTime.secondsSinceEpoch
             )
+            #else
+            // Skip test on non-Foundation platforms - requires Data and URL
+            #endif
         }
 
         // MARK: - Set Timestamps
@@ -143,7 +160,7 @@ extension File.System.Test.Unit {
 
         @Test("Get timestamps of non-existent file throws pathNotFound")
         func getTimestampsOfNonExistentFileThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             #expect(throws: File.System.Metadata.Timestamps.Error.pathNotFound(path)) {
@@ -153,7 +170,7 @@ extension File.System.Test.Unit {
 
         @Test("Set timestamps of non-existent file throws pathNotFound")
         func setTimestampsOfNonExistentFileThrows() throws {
-            let nonExistent = "/tmp/non-existent-\(UUID().uuidString)"
+            let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
             let path = try File.Path(nonExistent)
 
             let testTime = Time(__unchecked: (), secondsSinceEpoch: 1_702_900_000, nanoseconds: 0)

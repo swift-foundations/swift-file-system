@@ -5,7 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Foundation
 import Testing
 
 @testable import File_System_Primitives
@@ -17,11 +16,11 @@ extension File.System.Test.Unit {
         // MARK: - Test Fixtures
 
         private func uniquePath() -> String {
-            "/tmp/create-dir-test-\(UUID().uuidString)"
+            "/tmp/create-dir-test-\(Int.random(in: 0..<Int.max))"
         }
 
         private func cleanup(_ path: String) {
-            try? FileManager.default.removeItem(atPath: path)
+            try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
         }
 
         // MARK: - create() basic
@@ -34,10 +33,9 @@ extension File.System.Test.Unit {
             let filePath = try File.Path(path)
             try File.System.Create.Directory.create(at: filePath)
 
-            #expect(FileManager.default.fileExists(atPath: path))
-            var isDir: ObjCBool = false
-            _ = FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
-            #expect(isDir.boolValue == true)
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
+            let stat = try File.System.Stat.info(at: try File.Path(path))
+            #expect(stat.type == .directory)
         }
 
         @Test("Create directory throws if already exists")
@@ -45,10 +43,7 @@ extension File.System.Test.Unit {
             let path = uniquePath()
             defer { cleanup(path) }
 
-            try FileManager.default.createDirectory(
-                atPath: path,
-                withIntermediateDirectories: false
-            )
+            try File.System.Create.Directory.create(at: try File.Path(path))
 
             let filePath = try File.Path(path)
             #expect(throws: File.System.Create.Directory.Error.self) {
@@ -79,9 +74,9 @@ extension File.System.Test.Unit {
             let options = File.System.Create.Directory.Options(createIntermediates: true)
             try File.System.Create.Directory.create(at: filePath, options: options)
 
-            #expect(FileManager.default.fileExists(atPath: path))
-            #expect(FileManager.default.fileExists(atPath: "\(basePath)/a"))
-            #expect(FileManager.default.fileExists(atPath: "\(basePath)/a/b"))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
+            #expect(File.System.Stat.exists(at: try File.Path("\(basePath)/a")))
+            #expect(File.System.Stat.exists(at: try File.Path("\(basePath)/a/b")))
         }
 
         @Test("Create directory without createIntermediates fails for nested path")
@@ -109,7 +104,7 @@ extension File.System.Test.Unit {
             let options = File.System.Create.Directory.Options(permissions: permissions)
             try File.System.Create.Directory.create(at: filePath, options: options)
 
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
             // Directory should exist (permission verification is platform-specific)
         }
 
@@ -143,7 +138,7 @@ extension File.System.Test.Unit {
             let filePath = try File.Path(path)
             try await File.System.Create.Directory.create(at: filePath)
 
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
         }
 
         @Test("Async create directory with options")
@@ -156,7 +151,7 @@ extension File.System.Test.Unit {
             let options = File.System.Create.Directory.Options(createIntermediates: true)
             try await File.System.Create.Directory.create(at: filePath, options: options)
 
-            #expect(FileManager.default.fileExists(atPath: path))
+            #expect(File.System.Stat.exists(at: try File.Path(path)))
         }
 
         // MARK: - Error descriptions
