@@ -101,6 +101,38 @@ extension File.Directory {
     public func move(to destination: File.Directory) async throws {
         try await File.System.Move.move(from: path, to: destination.path)
     }
+
+    /// Renames the directory within the same parent directory.
+    ///
+    /// - Parameter newName: The new directory name.
+    /// - Returns: The renamed directory.
+    /// - Throws: `File.System.Move.Error` on failure.
+    @discardableResult
+    public func rename(to newName: String) throws -> File.Directory {
+        guard let parent = path.parent else {
+            let destination = try File.Path(newName)
+            try File.System.Move.move(from: path, to: destination)
+            return File.Directory(destination)
+        }
+        let destination = parent.appending(newName)
+        try File.System.Move.move(from: path, to: destination)
+        return File.Directory(destination)
+    }
+
+    /// Renames the directory within the same parent directory.
+    ///
+    /// Async variant.
+    @discardableResult
+    public func rename(to newName: String) async throws -> File.Directory {
+        guard let parent = path.parent else {
+            let destination = try File.Path(newName)
+            try await File.System.Move.move(from: path, to: destination)
+            return File.Directory(destination)
+        }
+        let destination = parent.appending(newName)
+        try await File.System.Move.move(from: path, to: destination)
+        return File.Directory(destination)
+    }
 }
 
 // MARK: - Stat Operations

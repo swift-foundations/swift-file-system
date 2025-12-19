@@ -22,4 +22,19 @@ extension Binary.Serializable {
     ) throws(File.System.Write.Atomic.Error) {
         try File.System.Write.Atomic.write(self, to: path, options: options)
     }
+
+    /// Writes this serializable value atomically to a file.
+    ///
+    /// Uses the atomic write-sync-rename pattern for crash safety.
+    ///
+    /// - Parameters:
+    ///   - file: Destination file.
+    ///   - options: Write options (strategy, durability, metadata preservation).
+    /// - Throws: `File.System.Write.Atomic.Error` on failure.
+    public func write(
+        to file: File,
+        options: File.System.Write.Atomic.Options = .init()
+    ) throws(File.System.Write.Atomic.Error) {
+        try write(to: file.path, options: options)
+    }
 }

@@ -25,19 +25,21 @@ extension File {
 
     /// Reads the file contents as a UTF-8 string.
     ///
-    /// - Returns: The file contents as a string.
+    /// - Parameters:
+    ///   - type: The string type to decode as (e.g., `String.self`).
+    /// - Returns: The file contents decoded as UTF-8.
     /// - Throws: `File.System.Read.Full.Error` on failure.
-    public func readString() throws -> String {
+    public func read<S: StringProtocol>(as type: S.Type) throws -> S {
         let bytes = try File.System.Read.Full.read(from: path)
-        return String(decoding: bytes, as: UTF8.self)
+        return S(decoding: bytes, as: UTF8.self)
     }
 
     /// Reads the file contents as a UTF-8 string.
     ///
     /// Async variant.
-    public func readString() async throws -> String {
+    public func read<S: StringProtocol>(as type: S.Type) async throws -> S {
         let bytes = try await File.System.Read.Full.read(from: path)
-        return String(decoding: bytes, as: UTF8.self)
+        return S(decoding: bytes, as: UTF8.self)
     }
 }
 
@@ -75,6 +77,21 @@ extension File {
     /// Async variant.
     public func write(_ string: String) async throws {
         try await write(Array(string.utf8))
+    }
+
+    /// Writes bytes from a sequence to the file atomically.
+    ///
+    /// - Parameter bytes: A sequence of bytes to write.
+    /// - Throws: `File.System.Write.Atomic.Error` on failure.
+    public func write<S: Sequence>(contentsOf bytes: S) throws where S.Element == UInt8 {
+        try write(Array(bytes))
+    }
+
+    /// Writes bytes from a sequence to the file atomically.
+    ///
+    /// Async variant.
+    public func write<S: Sequence>(contentsOf bytes: S) async throws where S.Element == UInt8 {
+        try await write(Array(bytes))
     }
 
     /// Appends bytes to the file.
@@ -253,6 +270,38 @@ extension File {
     /// - Throws: `File.System.Move.Error` on failure.
     public func move(to destination: File) throws {
         try File.System.Move.move(from: path, to: destination.path)
+    }
+
+    /// Renames the file within the same directory.
+    ///
+    /// - Parameter newName: The new file name.
+    /// - Returns: The renamed file.
+    /// - Throws: `File.System.Move.Error` on failure.
+    @discardableResult
+    public func rename(to newName: String) throws -> File {
+        guard let parent = path.parent else {
+            let destination = try File.Path(newName)
+            try File.System.Move.move(from: path, to: destination)
+            return File(destination)
+        }
+        let destination = parent.appending(newName)
+        try File.System.Move.move(from: path, to: destination)
+        return File(destination)
+    }
+
+    /// Renames the file within the same directory.
+    ///
+    /// Async variant.
+    @discardableResult
+    public func rename(to newName: String) async throws -> File {
+        guard let parent = path.parent else {
+            let destination = try File.Path(newName)
+            try await File.System.Move.move(from: path, to: destination)
+            return File(destination)
+        }
+        let destination = parent.appending(newName)
+        try await File.System.Move.move(from: path, to: destination)
+        return File(destination)
     }
 }
 

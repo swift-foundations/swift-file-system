@@ -220,7 +220,7 @@ extension File.Directory.Test.Unit {
         let file = dir["test.txt"]
         try file.write("Hello")
 
-        let readBack = try dir["test.txt"].readString()
+        let readBack = try dir["test.txt"].read(as: String.self)
         #expect(readBack == "Hello")
     }
 

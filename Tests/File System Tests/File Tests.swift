@@ -63,7 +63,7 @@ extension File.Test.Unit {
         let file = try createTempFile(content: content)
         defer { cleanup(file) }
 
-        let result = try file.read()
+        let result: [UInt8] = try file.read()
         #expect(result == content)
     }
 
@@ -73,27 +73,27 @@ extension File.Test.Unit {
         let file = try createTempFile(content: content)
         defer { cleanup(file) }
 
-        let result = try await file.read()
+        let result: [UInt8] = try await file.read()
         #expect(result == content)
     }
 
-    @Test("readString returns string contents")
-    func readStringReturnsContents() throws {
+    @Test("read as String returns string contents")
+    func readAsStringReturnsContents() throws {
         let text = "Hello, File!"
         let file = try createTempFile(content: Array(text.utf8))
         defer { cleanup(file) }
 
-        let result = try file.readString()
+        let result = try file.read(as: String.self)
         #expect(result == text)
     }
 
-    @Test("readString async returns string contents")
-    func readStringAsyncReturnsContents() async throws {
+    @Test("read as String async returns string contents")
+    func readAsStringAsyncReturnsContents() async throws {
         let text = "Async Hello!"
         let file = try createTempFile(content: Array(text.utf8))
         defer { cleanup(file) }
 
-        let result = try await file.readString()
+        let result = try await file.read(as: String.self)
         #expect(result == text)
     }
 
@@ -108,7 +108,7 @@ extension File.Test.Unit {
         let content: [UInt8] = [1, 2, 3, 4, 5]
         try file.write(content)
 
-        let readBack = try file.read()
+        let readBack: [UInt8] = try file.read()
         #expect(readBack == content)
     }
 
@@ -121,7 +121,7 @@ extension File.Test.Unit {
         let text = "Hello, World!"
         try file.write(text)
 
-        let readBack = try file.readString()
+        let readBack = try file.read(as: String.self)
         #expect(readBack == text)
     }
 
@@ -134,7 +134,7 @@ extension File.Test.Unit {
         let content: [UInt8] = [10, 20, 30]
         try await file.write(content)
 
-        let readBack = try await file.read()
+        let readBack: [UInt8] = try await file.read()
         #expect(readBack == content)
     }
 
@@ -244,7 +244,7 @@ extension File.Test.Unit {
 
         try source.copy(to: destPath)
 
-        let readBack = try dest.read()
+        let readBack: [UInt8] = try dest.read()
         #expect(readBack == content)
     }
 
@@ -260,7 +260,7 @@ extension File.Test.Unit {
 
         try source.copy(to: dest)
 
-        let readBack = try dest.read()
+        let readBack: [UInt8] = try dest.read()
         #expect(readBack == content)
     }
 
@@ -279,7 +279,7 @@ extension File.Test.Unit {
 
         #expect(source.exists == false)
         #expect(dest.exists == true)
-        let readBack = try dest.read()
+        let readBack: [UInt8] = try dest.read()
         #expect(readBack == content)
     }
 
