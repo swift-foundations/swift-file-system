@@ -6,15 +6,9 @@
 //
 
 import File_System_Async
+import StandardsTestSupport
 import Testing
 
-extension Test {
-    struct Unit {}
-    struct EdgeCase {}
-    @Suite(.serialized)
-    struct Performance {}
-}
-
 extension File.IO {
-    typealias Test = Testing.Test
+    #TestSuites
 }

@@ -5,8 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 extension File.System.Stat {
@@ -38,7 +39,9 @@ extension File.System.Stat.Test.Unit {
     }
 
     private func cleanup(_ path: String) {
-        try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
+        if let filePath = try? File.Path(path) {
+            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
+        }
     }
 
     // MARK: - exists()
@@ -321,5 +324,57 @@ extension File.System.Stat.Test.Unit {
         #expect(lstatInfo.type == statInfo.type)
         #expect(lstatInfo.inode == statInfo.inode)
         #expect(lstatInfo.size == statInfo.size)
+    }
+}
+
+// MARK: - Performance Tests
+
+#if canImport(Foundation)
+    import Foundation
+#endif
+
+extension File.System.Stat.Test.Performance {
+
+    @Test("File.System.Stat.info", .timed(iterations: 100, warmup: 10))
+    func statInfo() throws {
+        #if canImport(Foundation)
+            let tempDir = try File.Path(NSTemporaryDirectory())
+        #else
+            let tempDir = try File.Path("/tmp")
+        #endif
+        let filePath = tempDir.appending("perf_stat_\(Int.random(in: 0..<Int.max)).txt")
+
+        // Create file
+        let data = [UInt8](repeating: 0x00, count: 1000)
+        try data.withUnsafeBufferPointer { buffer in
+            let span = Span<UInt8>(_unsafeElements: buffer)
+            try File.System.Write.Atomic.write(span, to: filePath)
+        }
+
+        defer { try? File.System.Delete.delete(at: filePath) }
+
+        let _ = try File.System.Stat.info(at: filePath)
+    }
+
+    @Test("File.System.Stat.exists check", .timed(iterations: 100, warmup: 10))
+    func existsCheck() throws {
+        #if canImport(Foundation)
+            let tempDir = try File.Path(NSTemporaryDirectory())
+        #else
+            let tempDir = try File.Path("/tmp")
+        #endif
+        let filePath = tempDir.appending("perf_exists_\(Int.random(in: 0..<Int.max)).txt")
+
+        // Create file
+        let data = [UInt8](repeating: 0x00, count: 100)
+        try data.withUnsafeBufferPointer { buffer in
+            let span = Span<UInt8>(_unsafeElements: buffer)
+            try File.System.Write.Atomic.write(span, to: filePath)
+        }
+
+        defer { try? File.System.Delete.delete(at: filePath) }
+
+        let exists = File.System.Stat.exists(at: filePath)
+        #expect(exists)
     }
 }

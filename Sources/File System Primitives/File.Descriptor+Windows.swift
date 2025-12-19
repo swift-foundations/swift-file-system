@@ -19,7 +19,8 @@
         ) throws(Error) -> File.Descriptor {
             var desiredAccess: DWORD = 0
             // Include FILE_SHARE_DELETE for POSIX-like rename/unlink semantics
-            var shareMode: DWORD = _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE)
+            var shareMode: DWORD =
+                _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE)
             var creationDisposition: DWORD = _dword(OPEN_EXISTING)
             var flagsAndAttributes: DWORD = _mask(FILE_ATTRIBUTE_NORMAL)
 

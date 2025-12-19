@@ -5,12 +5,13 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 #if canImport(Foundation)
-import Foundation
+    import Foundation
 #endif
 
 extension File.System.Metadata.Ownership {
@@ -23,22 +24,24 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
     private func createTempFile() throws -> String {
         #if canImport(Foundation)
-        let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
-        FileManager.default.createFile(atPath: path, contents: nil)
-        return path
+            let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
+            FileManager.default.createFile(atPath: path, contents: nil)
+            return path
         #else
-        let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
-        try [].withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
-        return path
+            let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
+            let filePath = try File.Path(path)
+            try [].withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+            return path
         #endif
     }
 
     private func cleanup(_ path: String) {
-        try? File.System.Delete.delete(at: try! File.Path(path))
+        if let filePath = try? File.Path(path) {
+            try? File.System.Delete.delete(at: filePath)
+        }
     }
 
     // MARK: - Initialization

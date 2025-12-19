@@ -5,8 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 #if canImport(Darwin)
@@ -27,7 +28,9 @@ extension File.System.Test.EdgeCase {
     }
 
     private func cleanup(_ path: String) {
-        try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
+        if let filePath = try? File.Path(path) {
+            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
+        }
     }
 
     private func cleanupPath(_ path: File.Path) {
@@ -712,4 +715,151 @@ extension File.System.Test.EdgeCase {
         // Just shouldn't crash or leak
     }
 
+}
+
+// MARK: - Performance Tests
+
+#if canImport(Foundation)
+    import Foundation
+#endif
+
+extension File.System.Test.Performance {
+
+    // MARK: - Allocation Tracking
+
+    @Suite
+    struct AllocationTracking {
+
+        // Note: threshold increased to accommodate Linux runtime overhead
+        @Test("Buffer read is zero-allocation", .timed(iterations: 10, maxAllocations: 256_000))
+        func bufferReadZeroAllocation() throws {
+            #if canImport(Foundation)
+                let tempDir = try File.Path(NSTemporaryDirectory())
+            #else
+                let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_alloc_\(Int.random(in: 0..<Int.max)).bin")
+
+            // Setup
+            let size = 64 * 1024
+            let setupData = [UInt8](repeating: 0x42, count: size)
+            try setupData.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+
+            defer { try? File.System.Delete.delete(at: filePath) }
+
+            // Preallocated buffer - should be zero-allocation read
+            var buffer = [UInt8](repeating: 0, count: size)
+
+            var handle = try File.Handle.open(filePath, mode: .read)
+            let _ = try buffer.withUnsafeMutableBytes { ptr in
+                try handle.read(into: ptr)
+            }
+            try handle.close()
+        }
+
+        @Test("Stat operations minimal allocation", .timed(iterations: 20, maxAllocations: 50_000))
+        func statMinimalAllocation() throws {
+            #if canImport(Foundation)
+                let tempDir = try File.Path(NSTemporaryDirectory())
+            #else
+                let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt")
+
+            // Setup
+            let data = [UInt8](repeating: 0x00, count: 100)
+            try data.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+
+            defer { try? File.System.Delete.delete(at: filePath) }
+
+            // Repeated stat calls
+            for _ in 0..<10 {
+                let _ = try File.System.Stat.info(at: filePath)
+            }
+        }
+    }
+
+    // MARK: - Throughput
+
+    @Suite
+    struct Throughput {
+
+        @Test(
+            "Large file write throughput (10MB)",
+            .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
+        )
+        func largeFileWrite() throws {
+            #if canImport(Foundation)
+                let tempDir = try File.Path(NSTemporaryDirectory())
+            #else
+                let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_large_write_\(Int.random(in: 0..<Int.max)).bin")
+
+            defer { try? File.System.Delete.delete(at: filePath) }
+
+            let tenMB = [UInt8](repeating: 0xFF, count: 10_000_000)
+            try tenMB.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+        }
+
+        @Test(
+            "Large file read throughput (10MB)",
+            .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
+        )
+        func largeFileRead() throws {
+            #if canImport(Foundation)
+                let tempDir = try File.Path(NSTemporaryDirectory())
+            #else
+                let tempDir = try File.Path("/tmp")
+            #endif
+            let filePath = tempDir.appending("perf_large_read_\(Int.random(in: 0..<Int.max)).bin")
+
+            // Setup
+            let tenMB = [UInt8](repeating: 0xFF, count: 10_000_000)
+            try tenMB.withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+
+            defer { try? File.System.Delete.delete(at: filePath) }
+
+            let _ = try File.System.Read.Full.read(from: filePath)
+        }
+
+        @Test(
+            "Many small files (create/write/delete)",
+            .timed(iterations: 5, warmup: 1, threshold: .seconds(10))
+        )
+        func manySmallFiles() throws {
+            #if canImport(Foundation)
+                let tempDir = try File.Path(NSTemporaryDirectory())
+            #else
+                let tempDir = try File.Path("/tmp")
+            #endif
+            let testDir = tempDir.appending("perf_many_\(Int.random(in: 0..<Int.max))")
+
+            try File.System.Create.Directory.create(at: testDir)
+            defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }
+
+            let smallData = [UInt8](repeating: 0x42, count: 100)
+
+            // Create 100 small files
+            for i in 0..<100 {
+                let filePath = testDir.appending("file_\(i).txt")
+                try smallData.withUnsafeBufferPointer { buffer in
+                    let span = Span<UInt8>(_unsafeElements: buffer)
+                    try File.System.Write.Atomic.write(span, to: filePath)
+                }
+            }
+        }
+    }
 }

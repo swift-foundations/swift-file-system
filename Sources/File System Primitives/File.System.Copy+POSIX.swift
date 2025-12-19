@@ -108,7 +108,11 @@
 
             // Linux: try kernel-assisted copy (sendfile → manual)
             #if os(Linux) && canImport(Glibc)
-                if try _copyLinuxFast(srcFd: srcFd, dstFd: dstFd, sourceSize: Int64(sourceStat.st_size)) {
+                if try _copyLinuxFast(
+                    srcFd: srcFd,
+                    dstFd: dstFd,
+                    sourceSize: Int64(sourceStat.st_size)
+                ) {
                     if options.copyAttributes {
                         _ = fchmod(dstFd, sourceStat.st_mode & 0o7777)
                         var times = [

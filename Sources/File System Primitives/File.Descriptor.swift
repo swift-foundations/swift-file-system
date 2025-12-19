@@ -241,15 +241,17 @@ extension File.Descriptor {
             let currentProcess = GetCurrentProcess()
 
             guard
-                _ok(DuplicateHandle(
-                    currentProcess,
-                    handle,
-                    currentProcess,
-                    &duplicateHandle,
-                    0,
-                    false,
-                    _dword(DUPLICATE_SAME_ACCESS)
-                ))
+                _ok(
+                    DuplicateHandle(
+                        currentProcess,
+                        handle,
+                        currentProcess,
+                        &duplicateHandle,
+                        0,
+                        false,
+                        _dword(DUPLICATE_SAME_ACCESS)
+                    )
+                )
             else {
                 throw .duplicateFailed(
                     errno: Int32(GetLastError()),

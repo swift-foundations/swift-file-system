@@ -65,7 +65,9 @@
                     let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                         GetFileAttributesW(wpath)
                     }
-                    if attrs != INVALID_FILE_ATTRIBUTES && (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                    if attrs != INVALID_FILE_ATTRIBUTES
+                        && (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0
+                    {
                         return
                     }
                 }

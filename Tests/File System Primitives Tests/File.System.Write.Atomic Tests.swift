@@ -5,8 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 extension File.System.Write.Atomic {
@@ -22,7 +23,9 @@ extension File.System.Write.Atomic.Test.Unit {
     }
 
     private func cleanup(_ path: String) {
-        try? File.System.Delete.delete(at: try! File.Path(path))
+        if let filePath = try? File.Path(path) {
+            try? File.System.Delete.delete(at: filePath)
+        }
     }
 
     private func writeBytes(
@@ -360,5 +363,32 @@ extension File.System.Write.Atomic.Test.Unit {
         )
         #expect(error.description.contains("Directory sync failed"))
         #expect(error.description.contains("/tmp"))
+    }
+}
+
+// MARK: - Performance Tests
+
+#if canImport(Foundation)
+    import Foundation
+#endif
+
+extension File.System.Write.Atomic.Test.Performance {
+
+    @Test("File.System.Write.Atomic.write (1MB)", .timed(iterations: 10, warmup: 2))
+    func systemWrite1MB() throws {
+        #if canImport(Foundation)
+            let tempDir = try File.Path(NSTemporaryDirectory())
+        #else
+            let tempDir = try File.Path("/tmp")
+        #endif
+        let filePath = tempDir.appending("perf_syswrite_\(Int.random(in: 0..<Int.max)).bin")
+
+        defer { try? File.System.Delete.delete(at: filePath) }
+
+        let oneMB = [UInt8](repeating: 0xEF, count: 1_000_000)
+        try oneMB.withUnsafeBufferPointer { buffer in
+            let span = Span<UInt8>(_unsafeElements: buffer)
+            try File.System.Write.Atomic.write(span, to: filePath)
+        }
     }
 }

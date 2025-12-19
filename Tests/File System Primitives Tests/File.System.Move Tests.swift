@@ -5,8 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 extension File.System.Move {
@@ -32,7 +33,9 @@ extension File.System.Move.Test.Unit {
     }
 
     private func cleanup(_ path: String) {
-        try? File.System.Delete.delete(at: try! File.Path(path), options: .init(recursive: true))
+        if let filePath = try? File.Path(path) {
+            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
+        }
     }
 
     // MARK: - Basic Move

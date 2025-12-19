@@ -6,12 +6,13 @@
 //
 
 @_spi(Internal) import StandardTime
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 #if canImport(Foundation)
-import Foundation
+    import Foundation
 #endif
 
 extension File.System.Metadata.Timestamps {
@@ -24,22 +25,24 @@ extension File.System.Metadata.Timestamps.Test.Unit {
 
     private func createTempFile() throws -> String {
         #if canImport(Foundation)
-        let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
-        FileManager.default.createFile(atPath: path, contents: nil)
-        return path
+            let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
+            FileManager.default.createFile(atPath: path, contents: nil)
+            return path
         #else
-        let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
-        try [].withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
-        return path
+            let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
+            let filePath = try File.Path(path)
+            try [].withUnsafeBufferPointer { buffer in
+                let span = Span<UInt8>(_unsafeElements: buffer)
+                try File.System.Write.Atomic.write(span, to: filePath)
+            }
+            return path
         #endif
     }
 
     private func cleanup(_ path: String) {
-        try? File.System.Delete.delete(at: try! File.Path(path))
+        if let filePath = try? File.Path(path) {
+            try? File.System.Delete.delete(at: filePath)
+        }
     }
 
     // MARK: - Initialization
@@ -90,24 +93,24 @@ extension File.System.Metadata.Timestamps.Test.Unit {
     @Test("Modification time updates on file write")
     func modificationTimeUpdatesOnWrite() throws {
         #if canImport(Foundation)
-        let path = try createTempFile()
-        defer { cleanup(path) }
+            let path = try createTempFile()
+            defer { cleanup(path) }
 
-        let filePath = try File.Path(path)
-        let beforeWrite = try File.System.Metadata.Timestamps.get(at: filePath)
+            let filePath = try File.Path(path)
+            let beforeWrite = try File.System.Metadata.Timestamps.get(at: filePath)
 
-        // Wait a small amount and write to the file
-        Thread.sleep(forTimeInterval: 0.1)
-        try Data([1, 2, 3]).write(to: URL(fileURLWithPath: path))
+            // Wait a small amount and write to the file
+            Thread.sleep(forTimeInterval: 0.1)
+            try Data([1, 2, 3]).write(to: URL(fileURLWithPath: path))
 
-        let afterWrite = try File.System.Metadata.Timestamps.get(at: filePath)
+            let afterWrite = try File.System.Metadata.Timestamps.get(at: filePath)
 
-        #expect(
-            afterWrite.modificationTime.secondsSinceEpoch
-                >= beforeWrite.modificationTime.secondsSinceEpoch
-        )
+            #expect(
+                afterWrite.modificationTime.secondsSinceEpoch
+                    >= beforeWrite.modificationTime.secondsSinceEpoch
+            )
         #else
-        // Skip test on non-Foundation platforms - requires Data and URL
+            // Skip test on non-Foundation platforms - requires Data and URL
         #endif
     }
 

@@ -6,8 +6,9 @@
 //
 
 @_spi(Internal) import StandardTime
-import Testing
 import StandardsTestSupport
+import Testing
+
 @testable import File_System_Primitives
 
 extension File.System.Metadata.Info {

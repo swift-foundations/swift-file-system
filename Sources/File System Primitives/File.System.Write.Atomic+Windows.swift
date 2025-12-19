@@ -416,7 +416,9 @@
             let info = buffer.assumingMemoryBound(to: FILE_RENAME_INFO.self)
             info.pointee.Flags = replace ? _dword(FILE_RENAME_FLAG_REPLACE_IF_EXISTS) : 0
             info.pointee.RootDirectory = nil
-            info.pointee.FileNameLength = DWORD(truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size)  // Exclude null terminator
+            info.pointee.FileNameLength = DWORD(
+                truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size
+            )  // Exclude null terminator
 
             // Copy filename after the fixed part of the structure
             let fileNameOffset = MemoryLayout.offset(of: \FILE_RENAME_INFO.FileName)!

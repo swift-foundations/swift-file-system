@@ -173,7 +173,9 @@ extension File.Handle {
                 guard let base = ptr.baseAddress, let handle = _descriptor.rawHandle else {
                     return false
                 }
-                return _ok(ReadFile(handle, base, DWORD(truncatingIfNeeded: count), &bytesRead, nil))
+                return _ok(
+                    ReadFile(handle, base, DWORD(truncatingIfNeeded: count), &bytesRead, nil)
+                )
             }
             guard success else {
                 throw .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
@@ -222,13 +224,15 @@ extension File.Handle {
         #if os(Windows)
             var bytesRead: DWORD = 0
             guard
-                _ok(ReadFile(
-                    _descriptor.rawHandle!,
-                    buffer.baseAddress,
-                    DWORD(truncatingIfNeeded: buffer.count),
-                    &bytesRead,
-                    nil
-                ))
+                _ok(
+                    ReadFile(
+                        _descriptor.rawHandle!,
+                        buffer.baseAddress,
+                        DWORD(truncatingIfNeeded: buffer.count),
+                        &bytesRead,
+                        nil
+                    )
+                )
             else {
                 throw .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
             }
@@ -270,13 +274,15 @@ extension File.Handle {
                     var written: DWORD = 0
                     let remaining = count - totalWritten
                     let ptr = base.advanced(by: totalWritten)
-                    let success = _ok(WriteFile(
-                        _descriptor.rawHandle!,
-                        ptr,
-                        DWORD(truncatingIfNeeded: remaining),
-                        &written,
-                        nil
-                    ))
+                    let success = _ok(
+                        WriteFile(
+                            _descriptor.rawHandle!,
+                            ptr,
+                            DWORD(truncatingIfNeeded: remaining),
+                            &written,
+                            nil
+                        )
+                    )
                     guard success else {
                         throw .writeFailed(
                             errno: Int32(GetLastError()),
@@ -349,7 +355,8 @@ extension File.Handle {
             case .end: whence = _dword(FILE_END)
             }
 
-            guard _ok(SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence)) else {
+            guard _ok(SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence))
+            else {
                 throw .seekFailed(errno: Int32(GetLastError()), message: "SetFilePointerEx failed")
             }
             return newPosition.QuadPart
