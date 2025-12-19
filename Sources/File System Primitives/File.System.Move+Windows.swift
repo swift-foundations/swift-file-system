@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
 
     extension File.System.Move {
         /// Moves a file using Windows APIs.
@@ -46,7 +46,7 @@
                 }
             }
 
-            guard success.isTrue else {
+            guard _ok(success) else {
                 throw _mapWindowsError(GetLastError(), source: source, destination: destination)
             }
         }

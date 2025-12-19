@@ -104,7 +104,7 @@ extension File.System.Link.Hard {
                 }
             }
 
-            guard success.isTrue else {
+            guard _ok(success) else {
                 throw _mapWindowsError(GetLastError(), path: path, existing: existing)
             }
         }

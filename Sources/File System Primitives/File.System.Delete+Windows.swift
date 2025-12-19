@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
 
     extension File.System.Delete {
         /// Deletes a file or directory using Windows APIs.
@@ -21,7 +21,7 @@
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 
-            let isDir = (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0
+            let isDir = (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0
 
             if isDir {
                 if options.recursive {
@@ -31,7 +31,7 @@
                     let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
                         RemoveDirectoryW(wpath)
                     }
-                    guard success.isTrue else {
+                    guard _ok(success) else {
                         throw _mapWindowsError(GetLastError(), path: path)
                     }
                 }
@@ -40,7 +40,7 @@
                 let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
                     DeleteFileW(wpath)
                 }
-                guard success.isTrue else {
+                guard _ok(success) else {
                     throw _mapWindowsError(GetLastError(), path: path)
                 }
             }
@@ -72,7 +72,7 @@
                 // Construct full path using proper path composition
                 let childPath = path.appending(name)
 
-                let isChildDir = (findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0
+                let isChildDir = (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0
 
                 if isChildDir {
                     // Recursively delete subdirectory
@@ -82,11 +82,11 @@
                     let success = childPath.string.withCString(encodedAs: UTF16.self) { wpath in
                         DeleteFileW(wpath)
                     }
-                    guard success.isTrue else {
+                    guard _ok(success) else {
                         throw _mapWindowsError(GetLastError(), path: childPath)
                     }
                 }
-            } while FindNextFileW(handle, &findData).isTrue
+            } while _ok(FindNextFileW(handle, &findData))
 
             // Check if we stopped due to error or end of directory
             let lastError = GetLastError()
@@ -98,7 +98,7 @@
             let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 RemoveDirectoryW(wpath)
             }
-            guard success.isTrue else {
+            guard _ok(success) else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
         }

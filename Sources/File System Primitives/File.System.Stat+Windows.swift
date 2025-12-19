@@ -44,10 +44,10 @@
                 CreateFileW(
                     wpath,
                     0,  // No access needed, just querying info
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),  // Required for directories
+                    _mask(FILE_FLAG_BACKUP_SEMANTICS),  // Required for directories
                     nil
                 )
             }
@@ -58,7 +58,7 @@
             defer { CloseHandle(handle) }
 
             var info = BY_HANDLE_FILE_INFORMATION()
-            guard GetFileInformationByHandle(handle, &info).isTrue else {
+            guard _ok(GetFileInformationByHandle(handle, &info)) else {
                 return (0, 0)
             }
 
@@ -83,7 +83,7 @@
                 GetFileAttributesW(wpath)
             }
             guard attrs != INVALID_FILE_ATTRIBUTES else { return false }
-            return (attrs & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0
+            return (attrs & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0
         }
 
         /// Creates Info from Windows find data.
@@ -94,9 +94,9 @@
             fileIndex: UInt64 = 0
         ) -> File.System.Metadata.Info {
             let fileType: File.System.Metadata.FileType
-            if (data.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+            if (data.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                 fileType = .directory
-            } else if (data.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
+            } else if (data.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
                 fileType = .symbolicLink
             } else {
                 fileType = .regular

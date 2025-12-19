@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
 
     extension File.System.Read.Full {
         /// Reads file contents using Windows APIs.
@@ -17,10 +17,10 @@
                 CreateFileW(
                     wpath,
                     _dword(GENERIC_READ),
-                    _dwordMask(FILE_SHARE_READ),
+                    _mask(FILE_SHARE_READ),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
+                    _mask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -33,7 +33,7 @@
 
             // Get file size
             var fileSize: LARGE_INTEGER = LARGE_INTEGER()
-            guard GetFileSizeEx(handle, &fileSize).isTrue else {
+            guard _ok(GetFileSizeEx(handle, &fileSize)) else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 
@@ -58,7 +58,7 @@
                 )
             }
 
-            guard success.isTrue else {
+            guard _ok(success) else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 

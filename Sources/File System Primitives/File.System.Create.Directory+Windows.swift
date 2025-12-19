@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
 
     extension File.System.Create.Directory {
         /// Creates a directory using Windows APIs.
@@ -18,7 +18,7 @@
                 let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
                     CreateDirectoryW(wpath, nil)
                 }
-                guard success.isTrue else {
+                guard _ok(success) else {
                     throw _mapWindowsError(GetLastError(), path: path)
                 }
             }
@@ -32,7 +32,7 @@
             }
 
             if attrs != INVALID_FILE_ATTRIBUTES {
-                if (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                if (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     // Already exists as directory - success
                     return
                 } else {
@@ -58,14 +58,14 @@
                 CreateDirectoryW(wpath, nil)
             }
 
-            if !success.isTrue {
+            if !_ok(success) {
                 let error = GetLastError()
                 // Check if it was created by another process/thread in the meantime
                 if error == _dword(ERROR_ALREADY_EXISTS) {
                     let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                         GetFileAttributesW(wpath)
                     }
-                    if attrs != INVALID_FILE_ATTRIBUTES && (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                    if attrs != INVALID_FILE_ATTRIBUTES && (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                         return
                     }
                 }

@@ -120,7 +120,7 @@ extension File.System.Link.ReadTarget {
                 throw .pathNotFound(path)
             }
 
-            guard (attrs & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 else {
+            guard (attrs & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 else {
                 throw .notASymlink(path)
             }
 
@@ -129,10 +129,10 @@ extension File.System.Link.ReadTarget {
                 CreateFileW(
                     wpath,
                     _dword(GENERIC_READ),
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS) | _dwordMask(FILE_FLAG_OPEN_REPARSE_POINT),
+                    _mask(FILE_FLAG_BACKUP_SEMANTICS) | _mask(FILE_FLAG_OPEN_REPARSE_POINT),
                     nil
                 )
             }

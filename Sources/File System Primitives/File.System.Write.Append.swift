@@ -147,11 +147,11 @@ extension File.System.Write.Append {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    _dwordMask(FILE_APPEND_DATA),
-                    _dwordMask(FILE_SHARE_READ),
+                    _mask(FILE_APPEND_DATA),
+                    _mask(FILE_SHARE_READ),
                     nil,
                     _dword(OPEN_ALWAYS),
-                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
+                    _mask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -176,7 +176,7 @@ extension File.System.Write.Append {
                     nil
                 )
 
-                guard success.isTrue && written == count else {
+                guard _ok(success) && written == count else {
                     throw _mapWindowsError(GetLastError(), path: path)
                 }
             }

@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
 
     extension File.System.Copy {
         /// Copies a file using Windows APIs.
@@ -25,7 +25,7 @@
                 throw .sourceNotFound(source)
             }
 
-            if (srcAttrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+            if (srcAttrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                 throw .isDirectory(source)
             }
 
@@ -47,7 +47,7 @@
                 }
             }
 
-            guard success.isTrue else {
+            guard _ok(success) else {
                 throw _mapWindowsError(GetLastError(), source: source, destination: destination)
             }
         }

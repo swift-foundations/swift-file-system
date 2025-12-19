@@ -3,7 +3,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
     import RFC_4648
 
     // MARK: - Windows Implementation
@@ -53,7 +53,7 @@
             }
 
             // 8. Close temp file before rename
-            guard CloseHandle(tempHandle).isTrue else {
+            guard _ok(CloseHandle(tempHandle)) else {
                 throw .closeFailed(
                     errno: Int32(GetLastError()),
                     message: "CloseHandle failed"
@@ -128,7 +128,7 @@
                 throw .parentNotFound(path: dir)
             }
 
-            if (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
+            if (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
                 throw .parentNotDirectory(path: dir)
             }
         }
@@ -175,11 +175,11 @@
             let handle = withWideString(path) { wPath in
                 CreateFileW(
                     wPath,
-                    _dwordMask(READ_CONTROL) | _dwordMask(FILE_READ_ATTRIBUTES),
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
+                    _mask(READ_CONTROL) | _mask(FILE_READ_ATTRIBUTES),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),
+                    _mask(FILE_FLAG_BACKUP_SEMANTICS),
                     nil
                 )
             }
@@ -200,10 +200,10 @@
                 CreateFileW(
                     wPath,
                     _dword(GENERIC_WRITE) | _dword(GENERIC_READ),
-                    _dwordMask(FILE_SHARE_READ),
+                    _mask(FILE_SHARE_READ),
                     nil,
                     _dword(CREATE_NEW),
-                    _dwordMask(FILE_ATTRIBUTE_TEMPORARY),
+                    _mask(FILE_ATTRIBUTE_TEMPORARY),
                     nil
                 )
             }
@@ -252,7 +252,7 @@
                         nil
                     )
 
-                    if !success.isTrue {
+                    if !_ok(success) {
                         let err = GetLastError()
                         throw .writeFailed(
                             bytesWritten: written,
@@ -285,7 +285,7 @@
             case .full, .dataOnly:
                 // Windows FlushFileBuffers is equivalent to full sync
                 // (there's no separate metadata-only sync on Windows like fdatasync)
-                if !FlushFileBuffers(handle).isTrue {
+                if !_ok(FlushFileBuffers(handle)) {
                     let err = GetLastError()
                     throw .syncFailed(
                         errno: Int32(err),
@@ -361,11 +361,11 @@
             let tempHandle = withWideString(tempPath) { wTemp in
                 CreateFileW(
                     wTemp,
-                    _dwordMask(DELETE) | _dwordMask(SYNCHRONIZE),
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
+                    _mask(DELETE) | _mask(SYNCHRONIZE),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),
+                    _mask(FILE_FLAG_BACKUP_SEMANTICS),
                     nil
                 )
             }
@@ -416,7 +416,7 @@
                 DWORD(truncatingIfNeeded: totalSize)
             )
 
-            return success.isTrue
+            return _ok(success)
         }
 
         /// Flushes directory to persist rename.
@@ -425,10 +425,10 @@
                 CreateFileW(
                     wPath,
                     _dword(GENERIC_READ),
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),
+                    _mask(FILE_FLAG_BACKUP_SEMANTICS),
                     nil
                 )
             }
@@ -443,7 +443,7 @@
             }
             defer { _ = CloseHandle(handle) }
 
-            if !FlushFileBuffers(handle).isTrue {
+            if !_ok(FlushFileBuffers(handle)) {
                 let err = GetLastError()
                 throw .directorySyncFailed(
                     path: path,
@@ -476,7 +476,7 @@
                     DWORD(truncatingIfNeeded: MemoryLayout<FILE_BASIC_INFO>.size)
                 )
 
-                if !getSuccess.isTrue {
+                if !_ok(getSuccess) {
                     let err = GetLastError()
                     throw .metadataPreservationFailed(
                         operation: "GetFileInformationByHandleEx",
@@ -492,7 +492,7 @@
                     DWORD(truncatingIfNeeded: MemoryLayout<FILE_BASIC_INFO>.size)
                 )
 
-                if !setSuccess.isTrue {
+                if !_ok(setSuccess) {
                     let err = GetLastError()
                     throw .metadataPreservationFailed(
                         operation: "SetFileInformationByHandle",

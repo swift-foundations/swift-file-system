@@ -160,7 +160,7 @@ extension File.Directory.Contents {
                 throw .pathNotFound(path)
             }
 
-            guard (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
+            guard (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
                 throw .notADirectory(path)
             }
 
@@ -190,16 +190,16 @@ extension File.Directory.Contents {
 
                 // Determine type
                 let entryType: File.Directory.EntryType
-                if (findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
+                } else if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
                     entryType = .symbolicLink
                 } else {
                     entryType = .file
                 }
 
                 entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
-            } while FindNextFileW(handle, &findData).isTrue
+            } while _ok(FindNextFileW(handle, &findData))
 
             let lastError = GetLastError()
             if lastError != _dword(ERROR_NO_MORE_FILES) {

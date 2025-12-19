@@ -299,7 +299,7 @@ extension File.Directory.Iterator {
                 throw .pathNotFound(path)
             }
 
-            guard (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
+            guard (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
                 throw .notADirectory(path)
             }
 
@@ -331,7 +331,7 @@ extension File.Directory.Iterator {
                 let name = String(windowsDirectoryEntryName: _findData.cFileName)
 
                 // Advance to next entry for next call
-                if !FindNextFileW(handle, &_findData).isTrue {
+                if !_ok(FindNextFileW(handle, &_findData)) {
                     _hasMore = false
                 }
 
@@ -346,9 +346,9 @@ extension File.Directory.Iterator {
 
                 // Determine type (from previous findData)
                 let entryType: File.Directory.EntryType
-                if (_findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (_findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
+                } else if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
                     entryType = .symbolicLink
                 } else {
                     entryType = .file

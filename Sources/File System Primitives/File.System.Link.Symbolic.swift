@@ -100,7 +100,7 @@ extension File.System.Link.Symbolic {
 
             var flags: DWORD = _dword(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
             if targetAttrs != INVALID_FILE_ATTRIBUTES
-                && (targetAttrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0
+                && (targetAttrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0
             {
                 flags |= _dword(SYMBOLIC_LINK_FLAG_DIRECTORY)
             }
@@ -111,7 +111,7 @@ extension File.System.Link.Symbolic {
                 }
             }
 
-            guard success.isTrue else {
+            guard _ok(success) else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
         }

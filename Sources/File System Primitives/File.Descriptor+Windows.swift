@@ -19,9 +19,9 @@
         ) throws(Error) -> File.Descriptor {
             var desiredAccess: DWORD = 0
             // Include FILE_SHARE_DELETE for POSIX-like rename/unlink semantics
-            var shareMode: DWORD = _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE)
+            var shareMode: DWORD = _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE)
             var creationDisposition: DWORD = _dword(OPEN_EXISTING)
-            var flagsAndAttributes: DWORD = _dwordMask(FILE_ATTRIBUTE_NORMAL)
+            var flagsAndAttributes: DWORD = _mask(FILE_ATTRIBUTE_NORMAL)
 
             // Set access mode
             switch mode {
@@ -48,12 +48,12 @@
 
             // Append mode - combine with existing access, don't clobber
             if options.contains(.append) {
-                desiredAccess |= _dwordMask(FILE_APPEND_DATA)
+                desiredAccess |= _mask(FILE_APPEND_DATA)
             }
 
             // No follow symlinks
             if options.contains(.noFollow) {
-                flagsAndAttributes |= _dwordMask(FILE_FLAG_OPEN_REPARSE_POINT)
+                flagsAndAttributes |= _mask(FILE_FLAG_OPEN_REPARSE_POINT)
             }
 
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
@@ -74,7 +74,7 @@
 
             // Close on exec - prevent handle inheritance
             if options.contains(.closeOnExec) {
-                guard SetHandleInformation(handle, _dword(HANDLE_FLAG_INHERIT), 0).isTrue else {
+                guard _ok(SetHandleInformation(handle, _dword(HANDLE_FLAG_INHERIT), 0)) else {
                     let error = GetLastError()
                     CloseHandle(handle)
                     throw .openFailed(
@@ -109,8 +109,8 @@
         internal static func _formatWindowsError(_ errorCode: DWORD) -> String {
             var buffer: LPWSTR? = nil
             let length = FormatMessageW(
-                _dwordMask(FORMAT_MESSAGE_ALLOCATE_BUFFER) | _dwordMask(FORMAT_MESSAGE_FROM_SYSTEM)
-                    | _dwordMask(FORMAT_MESSAGE_IGNORE_INSERTS),
+                _mask(FORMAT_MESSAGE_ALLOCATE_BUFFER) | _mask(FORMAT_MESSAGE_FROM_SYSTEM)
+                    | _mask(FORMAT_MESSAGE_IGNORE_INSERTS),
                 nil,
                 errorCode,
                 0,
@@ -122,8 +122,13 @@
                 return "Windows error \(errorCode)"
             }
             defer { LocalFree(buffer) }
-            return String(decodingCString: buffer, as: UTF16.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Manual trimming without Foundation
+            var str = String(decodingCString: buffer, as: UTF16.self)
+            while let last = str.last, last.isWhitespace || last.isNewline {
+                str.removeLast()
+            }
+            return str
         }
     }
 

@@ -203,11 +203,11 @@ extension File.System.Metadata.Timestamps {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    _dwordMask(FILE_READ_ATTRIBUTES),
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE),
+                    _mask(FILE_READ_ATTRIBUTES),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
+                    _mask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -221,7 +221,7 @@ extension File.System.Metadata.Timestamps {
             var accessFT = FILETIME()
             var writeFT = FILETIME()
 
-            guard GetFileTime(handle, &creationFT, &accessFT, &writeFT).isTrue else {
+            guard _ok(GetFileTime(handle, &creationFT, &accessFT, &writeFT)) else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 
@@ -241,11 +241,11 @@ extension File.System.Metadata.Timestamps {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    _dwordMask(FILE_WRITE_ATTRIBUTES),
-                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE),
+                    _mask(FILE_WRITE_ATTRIBUTES),
+                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE),
                     nil,
                     _dword(OPEN_EXISTING),
-                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
+                    _mask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -259,7 +259,7 @@ extension File.System.Metadata.Timestamps {
             var writeFT = _timeToFileTime(timestamps.modificationTime)
 
             // Pass nil for creation time to leave it unchanged
-            guard SetFileTime(handle, nil, &accessFT, &writeFT).isTrue else {
+            guard _ok(SetFileTime(handle, nil, &accessFT, &writeFT)) else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
         }
