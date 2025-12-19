@@ -422,7 +422,7 @@ Your results will vary based on hardware, filesystem, and workload characteristi
 
 ### Windows Status
 
-Windows support is work in progress. Core dependencies compile on Windows, but builds are currently blocked by [swift-standards](https://github.com/swift-standards/swift-standards) using filenames with `<` and `>` characters that NTFS does not support. Contributions welcome.
+Windows support is work in progress. Core library compiles on Windows; full test coverage is being validated. Contributions welcome.
 
 ## Non-goals
 

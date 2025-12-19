@@ -97,13 +97,9 @@ jobs:
         run: swift test -c release
 
   # Windows validation (no container - use setup-swift action)
-  # Note: Currently fails due to swift-standards dependency using invalid Windows filenames
-  # (Set<Character>+INCITS_4_1986.swift, Collection<UInt8>.swift contain < and >)
-  # Track: https://github.com/swift-standards/swift-standards/issues
   windows-latest:
     name: Windows (Swift 6.2)
     runs-on: windows-latest
-    continue-on-error: true  # Allow failure until dependencies are Windows-compatible
     steps:
       - uses: actions/checkout@v6
 
@@ -114,6 +110,13 @@ jobs:
 
       - name: Print Swift version
         run: swift --version
+
+      - name: Cache Swift packages
+        uses: actions/cache@v5
+        with:
+          path: .build
+          key: windows-swift62-spm-v1-${{ hashFiles('Package.swift', 'Package@*.swift') }}
+          restore-keys: windows-swift62-spm-
 
       - name: Test
         run: swift test -c debug -v
