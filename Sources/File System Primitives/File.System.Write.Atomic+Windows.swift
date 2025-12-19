@@ -406,29 +406,44 @@
 
                 // Calculate struct offset carefully - offset(of:) may not work for C-imported structs
                 // If offset(of:) returns nil, fail loudly
-                guard let fileNameOffset = MemoryLayout<FILE_RENAME_INFO>.offset(of: \.FileName) else {
+                guard let fileNameOffset = MemoryLayout<FILE_RENAME_INFO>.offset(of: \.FileName)
+                else {
                     preconditionFailure("FILE_RENAME_INFO.FileName offset unavailable")
                 }
                 let totalSize = fileNameOffset + nameByteCount
 
                 // Use correct alignment for the struct
-                let alignment = max(MemoryLayout<FILE_RENAME_INFO>.alignment, MemoryLayout<WCHAR>.alignment)
-                let buffer = UnsafeMutableRawPointer.allocate(byteCount: totalSize, alignment: alignment)
+                let alignment = max(
+                    MemoryLayout<FILE_RENAME_INFO>.alignment,
+                    MemoryLayout<WCHAR>.alignment
+                )
+                let buffer = UnsafeMutableRawPointer.allocate(
+                    byteCount: totalSize,
+                    alignment: alignment
+                )
                 defer { buffer.deallocate() }
 
                 // Initialize only the header portion, not the entire buffer
                 // (avoiding large zero-init that we're eliminating elsewhere)
                 let headerSize = MemoryLayout<FILE_RENAME_INFO>.size
-                buffer.initializeMemory(as: UInt8.self, repeating: 0, count: min(headerSize, totalSize))
+                buffer.initializeMemory(
+                    as: UInt8.self,
+                    repeating: 0,
+                    count: min(headerSize, totalSize)
+                )
 
                 // Fill in the structure
                 let info = buffer.assumingMemoryBound(to: FILE_RENAME_INFO.self)
                 info.pointee.Flags = replace ? _dword(FILE_RENAME_FLAG_REPLACE_IF_EXISTS) : 0
                 info.pointee.RootDirectory = nil
-                info.pointee.FileNameLength = DWORD(truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size)
+                info.pointee.FileNameLength = DWORD(
+                    truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size
+                )
 
                 // Copy UTF-16 path into struct tail
-                let fileNamePtr = buffer.advanced(by: fileNameOffset).assumingMemoryBound(to: WCHAR.self)
+                let fileNamePtr = buffer.advanced(by: fileNameOffset).assumingMemoryBound(
+                    to: WCHAR.self
+                )
                 var i = 0
                 var ptr = destWide
                 while ptr.pointee != 0 {
@@ -571,7 +586,8 @@
             string.withCString(encodedAs: UTF16.self) { utf16Ptr in
                 // UTF16.CodeUnit is UInt16, WCHAR is also UInt16 on Windows
                 // withCString provides null-terminated buffer
-                utf16Ptr.withMemoryRebound(to: WCHAR.self, capacity: string.utf16.count + 1) { wcharPtr in
+                utf16Ptr.withMemoryRebound(to: WCHAR.self, capacity: string.utf16.count + 1) {
+                    wcharPtr in
                     body(wcharPtr)
                 }
             }

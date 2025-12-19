@@ -48,7 +48,9 @@
             var readError: Error? = nil
 
             // Allocate uninitialized buffer and read directly into it
-            let buffer = [UInt8](unsafeUninitializedCapacity: fileSize) { buffer, initializedCount in
+            let buffer = [UInt8](unsafeUninitializedCapacity: fileSize) {
+                buffer,
+                initializedCount in
                 guard let base = buffer.baseAddress else {
                     initializedCount = 0
                     return
@@ -59,11 +61,11 @@
                 while totalRead < fileSize {
                     let remaining = fileSize - totalRead
                     #if canImport(Darwin)
-                    let bytesRead = Darwin.read(fd, base.advanced(by: totalRead), remaining)
+                        let bytesRead = Darwin.read(fd, base.advanced(by: totalRead), remaining)
                     #elseif canImport(Glibc)
-                    let bytesRead = Glibc.read(fd, base.advanced(by: totalRead), remaining)
+                        let bytesRead = Glibc.read(fd, base.advanced(by: totalRead), remaining)
                     #elseif canImport(Musl)
-                    let bytesRead = Musl.read(fd, base.advanced(by: totalRead), remaining)
+                        let bytesRead = Musl.read(fd, base.advanced(by: totalRead), remaining)
                     #endif
 
                     if bytesRead > 0 {

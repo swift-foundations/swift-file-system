@@ -191,37 +191,37 @@
                 let base = buffer.baseAddress!
 
                 #if canImport(Darwin)
-                // arc4random_buf never fails
-                arc4random_buf(base, length)
+                    // arc4random_buf never fails
+                    arc4random_buf(base, length)
 
                 #elseif canImport(Glibc)
-                // getrandom can return partial reads or fail; loop until filled
-                var filled = 0
-                while filled < length {
-                    let result = getrandom(base.advanced(by: filled), length - filled, 0)
-                    if result > 0 {
-                        filled += result
-                    } else if result == -1 {
-                        let e = errno
-                        if e == EINTR { continue }  // Retry on interrupt
-                        // CSPRNG failure is fatal - temp file creation must not proceed
-                        preconditionFailure("getrandom failed: \(e)")
+                    // getrandom can return partial reads or fail; loop until filled
+                    var filled = 0
+                    while filled < length {
+                        let result = getrandom(base.advanced(by: filled), length - filled, 0)
+                        if result > 0 {
+                            filled += result
+                        } else if result == -1 {
+                            let e = errno
+                            if e == EINTR { continue }  // Retry on interrupt
+                            // CSPRNG failure is fatal - temp file creation must not proceed
+                            preconditionFailure("getrandom failed: \(e)")
+                        }
                     }
-                }
 
                 #elseif canImport(Musl)
-                // Musl also has getrandom
-                var filled = 0
-                while filled < length {
-                    let result = getrandom(base.advanced(by: filled), length - filled, 0)
-                    if result > 0 {
-                        filled += result
-                    } else if result == -1 {
-                        let e = errno
-                        if e == EINTR { continue }
-                        preconditionFailure("getrandom failed: \(e)")
+                    // Musl also has getrandom
+                    var filled = 0
+                    while filled < length {
+                        let result = getrandom(base.advanced(by: filled), length - filled, 0)
+                        if result > 0 {
+                            filled += result
+                        } else if result == -1 {
+                            let e = errno
+                            if e == EINTR { continue }
+                            preconditionFailure("getrandom failed: \(e)")
+                        }
                     }
-                }
                 #endif
 
                 // Encode to hex (Foundation-free via RFC_4648)
@@ -712,7 +712,8 @@
                         let start = nameListBuffer.baseAddress!.advanced(by: offset)
                         let count = end - offset
                         // Rebind CChar pointer to UInt8 for UTF-8 decoding
-                        let name = start.withMemoryRebound(to: UInt8.self, capacity: count) { utf8Start in
+                        let name = start.withMemoryRebound(to: UInt8.self, capacity: count) {
+                            utf8Start in
                             let utf8Buf = UnsafeBufferPointer(start: utf8Start, count: count)
                             return String(decoding: utf8Buf, as: UTF8.self)
                         }
@@ -780,7 +781,8 @@
 
                         if valueSize <= stackThreshold {
                             // Stack allocation for small xattrs
-                            withUnsafeTemporaryAllocation(of: UInt8.self, capacity: valueSize) { buffer in
+                            withUnsafeTemporaryAllocation(of: UInt8.self, capacity: valueSize) {
+                                buffer in
                                 do throws(File.System.Write.Atomic.Error) {
                                     _ = try copyXattrValue(buffer: buffer)
                                 } catch {
@@ -804,7 +806,7 @@
                         }
                     }
                 }
- 
+
                 var listError: File.System.Write.Atomic.Error? = nil
 
                 // Use stack allocation for small name lists, heap for large ones

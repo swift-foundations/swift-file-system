@@ -81,7 +81,10 @@ extension File.System.Read.Full.Test.Unit {
         let path = try createTempFile(string: text)
         defer { cleanup(path) }
 
-        let readString = String(decoding: try File.System.Read.Full.read(from: File.Path(path)), as: UTF8.self)
+        let readString = String(
+            decoding: try File.System.Read.Full.read(from: File.Path(path)),
+            as: UTF8.self
+        )
 
         #expect(readString == text)
     }

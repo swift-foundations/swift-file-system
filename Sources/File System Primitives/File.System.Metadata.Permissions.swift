@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
+import Binary
+
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
@@ -151,8 +153,6 @@ extension File.System.Metadata.Permissions.Error: CustomStringConvertible {
 }
 
 // MARK: - Binary.Serializable
-
-import Binary
 
 extension File.System.Metadata.Permissions: Binary.Serializable {
     @inlinable

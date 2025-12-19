@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
+import Binary
+
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
@@ -171,10 +173,13 @@ extension File.Handle {
         guard count > 0 else { return [] }
 
         #if os(Windows)
-        // Validate count fits in DWORD to avoid truncation bug
-        guard count <= Int(DWORD.max) else {
-            throw .readFailed(errno: Int32(ERROR_INVALID_PARAMETER), message: "count exceeds DWORD.max")
-        }
+            // Validate count fits in DWORD to avoid truncation bug
+            guard count <= Int(DWORD.max) else {
+                throw .readFailed(
+                    errno: Int32(ERROR_INVALID_PARAMETER),
+                    message: "count exceeds DWORD.max"
+                )
+            }
         #endif
 
         // Capture error state from non-throwing closure
@@ -187,48 +192,51 @@ extension File.Handle {
             }
 
             #if os(Windows)
-            var bytesRead: DWORD = 0
-            guard let handle = _descriptor.rawHandle else {
-                readError = .invalidHandle
-                initializedCount = 0
-                return
-            }
-            if !_ok(ReadFile(handle, base, DWORD(count), &bytesRead, nil)) {
-                readError = .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
-                initializedCount = 0
-                return
-            }
-            initializedCount = Int(bytesRead)
+                var bytesRead: DWORD = 0
+                guard let handle = _descriptor.rawHandle else {
+                    readError = .invalidHandle
+                    initializedCount = 0
+                    return
+                }
+                if !_ok(ReadFile(handle, base, DWORD(count), &bytesRead, nil)) {
+                    readError = .readFailed(
+                        errno: Int32(GetLastError()),
+                        message: "ReadFile failed"
+                    )
+                    initializedCount = 0
+                    return
+                }
+                initializedCount = Int(bytesRead)
 
             #elseif canImport(Darwin)
-            let result = Darwin.read(_descriptor.rawValue, base, count)
-            if result < 0 {
-                let e = errno
-                readError = .readFailed(errno: e, message: String(cString: strerror(e)))
-                initializedCount = 0
-                return
-            }
-            initializedCount = result
+                let result = Darwin.read(_descriptor.rawValue, base, count)
+                if result < 0 {
+                    let e = errno
+                    readError = .readFailed(errno: e, message: String(cString: strerror(e)))
+                    initializedCount = 0
+                    return
+                }
+                initializedCount = result
 
             #elseif canImport(Glibc)
-            let result = Glibc.read(_descriptor.rawValue, base, count)
-            if result < 0 {
-                let e = errno
-                readError = .readFailed(errno: e, message: String(cString: strerror(e)))
-                initializedCount = 0
-                return
-            }
-            initializedCount = result
+                let result = Glibc.read(_descriptor.rawValue, base, count)
+                if result < 0 {
+                    let e = errno
+                    readError = .readFailed(errno: e, message: String(cString: strerror(e)))
+                    initializedCount = 0
+                    return
+                }
+                initializedCount = result
 
             #elseif canImport(Musl)
-            let result = Musl.read(_descriptor.rawValue, base, count)
-            if result < 0 {
-                let e = errno
-                readError = .readFailed(errno: e, message: String(cString: strerror(e)))
-                initializedCount = 0
-                return
-            }
-            initializedCount = result
+                let result = Musl.read(_descriptor.rawValue, base, count)
+                if result < 0 {
+                    let e = errno
+                    readError = .readFailed(errno: e, message: String(cString: strerror(e)))
+                    initializedCount = 0
+                    return
+                }
+                initializedCount = result
             #endif
         }
 
@@ -488,8 +496,6 @@ extension File.Handle.Error: CustomStringConvertible {
 }
 
 // MARK: - Binary.Serializable
-
-import Binary
 
 extension File.Handle.SeekOrigin: RawRepresentable {
     public var rawValue: UInt8 {

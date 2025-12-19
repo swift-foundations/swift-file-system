@@ -12,6 +12,8 @@
 //   - The complete old file (or no file if it didn't exist)
 // You never get a partial/corrupted file.
 
+import Binary
+
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
@@ -221,8 +223,6 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
 }
 
 // MARK: - Binary.Serializable
-
-import Binary
 
 extension File.System.Write.Atomic.Strategy: RawRepresentable {
     public var rawValue: UInt8 {
