@@ -60,7 +60,7 @@ extension File.IO {
             #elseif canImport(Glibc)
                 return Int(sysconf(Int32(_SC_NPROCESSORS_ONLN)))
             #elseif os(Windows)
-                return Int(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS))
+                return Int(GetActiveProcessorCount(WORD(ALL_PROCESSOR_GROUPS)))
             #else
                 return 4  // Fallback for unknown platforms
             #endif
