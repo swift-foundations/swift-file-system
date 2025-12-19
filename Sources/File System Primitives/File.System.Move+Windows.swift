@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    import WinSDK
+    public import WinSDK
 
     extension File.System.Move {
         /// Moves a file using Windows APIs.

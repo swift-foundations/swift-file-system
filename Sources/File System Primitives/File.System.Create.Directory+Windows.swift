@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    import WinSDK
+    public import WinSDK
 
     extension File.System.Create.Directory {
         /// Creates a directory using Windows APIs.

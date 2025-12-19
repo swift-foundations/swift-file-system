@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    import WinSDK
+    public import WinSDK
 
     extension File.System.Read.Full {
         /// Reads file contents using Windows APIs.

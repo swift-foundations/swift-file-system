@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    import WinSDK
+    public import WinSDK
 
     extension File.Descriptor {
         /// Opens a file using Windows APIs.

@@ -19,7 +19,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    import WinSDK
+    public import WinSDK
 #endif
 
 extension File.System.Write {
@@ -35,6 +35,44 @@ extension File.System.Write {
 
             /// Fail if the destination already exists.
             case noClobber
+        }
+
+        // MARK: - Directory
+
+        /// Directory-related types for atomic writes.
+        public enum Directory {
+            /// Directory creation policies.
+            public enum Creation {
+                /// Policy for handling missing parent directories.
+                ///
+                /// ## Important Notes
+                /// - Directory creation is **not atomic**. The file write can be atomic/durable,
+                ///   but creation of parent directories cannot be made atomic in the same way.
+                ///   This is fine for most use cases - directories are durable once created.
+                /// - Permissions/umask semantics differ across platforms:
+                ///   - POSIX: `mkdir` uses mode masked by umask
+                ///   - Windows: Permissions parameter is ignored; uses default security descriptor
+                /// - Intermediate directories are created using normal path resolution,
+                ///   which means symlinks and reparse points may be followed in path components.
+                public enum Policy: Sendable, Equatable {
+                    /// Create intermediate directories as needed (default).
+                    ///
+                    /// If the parent directory (or any ancestor) doesn't exist, it will be created
+                    /// with the specified permissions (or platform defaults if nil).
+                    ///
+                    /// - Note: On Windows, the permissions parameter is ignored.
+                    ///
+                    /// This is the most ergonomic option - if you say "write to foo/bar/baz.txt",
+                    /// it ensures foo/bar exists.
+                    case createIntermediateDirectories(permissions: File.System.Metadata.Permissions? = nil)
+
+                    /// Require that the parent directory already exists.
+                    ///
+                    /// Use this for security-sensitive or audited call sites where you want
+                    /// explicit control over directory structure.
+                    case requireExistingParent
+                }
+            }
         }
 
         // MARK: - Durability
@@ -69,6 +107,7 @@ extension File.System.Write {
         public struct Options: Sendable {
             public var strategy: Strategy
             public var durability: Durability
+            public var directoryCreation: Directory.Creation.Policy
             public var preservePermissions: Bool
             public var preserveOwnership: Bool
             public var strictOwnership: Bool
@@ -79,6 +118,7 @@ extension File.System.Write {
             public init(
                 strategy: Strategy = .replaceExisting,
                 durability: Durability = .full,
+                directoryCreation: Directory.Creation.Policy = .createIntermediateDirectories(),
                 preservePermissions: Bool = true,
                 preserveOwnership: Bool = false,
                 strictOwnership: Bool = false,
@@ -88,6 +128,7 @@ extension File.System.Write {
             ) {
                 self.strategy = strategy
                 self.durability = durability
+                self.directoryCreation = directoryCreation
                 self.preservePermissions = preservePermissions
                 self.preserveOwnership = preserveOwnership
                 self.strictOwnership = strictOwnership
@@ -103,6 +144,12 @@ extension File.System.Write {
             case parentNotFound(path: String)
             case parentNotDirectory(path: String)
             case parentAccessDenied(path: String)
+            /// Directory creation failed.
+            /// - Parameters:
+            ///   - path: The directory path that failed to create.
+            ///   - code: Platform-specific error code (POSIX errno or Windows GetLastError).
+            ///   - message: Human-readable error message.
+            case directoryCreationFailed(path: String, code: Int32, message: String)
             case destinationStatFailed(path: String, errno: Int32, message: String)
             case tempFileCreationFailed(directory: String, errno: Int32, message: String)
             case writeFailed(bytesWritten: Int, bytesExpected: Int, errno: Int32, message: String)
@@ -198,6 +245,8 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
             return "Parent path is not a directory: \(path)"
         case .parentAccessDenied(let path):
             return "Access denied to parent directory: \(path)"
+        case .directoryCreationFailed(let path, let code, let message):
+            return "Failed to create directory '\(path)': \(message) (code=\(code))"
         case .destinationStatFailed(let path, let errno, let message):
             return "Failed to stat destination '\(path)': \(message) (errno=\(errno))"
         case .tempFileCreationFailed(let directory, let errno, let message):

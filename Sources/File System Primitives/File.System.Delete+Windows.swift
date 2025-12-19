@@ -7,7 +7,7 @@
 
 #if os(Windows)
 
-    import WinSDK
+    public import WinSDK
 
     extension File.System.Delete {
         /// Deletes a file or directory using Windows APIs.

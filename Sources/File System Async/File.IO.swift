@@ -12,7 +12,7 @@ import Dispatch
 #elseif canImport(Glibc)
     import Glibc
 #elseif os(Windows)
-    import WinSDK
+    public import WinSDK
 #endif
 
 extension File {
