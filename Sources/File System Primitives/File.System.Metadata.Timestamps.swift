@@ -14,7 +14,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    import WinSDK
+    public import WinSDK
 #endif
 
 extension File.System.Metadata {

@@ -12,7 +12,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    import WinSDK
+    public import WinSDK
 #endif
 
 // MARK: - POSIX d_name

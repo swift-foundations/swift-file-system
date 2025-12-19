@@ -3,7 +3,7 @@
 
 #if os(Windows)
 
-    import WinSDK
+    public import WinSDK
     import RFC_4648
 
     // MARK: - Windows Implementation
