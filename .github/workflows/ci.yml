@@ -115,8 +115,5 @@ jobs:
       - name: Print Swift version
         run: swift --version
 
-      - name: Build
-        run: swift build -c debug
-
       - name: Test
-        run: swift test -c debug
+        run: swift test -c debug -v

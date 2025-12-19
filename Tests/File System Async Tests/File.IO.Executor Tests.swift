@@ -6,17 +6,19 @@
 //
 
 import Testing
-
+import StandardsTestSupport
 @testable import File_System_Async
 
 #if canImport(Foundation)
 import Foundation
 
-extension File.IO.Test.Unit {
-    @Suite("File.IO.Executor")
-    struct Executor {
+extension File.IO.Executor {
+    #TestSuites
+}
 
-        // MARK: - Basic Execution
+extension File.IO.Executor.Test.Unit {
+
+    // MARK: - Basic Execution
 
         @Test("Execute simple operation")
         func executeSimple() async throws {
@@ -261,12 +263,11 @@ extension File.IO.Test.Unit {
             await dedicatedExecutor.shutdown()
         }
 
-        // MARK: - Edge Cases
+}
 
-        @Suite("Edge Cases")
-        struct EdgeCase {
+extension File.IO.Executor.Test.EdgeCase {
 
-            @Test("Multiple dedicated executors don't oversubscribe")
+    @Test("Multiple dedicated executors don't oversubscribe")
             func multipleDedicatedExecutorsNoOversubscription() async throws {
                 // Create 3 executors with 2 workers each
                 let executor1 = File.IO.Executor(.init(workers: 2, threadModel: .dedicated))
@@ -649,8 +650,6 @@ extension File.IO.Test.Unit {
 
                 await executor.shutdown()
             }
-        }
-    }
 }
 
 // Simple atomic for testing

@@ -6,16 +6,18 @@
 //
 
 import Testing
-
+import StandardsTestSupport
 @testable import File_System_Async
 
-extension File.IO.Test.Unit {
-    @Suite("File.Handle.Async")
-    struct Handle {
+extension File.Handle.Async {
+    #TestSuites
+}
 
-        // MARK: - Test Fixtures
+extension File.Handle.Async.Test.Unit {
 
-        private func createTempFile(content: [UInt8] = []) throws -> File.Path {
+    // MARK: - Test Fixtures
+
+    private func createTempFile(content: [UInt8] = []) throws -> File.Path {
             let path = try File.Path("/tmp/async-handle-test-\(Int.random(in: 0..<Int.max)).bin")
             try content.withUnsafeBufferPointer { buffer in
                 let span = Span<UInt8>(_unsafeElements: buffer)
@@ -247,5 +249,4 @@ extension File.IO.Test.Unit {
             // Handle should no longer be valid
             #expect(await !handle.isOpen)
         }
-    }
 }

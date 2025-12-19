@@ -6,15 +6,6 @@
 //
 
 import File_System_Primitives
+import StandardsTestSupport
 import Testing
 
-extension Test {
-    struct Unit {}
-    struct EdgeCase {}
-    @Suite(.serialized)
-    struct Performance {}
-}
-
-extension File.System {
-    typealias Test = Testing.Test
-}

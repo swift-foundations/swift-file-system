@@ -6,16 +6,16 @@
 //
 
 import Testing
-
+import StandardsTestSupport
 @testable import File_System_Async
 
-extension File.IO.Test.Unit {
-    @Suite("File.Directory.Entries")
-    struct DirectoryEntries {
+// Note: File.Directory.Async #TestSuites declared in File.Directory.Walk Tests.swift
 
-        // MARK: - Test Fixtures
+extension File.Directory.Async.Test.Unit {
 
-        private func createTempDir() throws -> File.Path {
+    // MARK: - Test Fixtures
+
+    private func createTempDir() throws -> File.Path {
             let path = try File.Path("/tmp/async-entries-test-\(Int.random(in: 0..<Int.max))")
             try File.System.Create.Directory.create(at: path)
             return path
@@ -258,5 +258,4 @@ extension File.IO.Test.Unit {
 
             #expect(count == 100)
         }
-    }
 }

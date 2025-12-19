@@ -6,7 +6,7 @@
 //
 
 import Testing
-
+import StandardsTestSupport
 @testable import File_System_Primitives
 
 #if canImport(Darwin)
@@ -14,6 +14,10 @@ import Testing
 #elseif canImport(Glibc)
     import Glibc
 #endif
+
+extension File.System {
+    #TestSuites
+}
 
 extension File.System.Test.EdgeCase {
     // MARK: - Test Fixtures
@@ -98,7 +102,7 @@ extension File.System.Test.EdgeCase {
     @Test("Path with only spaces is handled")
     func pathWithOnlySpaces() throws {
         // This is actually a valid path on POSIX
-        let path = try File.Path("/tmp/   ")
+        let path: File.Path = try .init("/tmp/   ")
         #expect(path.string == "/tmp/   ")
     }
 
@@ -700,7 +704,7 @@ extension File.System.Test.EdgeCase {
         let basePath = createTempPath()
 
         for i in 0..<50 {
-            let path = try File.Path("\(basePath)-\(i)")
+            let path: File.Path = try .init("\(basePath)-\(i)")
             var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
             try File.System.Delete.delete(at: path)

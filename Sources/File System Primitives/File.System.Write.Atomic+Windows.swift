@@ -160,8 +160,9 @@
             let value = UInt64(pid) ^ tick ^ UInt64(_counter)
             var remaining = value
             for _ in 0..<min(byteCount * 2, 16) {
-                let nibble = remaining & 0xF
-                result.append(Character(Unicode.Scalar(nibble < 10 ? 48 + nibble : 87 + nibble)!))
+                let nibble32 = UInt32(remaining & 0xF)
+                let code = nibble32 < 10 ? (48 + nibble32) : (87 + nibble32)
+                result.append(Character(Unicode.Scalar(code)!))
                 remaining >>= 4
             }
             return result

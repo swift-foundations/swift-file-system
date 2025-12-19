@@ -6,16 +6,18 @@
 //
 
 import Testing
-
+import StandardsTestSupport
 @testable import File_System_Async
 
-extension File.IO.Test.Unit {
-    @Suite("File.Directory.Walk")
-    struct DirectoryWalk {
+extension File.Directory.Async {
+    #TestSuites
+}
 
-        // MARK: - Test Fixtures
+extension File.Directory.Async.Test.Unit {
 
-        private func createTempDir() throws -> File.Path {
+    // MARK: - Test Fixtures
+
+    private func createTempDir() throws -> File.Path {
             let path = try File.Path("/tmp/async-walk-test-\(Int.random(in: 0..<Int.max))")
             try File.System.Create.Directory.create(at: path)
             return path
@@ -266,5 +268,4 @@ extension File.IO.Test.Unit {
             // 5 subdirs + 5 files = 10 entries
             #expect(count == 10)
         }
-    }
 }
