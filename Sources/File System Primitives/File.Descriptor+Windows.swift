@@ -108,16 +108,24 @@
         @usableFromInline
         internal static func _formatWindowsError(_ errorCode: DWORD) -> String {
             var buffer: LPWSTR? = nil
-            let length = FormatMessageW(
-                _mask(FORMAT_MESSAGE_ALLOCATE_BUFFER) | _mask(FORMAT_MESSAGE_FROM_SYSTEM)
-                    | _mask(FORMAT_MESSAGE_IGNORE_INSERTS),
-                nil,
-                errorCode,
-                0,
-                &buffer,
-                0,
-                nil
-            )
+
+            // FormatMessageW with FORMAT_MESSAGE_ALLOCATE_BUFFER expects a pointer to LPWSTR
+            // but is typed as pointer to WCHAR. Use withUnsafeMutablePointer to work around.
+            let length = withUnsafeMutablePointer(to: &buffer) { bufferPtr in
+                bufferPtr.withMemoryRebound(to: WCHAR.self, capacity: 1) { wcharPtr in
+                    FormatMessageW(
+                        _mask(FORMAT_MESSAGE_ALLOCATE_BUFFER) | _mask(FORMAT_MESSAGE_FROM_SYSTEM)
+                            | _mask(FORMAT_MESSAGE_IGNORE_INSERTS),
+                        nil,
+                        errorCode,
+                        0,
+                        wcharPtr,
+                        0,
+                        nil
+                    )
+                }
+            }
+
             guard length > 0, let buffer = buffer else {
                 return "Windows error \(errorCode)"
             }

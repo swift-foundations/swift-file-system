@@ -31,14 +31,18 @@ internal func _mask(_ value: UInt32) -> DWORD { value }
 @inline(__always)
 internal func _mask(_ value: Int32) -> DWORD { DWORD(bitPattern: value) }
 
-// MARK: - Boolean Adapter
+// MARK: - Boolean Adapters
 
-// In Swift 6.2, the WinSDK overlay has converted Windows APIs to return Swift Bool.
-// WindowsBool is now an alias for Bool (not Int32), so _ok is just an identity function.
+// In Swift 6.2, the WinSDK overlay has converted most Windows APIs to return Swift Bool.
+// However, some APIs still return BOOLEAN (UInt8) or WindowsBool.
 
-/// Identity adapter for Windows API return values.
-/// In Swift 6.2+, WindowsBool is Bool, so this is just identity.
+/// Identity adapter for Windows API return values that return Bool.
 @inline(__always)
 internal func _ok(_ value: Bool) -> Bool { value }
+
+/// Adapter for Windows APIs that return BOOLEAN (UInt8).
+/// Some APIs like CreateSymbolicLinkW still return BOOLEAN.
+@inline(__always)
+internal func _ok(_ value: BOOLEAN) -> Bool { value != 0 }
 
 #endif

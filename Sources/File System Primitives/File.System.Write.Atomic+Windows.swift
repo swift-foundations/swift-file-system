@@ -146,7 +146,7 @@
         }
 
         /// Counter for uniqueness within same tick.
-        private static var _counter: UInt32 = 0
+        private nonisolated(unsafe) static var _counter: UInt32 = 0
 
         /// Generates a unique hex string for temp file naming.
         /// Uses process ID, tick count, and counter for uniqueness.
