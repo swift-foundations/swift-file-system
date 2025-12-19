@@ -16,11 +16,11 @@
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    GENERIC_READ,
-                    FILE_SHARE_READ,
+                    _dword(GENERIC_READ),
+                    _dwordMask(FILE_SHARE_READ),
                     nil,
-                    OPEN_EXISTING,
-                    FILE_ATTRIBUTE_NORMAL,
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -33,7 +33,7 @@
 
             // Get file size
             var fileSize: LARGE_INTEGER = LARGE_INTEGER()
-            guard GetFileSizeEx(handle, &fileSize) else {
+            guard GetFileSizeEx(handle, &fileSize).isTrue else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 
@@ -52,13 +52,13 @@
                 ReadFile(
                     handle,
                     ptr.baseAddress,
-                    DWORD(size),
+                    DWORD(truncatingIfNeeded: size),
                     &totalRead,
                     nil
                 )
             }
 
-            guard success else {
+            guard success.isTrue else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 
@@ -73,11 +73,11 @@
         /// Maps Windows error to read error.
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
-            case DWORD(ERROR_TOO_MANY_OPEN_FILES):
+            case _dword(ERROR_TOO_MANY_OPEN_FILES):
                 return .tooManyOpenFiles
             default:
                 return .readFailed(errno: Int32(error), message: "Windows error \(error)")

@@ -248,8 +248,8 @@ extension File.Descriptor {
                     &duplicateHandle,
                     0,
                     false,
-                    DWORD(DUPLICATE_SAME_ACCESS)
-                )
+                    _dword(DUPLICATE_SAME_ACCESS)
+                ).isTrue
             else {
                 throw .duplicateFailed(
                     errno: Int32(GetLastError()),

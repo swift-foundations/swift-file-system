@@ -98,11 +98,11 @@ extension File.System.Link.Symbolic {
                 GetFileAttributesW(wpath)
             }
 
-            var flags: DWORD = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+            var flags: DWORD = _dword(SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE)
             if targetAttrs != INVALID_FILE_ATTRIBUTES
-                && (targetAttrs & FILE_ATTRIBUTE_DIRECTORY) != 0
+                && (targetAttrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0
             {
-                flags |= SYMBOLIC_LINK_FLAG_DIRECTORY
+                flags |= _dword(SYMBOLIC_LINK_FLAG_DIRECTORY)
             }
 
             let success = path.string.withCString(encodedAs: UTF16.self) { wlink in
@@ -111,18 +111,18 @@ extension File.System.Link.Symbolic {
                 }
             }
 
-            guard success != 0 else {
+            guard success.isTrue else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
         }
 
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_ALREADY_EXISTS), DWORD(ERROR_FILE_EXISTS):
+            case _dword(ERROR_ALREADY_EXISTS), _dword(ERROR_FILE_EXISTS):
                 return .alreadyExists(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
-            case DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_PATH_NOT_FOUND):
                 return .targetNotFound(path)
             default:
                 return .linkFailed(errno: Int32(error), message: "Windows error \(error)")

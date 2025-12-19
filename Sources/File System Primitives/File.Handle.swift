@@ -173,7 +173,7 @@ extension File.Handle {
                 guard let base = ptr.baseAddress, let handle = _descriptor.rawHandle else {
                     return false
                 }
-                return ReadFile(handle, base, DWORD(count), &bytesRead, nil)
+                return ReadFile(handle, base, DWORD(truncatingIfNeeded: count), &bytesRead, nil).isTrue
             }
             guard success else {
                 throw .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
@@ -225,10 +225,10 @@ extension File.Handle {
                 ReadFile(
                     _descriptor.rawHandle!,
                     buffer.baseAddress,
-                    DWORD(buffer.count),
+                    DWORD(truncatingIfNeeded: buffer.count),
                     &bytesRead,
                     nil
-                )
+                ).isTrue
             else {
                 throw .readFailed(errno: Int32(GetLastError()), message: "ReadFile failed")
             }
@@ -273,10 +273,10 @@ extension File.Handle {
                     let success = WriteFile(
                         _descriptor.rawHandle!,
                         ptr,
-                        DWORD(remaining),
+                        DWORD(truncatingIfNeeded: remaining),
                         &written,
                         nil
-                    )
+                    ).isTrue
                     guard success else {
                         throw .writeFailed(
                             errno: Int32(GetLastError()),
@@ -344,12 +344,12 @@ extension File.Handle {
 
             let whence: DWORD
             switch origin {
-            case .start: whence = DWORD(FILE_BEGIN)
-            case .current: whence = DWORD(FILE_CURRENT)
-            case .end: whence = DWORD(FILE_END)
+            case .start: whence = _dword(FILE_BEGIN)
+            case .current: whence = _dword(FILE_CURRENT)
+            case .end: whence = _dword(FILE_END)
             }
 
-            guard SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence) else {
+            guard SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence).isTrue else {
                 throw .seekFailed(errno: Int32(GetLastError()), message: "SetFilePointerEx failed")
             }
             return newPosition.QuadPart

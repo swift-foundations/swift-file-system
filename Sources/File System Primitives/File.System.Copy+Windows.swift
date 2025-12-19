@@ -25,7 +25,7 @@
                 throw .sourceNotFound(source)
             }
 
-            if (srcAttrs & FILE_ATTRIBUTE_DIRECTORY) != 0 {
+            if (srcAttrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                 throw .isDirectory(source)
             }
 
@@ -39,7 +39,7 @@
             }
 
             // Use CopyFileW for simple copy
-            let failIfExists: BOOL = options.overwrite ? false : true
+            let failIfExists: WindowsBool = options.overwrite ? false : true
 
             let success = source.string.withCString(encodedAs: UTF16.self) { wsrc in
                 destination.string.withCString(encodedAs: UTF16.self) { wdst in
@@ -47,7 +47,7 @@
                 }
             }
 
-            guard success else {
+            guard success.isTrue else {
                 throw _mapWindowsError(GetLastError(), source: source, destination: destination)
             }
         }
@@ -59,11 +59,11 @@
             destination: File.Path
         ) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .sourceNotFound(source)
-            case DWORD(ERROR_FILE_EXISTS), DWORD(ERROR_ALREADY_EXISTS):
+            case _dword(ERROR_FILE_EXISTS), _dword(ERROR_ALREADY_EXISTS):
                 return .destinationExists(destination)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(source)
             default:
                 return .copyFailed(errno: Int32(error), message: "Windows error \(error)")

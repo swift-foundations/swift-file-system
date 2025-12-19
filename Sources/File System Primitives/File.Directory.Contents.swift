@@ -160,7 +160,7 @@ extension File.Directory.Contents {
                 throw .pathNotFound(path)
             }
 
-            guard (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0 else {
+            guard (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
                 throw .notADirectory(path)
             }
 
@@ -190,19 +190,19 @@ extension File.Directory.Contents {
 
                 // Determine type
                 let entryType: File.Directory.EntryType
-                if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 {
+                if (findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (findData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 {
+                } else if (findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
                     entryType = .symbolicLink
                 } else {
                     entryType = .file
                 }
 
                 entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
-            } while FindNextFileW(handle, &findData)
+            } while FindNextFileW(handle, &findData).isTrue
 
             let lastError = GetLastError()
-            if lastError != DWORD(ERROR_NO_MORE_FILES) {
+            if lastError != _dword(ERROR_NO_MORE_FILES) {
                 throw _mapWindowsError(lastError, path: path)
             }
 
@@ -211,9 +211,9 @@ extension File.Directory.Contents {
 
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
             default:
                 return .readFailed(errno: Int32(error), message: "Windows error \(error)")

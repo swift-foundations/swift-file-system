@@ -18,7 +18,7 @@
                 let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
                     CreateDirectoryW(wpath, nil)
                 }
-                guard success else {
+                guard success.isTrue else {
                     throw _mapWindowsError(GetLastError(), path: path)
                 }
             }
@@ -32,7 +32,7 @@
             }
 
             if attrs != INVALID_FILE_ATTRIBUTES {
-                if (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0 {
+                if (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     // Already exists as directory - success
                     return
                 } else {
@@ -58,14 +58,14 @@
                 CreateDirectoryW(wpath, nil)
             }
 
-            if !success {
+            if !success.isTrue {
                 let error = GetLastError()
                 // Check if it was created by another process/thread in the meantime
-                if error == DWORD(ERROR_ALREADY_EXISTS) {
+                if error == _dword(ERROR_ALREADY_EXISTS) {
                     let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                         GetFileAttributesW(wpath)
                     }
-                    if attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0 {
+                    if attrs != INVALID_FILE_ATTRIBUTES && (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                         return
                     }
                 }
@@ -76,11 +76,11 @@
         /// Maps Windows error to create error.
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_ALREADY_EXISTS), DWORD(ERROR_FILE_EXISTS):
+            case _dword(ERROR_ALREADY_EXISTS), _dword(ERROR_FILE_EXISTS):
                 return .alreadyExists(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
-            case DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_PATH_NOT_FOUND):
                 return .parentDirectoryNotFound(path)
             default:
                 return .createFailed(errno: Int32(error), message: "Windows error \(error)")

@@ -104,7 +104,7 @@ extension File.System.Link.Hard {
                 }
             }
 
-            guard success else {
+            guard success.isTrue else {
                 throw _mapWindowsError(GetLastError(), path: path, existing: existing)
             }
         }
@@ -115,13 +115,13 @@ extension File.System.Link.Hard {
             existing: File.Path
         ) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .sourceNotFound(existing)
-            case DWORD(ERROR_ALREADY_EXISTS), DWORD(ERROR_FILE_EXISTS):
+            case _dword(ERROR_ALREADY_EXISTS), _dword(ERROR_FILE_EXISTS):
                 return .alreadyExists(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
-            case DWORD(ERROR_NOT_SAME_DEVICE):
+            case _dword(ERROR_NOT_SAME_DEVICE):
                 return .crossDevice(source: existing, destination: path)
             default:
                 return .linkFailed(errno: Int32(error), message: "Windows error \(error)")

@@ -19,41 +19,41 @@
         ) throws(Error) -> File.Descriptor {
             var desiredAccess: DWORD = 0
             // Include FILE_SHARE_DELETE for POSIX-like rename/unlink semantics
-            var shareMode: DWORD = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
-            var creationDisposition: DWORD = OPEN_EXISTING
-            var flagsAndAttributes: DWORD = FILE_ATTRIBUTE_NORMAL
+            var shareMode: DWORD = _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE)
+            var creationDisposition: DWORD = _dword(OPEN_EXISTING)
+            var flagsAndAttributes: DWORD = _dwordMask(FILE_ATTRIBUTE_NORMAL)
 
             // Set access mode
             switch mode {
             case .read:
-                desiredAccess = GENERIC_READ
+                desiredAccess = _dword(GENERIC_READ)
             case .write:
-                desiredAccess = GENERIC_WRITE
+                desiredAccess = _dword(GENERIC_WRITE)
             case .readWrite:
-                desiredAccess = GENERIC_READ | GENERIC_WRITE
+                desiredAccess = _dword(GENERIC_READ) | _dword(GENERIC_WRITE)
             }
 
             // Set creation disposition based on options
             if options.contains(.create) {
                 if options.contains(.exclusive) {
-                    creationDisposition = CREATE_NEW
+                    creationDisposition = _dword(CREATE_NEW)
                 } else if options.contains(.truncate) {
-                    creationDisposition = CREATE_ALWAYS
+                    creationDisposition = _dword(CREATE_ALWAYS)
                 } else {
-                    creationDisposition = OPEN_ALWAYS
+                    creationDisposition = _dword(OPEN_ALWAYS)
                 }
             } else if options.contains(.truncate) {
-                creationDisposition = TRUNCATE_EXISTING
+                creationDisposition = _dword(TRUNCATE_EXISTING)
             }
 
             // Append mode - combine with existing access, don't clobber
             if options.contains(.append) {
-                desiredAccess |= FILE_APPEND_DATA
+                desiredAccess |= _dwordMask(FILE_APPEND_DATA)
             }
 
             // No follow symlinks
             if options.contains(.noFollow) {
-                flagsAndAttributes |= FILE_FLAG_OPEN_REPARSE_POINT
+                flagsAndAttributes |= _dwordMask(FILE_FLAG_OPEN_REPARSE_POINT)
             }
 
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
@@ -74,7 +74,7 @@
 
             // Close on exec - prevent handle inheritance
             if options.contains(.closeOnExec) {
-                guard SetHandleInformation(handle, DWORD(HANDLE_FLAG_INHERIT), 0) else {
+                guard SetHandleInformation(handle, _dword(HANDLE_FLAG_INHERIT), 0).isTrue else {
                     let error = GetLastError()
                     CloseHandle(handle)
                     throw .openFailed(
@@ -91,13 +91,13 @@
         @usableFromInline
         internal static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
-            case DWORD(ERROR_FILE_EXISTS), DWORD(ERROR_ALREADY_EXISTS):
+            case _dword(ERROR_FILE_EXISTS), _dword(ERROR_ALREADY_EXISTS):
                 return .alreadyExists(path)
-            case DWORD(ERROR_TOO_MANY_OPEN_FILES):
+            case _dword(ERROR_TOO_MANY_OPEN_FILES):
                 return .tooManyOpenFiles
             default:
                 return .openFailed(errno: Int32(error), message: _formatWindowsError(error))
@@ -109,10 +109,8 @@
         internal static func _formatWindowsError(_ errorCode: DWORD) -> String {
             var buffer: LPWSTR? = nil
             let length = FormatMessageW(
-                DWORD(
-                    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM
-                        | FORMAT_MESSAGE_IGNORE_INSERTS
-                ),
+                _dwordMask(FORMAT_MESSAGE_ALLOCATE_BUFFER) | _dwordMask(FORMAT_MESSAGE_FROM_SYSTEM)
+                    | _dwordMask(FORMAT_MESSAGE_IGNORE_INSERTS),
                 nil,
                 errorCode,
                 0,

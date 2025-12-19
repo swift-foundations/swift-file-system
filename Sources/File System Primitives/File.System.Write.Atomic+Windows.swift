@@ -53,7 +53,7 @@
             }
 
             // 8. Close temp file before rename
-            guard CloseHandle(tempHandle) else {
+            guard CloseHandle(tempHandle).isTrue else {
                 throw .closeFailed(
                     errno: Int32(GetLastError()),
                     message: "CloseHandle failed"
@@ -122,13 +122,13 @@
 
             if attrs == INVALID_FILE_ATTRIBUTES {
                 let err = GetLastError()
-                if err == DWORD(ERROR_ACCESS_DENIED) {
+                if err == _dword(ERROR_ACCESS_DENIED) {
                     throw .parentAccessDenied(path: dir)
                 }
                 throw .parentNotFound(path: dir)
             }
 
-            if (attrs & DWORD(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
+            if (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
                 throw .parentNotDirectory(path: dir)
             }
         }
@@ -175,11 +175,11 @@
             let handle = withWideString(path) { wPath in
                 CreateFileW(
                     wPath,
-                    DWORD(READ_CONTROL | FILE_READ_ATTRIBUTES),
-                    DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+                    _dwordMask(READ_CONTROL) | _dwordMask(FILE_READ_ATTRIBUTES),
+                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
                     nil,
-                    DWORD(OPEN_EXISTING),
-                    DWORD(FILE_FLAG_BACKUP_SEMANTICS),
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),
                     nil
                 )
             }
@@ -199,11 +199,11 @@
             let handle = withWideString(path) { wPath in
                 CreateFileW(
                     wPath,
-                    DWORD(GENERIC_WRITE | GENERIC_READ),
-                    DWORD(FILE_SHARE_READ),
+                    _dword(GENERIC_WRITE) | _dword(GENERIC_READ),
+                    _dwordMask(FILE_SHARE_READ),
                     nil,
-                    DWORD(CREATE_NEW),
-                    DWORD(FILE_ATTRIBUTE_TEMPORARY),
+                    _dword(CREATE_NEW),
+                    _dwordMask(FILE_ATTRIBUTE_TEMPORARY),
                     nil
                 )
             }
@@ -247,12 +247,12 @@
                     let success = WriteFile(
                         handle,
                         UnsafeRawPointer(base.advanced(by: written)),
-                        DWORD(remaining),
+                        DWORD(truncatingIfNeeded: remaining),
                         &bytesWritten,
                         nil
                     )
 
-                    if !success {
+                    if !success.isTrue {
                         let err = GetLastError()
                         throw .writeFailed(
                             bytesWritten: written,
@@ -285,7 +285,7 @@
             case .full, .dataOnly:
                 // Windows FlushFileBuffers is equivalent to full sync
                 // (there's no separate metadata-only sync on Windows like fdatasync)
-                if !FlushFileBuffers(handle) {
+                if !FlushFileBuffers(handle).isTrue {
                     let err = GetLastError()
                     throw .syncFailed(
                         errno: Int32(err),
@@ -325,8 +325,8 @@
             // Fallback to MoveFileExW
             let flags: DWORD =
                 replace
-                ? DWORD(MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)
-                : DWORD(MOVEFILE_WRITE_THROUGH)
+                ? _dword(MOVEFILE_REPLACE_EXISTING) | _dword(MOVEFILE_WRITE_THROUGH)
+                : _dword(MOVEFILE_WRITE_THROUGH)
 
             let success = withWideString(tempPath) { wTemp in
                 withWideString(destPath) { wDest in
@@ -338,7 +338,7 @@
                 let err = GetLastError()
 
                 // Check for destination exists in noClobber mode
-                if !replace && err == DWORD(ERROR_ALREADY_EXISTS) {
+                if !replace && err == _dword(ERROR_ALREADY_EXISTS) {
                     throw .destinationExists(path: destPath)
                 }
 
@@ -361,11 +361,11 @@
             let tempHandle = withWideString(tempPath) { wTemp in
                 CreateFileW(
                     wTemp,
-                    DWORD(DELETE | SYNCHRONIZE),
-                    DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+                    _dwordMask(DELETE) | _dwordMask(SYNCHRONIZE),
+                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
                     nil,
-                    DWORD(OPEN_EXISTING),
-                    DWORD(FILE_FLAG_BACKUP_SEMANTICS),
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),
                     nil
                 )
             }
@@ -395,9 +395,9 @@
 
             // Fill in the structure using proper offsets
             let info = buffer.assumingMemoryBound(to: FILE_RENAME_INFO.self)
-            info.pointee.Flags = replace ? DWORD(FILE_RENAME_FLAG_REPLACE_IF_EXISTS) : 0
+            info.pointee.Flags = replace ? _dword(FILE_RENAME_FLAG_REPLACE_IF_EXISTS) : 0
             info.pointee.RootDirectory = nil
-            info.pointee.FileNameLength = DWORD(nameByteCount - MemoryLayout<WCHAR>.size)  // Exclude null terminator
+            info.pointee.FileNameLength = DWORD(truncatingIfNeeded: nameByteCount - MemoryLayout<WCHAR>.size)  // Exclude null terminator
 
             // Copy filename after the fixed part of the structure
             let fileNameOffset = MemoryLayout.offset(of: \FILE_RENAME_INFO.FileName)!
@@ -413,10 +413,10 @@
                 tempHandle,
                 FileRenameInfoEx,
                 buffer,
-                DWORD(totalSize)
+                DWORD(truncatingIfNeeded: totalSize)
             )
 
-            return success != 0
+            return success.isTrue
         }
 
         /// Flushes directory to persist rename.
@@ -424,11 +424,11 @@
             let handle = withWideString(path) { wPath in
                 CreateFileW(
                     wPath,
-                    DWORD(GENERIC_READ),
-                    DWORD(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE),
+                    _dword(GENERIC_READ),
+                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
                     nil,
-                    DWORD(OPEN_EXISTING),
-                    DWORD(FILE_FLAG_BACKUP_SEMANTICS),
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS),
                     nil
                 )
             }
@@ -443,7 +443,7 @@
             }
             defer { _ = CloseHandle(handle) }
 
-            if !FlushFileBuffers(handle) {
+            if !FlushFileBuffers(handle).isTrue {
                 let err = GetLastError()
                 throw .directorySyncFailed(
                     path: path,
@@ -473,10 +473,10 @@
                     srcHandle,
                     FileBasicInfo,
                     &basicInfo,
-                    DWORD(MemoryLayout<FILE_BASIC_INFO>.size)
+                    DWORD(truncatingIfNeeded: MemoryLayout<FILE_BASIC_INFO>.size)
                 )
 
-                if getSuccess == 0 {
+                if !getSuccess.isTrue {
                     let err = GetLastError()
                     throw .metadataPreservationFailed(
                         operation: "GetFileInformationByHandleEx",
@@ -489,10 +489,10 @@
                     dstHandle,
                     FileBasicInfo,
                     &basicInfo,
-                    DWORD(MemoryLayout<FILE_BASIC_INFO>.size)
+                    DWORD(truncatingIfNeeded: MemoryLayout<FILE_BASIC_INFO>.size)
                 )
 
-                if setSuccess == 0 {
+                if !setSuccess.isTrue {
                     let err = GetLastError()
                     throw .metadataPreservationFailed(
                         operation: "SetFileInformationByHandle",

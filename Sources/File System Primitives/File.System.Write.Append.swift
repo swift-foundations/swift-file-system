@@ -147,11 +147,11 @@ extension File.System.Write.Append {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    FILE_APPEND_DATA,
-                    FILE_SHARE_READ,
+                    _dwordMask(FILE_APPEND_DATA),
+                    _dwordMask(FILE_SHARE_READ),
                     nil,
-                    OPEN_ALWAYS,
-                    FILE_ATTRIBUTE_NORMAL,
+                    _dword(OPEN_ALWAYS),
+                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -171,12 +171,12 @@ extension File.System.Write.Append {
                 let success = WriteFile(
                     handle,
                     base,
-                    DWORD(count),
+                    DWORD(truncatingIfNeeded: count),
                     &written,
                     nil
                 )
 
-                guard success && written == count else {
+                guard success.isTrue && written == count else {
                     throw _mapWindowsError(GetLastError(), path: path)
                 }
             }
@@ -184,9 +184,9 @@ extension File.System.Write.Append {
 
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
             default:
                 return .writeFailed(errno: Int32(error), message: "Windows error \(error)")

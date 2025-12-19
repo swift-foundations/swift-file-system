@@ -120,7 +120,7 @@ extension File.System.Link.ReadTarget {
                 throw .pathNotFound(path)
             }
 
-            guard (attrs & FILE_ATTRIBUTE_REPARSE_POINT) != 0 else {
+            guard (attrs & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 else {
                 throw .notASymlink(path)
             }
 
@@ -128,11 +128,11 @@ extension File.System.Link.ReadTarget {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    GENERIC_READ,
-                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                    _dword(GENERIC_READ),
+                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE) | _dwordMask(FILE_SHARE_DELETE),
                     nil,
-                    OPEN_EXISTING,
-                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_FLAG_BACKUP_SEMANTICS) | _dwordMask(FILE_FLAG_OPEN_REPARSE_POINT),
                     nil
                 )
             }
@@ -149,8 +149,8 @@ extension File.System.Link.ReadTarget {
                 return GetFinalPathNameByHandleW(
                     handle,
                     base,
-                    DWORD(MAX_PATH),
-                    DWORD(FILE_NAME_NORMALIZED)
+                    _dword(MAX_PATH),
+                    _dword(FILE_NAME_NORMALIZED)
                 )
             }
 
@@ -177,9 +177,9 @@ extension File.System.Link.ReadTarget {
 
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
             default:
                 return .readFailed(errno: Int32(error), message: "Windows error \(error)")

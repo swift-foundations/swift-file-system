@@ -299,7 +299,7 @@ extension File.Directory.Iterator {
                 throw .pathNotFound(path)
             }
 
-            guard (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0 else {
+            guard (attrs & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
                 throw .notADirectory(path)
             }
 
@@ -331,7 +331,7 @@ extension File.Directory.Iterator {
                 let name = String(windowsDirectoryEntryName: _findData.cFileName)
 
                 // Advance to next entry for next call
-                if !FindNextFileW(handle, &_findData) {
+                if !FindNextFileW(handle, &_findData).isTrue {
                     _hasMore = false
                 }
 
@@ -346,9 +346,9 @@ extension File.Directory.Iterator {
 
                 // Determine type (from previous findData)
                 let entryType: File.Directory.EntryType
-                if (_findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0 {
+                if (_findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (_findData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 {
+                } else if (_findData.dwFileAttributes & _dwordMask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
                     entryType = .symbolicLink
                 } else {
                     entryType = .file
@@ -360,9 +360,9 @@ extension File.Directory.Iterator {
 
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
             default:
                 return .readFailed(errno: Int32(error), message: "Windows error \(error)")

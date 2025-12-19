@@ -203,11 +203,11 @@ extension File.System.Metadata.Timestamps {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    FILE_READ_ATTRIBUTES,
-                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    _dwordMask(FILE_READ_ATTRIBUTES),
+                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE),
                     nil,
-                    OPEN_EXISTING,
-                    FILE_ATTRIBUTE_NORMAL,
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -221,7 +221,7 @@ extension File.System.Metadata.Timestamps {
             var accessFT = FILETIME()
             var writeFT = FILETIME()
 
-            guard GetFileTime(handle, &creationFT, &accessFT, &writeFT) else {
+            guard GetFileTime(handle, &creationFT, &accessFT, &writeFT).isTrue else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
 
@@ -241,11 +241,11 @@ extension File.System.Metadata.Timestamps {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
-                    FILE_WRITE_ATTRIBUTES,
-                    FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    _dwordMask(FILE_WRITE_ATTRIBUTES),
+                    _dwordMask(FILE_SHARE_READ) | _dwordMask(FILE_SHARE_WRITE),
                     nil,
-                    OPEN_EXISTING,
-                    FILE_ATTRIBUTE_NORMAL,
+                    _dword(OPEN_EXISTING),
+                    _dwordMask(FILE_ATTRIBUTE_NORMAL),
                     nil
                 )
             }
@@ -259,7 +259,7 @@ extension File.System.Metadata.Timestamps {
             var writeFT = _timeToFileTime(timestamps.modificationTime)
 
             // Pass nil for creation time to leave it unchanged
-            guard SetFileTime(handle, nil, &accessFT, &writeFT) else {
+            guard SetFileTime(handle, nil, &accessFT, &writeFT).isTrue else {
                 throw _mapWindowsError(GetLastError(), path: path)
             }
         }
@@ -290,9 +290,9 @@ extension File.System.Metadata.Timestamps {
 
         private static func _mapWindowsError(_ error: DWORD, path: File.Path) -> Error {
             switch error {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
+            case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
                 return .pathNotFound(path)
-            case DWORD(ERROR_ACCESS_DENIED):
+            case _dword(ERROR_ACCESS_DENIED):
                 return .permissionDenied(path)
             default:
                 return .operationFailed(errno: Int32(error), message: "Windows error \(error)")
