@@ -3,7 +3,7 @@
 
 #if os(Windows)
 
-    public import WinSDK
+    import WinSDK
     import RFC_4648
 
     // MARK: - Windows Implementation
@@ -16,12 +16,10 @@
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
 
-            // 1. Resolve path and get parent directory
+            // 1. Resolve and validate parent directory
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
-
-            // 2. Handle parent directory based on policy
-            try ensureParentDirectory(parent, policy: options.directoryCreation)
+            try verifyParentDirectory(parent)
 
             // 2. Generate unique temp file path
             let tempPath = generateTempPath(in: parent, for: resolvedPath)
@@ -116,28 +114,6 @@
             return path
         }
 
-        /// Ensures the parent directory exists based on the directory creation policy.
-        ///
-        /// For `.createIntermediateDirectories`: Creates all missing path components.
-        /// For `.requireExistingParent`: Verifies the directory exists.
-        ///
-        /// This implementation is race-safe: CreateDirectoryW for each component
-        /// ignores ERROR_ALREADY_EXISTS, and verifies the final result is a directory.
-        private static func ensureParentDirectory(
-            _ dir: String,
-            policy: File.System.Write.Atomic.Directory.Creation.Policy
-        ) throws(File.System.Write.Atomic.Error) {
-            switch policy {
-            case .requireExistingParent:
-                try verifyParentDirectory(dir)
-
-            case .createIntermediateDirectories(let permissions):
-                // Windows ignores POSIX permissions - document this explicitly
-                _ = permissions
-                try createDirectoriesRecursively(dir)
-            }
-        }
-
         /// Verifies parent directory exists.
         private static func verifyParentDirectory(
             _ dir: String
@@ -146,307 +122,14 @@
 
             if attrs == INVALID_FILE_ATTRIBUTES {
                 let err = GetLastError()
-                throw mapGetAttributesError(err, path: dir)
+                if err == DWORD(ERROR_ACCESS_DENIED) {
+                    throw .parentAccessDenied(path: dir)
+                }
+                throw .parentNotFound(path: dir)
             }
 
             if (attrs & DWORD(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
                 throw .parentNotDirectory(path: dir)
-            }
-        }
-
-        /// Maps GetLastError codes to appropriate errors.
-        private static func mapGetAttributesError(
-            _ err: DWORD,
-            path: String
-        ) -> File.System.Write.Atomic.Error {
-            switch err {
-            case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
-                return .parentNotFound(path: path)
-            case DWORD(ERROR_ACCESS_DENIED), DWORD(ERROR_PRIVILEGE_NOT_HELD):
-                return .parentAccessDenied(path: path)
-            case DWORD(ERROR_DIRECTORY):
-                return .parentNotDirectory(path: path)
-            case DWORD(ERROR_INVALID_NAME):
-                return .directoryCreationFailed(
-                    path: path,
-                    code: Int32(err),
-                    message: "Invalid path name"
-                )
-            default:
-                return .parentNotFound(path: path)
-            }
-        }
-
-        /// Maps CreateDirectory error codes to appropriate errors.
-        private static func mapCreateDirectoryError(
-            _ err: DWORD,
-            path: String
-        ) -> File.System.Write.Atomic.Error {
-            switch err {
-            case DWORD(ERROR_ACCESS_DENIED), DWORD(ERROR_PRIVILEGE_NOT_HELD):
-                return .parentAccessDenied(path: path)
-            case DWORD(ERROR_PATH_NOT_FOUND), DWORD(ERROR_FILE_NOT_FOUND):
-                return .parentNotFound(path: path)
-            case DWORD(ERROR_DIRECTORY):
-                return .parentNotDirectory(path: path)
-            case DWORD(ERROR_INVALID_NAME):
-                return .directoryCreationFailed(
-                    path: path,
-                    code: Int32(err),
-                    message: "Invalid path name"
-                )
-            default:
-                return .directoryCreationFailed(
-                    path: path,
-                    code: Int32(err),
-                    message: "CreateDirectoryW failed with error \(err)"
-                )
-            }
-        }
-
-        // MARK: - Windows Path Root Parsing
-
-        /// Represents the root prefix of a Windows path.
-        private enum WindowsRootPrefix {
-            case driveRoot(String)        // "C:\"
-            case uncRoot(String)          // "\\server\share"
-            case extendedDrive(String)    // "\\?\C:\"
-            case extendedUNC(String)      // "\\?\UNC\server\share"
-            case devicePath(String)       // "\\.\device"
-            case none
-        }
-
-        /// Parses the root prefix from a Windows path.
-        ///
-        /// Handles:
-        /// - Drive roots: "C:\", "D:\"
-        /// - UNC paths: "\\server\share\"
-        /// - Extended-length paths: "\\?\C:\", "\\?\UNC\server\share\"
-        /// - Device paths: "\\.\device\"
-        private static func parseWindowsRoot(_ path: String) -> (prefix: WindowsRootPrefix, afterRoot: String) {
-            let chars = Array(path)
-            let count = chars.count
-
-            // Extended-length prefix: \\?\ or \\.\
-            if count >= 4 && chars[0] == "\\" && chars[1] == "\\" &&
-               (chars[2] == "?" || chars[2] == ".") && chars[3] == "\\" {
-
-                let prefixType = chars[2]
-
-                // \\?\UNC\server\share or \\.\UNC\server\share
-                if count >= 8 {
-                    let afterPrefix = String(chars[4...])
-                    if afterPrefix.uppercased().hasPrefix("UNC\\") {
-                        // Find server\share
-                        let uncPart = String(chars[8...])
-                        if let serverEnd = uncPart.firstIndex(of: "\\") {
-                            let afterServer = uncPart[uncPart.index(after: serverEnd)...]
-                            if let shareEnd = afterServer.firstIndex(of: "\\") {
-                                let rootEnd = 8 + uncPart.distance(from: uncPart.startIndex, to: shareEnd) + afterServer.distance(from: afterServer.startIndex, to: shareEnd) + 1
-                                let root = String(chars[0..<min(rootEnd + 9, count)])
-                                let rest = rootEnd + 9 < count ? String(chars[(rootEnd + 9)...]) : ""
-                                return (.extendedUNC(root), rest)
-                            }
-                        }
-                        // Incomplete UNC path - treat entire thing as root
-                        return (.extendedUNC(path), "")
-                    }
-                }
-
-                // \\?\C:\ or \\.\C:\
-                if count >= 7 && chars[5] == ":" && chars[6] == "\\" {
-                    let root = String(chars[0..<7])
-                    let rest = count > 7 ? String(chars[7...]) : ""
-                    if prefixType == "?" {
-                        return (.extendedDrive(root), rest)
-                    } else {
-                        return (.devicePath(root), rest)
-                    }
-                }
-
-                // Some other \\?\ or \\.\ path - find next separator
-                if let nextSep = chars[4...].firstIndex(of: "\\") {
-                    let idx = chars.distance(from: chars.startIndex, to: nextSep)
-                    let root = String(chars[0...idx])
-                    let rest = idx + 1 < count ? String(chars[(idx + 1)...]) : ""
-                    return (prefixType == "?" ? .extendedDrive(root) : .devicePath(root), rest)
-                }
-                return (prefixType == "?" ? .extendedDrive(path) : .devicePath(path), "")
-            }
-
-            // UNC path: \\server\share
-            if count >= 2 && chars[0] == "\\" && chars[1] == "\\" {
-                // Find server name end
-                if let serverEnd = chars[2...].firstIndex(of: "\\") {
-                    let serverEndIdx = chars.distance(from: chars.startIndex, to: serverEnd)
-                    // Find share name end
-                    if serverEndIdx + 1 < count {
-                        let afterServer = chars[(serverEndIdx + 1)...]
-                        if let shareEnd = afterServer.firstIndex(of: "\\") {
-                            let shareEndIdx = chars.distance(from: chars.startIndex, to: shareEnd)
-                            let root = String(chars[0..<shareEndIdx])
-                            let rest = shareEndIdx + 1 < count ? String(chars[(shareEndIdx + 1)...]) : ""
-                            return (.uncRoot(root), rest)
-                        }
-                    }
-                }
-                // Incomplete UNC - treat entire path as root
-                return (.uncRoot(path), "")
-            }
-
-            // Drive root: C:\ or C:
-            if count >= 2 && chars[1] == ":" {
-                if count >= 3 && chars[2] == "\\" {
-                    let root = String(chars[0..<3])
-                    let rest = count > 3 ? String(chars[3...]) : ""
-                    return (.driveRoot(root), rest)
-                }
-                // Drive-relative path like "C:foo" - just the drive letter is the "root"
-                let root = String(chars[0..<2])
-                let rest = count > 2 ? String(chars[2...]) : ""
-                return (.driveRoot(root), rest)
-            }
-
-            return (.none, path)
-        }
-
-        /// Returns true if the path is a root path that should not be created.
-        private static func isWindowsRoot(_ path: String) -> Bool {
-            let (prefix, afterRoot) = parseWindowsRoot(path)
-            switch prefix {
-            case .none:
-                return false
-            case .driveRoot, .uncRoot, .extendedDrive, .extendedUNC, .devicePath:
-                // It's a root if there's nothing meaningful after it
-                return afterRoot.isEmpty || afterRoot.trimmingCharacters(in: CharacterSet(charactersIn: "\\")).isEmpty
-            }
-        }
-
-        /// Creates directories recursively, handling races gracefully.
-        ///
-        /// This is race-safe:
-        /// - CreateDirectoryW for each component; ERROR_ALREADY_EXISTS is fine
-        /// - After all creates, verify the final path is a directory
-        ///
-        /// Handles Windows path types:
-        /// - Drive paths: C:\foo\bar
-        /// - UNC paths: \\server\share\foo
-        /// - Extended-length paths: \\?\C:\foo, \\?\UNC\server\share\foo
-        private static func createDirectoriesRecursively(
-            _ path: String
-        ) throws(File.System.Write.Atomic.Error) {
-            // Check if this is a root path
-            if isWindowsRoot(path) {
-                return
-            }
-
-            // Check if directory already exists
-            let attrs = withWideString(path) { GetFileAttributesW($0) }
-            if attrs != INVALID_FILE_ATTRIBUTES {
-                // Path exists - verify it's a directory (reparse points/junctions with
-                // DIRECTORY attribute are treated as directories per documented behavior)
-                if (attrs & DWORD(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
-                    throw .parentNotDirectory(path: path)
-                }
-                return
-            } else {
-                // GetFileAttributesW failed - check why
-                let err = GetLastError()
-                switch err {
-                case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
-                    // Path doesn't exist - continue to create
-                    break
-                case DWORD(ERROR_ACCESS_DENIED), DWORD(ERROR_PRIVILEGE_NOT_HELD):
-                    throw .parentAccessDenied(path: path)
-                case DWORD(ERROR_INVALID_NAME):
-                    throw .directoryCreationFailed(
-                        path: path,
-                        code: Int32(err),
-                        message: "Invalid path name"
-                    )
-                default:
-                    throw .directoryCreationFailed(
-                        path: path,
-                        code: Int32(err),
-                        message: "GetFileAttributesW failed with error \(err)"
-                    )
-                }
-            }
-
-            // Build list of components to create by walking up until we find an existing directory
-            var componentsToCreate: [String] = []
-            var current = path
-
-            while !current.isEmpty && !isWindowsRoot(current) {
-                let attrs = withWideString(current) { GetFileAttributesW($0) }
-
-                if attrs != INVALID_FILE_ATTRIBUTES {
-                    // This component exists - verify it's a directory
-                    if (attrs & DWORD(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
-                        throw .parentNotDirectory(path: current)
-                    }
-                    break
-                } else {
-                    // GetFileAttributesW failed - differentiate errors
-                    let err = GetLastError()
-                    switch err {
-                    case DWORD(ERROR_FILE_NOT_FOUND), DWORD(ERROR_PATH_NOT_FOUND):
-                        // Path doesn't exist - add to list and keep walking up
-                        componentsToCreate.append(current)
-                        current = parentDirectory(of: current)
-                    case DWORD(ERROR_ACCESS_DENIED), DWORD(ERROR_PRIVILEGE_NOT_HELD):
-                        throw .parentAccessDenied(path: current)
-                    case DWORD(ERROR_INVALID_NAME):
-                        throw .directoryCreationFailed(
-                            path: current,
-                            code: Int32(err),
-                            message: "Invalid path name"
-                        )
-                    default:
-                        throw .directoryCreationFailed(
-                            path: current,
-                            code: Int32(err),
-                            message: "GetFileAttributesW failed with error \(err)"
-                        )
-                    }
-                }
-            }
-
-            // Create from deepest existing ancestor to target
-            for component in componentsToCreate.reversed() {
-                let success = withWideString(component) { CreateDirectoryW($0, nil) }
-
-                if success == 0 {
-                    let err = GetLastError()
-                    // ERROR_ALREADY_EXISTS is fine - another process may have created it
-                    if err == DWORD(ERROR_ALREADY_EXISTS) {
-                        // Verify it's a directory
-                        let attrs = withWideString(component) { GetFileAttributesW($0) }
-                        if attrs != INVALID_FILE_ATTRIBUTES {
-                            if (attrs & DWORD(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
-                                throw .parentNotDirectory(path: component)
-                            }
-                        }
-                        continue
-                    }
-
-                    throw mapCreateDirectoryError(err, path: component)
-                }
-            }
-
-            // Final verification: ensure the target is a directory
-            let finalAttrs = withWideString(path) { GetFileAttributesW($0) }
-            if finalAttrs == INVALID_FILE_ATTRIBUTES {
-                let err = GetLastError()
-                throw .directoryCreationFailed(
-                    path: path,
-                    code: Int32(err),
-                    message: "Directory verification failed with error \(err)"
-                )
-            }
-
-            if (finalAttrs & DWORD(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
-                throw .parentNotDirectory(path: path)
             }
         }
 

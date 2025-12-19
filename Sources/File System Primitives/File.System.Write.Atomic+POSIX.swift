@@ -24,12 +24,10 @@
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
 
-            // 1. Resolve path and get parent directory
+            // 1. Resolve and validate parent directory
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-
-            // 2. Handle parent directory based on policy
-            try ensureParentDirectory(parent, policy: options.directoryCreation)
+            try verifyParentDirectory(parent)
 
             // 2. Generate unique temp file path in same directory
             let tempPath = generateTempPath(in: parent, for: resolvedPath)
@@ -158,26 +156,6 @@
             return path
         }
 
-        /// Ensures the parent directory exists based on the directory creation policy.
-        ///
-        /// For `.createIntermediateDirectories`: Creates all missing path components.
-        /// For `.requireExistingParent`: Verifies the directory exists.
-        ///
-        /// This implementation is race-safe: mkdir for each component ignores EEXIST,
-        /// and verifies the final result is a directory.
-        private static func ensureParentDirectory(
-            _ dir: String,
-            policy: File.System.Write.Atomic.Directory.Creation.Policy
-        ) throws(File.System.Write.Atomic.Error) {
-            switch policy {
-            case .requireExistingParent:
-                try verifyParentDirectory(dir)
-
-            case .createIntermediateDirectories(let permissions):
-                try createDirectoriesRecursively(dir, permissions: permissions)
-            }
-        }
-
         /// Verifies the parent directory exists and is accessible.
         private static func verifyParentDirectory(
             _ dir: String
@@ -195,145 +173,6 @@
 
             if (st.st_mode & S_IFMT) != S_IFDIR {
                 throw .parentNotDirectory(path: dir)
-            }
-        }
-
-        /// Creates directories recursively, handling races gracefully.
-        ///
-        /// This is race-safe:
-        /// - mkdir for each component; EEXIST is fine (another process may have created it)
-        /// - After all mkdirs, verify the final path is a directory
-        ///
-        /// Invariant: `path` should be a normalized absolute path without trailing slashes
-        /// (except for root "/").
-        private static func createDirectoriesRecursively(
-            _ path: String,
-            permissions: File.System.Metadata.Permissions?
-        ) throws(File.System.Write.Atomic.Error) {
-            // Root always exists
-            if path == "/" || path.isEmpty { return }
-
-            // Check if directory already exists
-            var st = stat()
-            let statResult = path.withCString { stat($0, &st) }
-            if statResult == 0 {
-                // Path exists - verify it's a directory
-                if (st.st_mode & S_IFMT) != S_IFDIR {
-                    throw .parentNotDirectory(path: path)
-                }
-                return
-            } else {
-                // Stat failed - check why
-                let e = errno
-                switch e {
-                case ENOENT:
-                    // Path doesn't exist - continue to create
-                    break
-                case EACCES, EPERM:
-                    throw .parentAccessDenied(path: path)
-                case ENOTDIR:
-                    throw .parentNotDirectory(path: path)
-                default:
-                    throw .directoryCreationFailed(
-                        path: path,
-                        code: e,
-                        message: File.System.Write.Atomic.errorMessage(for: e)
-                    )
-                }
-            }
-
-            // Determine mode: use provided permissions or default (0o755)
-            let mode: mode_t
-            if let perms = permissions {
-                mode = mode_t(perms.rawValue)
-            } else {
-                mode = 0o755
-            }
-
-            // Build list of components to create by walking up until we find an existing directory
-            var componentsToCreate: [String] = []
-            var current = path
-
-            while current != "/" && !current.isEmpty {
-                var st = stat()
-                let result = current.withCString { stat($0, &st) }
-
-                if result == 0 {
-                    // This component exists - verify it's a directory
-                    if (st.st_mode & S_IFMT) != S_IFDIR {
-                        throw .parentNotDirectory(path: current)
-                    }
-                    break
-                } else {
-                    // Stat failed - differentiate errors
-                    let e = errno
-                    switch e {
-                    case ENOENT:
-                        // Path doesn't exist - add to list and keep walking up
-                        componentsToCreate.append(current)
-                        current = parentDirectory(of: current)
-                    case EACCES, EPERM:
-                        throw .parentAccessDenied(path: current)
-                    case ENOTDIR:
-                        // A component in the path is not a directory
-                        throw .parentNotDirectory(path: current)
-                    default:
-                        throw .directoryCreationFailed(
-                            path: current,
-                            code: e,
-                            message: File.System.Write.Atomic.errorMessage(for: e)
-                        )
-                    }
-                }
-            }
-
-            // Create from deepest existing ancestor to target
-            for component in componentsToCreate.reversed() {
-                let rc = component.withCString { mkdir($0, mode) }
-
-                if rc != 0 {
-                    let e = errno
-                    // EEXIST is fine - another process may have created it
-                    if e == EEXIST {
-                        // Verify it's a directory
-                        var st = stat()
-                        if component.withCString({ stat($0, &st) }) == 0 {
-                            if (st.st_mode & S_IFMT) != S_IFDIR {
-                                throw .parentNotDirectory(path: component)
-                            }
-                        }
-                        continue
-                    }
-
-                    if e == EACCES || e == EPERM {
-                        throw .parentAccessDenied(path: component)
-                    }
-
-                    if e == ENOTDIR {
-                        throw .parentNotDirectory(path: component)
-                    }
-
-                    throw .directoryCreationFailed(
-                        path: component,
-                        code: e,
-                        message: File.System.Write.Atomic.errorMessage(for: e)
-                    )
-                }
-            }
-
-            // Final verification: ensure the target is a directory
-            var finalSt = stat()
-            if path.withCString({ stat($0, &finalSt) }) != 0 {
-                let e = errno
-                throw .directoryCreationFailed(
-                    path: path,
-                    code: e,
-                    message: File.System.Write.Atomic.errorMessage(for: e)
-                )
-            }
-
-            if (finalSt.st_mode & S_IFMT) != S_IFDIR {
-                throw .parentNotDirectory(path: path)
             }
         }
 
