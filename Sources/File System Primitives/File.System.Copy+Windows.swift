@@ -39,8 +39,8 @@
             }
 
             // Use CopyFileW for simple copy
-            // failIfExists: 0 means overwrite, non-zero means fail if exists
-            let failIfExists: WindowsBool = options.overwrite ? 0 : 1
+            // failIfExists: true means fail if destination exists
+            let failIfExists: Bool = !options.overwrite
 
             let success = source.string.withCString(encodedAs: UTF16.self) { wsrc in
                 destination.string.withCString(encodedAs: UTF16.self) { wdst in
@@ -48,7 +48,7 @@
                 }
             }
 
-            guard _ok(success) else {
+            guard success else {
                 throw _mapWindowsError(GetLastError(), source: source, destination: destination)
             }
         }
