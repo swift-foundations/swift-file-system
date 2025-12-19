@@ -8,6 +8,7 @@
 #ifndef CFileSystemShims_h
 #define CFileSystemShims_h
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __linux__
