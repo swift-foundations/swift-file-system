@@ -76,10 +76,15 @@
 
         /// Normalizes a Windows path.
         private static func normalizePath(_ path: String) -> String {
-            var result = path
-
-            // Convert forward slashes to backslashes
-            result = result.replacingOccurrences(of: "/", with: "\\")
+            // Convert forward slashes to backslashes manually (no Foundation)
+            var result = ""
+            for char in path {
+                if char == "/" {
+                    result.append("\\")
+                } else {
+                    result.append(char)
+                }
+            }
 
             // Remove trailing backslashes (except for root like "C:\")
             while result.count > 3 && result.hasSuffix("\\") {
@@ -140,13 +145,26 @@
             return "\(parent)\\\(baseName).atomic.\(random).tmp"
         }
 
-        /// Generates random hex string.
+        /// Counter for uniqueness within same tick.
+        private static var _counter: UInt32 = 0
+
+        /// Generates a unique hex string for temp file naming.
+        /// Uses process ID, tick count, and counter for uniqueness.
         private static func randomHex(_ byteCount: Int) -> String {
-            var bytes = [UInt8](repeating: 0, count: byteCount)
-            _ = withUnsafeMutablePointer(to: &bytes[0]) { ptr in
-                SystemFunction036(ptr, ULONG(byteCount))
+            let pid = GetCurrentProcessId()
+            let tick = GetTickCount64()
+            _counter &+= 1
+
+            // Build hex string from these values
+            var result = ""
+            let value = UInt64(pid) ^ tick ^ UInt64(_counter)
+            var remaining = value
+            for _ in 0..<min(byteCount * 2, 16) {
+                let nibble = remaining & 0xF
+                result.append(Character(Unicode.Scalar(nibble < 10 ? 48 + nibble : 87 + nibble)!))
+                remaining >>= 4
             }
-            return bytes.hex.encoded()
+            return result
         }
     }
 
@@ -184,7 +202,7 @@
                 )
             }
 
-            if handle == INVALID_HANDLE_VALUE {
+            guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
                 // Can't read metadata, but file exists
                 return (true, nil)
             }
@@ -208,7 +226,7 @@
                 )
             }
 
-            if handle == INVALID_HANDLE_VALUE {
+            guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
                 let err = GetLastError()
                 throw .tempFileCreationFailed(
                     directory: parentDirectory(of: path),
@@ -230,7 +248,7 @@
 
             var written = 0
 
-            bytes.withUnsafeBufferPointer { buffer throws(File.System.Write.Atomic.Error) in
+            try bytes.withUnsafeBufferPointer { buffer throws(File.System.Write.Atomic.Error) in
                 guard let base = buffer.baseAddress else {
                     throw .writeFailed(
                         bytesWritten: 0,
@@ -300,7 +318,7 @@
 
         /// Deletes a file.
         private static func deleteFile(_ path: String) -> Bool {
-            return withWideString(path) { DeleteFileW($0) } != 0
+            return withWideString(path) { DeleteFileW($0) }
         }
     }
 
@@ -330,7 +348,7 @@
 
             let success = withWideString(tempPath) { wTemp in
                 withWideString(destPath) { wDest in
-                    MoveFileExW(wTemp, wDest, flags) != 0
+                    MoveFileExW(wTemp, wDest, flags)
                 }
             }
 
@@ -370,7 +388,7 @@
                 )
             }
 
-            if tempHandle == INVALID_HANDLE_VALUE {
+            guard let tempHandle = tempHandle, tempHandle != INVALID_HANDLE_VALUE else {
                 return false
             }
             defer { _ = CloseHandle(tempHandle) }
@@ -433,7 +451,7 @@
                 )
             }
 
-            if handle == INVALID_HANDLE_VALUE {
+            guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
                 let err = GetLastError()
                 throw .directorySyncFailed(
                     path: path,

@@ -8,6 +8,7 @@
 #if os(Windows)
 
     public import WinSDK
+    @_spi(Internal) import StandardTime
 
     extension File.System.Stat {
         /// Gets file info using Windows APIs.
@@ -52,7 +53,7 @@
                 )
             }
 
-            guard handle != INVALID_HANDLE_VALUE else {
+            guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
                 return (0, 0)
             }
             defer { CloseHandle(handle) }
@@ -129,14 +130,18 @@
             )
         }
 
-        /// Converts Windows FILETIME to Unix timestamp.
+        /// Converts Windows FILETIME to Time.
+        ///
+        /// FILETIME is 100-nanosecond intervals since 1601-01-01.
         @usableFromInline
-        internal static func _fileTimeToUnix(_ ft: FILETIME) -> Int64 {
-            let ticks = Int64(ft.dwHighDateTime) << 32 | Int64(ft.dwLowDateTime)
-            // FILETIME is 100-nanosecond intervals since Jan 1, 1601
-            // Unix epoch is Jan 1, 1970
-            // Difference is 11644473600 seconds
-            return (ticks / 10_000_000) - 11_644_473_600
+        internal static func _fileTimeToUnix(_ ft: FILETIME) -> Time {
+            // FILETIME is 100-nanosecond intervals since January 1, 1601
+            // Unix epoch is January 1, 1970
+            let intervals = Int64(ft.dwHighDateTime) << 32 | Int64(ft.dwLowDateTime)
+            let unixIntervals = intervals - 116_444_736_000_000_000  // Difference between 1601 and 1970 in 100ns
+            let seconds = Int(unixIntervals / 10_000_000)
+            let nanoseconds = Int((unixIntervals % 10_000_000) * 100)
+            return Time(__unchecked: (), secondsSinceEpoch: seconds, nanoseconds: nanoseconds)
         }
 
         /// Maps Windows error to stat error.
