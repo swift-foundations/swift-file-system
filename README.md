@@ -422,7 +422,7 @@ Your results will vary based on hardware, filesystem, and workload characteristi
 
 ### Windows Status
 
-Windows support is work in progress. The library code is designed for Windows (with `CopyFileW`, Windows path handling, etc.), but builds are currently blocked by a dependency ([swift-standards](https://github.com/swift-standards/swift-standards)) using filenames with `<` and `>` characters that NTFS does not support.
+Windows support is work in progress. Core dependencies compile on Windows, but builds are currently blocked by [swift-standards](https://github.com/swift-standards/swift-standards) using filenames with `<` and `>` characters that NTFS does not support. Contributions welcome.
 
 ## Non-goals
 
