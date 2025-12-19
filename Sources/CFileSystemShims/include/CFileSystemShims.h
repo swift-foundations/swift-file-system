@@ -20,6 +20,15 @@ int atomicfilewrite_renameat2_noreplace(
     int32_t *out_errno
 );
 
+/// Wrapper for getrandom syscall.
+/// Fills buffer with random bytes from the kernel CSPRNG.
+/// Returns number of bytes read on success, -1 on failure with errno set.
+long atomicfilewrite_getrandom(
+    void *buffer,
+    size_t length,
+    unsigned int flags
+);
+
 #endif // __linux__
 
 #endif // CFileSystemShims_h

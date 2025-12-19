@@ -53,4 +53,31 @@ int atomicfilewrite_renameat2_noreplace(
 #endif
 }
 
+// SYS_getrandom syscall number varies by architecture
+#ifndef SYS_getrandom
+#if defined(__x86_64__)
+#define SYS_getrandom 318
+#elif defined(__aarch64__)
+#define SYS_getrandom 278
+#elif defined(__arm__)
+#define SYS_getrandom 384
+#else
+#define SYS_getrandom -1
+#endif
+#endif
+
+long atomicfilewrite_getrandom(
+    void *buffer,
+    size_t length,
+    unsigned int flags
+) {
+#if SYS_getrandom > 0
+    return syscall(SYS_getrandom, buffer, length, flags);
+#else
+    // Syscall not available on this architecture
+    errno = ENOSYS;
+    return -1;
+#endif
+}
+
 #endif // __linux__

@@ -194,31 +194,21 @@
                     // arc4random_buf never fails
                     arc4random_buf(base, length)
 
-                #elseif canImport(Glibc)
-                    // getrandom can return partial reads or fail; loop until filled
+                #elseif canImport(Glibc) || canImport(Musl)
+                    // Use C shim wrapper for getrandom syscall
                     var filled = 0
                     while filled < length {
-                        let result = getrandom(base.advanced(by: filled), length - filled, 0)
+                        let result = atomicfilewrite_getrandom(
+                            base.advanced(by: filled),
+                            length - filled,
+                            0
+                        )
                         if result > 0 {
-                            filled += result
+                            filled += Int(result)
                         } else if result == -1 {
                             let e = errno
                             if e == EINTR { continue }  // Retry on interrupt
                             // CSPRNG failure is fatal - temp file creation must not proceed
-                            preconditionFailure("getrandom failed: \(e)")
-                        }
-                    }
-
-                #elseif canImport(Musl)
-                    // Musl also has getrandom
-                    var filled = 0
-                    while filled < length {
-                        let result = getrandom(base.advanced(by: filled), length - filled, 0)
-                        if result > 0 {
-                            filled += result
-                        } else if result == -1 {
-                            let e = errno
-                            if e == EINTR { continue }
                             preconditionFailure("getrandom failed: \(e)")
                         }
                     }

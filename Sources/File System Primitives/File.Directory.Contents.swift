@@ -102,13 +102,13 @@ extension File.Directory.Contents {
                     // Linux/Glibc - trust d_type when available, fallback to lstat only for DT_UNKNOWN
                     // This avoids N syscalls for N files, massive perf improvement for large directories
                     let dtype = Int32(entry.pointee.d_type)
-                    if dtype != DT_UNKNOWN {
+                    if dtype != Int32(DT_UNKNOWN) {
                         switch dtype {
-                        case DT_REG:
+                        case Int32(DT_REG):
                             entryType = .file
-                        case DT_DIR:
+                        case Int32(DT_DIR):
                             entryType = .directory
-                        case DT_LNK:
+                        case Int32(DT_LNK):
                             entryType = .symbolicLink
                         default:
                             entryType = .other
