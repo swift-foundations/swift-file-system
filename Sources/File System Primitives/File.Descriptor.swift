@@ -350,3 +350,46 @@ internal struct UnsafeSendable<T>: @unchecked Sendable {
         self.value = value
     }
 }
+
+// MARK: - Binary.Serializable
+
+import Binary
+
+extension File.Descriptor.Options: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(contentsOf: value.rawValue.bytes())
+    }
+}
+
+extension File.Descriptor.Mode: RawRepresentable {
+    public var rawValue: UInt8 {
+        switch self {
+        case .read: return 0
+        case .write: return 1
+        case .readWrite: return 2
+        }
+    }
+
+    public init?(rawValue: UInt8) {
+        switch rawValue {
+        case 0: self = .read
+        case 1: self = .write
+        case 2: self = .readWrite
+        default: return nil
+        }
+    }
+}
+
+extension File.Descriptor.Mode: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(value.rawValue)
+    }
+}

@@ -149,3 +149,17 @@ extension File.System.Metadata.Permissions.Error: CustomStringConvertible {
         }
     }
 }
+
+// MARK: - Binary.Serializable
+
+import Binary
+
+extension File.System.Metadata.Permissions: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(contentsOf: value.rawValue.bytes())
+    }
+}

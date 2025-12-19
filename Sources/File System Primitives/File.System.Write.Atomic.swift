@@ -100,18 +100,18 @@ extension File.System.Write {
         // MARK: - Error
 
         public enum Error: Swift.Error, Equatable, Sendable {
-            case parentNotFound(path: String)
-            case parentNotDirectory(path: String)
-            case parentAccessDenied(path: String)
-            case destinationStatFailed(path: String, errno: Int32, message: String)
-            case tempFileCreationFailed(directory: String, errno: Int32, message: String)
+            case parentNotFound(path: File.Path)
+            case parentNotDirectory(path: File.Path)
+            case parentAccessDenied(path: File.Path)
+            case destinationStatFailed(path: File.Path, errno: Int32, message: String)
+            case tempFileCreationFailed(directory: File.Path, errno: Int32, message: String)
             case writeFailed(bytesWritten: Int, bytesExpected: Int, errno: Int32, message: String)
             case syncFailed(errno: Int32, message: String)
             case closeFailed(errno: Int32, message: String)
             case metadataPreservationFailed(operation: String, errno: Int32, message: String)
-            case renameFailed(from: String, to: String, errno: Int32, message: String)
-            case destinationExists(path: String)
-            case directorySyncFailed(path: String, errno: Int32, message: String)
+            case renameFailed(from: File.Path, to: File.Path, errno: Int32, message: String)
+            case destinationExists(path: File.Path)
+            case directorySyncFailed(path: File.Path, errno: Int32, message: String)
         }
 
         // MARK: - Core API
@@ -217,5 +217,65 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
         case .directorySyncFailed(let path, let errno, let message):
             return "Directory sync failed '\(path)': \(message) (errno=\(errno))"
         }
+    }
+}
+
+// MARK: - Binary.Serializable
+
+import Binary
+
+extension File.System.Write.Atomic.Strategy: RawRepresentable {
+    public var rawValue: UInt8 {
+        switch self {
+        case .replaceExisting: return 0
+        case .noClobber: return 1
+        }
+    }
+
+    public init?(rawValue: UInt8) {
+        switch rawValue {
+        case 0: self = .replaceExisting
+        case 1: self = .noClobber
+        default: return nil
+        }
+    }
+}
+
+extension File.System.Write.Atomic.Strategy: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(value.rawValue)
+    }
+}
+
+extension File.System.Write.Atomic.Durability: RawRepresentable {
+    public var rawValue: UInt8 {
+        switch self {
+        case .full: return 0
+        case .dataOnly: return 1
+        case .none: return 2
+        }
+    }
+
+    public init?(rawValue: UInt8) {
+        switch rawValue {
+        case 0: self = .full
+        case 1: self = .dataOnly
+        case 2: self = .none
+        default: return nil
+        }
+    }
+}
+
+extension File.System.Write.Atomic.Durability: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(value.rawValue)
     }
 }

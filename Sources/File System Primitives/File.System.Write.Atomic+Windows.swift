@@ -4,6 +4,7 @@
 #if os(Windows)
 
     import WinSDK
+    import INCITS_4_1986
     import RFC_4648
 
     // MARK: - Windows Implementation
@@ -127,14 +128,15 @@
 
             if attrs == INVALID_FILE_ATTRIBUTES {
                 let err = GetLastError()
+                let path = File.Path(__unchecked: (), dir)
                 if err == _dword(ERROR_ACCESS_DENIED) {
-                    throw .parentAccessDenied(path: dir)
+                    throw .parentAccessDenied(path: path)
                 }
-                throw .parentNotFound(path: dir)
+                throw .parentNotFound(path: path)
             }
 
             if (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
-                throw .parentNotDirectory(path: dir)
+                throw .parentNotDirectory(path: File.Path(__unchecked: (), dir))
             }
         }
 
@@ -155,13 +157,16 @@
             let tick = GetTickCount64()
             _counter &+= 1
 
-            // Build hex string from these values
+            // Build hex string from these values using INCITS_4_1986 ASCII constants
+            let digit0 = UInt32(UInt8.ascii.`0`)
+            let letterA = UInt32(UInt8.ascii.a)
+
             var result = ""
             let value = UInt64(pid) ^ tick ^ UInt64(_counter)
             var remaining = value
             for _ in 0..<min(byteCount * 2, 16) {
-                let nibble32 = UInt32(remaining & 0xF)
-                let code = nibble32 < 10 ? (48 + nibble32) : (87 + nibble32)
+                let nibble = UInt32(remaining & 0xF)
+                let code = nibble < 10 ? (digit0 + nibble) : (letterA - 10 + nibble)
                 result.append(Character(Unicode.Scalar(code)!))
                 remaining >>= 4
             }
@@ -230,7 +235,7 @@
             guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
                 let err = GetLastError()
                 throw .tempFileCreationFailed(
-                    directory: parentDirectory(of: path),
+                    directory: File.Path(__unchecked: (), parentDirectory(of: path)),
                     errno: Int32(err),
                     message: "CreateFileW failed with error \(err)"
                 )
@@ -358,12 +363,12 @@
 
                 // Check for destination exists in noClobber mode
                 if !replace && err == _dword(ERROR_ALREADY_EXISTS) {
-                    throw .destinationExists(path: destPath)
+                    throw .destinationExists(path: File.Path(__unchecked: (), destPath))
                 }
 
                 throw .renameFailed(
-                    from: tempPath,
-                    to: destPath,
+                    from: File.Path(__unchecked: (), tempPath),
+                    to: File.Path(__unchecked: (), destPath),
                     errno: Int32(err),
                     message: "MoveFileExW failed with error \(err)"
                 )
@@ -457,7 +462,7 @@
             guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
                 let err = GetLastError()
                 throw .directorySyncFailed(
-                    path: path,
+                    path: File.Path(__unchecked: (), path),
                     errno: Int32(err),
                     message: "CreateFileW(directory) failed with error \(err)"
                 )
@@ -467,7 +472,7 @@
             if !_ok(FlushFileBuffers(handle)) {
                 let err = GetLastError()
                 throw .directorySyncFailed(
-                    path: path,
+                    path: File.Path(__unchecked: (), path),
                     errno: Int32(err),
                     message: "FlushFileBuffers(directory) failed with error \(err)"
                 )

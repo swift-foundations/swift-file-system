@@ -458,3 +458,36 @@ extension File.Handle.Error: CustomStringConvertible {
         }
     }
 }
+
+// MARK: - Binary.Serializable
+
+import Binary
+
+extension File.Handle.SeekOrigin: RawRepresentable {
+    public var rawValue: UInt8 {
+        switch self {
+        case .start: return 0
+        case .current: return 1
+        case .end: return 2
+        }
+    }
+
+    public init?(rawValue: UInt8) {
+        switch rawValue {
+        case 0: self = .start
+        case 1: self = .current
+        case 2: self = .end
+        default: return nil
+        }
+    }
+}
+
+extension File.Handle.SeekOrigin: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(value.rawValue)
+    }
+}

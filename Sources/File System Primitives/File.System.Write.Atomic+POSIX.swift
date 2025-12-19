@@ -165,14 +165,15 @@
 
             if rc != 0 {
                 let e = errno
+                let path = File.Path(__unchecked: (), dir)
                 if e == EACCES {
-                    throw .parentAccessDenied(path: dir)
+                    throw .parentAccessDenied(path: path)
                 }
-                throw .parentNotFound(path: dir)
+                throw .parentNotFound(path: path)
             }
 
             if (st.st_mode & S_IFMT) != S_IFDIR {
-                throw .parentNotDirectory(path: dir)
+                throw .parentNotDirectory(path: File.Path(__unchecked: (), dir))
             }
         }
 
@@ -214,7 +215,7 @@
             }
 
             throw .destinationStatFailed(
-                path: path,
+                path: File.Path(__unchecked: (), path),
                 errno: e,
                 message: File.System.Write.Atomic.errorMessage(for: e)
             )
@@ -232,7 +233,7 @@
             if fd < 0 {
                 let e = errno
                 throw .tempFileCreationFailed(
-                    directory: parentDirectory(of: path),
+                    directory: File.Path(__unchecked: (), parentDirectory(of: path)),
                     errno: e,
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )
@@ -412,8 +413,8 @@
             if rc != 0 {
                 let e = errno
                 throw .renameFailed(
-                    from: from,
-                    to: to,
+                    from: File.Path(__unchecked: (), from),
+                    to: File.Path(__unchecked: (), to),
                     errno: e,
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )
@@ -442,7 +443,7 @@
             let exists = to.withCString { lstat($0, &st) } == 0
 
             if exists {
-                throw .destinationExists(path: to)
+                throw .destinationExists(path: File.Path(__unchecked: (), to))
             }
 
             try atomicRename(from: from, to: to)
@@ -473,13 +474,13 @@
                 }
 
                 if outErrno == EEXIST {
-                    return .failure(.destinationExists(path: to))
+                    return .failure(.destinationExists(path: File.Path(__unchecked: (), to)))
                 }
 
                 return .failure(
                     .renameFailed(
-                        from: from,
-                        to: to,
+                        from: File.Path(__unchecked: (), from),
+                        to: File.Path(__unchecked: (), to),
                         errno: outErrno,
                         message: File.System.Write.Atomic.errorMessage(for: outErrno)
                     )
@@ -499,7 +500,7 @@
             if fd < 0 {
                 let e = errno
                 throw .directorySyncFailed(
-                    path: path,
+                    path: File.Path(__unchecked: (), path),
                     errno: e,
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )
@@ -510,7 +511,7 @@
             if fsync(fd) != 0 {
                 let e = errno
                 throw .directorySyncFailed(
-                    path: path,
+                    path: File.Path(__unchecked: (), path),
                     errno: e,
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )

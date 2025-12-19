@@ -116,3 +116,18 @@ extension File.System.Metadata.Ownership.Error: CustomStringConvertible {
         }
     }
 }
+
+// MARK: - Binary.Serializable
+
+import Binary
+
+extension File.System.Metadata.Ownership: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(contentsOf: value.uid.bytes())
+        buffer.append(contentsOf: value.gid.bytes())
+    }
+}

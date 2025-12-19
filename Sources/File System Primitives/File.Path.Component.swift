@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
+public import INCITS_4_1986
 import SystemPackage
 
 extension File.Path {
@@ -34,6 +35,9 @@ extension File.Path {
             guard !string.contains("/") else {
                 throw .containsPathSeparator
             }
+            if string.utf8.contains(where: \.ascii.isControl) {
+                throw .containsControlCharacters
+            }
             guard let component = FilePath.Component(string) else {
                 throw .invalid
             }
@@ -51,6 +55,8 @@ extension File.Path.Component {
         case empty
         /// The component contains a path separator.
         case containsPathSeparator
+        /// The component contains control characters.
+        case containsControlCharacters
         /// The component is invalid.
         case invalid
     }
@@ -127,6 +133,8 @@ extension File.Path.Component.Error: CustomStringConvertible {
             return "Component is empty"
         case .containsPathSeparator:
             return "Component contains path separator"
+        case .containsControlCharacters:
+            return "Component contains control characters"
         case .invalid:
             return "Component is invalid"
         }

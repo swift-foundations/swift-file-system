@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
+import Binary
+
 extension File.Handle {
     /// Options for opening a file handle.
     public struct Options: OptionSet, Sendable {
@@ -28,5 +30,17 @@ extension File.Handle {
 
         /// Close the file descriptor on exec.
         public static let closeOnExec = Options(rawValue: 1 << 4)
+    }
+}
+
+// MARK: - Binary.Serializable
+
+extension File.Handle.Options: Binary.Serializable {
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(contentsOf: value.rawValue.bytes())
     }
 }
