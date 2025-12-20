@@ -264,21 +264,24 @@ extension File.System.Write.Atomic.Test.Unit {
 
     // MARK: - Error descriptions
 
-    @Test("parentNotFound error description")
-    func parentNotFoundErrorDescription() {
-        let error = File.System.Write.Atomic.Error.parentNotFound(path: "/nonexistent/parent")
-        #expect(error.description.contains("Parent directory not found"))
+    @Test("parent missing error description")
+    func parentMissingErrorDescription() throws {
+        let parentError = File.System.Parent.Check.Error.missing(path: try File.Path("/nonexistent/parent"))
+        let error = File.System.Write.Atomic.Error.parent(parentError)
+        #expect(error.description.contains("Parent directory"))
     }
 
-    @Test("parentAccessDenied error description")
-    func parentAccessDeniedErrorDescription() {
-        let error = File.System.Write.Atomic.Error.parentAccessDenied(path: "/root")
+    @Test("parent accessDenied error description")
+    func parentAccessDeniedErrorDescription() throws {
+        let parentError = File.System.Parent.Check.Error.accessDenied(path: try File.Path("/root"))
+        let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("Access denied"))
     }
 
-    @Test("parentNotDirectory error description")
-    func parentNotDirectoryErrorDescription() {
-        let error = File.System.Write.Atomic.Error.parentNotDirectory(path: "/tmp/file")
+    @Test("parent notDirectory error description")
+    func parentNotDirectoryErrorDescription() throws {
+        let parentError = File.System.Parent.Check.Error.notDirectory(path: try File.Path("/tmp/file"))
+        let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("not a directory"))
     }
 
@@ -286,7 +289,7 @@ extension File.System.Write.Atomic.Test.Unit {
     func tempFileCreationFailedErrorDescription() {
         let error = File.System.Write.Atomic.Error.tempFileCreationFailed(
             directory: "/tmp",
-            errno: 28,
+            code: .posix(28),
             message: "No space left on device"
         )
         #expect(error.description.contains("temp file"))
@@ -298,7 +301,7 @@ extension File.System.Write.Atomic.Test.Unit {
         let error = File.System.Write.Atomic.Error.writeFailed(
             bytesWritten: 100,
             bytesExpected: 200,
-            errno: 28,
+            code: .posix(28),
             message: "No space left on device"
         )
         #expect(error.description.contains("Write failed"))
@@ -308,7 +311,7 @@ extension File.System.Write.Atomic.Test.Unit {
 
     @Test("syncFailed error description")
     func syncFailedErrorDescription() {
-        let error = File.System.Write.Atomic.Error.syncFailed(errno: 5, message: "I/O error")
+        let error = File.System.Write.Atomic.Error.syncFailed(code: .posix(5), message: "I/O error")
         #expect(error.description.contains("Sync failed"))
         #expect(error.description.contains("I/O error"))
     }
@@ -316,7 +319,7 @@ extension File.System.Write.Atomic.Test.Unit {
     @Test("closeFailed error description")
     func closeFailedErrorDescription() {
         let error = File.System.Write.Atomic.Error.closeFailed(
-            errno: 9,
+            code: .posix(9),
             message: "Bad file descriptor"
         )
         #expect(error.description.contains("Close failed"))
@@ -327,7 +330,7 @@ extension File.System.Write.Atomic.Test.Unit {
     func metadataPreservationFailedErrorDescription() {
         let error = File.System.Write.Atomic.Error.metadataPreservationFailed(
             operation: "chown",
-            errno: 1,
+            code: .posix(1),
             message: "Operation not permitted"
         )
         #expect(error.description.contains("Metadata preservation failed"))
@@ -346,7 +349,7 @@ extension File.System.Write.Atomic.Test.Unit {
         let error = File.System.Write.Atomic.Error.renameFailed(
             from: "/tmp/src",
             to: "/tmp/dst",
-            errno: 18,
+            code: .posix(18),
             message: "Cross-device link"
         )
         #expect(error.description.contains("Rename failed"))
@@ -358,7 +361,7 @@ extension File.System.Write.Atomic.Test.Unit {
     func directorySyncFailedErrorDescription() {
         let error = File.System.Write.Atomic.Error.directorySyncFailed(
             path: "/tmp",
-            errno: 5,
+            code: .posix(5),
             message: "I/O error"
         )
         #expect(error.description.contains("Directory sync failed"))
@@ -381,7 +384,7 @@ extension File.System.Write.Atomic.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_syswrite_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(tempDir, appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin")
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

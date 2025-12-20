@@ -265,12 +265,13 @@ extension File.System.Write.Streaming.Test.Unit {
 
     // MARK: - Error Descriptions
 
-    @Test("parentNotFound error description")
-    func parentNotFoundErrorDescription() throws {
-        let error = File.System.Write.Streaming.Error.parentNotFound(
+    @Test("parent error description")
+    func parentErrorDescription() throws {
+        let parentError = File.System.Parent.Check.Error.missing(
             path: try File.Path("/nonexistent/parent")
         )
-        #expect(error.description.contains("Parent directory not found"))
+        let error = File.System.Write.Streaming.Error.parent(parentError)
+        #expect(error.description.contains("Parent directory"))
     }
 
     @Test("destinationExists error description")
@@ -305,16 +306,16 @@ extension File.System.Write.Streaming.Test.Unit {
         }
     }
 
-    @Test("DirectOptions default values")
+    @Test("Direct.Options default values")
     func directOptionsDefaults() {
-        let options = File.System.Write.Streaming.DirectOptions()
+        let options = File.System.Write.Streaming.Direct.Options()
         #expect(options.strategy == .truncate)
         #expect(options.durability == .full)
     }
 
-    @Test("DirectOptions custom values")
+    @Test("Direct.Options custom values")
     func directOptionsCustom() {
-        let options = File.System.Write.Streaming.DirectOptions(
+        let options = File.System.Write.Streaming.Direct.Options(
             strategy: .create,
             durability: .dataOnly
         )
@@ -322,16 +323,16 @@ extension File.System.Write.Streaming.Test.Unit {
         #expect(options.durability == .dataOnly)
     }
 
-    @Test("AtomicOptions default values")
+    @Test("Atomic.Options default values")
     func atomicOptionsDefaults() {
-        let options = File.System.Write.Streaming.AtomicOptions()
+        let options = File.System.Write.Streaming.Atomic.Options()
         #expect(options.strategy == .replaceExisting)
         #expect(options.durability == .full)
     }
 
-    @Test("AtomicOptions custom values")
+    @Test("Atomic.Options custom values")
     func atomicOptionsCustom() {
-        let options = File.System.Write.Streaming.AtomicOptions(
+        let options = File.System.Write.Streaming.Atomic.Options(
             strategy: .noClobber,
             durability: .dataOnly
         )
@@ -376,7 +377,7 @@ extension File.System.Write.Streaming.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_streaming_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(tempDir, appending: "perf_streaming_\(Int.random(in: 0..<Int.max)).bin")
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -396,7 +397,7 @@ extension File.System.Write.Streaming.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(tempDir, appending: "perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin")
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -416,7 +417,7 @@ extension File.System.Write.Streaming.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(tempDir, appending: "perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin")
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

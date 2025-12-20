@@ -7,14 +7,8 @@
 
 extension File.System.Write.Streaming {
     public enum Error: Swift.Error, Equatable, Sendable {
-        case parentNotFound(path: File.Path)
-        case parentNotDirectory(path: File.Path)
-        case parentAccessDenied(path: File.Path)
-        /// Parent directory creation failed when createIntermediates was requested.
-        ///
-        /// The underlying error preserves the exact reason for failure (permission denied,
-        /// path component is a file, read-only filesystem, invalid name, etc.).
-        case parentCreationFailed(path: File.Path, underlying: File.System.Create.Directory.Error)
+        /// Parent directory verification or creation failed.
+        case parent(File.System.Parent.Check.Error)
         case fileCreationFailed(path: File.Path, errno: Int32, message: String)
         /// Write operation failed.
         case writeFailed(path: File.Path, bytesWritten: Int, errno: Int32, message: String)
@@ -45,14 +39,8 @@ extension File.System.Write.Streaming {
 extension File.System.Write.Streaming.Error: CustomStringConvertible {
     public var description: String {
         switch self {
-        case .parentNotFound(let path):
-            return "Parent directory not found: \(path)"
-        case .parentNotDirectory(let path):
-            return "Parent path is not a directory: \(path)"
-        case .parentAccessDenied(let path):
-            return "Access denied to parent directory: \(path)"
-        case .parentCreationFailed(let path, let underlying):
-            return "Failed to create parent directory '\(path)': \(underlying)"
+        case .parent(let error):
+            return "Parent directory error: \(error)"
         case .fileCreationFailed(let path, let errno, let message):
             return "Failed to create file '\(path)': \(message) (errno=\(errno))"
         case .writeFailed(let path, let written, let errno, let message):

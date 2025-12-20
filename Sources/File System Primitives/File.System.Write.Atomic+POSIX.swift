@@ -293,42 +293,10 @@
             _ dir: String,
             createIntermediates: Bool
         ) throws(File.System.Write.Atomic.Error) {
-            var st = stat()
-            let rc = dir.withCString { stat($0, &st) }
-
-            if rc != 0 {
-                let e = errno
-                let path = File.Path(__unchecked: (), dir)
-                switch e {
-                case EACCES:
-                    throw .parentAccessDenied(path: path)
-                case ENOTDIR:
-                    // A component of the path prefix is not a directory
-                    throw .parentNotDirectory(path: path)
-                case ENOENT, ELOOP:
-                    // ENOENT: path doesn't exist
-                    // ELOOP: too many symlinks (treat as not found)
-                    if createIntermediates {
-                        // Try to create the parent directory with intermediates
-                        do {
-                            try File.System.Create.Directory.create(
-                                at: path,
-                                options: .init(createIntermediates: true)
-                            )
-                            return  // Successfully created
-                        } catch let createError {
-                            // Preserve the underlying error for proper diagnostics
-                            throw .parentCreationFailed(path: path, underlying: createError)
-                        }
-                    }
-                    throw .parentNotFound(path: path)
-                default:
-                    throw .parentNotFound(path: path)
-                }
-            }
-
-            if (st.st_mode & S_IFMT) != S_IFDIR {
-                throw .parentNotDirectory(path: File.Path(__unchecked: (), dir))
+            do {
+                try File.System.Parent.Check.verify(dir, createIntermediates: createIntermediates)
+            } catch let e {
+                throw .parent(e)
             }
         }
 
