@@ -85,31 +85,35 @@ extension File.Path {
         guard parent != _path else { return nil }
         return File.Path(__unchecked: (), parent)
     }
+}
 
-    /// Returns a new path with the given component appended.
+// MARK: - Appending (Canonical Inits)
+
+extension File.Path {
+    /// Creates a new path by appending a component to a base path.
     @inlinable
-    public func appending(_ component: Component) -> File.Path {
-        var copy = _path
+    public init(_ base: File.Path, appending component: Component) {
+        var copy = base._path
         copy.append(component._component)
-        return File.Path(__unchecked: (), copy)
+        self.init(__unchecked: (), copy)
     }
 
-    /// Returns a new path with the given path appended.
+    /// Creates a new path by appending another path to a base path.
     @inlinable
-    public func appending(_ other: File.Path) -> File.Path {
-        var copy = _path
+    public init(_ base: File.Path, appending other: File.Path) {
+        var copy = base._path
         for component in other._path.components {
             copy.append(component)
         }
-        return File.Path(__unchecked: (), copy)
+        self.init(__unchecked: (), copy)
     }
 
-    /// Returns a new path with the given string component appended.
+    /// Creates a new path by appending a string component to a base path.
     @inlinable
-    public func appending(_ string: String) -> File.Path {
-        var copy = _path
+    public init(_ base: File.Path, appending string: String) {
+        var copy = base._path
         copy.append(string)
-        return File.Path(__unchecked: (), copy)
+        self.init(__unchecked: (), copy)
     }
 }
 
@@ -171,23 +175,6 @@ extension File.Path {
     }
 }
 
-// MARK: - CustomStringConvertible
-
-extension File.Path: CustomStringConvertible {
-    @inlinable
-    public var description: String {
-        string
-    }
-}
-
-// MARK: - CustomDebugStringConvertible
-
-extension File.Path: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "File.Path(\(string.debugDescription))"
-    }
-}
-
 // MARK: - ExpressibleByStringLiteral
 
 extension File.Path: ExpressibleByStringLiteral {
@@ -216,7 +203,7 @@ extension File.Path {
     /// ```
     @inlinable
     public static func / (lhs: File.Path, rhs: String) -> File.Path {
-        lhs.appending(rhs)
+        File.Path(lhs, appending: rhs)
     }
 
     /// Appends a validated component to a path.
@@ -227,7 +214,7 @@ extension File.Path {
     /// ```
     @inlinable
     public static func / (lhs: File.Path, rhs: Component) -> File.Path {
-        lhs.appending(rhs)
+        File.Path(lhs, appending: rhs)
     }
 
     /// Appends a path to a path.
@@ -239,6 +226,6 @@ extension File.Path {
     /// ```
     @inlinable
     public static func / (lhs: File.Path, rhs: File.Path) -> File.Path {
-        lhs.appending(rhs)
+        File.Path(lhs, appending: rhs)
     }
 }

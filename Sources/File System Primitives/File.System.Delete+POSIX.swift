@@ -61,7 +61,7 @@
                 }
 
                 // Construct full path using proper path composition
-                let childPath = path.appending(name)
+                let childPath = File.Path(path, appending: name)
 
                 // Stat to determine type
                 var childStat = stat()

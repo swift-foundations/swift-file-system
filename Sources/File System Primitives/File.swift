@@ -38,31 +38,4 @@ public struct File: Hashable, Sendable {
     public init(_ path: File.Path) {
         self.path = path
     }
-
-//    /// Creates a file from a string literal.
-//    ///
-//    /// - Parameter value: The path string literal.
-//    public init(stringLiteral value: String) {
-//        do {
-//            self.path = try File.Path(value)
-//        } catch {
-//            fatalError("Invalid path literal: \(error)")
-//        }
-//    }
-}
-
-// MARK: - CustomStringConvertible
-
-extension File: CustomStringConvertible {
-    public var description: String {
-        path.string
-    }
-}
-
-// MARK: - CustomDebugStringConvertible
-
-extension File: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "File(\(path.string.debugDescription))"
-    }
 }

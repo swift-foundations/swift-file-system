@@ -83,7 +83,7 @@ extension File.Directory.Contents {
                 }
 
                 // Build full path using proper path composition
-                let entryPath = path.appending(name)
+                let entryPath = File.Path(path, appending: name)
 
                 // Determine type
                 let entryType: File.Directory.Entry.`Type`
@@ -203,7 +203,7 @@ extension File.Directory.Contents {
                 }
 
                 // Build full path using proper path composition
-                let entryPath = path.appending(name)
+                let entryPath = File.Path(path, appending: name)
 
                 // Determine type
                 let entryType: File.Directory.Entry.`Type`

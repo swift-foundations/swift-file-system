@@ -70,7 +70,7 @@
                 }
 
                 // Construct full path using proper path composition
-                let childPath = path.appending(name)
+                let childPath = File.Path(path, appending: name)
 
                 let isChildDir = (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0
 

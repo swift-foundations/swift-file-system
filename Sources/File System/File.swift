@@ -402,3 +402,20 @@ extension File {
         lhs.appending(rhs)
     }
 }
+
+// MARK: - CustomStringConvertible
+
+extension File: CustomStringConvertible {
+    public var description: String {
+        path.string
+    }
+}
+
+// MARK: - CustomDebugStringConvertible
+
+extension File: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "File(\(path.string.debugDescription))"
+    }
+}
+

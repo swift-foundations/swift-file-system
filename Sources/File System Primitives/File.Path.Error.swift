@@ -18,16 +18,3 @@ extension File.Path {
         case containsControlCharacters
     }
 }
-
-// MARK: - CustomStringConvertible
-
-extension File.Path.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .empty:
-            return "Path is empty"
-        case .containsControlCharacters:
-            return "Path contains control characters"
-        }
-    }
-}

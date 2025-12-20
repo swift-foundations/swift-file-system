@@ -90,23 +90,6 @@ extension File.Path.Component {
     }
 }
 
-// MARK: - CustomStringConvertible
-
-extension File.Path.Component: CustomStringConvertible {
-    @inlinable
-    public var description: String {
-        string
-    }
-}
-
-// MARK: - CustomDebugStringConvertible
-
-extension File.Path.Component: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "File.Path.Component(\(string.debugDescription))"
-    }
-}
-
 // MARK: - ExpressibleByStringLiteral
 
 extension File.Path.Component: ExpressibleByStringLiteral {
@@ -120,23 +103,6 @@ extension File.Path.Component: ExpressibleByStringLiteral {
             try self.init(value)
         } catch {
             fatalError("Invalid component literal: \(error)")
-        }
-    }
-}
-
-// MARK: - CustomStringConvertible for Error
-
-extension File.Path.Component.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .empty:
-            return "Component is empty"
-        case .containsPathSeparator:
-            return "Component contains path separator"
-        case .containsControlCharacters:
-            return "Component contains control characters"
-        case .invalid:
-            return "Component is invalid"
         }
     }
 }

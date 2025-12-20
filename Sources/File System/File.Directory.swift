@@ -306,3 +306,20 @@ extension File.Directory {
         lhs.appending(rhs)
     }
 }
+
+// MARK: - CustomStringConvertible
+
+extension File.Directory: CustomStringConvertible {
+    public var description: String {
+        path.string
+    }
+}
+
+// MARK: - CustomDebugStringConvertible
+
+extension File.Directory: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "File.Directory(\(path.string.debugDescription))"
+    }
+}
+

@@ -219,7 +219,7 @@ extension File.Descriptor {
         #endif
     }
 
-    /// Duplicates the file descriptor.
+    /// Creates a file descriptor by duplicating another.
     ///
     /// Creates a new file descriptor that refers to the same open file.
     /// Both descriptors can be used independently and must be closed separately.
@@ -227,15 +227,15 @@ extension File.Descriptor {
     /// ## Example
     /// ```swift
     /// let original = try File.Descriptor.open(path, mode: .read)
-    /// let duplicate = try original.duplicated()
+    /// let duplicate = try File.Descriptor(duplicating: original)
     /// // Both can be used independently
     /// ```
     ///
-    /// - Returns: A new file descriptor referring to the same file.
+    /// - Parameter other: The file descriptor to duplicate.
     /// - Throws: `File.Descriptor.Error.duplicateFailed` on failure.
-    public func duplicated() throws(Error) -> File.Descriptor {
+    public init(duplicating other: borrowing File.Descriptor) throws(Error) {
         #if os(Windows)
-            guard let handle = _handle.value, handle != INVALID_HANDLE_VALUE else {
+            guard let handle = other._handle.value, handle != INVALID_HANDLE_VALUE else {
                 throw .invalidDescriptor
             }
 
@@ -265,48 +265,19 @@ extension File.Descriptor {
                 throw .duplicateFailed(errno: 0, message: "DuplicateHandle returned nil")
             }
 
-            return File.Descriptor(__unchecked: newHandle)
+            self.init(__unchecked: newHandle)
         #else
-            guard _fd >= 0 else {
+            guard other._fd >= 0 else {
                 throw .invalidDescriptor
             }
 
-            let newFd = dup(_fd)
+            let newFd = dup(other._fd)
             guard newFd >= 0 else {
                 throw .duplicateFailed(errno: errno, message: String(cString: strerror(errno)))
             }
 
-            return File.Descriptor(__unchecked: newFd)
+            self.init(__unchecked: newFd)
         #endif
-    }
-}
-
-// MARK: - CustomStringConvertible for Error
-
-extension File.Descriptor.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .pathNotFound(let path):
-            return "Path not found: \(path)"
-        case .permissionDenied(let path):
-            return "Permission denied: \(path)"
-        case .alreadyExists(let path):
-            return "File already exists: \(path)"
-        case .isDirectory(let path):
-            return "Is a directory: \(path)"
-        case .tooManyOpenFiles:
-            return "Too many open files"
-        case .invalidDescriptor:
-            return "Invalid file descriptor"
-        case .openFailed(let errno, let message):
-            return "Open failed: \(message) (errno=\(errno))"
-        case .closeFailed(let errno, let message):
-            return "Close failed: \(message) (errno=\(errno))"
-        case .duplicateFailed(let errno, let message):
-            return "Duplicate failed: \(message) (errno=\(errno))"
-        case .alreadyClosed:
-            return "Descriptor already closed"
-        }
     }
 }
 

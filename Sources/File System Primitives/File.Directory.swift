@@ -21,7 +21,7 @@ extension File {
     ///     print(entry.name)
     /// }
     /// ```
-    public struct Directory: Hashable, Sendable, ExpressibleByStringLiteral {
+    public struct Directory: Hashable, Sendable {
         /// The underlying directory path.
         public let path: File.Path
 
@@ -41,32 +41,5 @@ extension File {
         public init(_ string: String) throws {
             self.path = try File.Path(string)
         }
-
-        /// Creates a directory from a string literal.
-        ///
-        /// - Parameter value: The path string literal.
-        public init(stringLiteral value: String) {
-            do {
-                self.path = try File.Path(value)
-            } catch {
-                fatalError("Invalid path literal: \(error)")
-            }
-        }
-    }
-}
-
-// MARK: - CustomStringConvertible
-
-extension File.Directory: CustomStringConvertible {
-    public var description: String {
-        path.string
-    }
-}
-
-// MARK: - CustomDebugStringConvertible
-
-extension File.Directory: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "File.Directory(\(path.string.debugDescription))"
     }
 }

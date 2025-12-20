@@ -201,29 +201,6 @@ extension File.Handle {
             }
         }
 
-        /// Get the current position.
-        ///
-        /// - Returns: The current file position.
-        public func position() async throws -> Int64 {
-            try await seek(to: 0, from: .current)
-        }
-
-        /// Seek to the beginning.
-        ///
-        /// - Returns: The new position (always 0).
-        @discardableResult
-        public func rewind() async throws -> Int64 {
-            try await seek(to: 0, from: .start)
-        }
-
-        /// Seek to the end.
-        ///
-        /// - Returns: The new position (file size).
-        @discardableResult
-        public func seekToEnd() async throws -> Int64 {
-            try await seek(to: 0, from: .end)
-        }
-
         // MARK: - Sync
 
         /// Sync the file to disk.

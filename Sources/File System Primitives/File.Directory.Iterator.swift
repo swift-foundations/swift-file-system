@@ -157,7 +157,7 @@ extension File.Directory.Iterator {
                 }
 
                 // Build full path using proper path composition
-                let entryPath = _basePath.appending(name)
+                let entryPath = File.Path(_basePath, appending: name)
 
                 // Determine type
                 let entryType: File.Directory.Entry.`Type`
@@ -235,7 +235,7 @@ extension File.Directory.Iterator {
                 }
 
                 // Build full path using proper path composition
-                let entryPath = _basePath.appending(name)
+                let entryPath = File.Path(_basePath, appending: name)
 
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.`Type`
@@ -342,7 +342,7 @@ extension File.Directory.Iterator {
                 }
 
                 // Build full path using proper path composition
-                let entryPath = _basePath.appending(name)
+                let entryPath = File.Path(_basePath, appending: name)
 
                 // Determine type (from previous findData)
                 let entryType: File.Directory.Entry.`Type`
