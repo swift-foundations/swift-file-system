@@ -112,7 +112,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending:
                     "perf_handle_reg_\(Int.random(in: 0..<Int.max)).txt"
                 )
 
@@ -144,7 +144,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_withhandle_\(Int.random(in: 0..<Int.max)).txt"
                 )
 
@@ -189,13 +189,13 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = tempDir.appending("perf_async_dir_\(Int.random(in: 0..<Int.max))")
+                let testDir = File.Path(tempDir, appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))")
 
                 // Setup
                 try await File.System.Create.Directory.create(at: testDir)
                 let fileData = [UInt8](repeating: 0x00, count: 10)
                 for i in 0..<100 {
-                    let filePath = testDir.appending("file_\(i).txt")
+                    let filePath = File.Path(testDir, appending: "file_\(i).txt")
                     try await File.System.Write.Atomic.write(fileData, to: filePath)
                 }
 
@@ -219,13 +219,13 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = tempDir.appending("perf_async_entries_\(Int.random(in: 0..<Int.max))")
+                let testDir = File.Path(tempDir, appending: "perf_async_entries_\(Int.random(in: 0..<Int.max))")
 
                 // Setup
                 try await File.System.Create.Directory.create(at: testDir)
                 let fileData = [UInt8](repeating: 0x00, count: 10)
                 for i in 0..<100 {
-                    let filePath = testDir.appending("file_\(i).txt")
+                    let filePath = File.Path(testDir, appending: "file_\(i).txt")
                     try await File.System.Write.Atomic.write(fileData, to: filePath)
                 }
 
@@ -255,18 +255,18 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = tempDir.appending("perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
+                let testDir = File.Path(tempDir, appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
 
                 // Setup: 10 subdirs, each with 10 files = 100 files total + 10 dirs
                 try await File.System.Create.Directory.create(at: testDir)
                 let fileData = [UInt8](repeating: 0x00, count: 10)
 
                 for i in 0..<10 {
-                    let subDir = testDir.appending("dir_\(i)")
+                    let subDir = File.Path(testDir, appending: "dir_\(i)")
                     try await File.System.Create.Directory.create(at: subDir)
 
                     for j in 0..<10 {
-                        let filePath = subDir.appending("file_\(j).txt")
+                        let filePath = File.Path(subDir, appending: "file_\(j).txt")
                         try await File.System.Write.Atomic.write(fileData, to: filePath)
                     }
                 }
@@ -295,7 +295,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = tempDir.appending("perf_walk_deep_\(Int.random(in: 0..<Int.max))")
+                let testDir = File.Path(tempDir, appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))")
 
                 // Setup: 5 levels deep with 3 files per level
                 try await File.System.Create.Directory.create(at: testDir)
@@ -305,19 +305,19 @@ import TestingPerformance
                 for level in 0..<5 {
                     // Add files at this level
                     for j in 0..<3 {
-                        let filePath = currentDir.appending("file_\(j).txt")
+                        let filePath = File.Path(currentDir, appending: "file_\(j).txt")
                         try await File.System.Write.Atomic.write(fileData, to: filePath)
                     }
 
                     // Create next level
-                    let subDir = currentDir.appending("level_\(level)")
+                    let subDir = File.Path(currentDir, appending: "level_\(level)")
                     try await File.System.Create.Directory.create(at: subDir)
                     currentDir = subDir
                 }
 
                 // Add files at deepest level
                 for j in 0..<3 {
-                    let filePath = currentDir.appending("file_\(j).txt")
+                    let filePath = File.Path(currentDir, appending: "file_\(j).txt")
                     try await File.System.Write.Atomic.write(fileData, to: filePath)
                 }
 
@@ -351,7 +351,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin"
                 )
 
@@ -382,7 +382,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_stream_small_\(Int.random(in: 0..<Int.max)).bin"
                 )
 
@@ -418,7 +418,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_stream_early_\(Int.random(in: 0..<Int.max)).bin"
                 )
 
@@ -460,7 +460,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_async_stat_\(Int.random(in: 0..<Int.max)).txt"
                 )
 
@@ -489,10 +489,10 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let sourcePath = tempDir.appending(
+                let sourcePath = File.Path(tempDir, appending: 
                     "perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin"
                 )
-                let destPath = tempDir.appending(
+                let destPath = File.Path(tempDir, appending: 
                     "perf_async_copy_dst_\(Int.random(in: 0..<Int.max)).bin"
                 )
 
@@ -530,7 +530,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = tempDir.appending("perf_concurrent_\(Int.random(in: 0..<Int.max))")
+                let testDir = File.Path(tempDir, appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))")
 
                 // Setup: 10 files, 100KB each
                 try await File.System.Create.Directory.create(at: testDir)
@@ -538,7 +538,7 @@ import TestingPerformance
 
                 var filePaths: [File.Path] = []
                 for i in 0..<10 {
-                    let filePath = testDir.appending("file_\(i).bin")
+                    let filePath = File.Path(testDir, appending: "file_\(i).bin")
                     try await File.System.Write.Atomic.write(fileData, to: filePath)
                     filePaths.append(filePath)
                 }
@@ -585,7 +585,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = tempDir.appending("perf_mixed_\(Int.random(in: 0..<Int.max))")
+                let testDir = File.Path(tempDir, appending: "perf_mixed_\(Int.random(in: 0..<Int.max))")
 
                 try await File.System.Create.Directory.create(at: testDir)
                 defer {
@@ -607,7 +607,7 @@ import TestingPerformance
                         group.addTask {
                             do {
                                 let data = [UInt8](repeating: UInt8(i % 256), count: 10_000)
-                                let filePath = testDir.appending("write_\(i).bin")
+                                let filePath = File.Path(testDir, appending: "write_\(i).bin")
                                 try await executor.run {
                                     try data.withUnsafeBufferPointer { buffer in
                                         let span = Span<UInt8>(_unsafeElements: buffer)
@@ -660,7 +660,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin"
                 )
 
@@ -693,7 +693,7 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let filePath = tempDir.appending(
+                let filePath = File.Path(tempDir, appending: 
                     "perf_handle_cleanup_\(Int.random(in: 0..<Int.max)).txt"
                 )
 

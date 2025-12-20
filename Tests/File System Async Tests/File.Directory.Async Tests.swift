@@ -259,7 +259,9 @@ extension File.Directory.Async.Test.Unit {
             var names: [String] = []
 
             for try await entry in entries {
-                names.append(entry.name)
+                if let name = String(entry.name) {
+                    names.append(name)
+                }
             }
 
             #expect(names.count == 3)
@@ -285,10 +287,12 @@ extension File.Directory.Async.Test.Unit {
             var dirs: [String] = []
 
             for try await entry in entries {
-                if entry.type == .file {
-                    files.append(entry.name)
-                } else if entry.type == .directory {
-                    dirs.append(entry.name)
+                if let name = String(entry.name) {
+                    if entry.type == .file {
+                        files.append(name)
+                    } else if entry.type == .directory {
+                        dirs.append(name)
+                    }
                 }
             }
 
@@ -362,7 +366,7 @@ extension File.Directory.Async.Test.Unit {
             }
 
             #expect(foundEntry != nil)
-            #expect(foundEntry?.path.string == dir.string + "/test.txt")
+            #expect(foundEntry?.path?.string == dir.string + "/test.txt")
         }
     }
 

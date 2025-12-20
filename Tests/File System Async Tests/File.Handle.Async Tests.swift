@@ -172,12 +172,12 @@ extension File.Handle.Async.Test.Unit {
             // Read some data
             _ = try await handle.read(count: 3)
 
-            // Rewind
-            let rewindPos = try await handle.rewind()
+            // Rewind (seek to start)
+            let rewindPos = try await handle.seek(to: 0, from: .start)
             #expect(rewindPos == 0)
 
             // Seek to end
-            let endPos = try await handle.seekToEnd()
+            let endPos = try await handle.seek(to: 0, from: .end)
             #expect(endPos == 5)
 
             try await handle.close()
