@@ -6,6 +6,7 @@
 //
 
 import Dispatch
+import Synchronization
 
 // MARK: - Executor Errors
 
@@ -26,6 +27,14 @@ protocol _Job: Sendable {
 }
 
 /// Typed job box that preserves static typing through execution.
+///
+/// ## Safety Invariant (for @unchecked Sendable)
+/// Single-owner semantics with idempotent completion.
+///
+/// ### Proof:
+/// 1. `isCompleted` guard prevents double-resume
+/// 2. Each job is dequeued by exactly one worker thread
+/// 3. `run()` and `fail()` are idempotent - second call is no-op
 final class _JobBox<T: Sendable>: @unchecked Sendable, _Job {
     let operation: @Sendable () throws -> T
     private let continuation: CheckedContinuation<T, any Error>
@@ -55,6 +64,14 @@ final class _JobBox<T: Sendable>: @unchecked Sendable, _Job {
 // MARK: - Ring Buffer Queue
 
 /// O(1) enqueue/dequeue queue using circular buffer.
+///
+/// ## Safety Invariant (for @unchecked Sendable)
+/// Only accessed from actor-isolated context.
+///
+/// ### Proof:
+/// 1. All mutations occur within `Executor` actor methods
+/// 2. Actor isolation guarantees serial access
+/// 3. The struct itself has no internal synchronization needs
 struct _RingBuffer<T>: @unchecked Sendable {
     private var storage: [T?]
     private var head: Int = 0
@@ -110,6 +127,14 @@ struct _RingBuffer<T>: @unchecked Sendable {
 // MARK: - Waiter Token with State
 
 /// Token for cancellation-safe waiter tracking with single-owner semantics.
+///
+/// ## Safety Invariant (for @unchecked Sendable)
+/// Thread-safe state transitions protected by Mutex.
+///
+/// ### Proof:
+/// 1. All access to `state` occurs inside `lock.withLock`
+/// 2. State transitions are atomic (check + update + resume in single critical section)
+/// 3. Each continuation is resumed exactly once (state machine prevents double-resume)
 final class _WaiterState: @unchecked Sendable {
     enum State {
         case waiting(CheckedContinuation<Void, Never>)
@@ -117,44 +142,56 @@ final class _WaiterState: @unchecked Sendable {
         case cancelled
     }
 
-    private var state: State
+    private let lock: Mutex<State>
 
     init(_ continuation: CheckedContinuation<Void, Never>) {
-        self.state = .waiting(continuation)
+        self.lock = Mutex(.waiting(continuation))
     }
 
     /// Resume the waiter if still waiting. Returns true if resumed.
     func resume() -> Bool {
-        switch state {
-        case .waiting(let continuation):
+        lock.withLock { state in
+            guard case .waiting(let continuation) = state else { return false }
             state = .resumed
             continuation.resume()
             return true
-        case .resumed, .cancelled:
-            return false
         }
     }
 
     /// Mark as cancelled and resume if still waiting.
     @discardableResult
     func cancel() -> Bool {
-        switch state {
-        case .waiting(let continuation):
+        lock.withLock { state in
+            guard case .waiting(let continuation) = state else { return false }
             state = .cancelled
             continuation.resume()
             return true
-        case .resumed, .cancelled:
-            return false
         }
     }
 }
 
 /// Sendable box to capture waiter state across isolation boundaries.
+///
+/// ## Safety Invariant (for @unchecked Sendable)
+/// Write-once semantics with happens-before relationship.
+///
+/// ### Proof:
+/// 1. `state` is set exactly once in `withCheckedContinuation` body
+/// 2. Read occurs in cancellation handler which runs after body completes
+/// 3. Swift's continuation machinery establishes happens-before
 final class _WaiterBox: @unchecked Sendable {
     var state: _WaiterState?
 }
 
 /// Sendable box to track cancellation state across isolation boundaries.
+///
+/// ## Safety Invariant (for @unchecked Sendable)
+/// Single-writer (cancellation handler), read after synchronization.
+///
+/// ### Proof:
+/// 1. Only written by cancellation handler (single writer)
+/// 2. Read occurs after continuation resumes (happens-before via continuation)
+/// 3. Value indicates whether cancel() was called, not precise timing
 final class _CancellationBox: @unchecked Sendable {
     var value: Bool = false
 }

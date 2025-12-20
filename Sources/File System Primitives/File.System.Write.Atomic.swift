@@ -11,6 +11,26 @@
 //   - The complete new file, or
 //   - The complete old file (or no file if it didn't exist)
 // You never get a partial/corrupted file.
+//
+// ## Security Considerations
+//
+// ### Symlink/Reparse-Point Handling
+// This library does NOT provide hardened path resolution against symlink attacks.
+// The O_NOFOLLOW flag (when used) only protects the final path component.
+//
+// **Threat model:**
+// - Safe for: Writing to directories YOU control (application data, caches)
+// - NOT safe for: Writing to attacker-controlled paths (e.g., /tmp with user input)
+//
+// Intermediate path components can still be symlinks, enabling TOCTOU attacks
+// where an attacker replaces a directory with a symlink between path validation
+// and file creation.
+//
+// For security-critical use cases in adversarial environments, consider:
+// 1. Using openat() with O_NOFOLLOW at each path component
+// 2. Validating the entire path is within expected bounds before writing
+// 3. Using OS-provided secure temp directory APIs
+// 4. Avoiding user-controlled path components entirely
 
 import Binary
 

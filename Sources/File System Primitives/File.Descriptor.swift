@@ -342,6 +342,15 @@ extension File.Descriptor.Error: CustomStringConvertible {
 // MARK: - UnsafeSendable Helper
 
 /// A wrapper to make non-Sendable types sendable when we know it's safe.
+///
+/// ## Safety Invariant (for @unchecked Sendable)
+/// The wrapped value must only be accessed from a single isolation context,
+/// or the type must be effectively immutable for the duration of concurrent access.
+///
+/// ### Usage Contract:
+/// - Caller is responsible for ensuring thread-safety
+/// - Typically used for file descriptors (Int32) which are value types
+/// - Do not use for mutable reference types without external synchronization
 @usableFromInline
 internal struct UnsafeSendable<T>: @unchecked Sendable {
     @usableFromInline
