@@ -39,26 +39,53 @@ extension File {
     /// ```
     public struct Name: Sendable, Equatable, Hashable {
         #if os(Windows)
-            /// Raw UTF-16 code units from the filesystem.
-            public let rawCodeUnits: [UInt16]
+            /// Raw UTF-16 code units from the filesystem (internal storage).
+            @usableFromInline
+            internal let _rawCodeUnits: [UInt16]
         #else
-            /// Raw bytes from the filesystem (typically UTF-8, but not guaranteed).
-            public let rawBytes: [UInt8]
+            /// Raw bytes from the filesystem (internal storage).
+            @usableFromInline
+            internal let _rawBytes: [UInt8]
         #endif
 
         #if os(Windows)
             /// Creates a name from raw UTF-16 code units.
             @usableFromInline
             internal init(rawCodeUnits: [UInt16]) {
-                self.rawCodeUnits = rawCodeUnits
+                self._rawCodeUnits = rawCodeUnits
             }
         #else
             /// Creates a name from raw bytes.
             @usableFromInline
             internal init(rawBytes: [UInt8]) {
-                self.rawBytes = rawBytes
+                self._rawBytes = rawBytes
             }
         #endif
+
+        // MARK: - Semantic Predicates
+
+        /// True if this name is "." or ".." (dot entries to skip during iteration).
+        @usableFromInline
+        internal var isDotOrDotDot: Bool {
+            #if os(Windows)
+                _rawCodeUnits == [0x002E] || _rawCodeUnits == [0x002E, 0x002E]
+            #else
+                _rawBytes == [0x2E] || _rawBytes == [0x2E, 0x2E]
+            #endif
+        }
+
+        /// True if this name starts with '.' (hidden file convention on Unix-like systems).
+        ///
+        /// This is a semantic predicate - Walk uses this to filter hidden files
+        /// without accessing raw storage directly.
+        @inlinable
+        public var isHiddenByDotPrefix: Bool {
+            #if os(Windows)
+                _rawCodeUnits.first == 0x002E
+            #else
+                _rawBytes.first == 0x2E
+            #endif
+        }
     }
 }
 
@@ -74,12 +101,12 @@ extension String {
     @inlinable
     public init?(_ fileName: File.Name) {
         #if os(Windows)
-            guard let decoded = String._strictUTF16Decode(fileName.rawCodeUnits) else {
+            guard let decoded = String._strictUTF16Decode(fileName._rawCodeUnits) else {
                 return nil
             }
             self = decoded
         #else
-            guard let decoded = String._strictUTF8Decode(fileName.rawBytes) else {
+            guard let decoded = String._strictUTF8Decode(fileName._rawBytes) else {
                 return nil
             }
             self = decoded
@@ -94,10 +121,25 @@ extension String {
     @inlinable
     public init(lossy fileName: File.Name) {
         #if os(Windows)
-            self = Swift.String(decoding: fileName.rawCodeUnits, as: UTF16.self)
+            self = Swift.String(decoding: fileName._rawCodeUnits, as: UTF16.self)
         #else
-            self = Swift.String(decoding: fileName.rawBytes, as: UTF8.self)
+            self = Swift.String(decoding: fileName._rawBytes, as: UTF8.self)
         #endif
+    }
+
+    /// Creates a string from a file name using strict decoding.
+    ///
+    /// Throws `File.Name.DecodeError` if the raw data contains invalid encoding,
+    /// allowing callers to access the raw bytes for diagnostics.
+    ///
+    /// - Parameter fileName: The file name to decode.
+    /// - Throws: `File.Name.DecodeError` if decoding fails.
+    @inlinable
+    public init(validating fileName: File.Name) throws(File.Name.DecodeError) {
+        guard let decoded = String(fileName) else {
+            throw File.Name.DecodeError(name: fileName)
+        }
+        self = decoded
     }
 }
 
@@ -169,15 +211,15 @@ extension File.Name: CustomDebugStringConvertible {
             #if os(Windows)
                 // Convert UInt16 code units to bytes (big-endian) for hex encoding
                 var bytes: [UInt8] = []
-                bytes.reserveCapacity(rawCodeUnits.count * 2)
-                for codeUnit in rawCodeUnits {
+                bytes.reserveCapacity(_rawCodeUnits.count * 2)
+                for codeUnit in _rawCodeUnits {
                     bytes.append(UInt8(codeUnit >> 8))
                     bytes.append(UInt8(codeUnit & 0xFF))
                 }
                 let hex = bytes.hex.encoded(uppercase: true)
                 return "File.Name(invalidUTF16: [\(hex)])"
             #else
-                let hex = rawBytes.hex.encoded(uppercase: true)
+                let hex = _rawBytes.hex.encoded(uppercase: true)
                 return "File.Name(invalidUTF8: [\(hex)])"
             #endif
         }
@@ -237,19 +279,7 @@ extension File.Name {
     #endif
 }
 
-// MARK: - Comparison with String
-
-extension File.Name {
-    /// Compares the name to a string.
-    ///
-    /// Returns `true` if the raw bytes/code units decode to exactly the given string.
-    @inlinable
-    public static func == (lhs: File.Name, rhs: String) -> Bool {
-        String(lhs) == rhs
-    }
-
-    @inlinable
-    public static func == (lhs: String, rhs: File.Name) -> Bool {
-        String(rhs) == lhs
-    }
-}
+// REMOVED: == (File.Name, String) operators
+// Under strict policy, undecodable names would silently return false,
+// encouraging string-like usage. Use String(name) explicitly when
+// comparison is needed.

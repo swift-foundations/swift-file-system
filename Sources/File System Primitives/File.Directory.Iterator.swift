@@ -163,14 +163,22 @@ extension File.Directory.Iterator {
             while let entry = readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw bytes for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type - use lstat fallback for DT_UNKNOWN
                 let entryType: File.Directory.Entry.Kind
@@ -182,27 +190,32 @@ extension File.Directory.Iterator {
                 case DT_LNK:
                     entryType = .symbolicLink
                 case DT_UNKNOWN:
-                    // Fallback to lstat for unknown type
-                    var entryStat = stat()
-                    if lstat(entryPath.string, &entryStat) == 0 {
-                        switch entryStat.st_mode & S_IFMT {
-                        case S_IFREG:
-                            entryType = .file
-                        case S_IFDIR:
-                            entryType = .directory
-                        case S_IFLNK:
-                            entryType = .symbolicLink
-                        default:
+                    // Fallback to lstat for unknown type (need path for this)
+                    if let path = location.path {
+                        var entryStat = stat()
+                        if lstat(path.string, &entryStat) == 0 {
+                            switch entryStat.st_mode & S_IFMT {
+                            case S_IFREG:
+                                entryType = .file
+                            case S_IFDIR:
+                                entryType = .directory
+                            case S_IFLNK:
+                                entryType = .symbolicLink
+                            default:
+                                entryType = .other
+                            }
+                        } else {
                             entryType = .other
                         }
                     } else {
+                        // Cannot lstat undecodable path - mark as other
                         entryType = .other
                     }
                 default:
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
 
             return nil
@@ -259,34 +272,47 @@ extension File.Directory.Iterator {
             while let entry = Glibc.readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw bytes for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
-                var entryStat = stat()
-                if Glibc.lstat(entryPath.string, &entryStat) == 0 {
-                    switch entryStat.st_mode & S_IFMT {
-                    case S_IFREG:
-                        entryType = .file
-                    case S_IFDIR:
-                        entryType = .directory
-                    case S_IFLNK:
-                        entryType = .symbolicLink
-                    default:
+                if let path = location.path {
+                    var entryStat = stat()
+                    if Glibc.lstat(path.string, &entryStat) == 0 {
+                        switch entryStat.st_mode & S_IFMT {
+                        case S_IFREG:
+                            entryType = .file
+                        case S_IFDIR:
+                            entryType = .directory
+                        case S_IFLNK:
+                            entryType = .symbolicLink
+                        default:
+                            entryType = .other
+                        }
+                    } else {
                         entryType = .other
                     }
                 } else {
+                    // Cannot lstat undecodable path - mark as other
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
 
             return nil
@@ -344,34 +370,47 @@ extension File.Directory.Iterator {
             while let entry = Musl.readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw bytes for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type via lstat (Musl doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
-                var entryStat = stat()
-                if Musl.lstat(entryPath.string, &entryStat) == 0 {
-                    switch entryStat.st_mode & S_IFMT {
-                    case S_IFREG:
-                        entryType = .file
-                    case S_IFDIR:
-                        entryType = .directory
-                    case S_IFLNK:
-                        entryType = .symbolicLink
-                    default:
+                if let path = location.path {
+                    var entryStat = stat()
+                    if Musl.lstat(path.string, &entryStat) == 0 {
+                        switch entryStat.st_mode & S_IFMT {
+                        case S_IFREG:
+                            entryType = .file
+                        case S_IFDIR:
+                            entryType = .directory
+                        case S_IFLNK:
+                            entryType = .symbolicLink
+                        default:
+                            entryType = .other
+                        }
+                    } else {
                         entryType = .other
                     }
                 } else {
+                    // Cannot lstat undecodable path - mark as other
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
 
             return nil
@@ -462,27 +501,37 @@ extension File.Directory.Iterator {
                     }
                 }
 
-                // Skip . and .. - uses snapshot name, advancement already done
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     if !_hasMore { return nil }
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw code units for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-16 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type from SNAPSHOT attributes (not current _findData)
                 let entryType: File.Directory.Entry.Kind
                 if (attributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (attributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                    entryType = .symbolicLink
+                    // Conservative classification: reparse points include junctions,
+                    // mount points, OneDrive placeholders, etc. - not just symlinks
+                    entryType = .other
                 } else {
                     entryType = .file
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
         }
 

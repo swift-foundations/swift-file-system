@@ -62,10 +62,16 @@
             defer { FindClose(handle) }
 
             repeat {
-                let name = String(windowsDirectoryEntryName: findData.cFileName)
+                let fileName = File.Name(windowsDirectoryEntryName: findData.cFileName)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if fileName.isDotOrDotDot {
+                    continue
+                }
+
+                // For delete, we need a valid string path
+                // If name can't be decoded, skip (can't safely delete what we can't name)
+                guard let name = String(fileName) else {
                     continue
                 }
 

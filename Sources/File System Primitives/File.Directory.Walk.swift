@@ -34,14 +34,21 @@ extension File.Directory.Walk {
         /// Whether to include hidden files.
         public var includeHidden: Bool
 
+        /// Callback invoked when an entry with an undecodable name is encountered.
+        ///
+        /// Default: `.skip` (do not emit, do not descend).
+        public var onUndecodable: @Sendable (Undecodable.Context) -> Undecodable.Policy
+
         public init(
             maxDepth: Int? = nil,
             followSymlinks: Bool = false,
-            includeHidden: Bool = true
+            includeHidden: Bool = true,
+            onUndecodable: @escaping @Sendable (Undecodable.Context) -> Undecodable.Policy = { _ in .skip }
         ) {
             self.maxDepth = maxDepth
             self.followSymlinks = followSymlinks
             self.includeHidden = includeHidden
+            self.onUndecodable = onUndecodable
         }
     }
 }
@@ -50,11 +57,12 @@ extension File.Directory.Walk {
 
 extension File.Directory.Walk {
     /// Errors that can occur during directory walk operations.
-    public enum Error: Swift.Error, Equatable, Sendable {
+    public enum Error: Swift.Error, Sendable {
         case pathNotFound(File.Path)
         case permissionDenied(File.Path)
         case notADirectory(File.Path)
         case walkFailed(errno: Int32, message: String)
+        case undecodableEntry(parent: File.Path, name: File.Name)
     }
 }
 
@@ -111,28 +119,43 @@ extension File.Directory.Walk {
         }
 
         for entry in contents {
-            // Filter hidden files if needed
-            // Check raw bytes directly - 0x2E is ASCII/UTF-16 for '.'
-            #if os(Windows)
-                let isHidden = entry.name.rawCodeUnits.first == 0x002E
-            #else
-                let isHidden = entry.name.rawBytes.first == 0x2E
-            #endif
-            if !options.includeHidden && isHidden {
+            // Filter hidden files using semantic predicate (no raw access)
+            if !options.includeHidden && entry.name.isHiddenByDotPrefix {
                 continue
             }
 
-            entries.append(entry)
+            // Check if undecodable BEFORE appending
+            switch entry.location {
+            case .absolute(_, let entryPath):
+                // Decodable - emit and recurse if directory
+                entries.append(entry)
 
-            // Recurse into directories
-            if entry.type == .directory {
-                try _walk(at: entry.path, options: options, depth: depth + 1, entries: &entries)
-            } else if entry.type == .symbolicLink && options.followSymlinks {
-                // Check if symlink points to a directory (follows symlink via stat)
-                if let info = try? File.System.Stat.info(at: entry.path),
-                    info.type == .directory
-                {
-                    try _walk(at: entry.path, options: options, depth: depth + 1, entries: &entries)
+                if entry.type == .directory {
+                    try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
+                } else if entry.type == .symbolicLink && options.followSymlinks {
+                    // Check if symlink points to a directory (follows symlink via stat)
+                    if let info = try? File.System.Stat.info(at: entryPath),
+                        info.type == .directory
+                    {
+                        try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
+                    }
+                }
+
+            case .relative(let parent):
+                // Undecodable - invoke callback to decide
+                let context = Undecodable.Context(
+                    parent: parent,
+                    name: entry.name,
+                    type: entry.type,
+                    depth: depth
+                )
+                switch options.onUndecodable(context) {
+                case .skip:
+                    continue  // Do not emit, do not descend
+                case .emit:
+                    entries.append(entry)  // Emit with relative location, do not descend
+                case .stopAndThrow:
+                    throw .undecodableEntry(parent: parent, name: entry.name)
                 }
             }
         }
@@ -152,6 +175,8 @@ extension File.Directory.Walk.Error: CustomStringConvertible {
             return "Not a directory: \(path)"
         case .walkFailed(let errno, let message):
             return "Walk failed: \(message) (errno=\(errno))"
+        case .undecodableEntry(let parent, let name):
+            return "Undecodable entry in \(parent): \(name.debugDescription)"
         }
     }
 }

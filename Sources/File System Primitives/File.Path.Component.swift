@@ -32,7 +32,9 @@ extension File.Path {
             guard !string.isEmpty else {
                 throw .empty
             }
-            guard !string.contains("/") else {
+            // Check BOTH separators on all platforms
+            // POSIX forbids `/` in filenames, Windows forbids both `/` and `\`
+            guard !string.contains("/") && !string.contains("\\") else {
                 throw .containsPathSeparator
             }
             if string.utf8.contains(where: \.ascii.isControl) {

@@ -193,8 +193,13 @@ extension File.Directory.Async.WalkSequence {
 
                     // Process batch entries
                     for entry in batch {
+                        // Skip entries with undecodable names (no valid path)
+                        guard let entryPath = entry.path else {
+                            continue
+                        }
+
                         // Send path to consumer
-                        await channel.send(entry.path)
+                        await channel.send(entryPath)
 
                         // Check if we should recurse
                         let shouldRecurse: Bool
@@ -202,7 +207,7 @@ extension File.Directory.Async.WalkSequence {
                             shouldRecurse = true
                         } else if options.followSymlinks && entry.type == .symbolicLink {
                             // Get inode for cycle detection
-                            if let inode = await getInode(entry.path, io: io) {
+                            if let inode = await getInode(entryPath, io: io) {
                                 shouldRecurse = await state.markVisited(inode)
                             } else {
                                 shouldRecurse = false
@@ -212,7 +217,7 @@ extension File.Directory.Async.WalkSequence {
                         }
 
                         if shouldRecurse {
-                            await state.enqueue(entry.path)
+                            await state.enqueue(entryPath)
                         }
                     }
                 }

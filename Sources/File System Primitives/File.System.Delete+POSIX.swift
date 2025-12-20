@@ -53,10 +53,16 @@
 
             // Iterate through entries
             while let entry = readdir(dir) {
-                let name = String(posixDirectoryEntryName: entry.pointee.d_name)
+                let fileName = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if fileName.isDotOrDotDot {
+                    continue
+                }
+
+                // For delete, we need a valid string path
+                // If name can't be decoded, skip (can't safely delete what we can't name)
+                guard let name = String(fileName) else {
                     continue
                 }
 

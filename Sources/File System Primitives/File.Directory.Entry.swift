@@ -15,8 +15,11 @@ extension File.Directory {
         /// potentially lossy) string representation.
         public let name: File.Name
 
-        /// The full path to the entry.
-        public let path: File.Path
+        /// The location of the entry.
+        ///
+        /// Contains either an absolute path (if name was decodable) or a relative
+        /// reference to the parent directory (if name could not be decoded).
+        public let location: Location
 
         /// The type of the entry.
         public let type: Kind
@@ -24,13 +27,27 @@ extension File.Directory {
         /// Creates a directory entry.
         ///
         /// - Parameters:
-        ///   - name: The entry's filename (not the full path).
-        ///   - path: The full path to the entry.
+        ///   - name: The entry's filename (raw bytes preserved).
+        ///   - location: The location of the entry (absolute or relative).
         ///   - type: The type of entry (file, directory, symlink, etc.).
-        public init(name: File.Name, path: File.Path, type: Kind) {
+        public init(name: File.Name, location: Location, type: Kind) {
             self.name = name
-            self.path = path
+            self.location = location
             self.type = type
         }
     }
+}
+
+// MARK: - Convenience Accessors
+
+extension File.Directory.Entry {
+    /// The absolute path, if the name was decodable.
+    ///
+    /// Returns `nil` if the entry has a `.relative` location (name could not be decoded).
+    @inlinable
+    public var path: File.Path? { location.path }
+
+    /// The parent directory path. Always available.
+    @inlinable
+    public var parent: File.Path { location.parent }
 }

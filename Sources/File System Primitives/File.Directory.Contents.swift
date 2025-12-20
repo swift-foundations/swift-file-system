@@ -77,13 +77,22 @@ extension File.Directory.Contents {
             while let entry = readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                let entryPath = File.Path(path, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(path, appending: component)
+                    location = .absolute(parent: path, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: path)
+                }
 
                 // Determine type
                 let entryType: File.Directory.Entry.Kind
@@ -115,26 +124,31 @@ extension File.Directory.Contents {
                         }
                     } else {
                         // Filesystem doesn't support d_type (e.g., some network filesystems)
-                        // Fall back to lstat for this entry
-                        var entryStat = stat()
-                        if lstat(entryPath.string, &entryStat) == 0 {
-                            switch entryStat.st_mode & S_IFMT {
-                            case S_IFREG:
-                                entryType = .file
-                            case S_IFDIR:
-                                entryType = .directory
-                            case S_IFLNK:
-                                entryType = .symbolicLink
-                            default:
+                        // Fall back to lstat for this entry (need path for this)
+                        if let entryPath = location.path {
+                            var entryStat = stat()
+                            if lstat(entryPath.string, &entryStat) == 0 {
+                                switch entryStat.st_mode & S_IFMT {
+                                case S_IFREG:
+                                    entryType = .file
+                                case S_IFDIR:
+                                    entryType = .directory
+                                case S_IFLNK:
+                                    entryType = .symbolicLink
+                                default:
+                                    entryType = .other
+                                }
+                            } else {
                                 entryType = .other
                             }
                         } else {
+                            // Cannot lstat undecodable path - mark as other
                             entryType = .other
                         }
                     }
                 #endif
 
-                entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
+                entries.append(File.Directory.Entry(name: name, location: location, type: entryType))
             }
 
             return entries
@@ -197,25 +211,36 @@ extension File.Directory.Contents {
             repeat {
                 let name = File.Name(windowsDirectoryEntryName: findData.cFileName)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                let entryPath = File.Path(path, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-16 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(path, appending: component)
+                    location = .absolute(parent: path, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: path)
+                }
 
                 // Determine type
                 let entryType: File.Directory.Entry.Kind
                 if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                    entryType = .symbolicLink
+                    // Conservative classification: reparse points include junctions,
+                    // mount points, OneDrive placeholders, etc. - not just symlinks
+                    entryType = .other
                 } else {
                     entryType = .file
                 }
 
-                entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
+                entries.append(File.Directory.Entry(name: name, location: location, type: entryType))
             } while _ok(FindNextFileW(handle, &findData))
 
             let lastError = GetLastError()
