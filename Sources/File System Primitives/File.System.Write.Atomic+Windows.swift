@@ -16,6 +16,10 @@
             to path: borrowing String,
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
+            typealias Phase = File.System.Write.Atomic.CommitPhase
+
+            // Track progress for cleanup and error diagnostics
+            var phase: Phase = .pending
 
             // 1. Resolve and validate parent directory
             let resolvedPath = normalizePath(path)
@@ -34,12 +38,18 @@
 
             // 4. Create temp file
             let tempHandle = try createTempFile(at: tempPath)
-            var tempHandleClosed = false
-            var renamed = false
+            phase = .writing
 
             defer {
-                if !tempHandleClosed { _ = CloseHandle(tempHandle) }
-                if !renamed { _ = deleteFile(tempPath) }
+                // CRITICAL: After renamedPublished, NEVER delete destination!
+                // Only cleanup temp file if rename hasn't happened yet.
+                if phase < .closed {
+                    _ = CloseHandle(tempHandle)
+                }
+                if phase < .renamedPublished {
+                    _ = deleteFile(tempPath)
+                }
+                // Note: if phase >= .renamedPublished, temp no longer exists (was renamed)
             }
 
             // 5. Write all data
@@ -47,6 +57,7 @@
 
             // 6. Flush to disk
             try flushFile(tempHandle, durability: options.durability)
+            phase = .syncedFile
 
             // 7. Copy metadata if requested
             if destExists, let srcHandle = destHandle {
@@ -56,15 +67,16 @@
             // 8. Close temp file before rename
             guard _ok(CloseHandle(tempHandle)) else {
                 throw .closeFailed(
-                    errno: Int32(GetLastError()),
+                    code: .windows(GetLastError()),
                     message: "CloseHandle failed"
                 )
             }
-            tempHandleClosed = true
+            phase = .closed
 
             // 9. Atomic rename
             try atomicRename(from: tempPath, to: resolvedPath, options: options)
-            renamed = true
+            // CRITICAL: Update phase IMMEDIATELY after successful rename
+            phase = .renamedPublished
 
             // 10. Flush directory - only for .full durability.
             // Directory sync is a metadata persistence step, so it should NOT be
@@ -72,19 +84,24 @@
             // be persisted"). If this fails after publish, the file IS published
             // but durability is not guaranteed.
             if options.durability == .full {
+                phase = .directorySyncAttempted  // Mark attempt BEFORE syscall
                 do {
                     try flushDirectory(parent)
+                    phase = .syncedDirectory
                 } catch let syncError {
-                    // Extract errno from the sync error for the after-commit error
-                    if case .directorySyncFailed(let path, let e, let msg) = syncError {
+                    // Already published, report as after-commit failure
+                    if case .directorySyncFailed(let path, let code, let msg) = syncError {
                         throw .directorySyncFailedAfterCommit(
                             path: path,
-                            errno: e,
+                            code: code,
                             message: msg
                         )
                     }
                     throw syncError
                 }
+            } else {
+                // No directory sync requested, consider it "complete"
+                phase = .syncedDirectory
             }
         }
     }
@@ -255,7 +272,7 @@
                 let err = GetLastError()
                 throw .tempFileCreationFailed(
                     directory: File.Path(__unchecked: (), parentDirectory(of: path)),
-                    errno: Int32(err),
+                    code: .windows(err),
                     message: "CreateFileW failed with error \(err)"
                 )
             }
@@ -278,7 +295,7 @@
                     throw .writeFailed(
                         bytesWritten: 0,
                         bytesExpected: total,
-                        errno: 0,
+                        code: .windows(0),
                         message: "nil buffer"
                     )
                 }
@@ -300,7 +317,7 @@
                         throw .writeFailed(
                             bytesWritten: written,
                             bytesExpected: total,
-                            errno: Int32(err),
+                            code: .windows(err),
                             message: "WriteFile failed with error \(err)"
                         )
                     }
@@ -309,7 +326,7 @@
                         throw .writeFailed(
                             bytesWritten: written,
                             bytesExpected: total,
-                            errno: 0,
+                            code: .windows(0),
                             message: "WriteFile wrote 0 bytes"
                         )
                     }
@@ -331,7 +348,7 @@
                 if !_ok(FlushFileBuffers(handle)) {
                     let err = GetLastError()
                     throw .syncFailed(
-                        errno: Int32(err),
+                        code: .windows(err),
                         message: "FlushFileBuffers failed with error \(err)"
                     )
                 }
@@ -393,7 +410,7 @@
                 throw .renameFailed(
                     from: File.Path(__unchecked: (), tempPath),
                     to: File.Path(__unchecked: (), destPath),
-                    errno: Int32(err),
+                    code: .windows(err),
                     message: "MoveFileExW failed with error \(err)"
                 )
             }
@@ -428,10 +445,11 @@
                 let nameByteCount = (destPath.utf16.count + 1) * MemoryLayout<WCHAR>.size
 
                 // Calculate struct offset carefully - offset(of:) may not work for C-imported structs
-                // If offset(of:) returns nil, fail loudly
+                // If offset(of:) returns nil, fall back to MoveFileExW (graceful degradation)
                 guard let fileNameOffset = MemoryLayout<FILE_RENAME_INFO>.offset(of: \.FileName)
                 else {
-                    preconditionFailure("FILE_RENAME_INFO.FileName offset unavailable")
+                    // Struct layout unavailable at runtime - fall back to MoveFileExW
+                    return false
                 }
                 let totalSize = fileNameOffset + nameByteCount
 
@@ -505,7 +523,7 @@
                 let err = GetLastError()
                 throw .directorySyncFailed(
                     path: File.Path(__unchecked: (), path),
-                    errno: Int32(err),
+                    code: .windows(err),
                     message: "CreateFileW(directory) failed with error \(err)"
                 )
             }
@@ -515,7 +533,7 @@
                 let err = GetLastError()
                 throw .directorySyncFailed(
                     path: File.Path(__unchecked: (), path),
-                    errno: Int32(err),
+                    code: .windows(err),
                     message: "FlushFileBuffers(directory) failed with error \(err)"
                 )
             }
@@ -548,7 +566,7 @@
                     let err = GetLastError()
                     throw .metadataPreservationFailed(
                         operation: "GetFileInformationByHandleEx",
-                        errno: Int32(err),
+                        code: .windows(err),
                         message: "Failed to get file info with error \(err)"
                     )
                 }
@@ -564,7 +582,7 @@
                     let err = GetLastError()
                     throw .metadataPreservationFailed(
                         operation: "SetFileInformationByHandle",
-                        errno: Int32(err),
+                        code: .windows(err),
                         message: "Failed to set file info with error \(err)"
                     )
                 }
@@ -578,7 +596,7 @@
                     {
                         throw .metadataPreservationFailed(
                             operation: "SecurityDescriptor",
-                            errno: Int32(winErr),
+                            code: .windows(winErr),
                             message: "Security descriptor copy failed with error \(winErr)"
                         )
                     }

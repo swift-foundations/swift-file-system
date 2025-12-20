@@ -99,28 +99,94 @@ extension File.System.Write {
             }
         }
 
+        // MARK: - CommitPhase
+
+        /// Tracks progress through the atomic write operation.
+        ///
+        /// Use `published` to determine if the file exists at its destination after failure.
+        /// Use `durabilityAttempted` for postmortem diagnostics.
+        ///
+        /// ## Usage
+        /// After catching an error, check the phase to understand the file state:
+        /// ```swift
+        /// do {
+        ///     try atomicWrite(data, to: path)
+        /// } catch {
+        ///     if phase.published {
+        ///         // File exists at destination, but durability may be compromised
+        ///     } else {
+        ///         // File was NOT written to destination
+        ///     }
+        /// }
+        /// ```
+        public enum CommitPhase: UInt8, Sendable, Equatable {
+            /// Operation not yet started.
+            case pending = 0
+
+            /// Writing data to temp file.
+            case writing = 1
+
+            /// File data synced to disk.
+            case syncedFile = 2
+
+            /// Temp file closed.
+            case closed = 3
+
+            /// File atomically renamed to destination (published).
+            case renamedPublished = 4
+
+            /// Directory sync was started but not confirmed complete.
+            case directorySyncAttempted = 5
+
+            /// Directory synced, fully durable.
+            case syncedDirectory = 6
+
+            /// Returns true if file has been atomically published to destination.
+            ///
+            /// When this is true, the file exists with complete contents at the destination path.
+            /// However, durability may not be guaranteed if `durabilityAttempted` is false.
+            public var published: Bool { self.rawValue >= CommitPhase.renamedPublished.rawValue }
+
+            /// Returns true if directory sync was attempted (for postmortem diagnostics).
+            ///
+            /// Distinguishes "sync started but failed/cancelled" from "sync never attempted".
+            public var durabilityAttempted: Bool { self.rawValue >= CommitPhase.directorySyncAttempted.rawValue }
+        }
+
         // MARK: - Error
 
         public enum Error: Swift.Error, Equatable, Sendable {
             case parentNotFound(path: File.Path)
             case parentNotDirectory(path: File.Path)
             case parentAccessDenied(path: File.Path)
-            case destinationStatFailed(path: File.Path, errno: Int32, message: String)
-            case tempFileCreationFailed(directory: File.Path, errno: Int32, message: String)
-            case writeFailed(bytesWritten: Int, bytesExpected: Int, errno: Int32, message: String)
-            case syncFailed(errno: Int32, message: String)
-            case closeFailed(errno: Int32, message: String)
-            case metadataPreservationFailed(operation: String, errno: Int32, message: String)
-            case renameFailed(from: File.Path, to: File.Path, errno: Int32, message: String)
+            case destinationStatFailed(path: File.Path, code: File.System.ErrorCode, message: String)
+            case tempFileCreationFailed(directory: File.Path, code: File.System.ErrorCode, message: String)
+            case writeFailed(bytesWritten: Int, bytesExpected: Int, code: File.System.ErrorCode, message: String)
+            case syncFailed(code: File.System.ErrorCode, message: String)
+            case closeFailed(code: File.System.ErrorCode, message: String)
+            case metadataPreservationFailed(operation: String, code: File.System.ErrorCode, message: String)
+            case renameFailed(from: File.Path, to: File.Path, code: File.System.ErrorCode, message: String)
             case destinationExists(path: File.Path)
-            case directorySyncFailed(path: File.Path, errno: Int32, message: String)
+            case directorySyncFailed(path: File.Path, code: File.System.ErrorCode, message: String)
 
             /// Directory sync failed after successful rename.
             ///
             /// File exists with complete content, but durability is compromised.
             /// This is an I/O error, not cancellation. The caller should NOT attempt
             /// to "finish durability" - this is not reliably possible.
-            case directorySyncFailedAfterCommit(path: File.Path, errno: Int32, message: String)
+            case directorySyncFailedAfterCommit(path: File.Path, code: File.System.ErrorCode, message: String)
+
+            /// CSPRNG failed - cannot generate secure temp file names.
+            ///
+            /// This indicates a fundamental system failure (e.g., getrandom syscall failure).
+            /// The operation cannot proceed safely without secure random bytes.
+            case randomGenerationFailed(code: File.System.ErrorCode, operation: String, message: String)
+
+            /// Platform layout incompatibility at runtime.
+            ///
+            /// This occurs when platform-specific struct layouts don't match expectations.
+            /// Typically indicates a need for fallback to alternative APIs.
+            case platformIncompatible(operation: String, message: String)
         }
 
         // MARK: - Core API
@@ -183,6 +249,13 @@ extension File.System.Write.Atomic {
 // MARK: - Internal Helpers
 
 extension File.System.Write.Atomic {
+    /// Returns a human-readable error message for a system error code.
+    @usableFromInline
+    static func errorMessage(for code: File.System.ErrorCode) -> String {
+        code.message
+    }
+
+    /// Legacy helper for migration - converts errno to ErrorCode.
     @usableFromInline
     static func errorMessage(for errno: Int32) -> String {
         #if os(Windows)
@@ -207,26 +280,30 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
             return "Parent path is not a directory: \(path)"
         case .parentAccessDenied(let path):
             return "Access denied to parent directory: \(path)"
-        case .destinationStatFailed(let path, let errno, let message):
-            return "Failed to stat destination '\(path)': \(message) (errno=\(errno))"
-        case .tempFileCreationFailed(let directory, let errno, let message):
-            return "Failed to create temp file in '\(directory)': \(message) (errno=\(errno))"
-        case .writeFailed(let written, let expected, let errno, let message):
-            return "Write failed after \(written)/\(expected) bytes: \(message) (errno=\(errno))"
-        case .syncFailed(let errno, let message):
-            return "Sync failed: \(message) (errno=\(errno))"
-        case .closeFailed(let errno, let message):
-            return "Close failed: \(message) (errno=\(errno))"
-        case .metadataPreservationFailed(let op, let errno, let message):
-            return "Metadata preservation failed (\(op)): \(message) (errno=\(errno))"
-        case .renameFailed(let from, let to, let errno, let message):
-            return "Rename failed '\(from)' → '\(to)': \(message) (errno=\(errno))"
+        case .destinationStatFailed(let path, let code, let message):
+            return "Failed to stat destination '\(path)': \(message) (\(code))"
+        case .tempFileCreationFailed(let directory, let code, let message):
+            return "Failed to create temp file in '\(directory)': \(message) (\(code))"
+        case .writeFailed(let written, let expected, let code, let message):
+            return "Write failed after \(written)/\(expected) bytes: \(message) (\(code))"
+        case .syncFailed(let code, let message):
+            return "Sync failed: \(message) (\(code))"
+        case .closeFailed(let code, let message):
+            return "Close failed: \(message) (\(code))"
+        case .metadataPreservationFailed(let op, let code, let message):
+            return "Metadata preservation failed (\(op)): \(message) (\(code))"
+        case .renameFailed(let from, let to, let code, let message):
+            return "Rename failed '\(from)' → '\(to)': \(message) (\(code))"
         case .destinationExists(let path):
             return "Destination already exists (noClobber): \(path)"
-        case .directorySyncFailed(let path, let errno, let message):
-            return "Directory sync failed '\(path)': \(message) (errno=\(errno))"
-        case .directorySyncFailedAfterCommit(let path, let errno, let message):
-            return "Directory sync failed after commit '\(path)': \(message) (errno=\(errno))"
+        case .directorySyncFailed(let path, let code, let message):
+            return "Directory sync failed '\(path)': \(message) (\(code))"
+        case .directorySyncFailedAfterCommit(let path, let code, let message):
+            return "Directory sync failed after commit '\(path)': \(message) (\(code))"
+        case .randomGenerationFailed(let code, let operation, let message):
+            return "Random generation failed (\(operation)): \(message) (\(code))"
+        case .platformIncompatible(let operation, let message):
+            return "Platform incompatible (\(operation)): \(message)"
         }
     }
 }
@@ -286,5 +363,13 @@ extension File.System.Write.Atomic.Durability: Binary.Serializable {
         into buffer: inout Buffer
     ) where Buffer.Element == UInt8 {
         buffer.append(value.rawValue)
+    }
+}
+
+// MARK: - Comparable
+
+extension File.System.Write.Atomic.CommitPhase: Comparable {
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+        lhs.rawValue < rhs.rawValue
     }
 }
