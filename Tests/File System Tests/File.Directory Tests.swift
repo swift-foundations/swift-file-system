@@ -49,11 +49,7 @@ extension File.Directory.Test.Unit {
         #expect(dir.path.string == "/tmp/test")
     }
 
-    @Test("init from string literal")
-    func initFromStringLiteral() {
-        let dir: File.Directory = "/tmp/test"
-        #expect(dir.path.string == "/tmp/test")
-    }
+    // Removed: init from string literal test - File.Directory intentionally does not conform to ExpressibleByStringLiteral
 
     // MARK: - Directory Operations
 
@@ -157,7 +153,7 @@ extension File.Directory.Test.Unit {
         try dir["file2.txt"].write("content2")
 
         let contents = try dir.contents()
-        let names = contents.map(\.name).sorted()
+        let names = contents.compactMap { String($0.name) }.sorted()
 
         #expect(names == ["file1.txt", "file2.txt"])
     }
@@ -171,7 +167,7 @@ extension File.Directory.Test.Unit {
 
         let contents = try await dir.contents()
         #expect(contents.count == 1)
-        #expect(contents[0].name == "test.txt")
+        #expect(String(contents[0].name) == "test.txt")
     }
 
     @Test("files returns only files")
@@ -185,7 +181,7 @@ extension File.Directory.Test.Unit {
 
         let files = try dir.files()
         #expect(files.count == 1)
-        #expect(files[0].name == "file.txt")
+        #expect(files[0].path.lastComponent?.string == "file.txt")
     }
 
     @Test("subdirectories returns only directories")
@@ -205,8 +201,8 @@ extension File.Directory.Test.Unit {
     // MARK: - Subscript Access
 
     @Test("subscript returns File")
-    func subscriptReturnsFile() {
-        let dir: File.Directory = "/tmp/mydir"
+    func subscriptReturnsFile() throws {
+        let dir = try File.Directory("/tmp/mydir")
         let file = dir["readme.txt"]
 
         #expect(file.path.string == "/tmp/mydir/readme.txt")
@@ -225,8 +221,8 @@ extension File.Directory.Test.Unit {
     }
 
     @Test("subdirectory returns Directory.Instance")
-    func subdirectoryReturnsDirectoryInstance() {
-        let dir: File.Directory = "/tmp/mydir"
+    func subdirectoryReturnsDirectoryInstance() throws {
+        let dir = try File.Directory("/tmp/mydir")
         let subdir = dir.subdirectory("nested")
 
         #expect(subdir.path.string == "/tmp/mydir/nested")
@@ -235,8 +231,8 @@ extension File.Directory.Test.Unit {
     // MARK: - Path Navigation
 
     @Test("parent returns parent directory")
-    func parentReturnsParent() {
-        let dir: File.Directory = "/tmp/parent/child"
+    func parentReturnsParent() throws {
+        let dir = try File.Directory("/tmp/parent/child")
         let parent = dir.parent
 
         #expect(parent != nil)
@@ -244,21 +240,21 @@ extension File.Directory.Test.Unit {
     }
 
     @Test("name returns directory name")
-    func nameReturnsDirectoryName() {
-        let dir: File.Directory = "/tmp/mydir"
+    func nameReturnsDirectoryName() throws {
+        let dir = try File.Directory("/tmp/mydir")
         #expect(dir.name == "mydir")
     }
 
     @Test("appending returns new instance")
-    func appendingReturnsNewInstance() {
-        let dir: File.Directory = "/tmp"
+    func appendingReturnsNewInstance() throws {
+        let dir = try File.Directory("/tmp")
         let result = dir.appending("subdir")
         #expect(result.path.string == "/tmp/subdir")
     }
 
     @Test("/ operator appends path")
-    func slashOperatorAppendsPath() {
-        let dir: File.Directory = "/tmp"
+    func slashOperatorAppendsPath() throws {
+        let dir = try File.Directory("/tmp")
         let result = dir / "subdir" / "nested"
         #expect(result.path.string == "/tmp/subdir/nested")
     }
@@ -266,19 +262,19 @@ extension File.Directory.Test.Unit {
     // MARK: - Hashable & Equatable
 
     @Test("File.Directory is equatable")
-    func directoryIsEquatable() {
-        let dir1: File.Directory = "/tmp/test"
-        let dir2: File.Directory = "/tmp/test"
-        let dir3: File.Directory = "/tmp/other"
+    func directoryIsEquatable() throws {
+        let dir1 = try File.Directory("/tmp/test")
+        let dir2 = try File.Directory("/tmp/test")
+        let dir3 = try File.Directory("/tmp/other")
 
         #expect(dir1 == dir2)
         #expect(dir1 != dir3)
     }
 
     @Test("File.Directory is hashable")
-    func directoryIsHashable() {
-        let dir1: File.Directory = "/tmp/test"
-        let dir2: File.Directory = "/tmp/test"
+    func directoryIsHashable() throws {
+        let dir1 = try File.Directory("/tmp/test")
+        let dir2 = try File.Directory("/tmp/test")
 
         var set = Set<File.Directory>()
         set.insert(dir1)
@@ -290,14 +286,14 @@ extension File.Directory.Test.Unit {
     // MARK: - CustomStringConvertible
 
     @Test("description returns path string")
-    func descriptionReturnsPathString() {
-        let dir: File.Directory = "/tmp/test"
+    func descriptionReturnsPathString() throws {
+        let dir = try File.Directory("/tmp/test")
         #expect(dir.description == "/tmp/test")
     }
 
     @Test("debugDescription returns formatted string")
-    func debugDescriptionReturnsFormatted() {
-        let dir: File.Directory = "/tmp/test"
+    func debugDescriptionReturnsFormatted() throws {
+        let dir = try File.Directory("/tmp/test")
         #expect(dir.debugDescription == #"File.Directory("/tmp/test")"#)
     }
 }

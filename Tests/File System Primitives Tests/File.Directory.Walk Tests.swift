@@ -50,7 +50,7 @@ extension File.Directory.Walk.Test.Unit {
         let entries = try File.Directory.Walk.walk(at: dir)
         #expect(entries.count == 2)
 
-        let names = entries.map(\.name).sorted()
+        let names = entries.compactMap { String($0.name) }.sorted()
         #expect(names == ["file1.txt", "file2.txt"])
     }
 
@@ -70,7 +70,7 @@ extension File.Directory.Walk.Test.Unit {
         let entries = try File.Directory.Walk.walk(at: dir)
         #expect(entries.count == 2) // subdir + nested.txt
 
-        let names = entries.map(\.name).sorted()
+        let names = entries.compactMap { String($0.name) }.sorted()
         #expect(names.contains("subdir"))
         #expect(names.contains("nested.txt"))
     }
@@ -93,7 +93,7 @@ extension File.Directory.Walk.Test.Unit {
         // maxDepth: 0 should only return immediate children
         let entries0 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 0))
         #expect(entries0.count == 1)
-        #expect(entries0[0].name == "a")
+        #expect(String(entries0[0].name) == "a")
 
         // maxDepth: 1 should return dir/a and dir/a/b
         let entries1 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 1))
@@ -120,7 +120,7 @@ extension File.Directory.Walk.Test.Unit {
         // includeHidden: false
         let entriesWithoutHidden = try File.Directory.Walk.walk(at: dir, options: .init(includeHidden: false))
         #expect(entriesWithoutHidden.count == 1)
-        #expect(entriesWithoutHidden[0].name == "visible.txt")
+        #expect(String(entriesWithoutHidden[0].name) == "visible.txt")
     }
 
     @Test("Options default values")

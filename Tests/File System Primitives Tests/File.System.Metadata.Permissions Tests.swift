@@ -118,7 +118,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let perms = try File.System.Metadata.Permissions.get(at: filePath)
+        let perms = try File.System.Metadata.Permissions(at: filePath)
 
         // File should have some permissions
         #expect(perms.rawValue != 0)
@@ -134,7 +134,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
         try File.System.Metadata.Permissions.set(newPerms, at: filePath)
 
-        let readBack = try File.System.Metadata.Permissions.get(at: filePath)
+        let readBack = try File.System.Metadata.Permissions(at: filePath)
         #expect(readBack.contains(.ownerRead))
         #expect(readBack.contains(.ownerWrite))
         #expect(readBack.contains(.groupRead))
@@ -155,7 +155,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
         ]
 
         try File.System.Metadata.Permissions.set(testPerms, at: filePath)
-        let readBack = try File.System.Metadata.Permissions.get(at: filePath)
+        let readBack = try File.System.Metadata.Permissions(at: filePath)
 
         // Check the permission bits we set
         #expect(readBack.contains(.ownerRead))
@@ -175,7 +175,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
         let path = try File.Path(nonExistent)
 
         #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(path)) {
-            _ = try File.System.Metadata.Permissions.get(at: path)
+            _ = try File.System.Metadata.Permissions(at: path)
         }
     }
 

@@ -62,7 +62,7 @@ extension File.System.Metadata.Ownership.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let ownership = try File.System.Metadata.Ownership.get(at: filePath)
+        let ownership = try File.System.Metadata.Ownership(at: filePath)
 
         // Current user should own the file
         #expect(ownership.uid == getuid())
@@ -77,7 +77,7 @@ extension File.System.Metadata.Ownership.Test.Unit {
     func getOwnershipOfSystemFile() throws {
         // /etc/passwd should be owned by root (uid 0)
         let filePath = try File.Path("/etc/passwd")
-        let ownership = try File.System.Metadata.Ownership.get(at: filePath)
+        let ownership = try File.System.Metadata.Ownership(at: filePath)
 
         #expect(ownership.uid == 0)
     }
@@ -90,12 +90,12 @@ extension File.System.Metadata.Ownership.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let currentOwnership = try File.System.Metadata.Ownership.get(at: filePath)
+        let currentOwnership = try File.System.Metadata.Ownership(at: filePath)
 
         // Setting to same ownership should succeed (no-op)
         try File.System.Metadata.Ownership.set(currentOwnership, at: filePath)
 
-        let afterSet = try File.System.Metadata.Ownership.get(at: filePath)
+        let afterSet = try File.System.Metadata.Ownership(at: filePath)
         #expect(afterSet.uid == currentOwnership.uid)
         #expect(afterSet.gid == currentOwnership.gid)
     }
@@ -108,7 +108,7 @@ extension File.System.Metadata.Ownership.Test.Unit {
         let path = try File.Path(nonExistent)
 
         #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
-            _ = try File.System.Metadata.Ownership.get(at: path)
+            _ = try File.System.Metadata.Ownership(at: path)
         }
     }
 

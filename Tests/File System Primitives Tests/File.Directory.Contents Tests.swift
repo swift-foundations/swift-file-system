@@ -63,7 +63,7 @@ extension File.Directory.Contents.Test.Unit {
         let entries = try File.Directory.Contents.list(at: path)
         #expect(entries.count == 3)
 
-        let names = entries.map { $0.name }.sorted()
+        let names = entries.compactMap { String($0.name) }.sorted()
         #expect(names == ["file1.txt", "file2.txt", "file3.txt"])
     }
 
@@ -100,10 +100,10 @@ extension File.Directory.Contents.Test.Unit {
         let entries = try File.Directory.Contents.list(at: path)
         #expect(entries.count == 2)
 
-        let fileEntry = entries.first { $0.name == "file.txt" }
+        let fileEntry = entries.first { String($0.name) == "file.txt" }
         #expect(fileEntry?.type == .file)
 
-        let dirEntry = entries.first { $0.name == "subdir" }
+        let dirEntry = entries.first { String($0.name) == "subdir" }
         #expect(dirEntry?.type == .directory)
     }
 
@@ -117,7 +117,7 @@ extension File.Directory.Contents.Test.Unit {
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
 
-        let names = entries.map { $0.name }
+        let names = entries.compactMap { String($0.name) }
         #expect(!names.contains("."))
         #expect(!names.contains(".."))
     }
@@ -140,7 +140,7 @@ extension File.Directory.Contents.Test.Unit {
         let entries = try File.Directory.Contents.list(at: path)
         #expect(entries.count == 2)
 
-        let linkEntry = entries.first { $0.name == "link.txt" }
+        let linkEntry = entries.first { String($0.name) == "link.txt" }
         #expect(linkEntry?.type == .symbolicLink)
     }
 
@@ -158,8 +158,8 @@ extension File.Directory.Contents.Test.Unit {
         #expect(entries.count == 1)
 
         let entry = entries[0]
-        #expect(entry.name == "test.txt")
-        #expect(entry.path.string.hasSuffix("/test.txt"))
+        #expect(String(entry.name) == "test.txt")
+        #expect(entry.path?.string.hasSuffix("/test.txt") == true)
     }
 
     // MARK: - Error Cases

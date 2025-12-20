@@ -57,7 +57,7 @@ extension File.Directory.Walk {
 
 extension File.Directory.Walk {
     /// Errors that can occur during directory walk operations.
-    public enum Error: Swift.Error, Sendable {
+    public enum Error: Swift.Error, Equatable, Sendable {
         case pathNotFound(File.Path)
         case permissionDenied(File.Path)
         case notADirectory(File.Path)

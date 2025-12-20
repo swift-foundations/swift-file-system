@@ -61,7 +61,7 @@ extension File.Directory.Iterator.Test.Unit {
         iterator.close()
 
         #expect(entry != nil)
-        #expect(entry?.name == "testfile.txt")
+        #expect(entry.flatMap { String($0.name) } == "testfile.txt")
         #expect(entry?.type == .file)
     }
 
@@ -75,7 +75,9 @@ extension File.Directory.Iterator.Test.Unit {
         // Collect all entries
         var entries: [String] = []
         while let entry = try iterator.next() {
-            entries.append(entry.name)
+            if let name = String(entry.name) {
+                entries.append(name)
+            }
         }
         iterator.close()
 

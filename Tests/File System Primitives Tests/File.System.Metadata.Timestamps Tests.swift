@@ -83,7 +83,7 @@ extension File.System.Metadata.Timestamps.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let timestamps = try File.System.Metadata.Timestamps.get(at: filePath)
+        let timestamps = try File.System.Metadata.Timestamps(at: filePath)
 
         // Timestamps should be positive (i.e., after Unix epoch)
         #expect(timestamps.accessTime.secondsSinceEpoch > 0)
@@ -97,13 +97,13 @@ extension File.System.Metadata.Timestamps.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let beforeWrite = try File.System.Metadata.Timestamps.get(at: filePath)
+            let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
 
             // Wait a small amount and write to the file
             Thread.sleep(forTimeInterval: 0.1)
             try Data([1, 2, 3]).write(to: URL(fileURLWithPath: path))
 
-            let afterWrite = try File.System.Metadata.Timestamps.get(at: filePath)
+            let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
 
             #expect(
                 afterWrite.modificationTime.secondsSinceEpoch
@@ -133,7 +133,7 @@ extension File.System.Metadata.Timestamps.Test.Unit {
 
         try File.System.Metadata.Timestamps.set(timestamps, at: filePath)
 
-        let readBack = try File.System.Metadata.Timestamps.get(at: filePath)
+        let readBack = try File.System.Metadata.Timestamps(at: filePath)
         #expect(readBack.accessTime.secondsSinceEpoch == targetTime.secondsSinceEpoch)
         #expect(readBack.modificationTime.secondsSinceEpoch == targetTime.secondsSinceEpoch)
     }
@@ -156,7 +156,7 @@ extension File.System.Metadata.Timestamps.Test.Unit {
 
         try File.System.Metadata.Timestamps.set(timestamps, at: filePath)
 
-        let readBack = try File.System.Metadata.Timestamps.get(at: filePath)
+        let readBack = try File.System.Metadata.Timestamps(at: filePath)
         #expect(readBack.accessTime.secondsSinceEpoch == accessTime.secondsSinceEpoch)
         #expect(readBack.modificationTime.secondsSinceEpoch == modTime.secondsSinceEpoch)
     }
@@ -169,7 +169,7 @@ extension File.System.Metadata.Timestamps.Test.Unit {
         let path = try File.Path(nonExistent)
 
         #expect(throws: File.System.Metadata.Timestamps.Error.pathNotFound(path)) {
-            _ = try File.System.Metadata.Timestamps.get(at: path)
+            _ = try File.System.Metadata.Timestamps(at: path)
         }
     }
 
