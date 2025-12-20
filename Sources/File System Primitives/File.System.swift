@@ -21,9 +21,18 @@ extension File {
     }
 }
 
-// MARK: - SystemErrorCode
+// MARK: - Error Namespace
 
 extension File.System {
+    /// Namespace for error-related types.
+    public enum Error {
+
+    }
+}
+
+// MARK: - Error.Code
+
+extension File.System.Error {
     /// Platform-specific system error code.
     ///
     /// Separates POSIX errno values from Windows error codes for proper diagnostics.
@@ -37,7 +46,7 @@ extension File.System {
     /// case .windows(let code):
     ///     print("Windows error: \(code)")
     /// ```
-    public enum ErrorCode: Equatable, Sendable {
+    public enum Code: Equatable, Sendable {
         /// POSIX errno value (Unix-like systems).
         case posix(Int32)
 
@@ -48,7 +57,7 @@ extension File.System {
 
 // MARK: - CustomStringConvertible
 
-extension File.System.ErrorCode: CustomStringConvertible {
+extension File.System.Error.Code: CustomStringConvertible {
     public var description: String {
         switch self {
         case .posix(let errno):
@@ -67,7 +76,7 @@ extension File.System.ErrorCode: CustomStringConvertible {
 
 // MARK: - Convenience Initializers
 
-extension File.System.ErrorCode {
+extension File.System.Error.Code {
     /// Creates an error code from the current platform's last error.
     ///
     /// On POSIX systems, reads `errno`. On Windows, calls `GetLastError()`.
@@ -91,7 +100,7 @@ extension File.System.ErrorCode {
 
 // MARK: - Error Message Helper
 
-extension File.System.ErrorCode {
+extension File.System.Error.Code {
     /// Returns a human-readable message for this error code.
     public var message: String {
         switch self {
@@ -107,4 +116,12 @@ extension File.System.ErrorCode {
             return "Windows error \(code)"
         }
     }
+}
+
+// MARK: - Backward Compatibility Typealias
+
+extension File.System {
+    /// Backward compatibility alias for `Error.Code`.
+    @available(*, deprecated, renamed: "Error.Code")
+    public typealias ErrorCode = Error.Code
 }

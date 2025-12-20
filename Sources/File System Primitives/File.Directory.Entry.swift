@@ -17,23 +17,27 @@ extension File.Directory {
         public let path: File.Path
 
         /// The type of the entry.
-        public let type: EntryType
+        public let kind: Kind
 
         /// Creates a directory entry.
         ///
         /// - Parameters:
         ///   - name: The entry's filename (not the full path).
         ///   - path: The full path to the entry.
-        ///   - type: The type of entry (file, directory, symlink, etc.).
-        public init(name: String, path: File.Path, type: EntryType) {
+        ///   - kind: The kind of entry (file, directory, symlink, etc.).
+        public init(name: String, path: File.Path, kind: Kind) {
             self.name = name
             self.path = path
-            self.type = type
+            self.kind = kind
         }
     }
+}
 
-    /// The type of a directory entry.
-    public enum EntryType: Sendable {
+// MARK: - Entry.Kind
+
+extension File.Directory.Entry {
+    /// The kind of a directory entry.
+    public enum Kind: Sendable {
         /// A regular file.
         case file
         /// A directory (folder).
@@ -45,9 +49,28 @@ extension File.Directory {
     }
 }
 
+// MARK: - Backward Compatibility
+
+extension File.Directory {
+    @available(*, deprecated, renamed: "Entry.Kind")
+    public typealias EntryType = Entry.Kind
+}
+
+extension File.Directory.Entry {
+    /// Backward compatible property - use `kind` instead.
+    @available(*, deprecated, renamed: "kind")
+    public var type: Kind { kind }
+
+    /// Backward compatible initializer.
+    @available(*, deprecated, message: "Use init(name:path:kind:) instead")
+    public init(name: String, path: File.Path, type: Kind) {
+        self.init(name: name, path: path, kind: type)
+    }
+}
+
 // MARK: - RawRepresentable
 
-extension File.Directory.EntryType: RawRepresentable {
+extension File.Directory.Entry.Kind: RawRepresentable {
     public var rawValue: UInt8 {
         switch self {
         case .file: return 0
@@ -70,7 +93,7 @@ extension File.Directory.EntryType: RawRepresentable {
 
 // MARK: - Binary.Serializable
 
-extension File.Directory.EntryType: Binary.Serializable {
+extension File.Directory.Entry.Kind: Binary.Serializable {
     @inlinable
     public static func serialize<Buffer: RangeReplaceableCollection>(
         _ value: Self,

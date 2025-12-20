@@ -16,7 +16,7 @@
             to path: borrowing String,
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
-            typealias Phase = File.System.Write.Atomic.CommitPhase
+            typealias Phase = File.System.Write.Atomic.Commit.Phase
 
             // Track progress for cleanup and error diagnostics
             var phase: Phase = .pending

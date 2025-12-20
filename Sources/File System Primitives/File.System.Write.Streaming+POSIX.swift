@@ -645,19 +645,30 @@
 
     extension POSIXStreaming {
 
+        /// Namespace for write-related types.
+        public enum Write {
+        }
+    }
+
+    extension POSIXStreaming.Write {
         /// Context for multi-phase streaming writes.
         ///
         /// @unchecked Sendable because all fields are immutable value types (Int32, String).
         /// Safe to pass to io.run closures within a single async function.
-        public struct WriteContext: @unchecked Sendable {
+        public struct Context: @unchecked Sendable {
             public let fd: Int32
             public let tempPath: String?  // nil for direct mode
             public let resolvedPath: String
             public let parent: String
             public let durability: File.System.Write.Streaming.Durability
             public let isAtomic: Bool
-            public let strategy: File.System.Write.Streaming.AtomicStrategy?
+            public let strategy: File.System.Write.Streaming.Atomic.Strategy?
         }
+    }
+
+    extension POSIXStreaming {
+        @available(*, deprecated, renamed: "Write.Context")
+        public typealias WriteContext = Write.Context
 
         /// Opens a file for multi-phase streaming write.
         ///
@@ -665,7 +676,7 @@
         public static func openForStreaming(
             path: String,
             options: File.System.Write.Streaming.Options
-        ) throws(File.System.Write.Streaming.Error) -> WriteContext {
+        ) throws(File.System.Write.Streaming.Error) -> Write.Context {
 
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
@@ -675,7 +686,7 @@
             case .atomic(let atomicOptions):
                 let tempPath = generateTempPath(in: parent, for: resolvedPath)
                 let fd = try createFile(at: tempPath, exclusive: true)
-                return WriteContext(
+                return Write.Context(
                     fd: fd,
                     tempPath: tempPath,
                     resolvedPath: resolvedPath,
@@ -688,7 +699,7 @@
             case .direct(let directOptions):
                 // For direct mode with .create strategy, we still need exclusive create
                 let fd = try createFile(at: resolvedPath, exclusive: directOptions.strategy == .create)
-                return WriteContext(
+                return Write.Context(
                     fd: fd,
                     tempPath: nil,
                     resolvedPath: resolvedPath,
@@ -705,7 +716,7 @@
         /// The Span must not escape - callee uses it immediately and synchronously.
         public static func writeChunk(
             _ span: borrowing Span<UInt8>,
-            to context: borrowing WriteContext
+            to context: borrowing Write.Context
         ) throws(File.System.Write.Streaming.Error) {
             try writeAll(span, to: context.fd, path: context.tempPath ?? context.resolvedPath)
         }
@@ -718,7 +729,7 @@
         /// - Caller should catch CancellationError after this returns and map to `.durabilityNotGuaranteed`
         ///   if commit had already published (but that requires caller tracking - see note below)
         public static func commit(
-            _ context: borrowing WriteContext
+            _ context: borrowing Write.Context
         ) throws(File.System.Write.Streaming.Error) {
 
             // Sync file data
@@ -757,7 +768,7 @@
         /// Cleans up a failed streaming write.
         ///
         /// Best-effort cleanup - closes fd and removes temp file if atomic mode.
-        public static func cleanup(_ context: borrowing WriteContext) {
+        public static func cleanup(_ context: borrowing Write.Context) {
             // Close fd if still open (ignore errors)
             _ = close(context.fd)
 

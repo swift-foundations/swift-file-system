@@ -466,20 +466,31 @@
 
     extension WindowsStreaming {
 
+        /// Namespace for write-related types.
+        public enum Write {
+        }
+    }
+
+    extension WindowsStreaming.Write {
         /// Context for multi-phase streaming writes.
         ///
         /// @unchecked Sendable because all fields are immutable value types.
         /// HANDLE is a pointer but Windows file handles are thread-safe for sequential operations.
         /// Safe to pass to io.run closures within a single async function.
-        public struct WriteContext: @unchecked Sendable {
+        public struct Context: @unchecked Sendable {
             public let handle: HANDLE
             public let tempPath: String?  // nil for direct mode
             public let resolvedPath: String
             public let parent: String
             public let durability: File.System.Write.Streaming.Durability
             public let isAtomic: Bool
-            public let strategy: File.System.Write.Streaming.AtomicStrategy?
+            public let strategy: File.System.Write.Streaming.Atomic.Strategy?
         }
+    }
+
+    extension WindowsStreaming {
+        @available(*, deprecated, renamed: "Write.Context")
+        public typealias WriteContext = Write.Context
 
         /// Opens a file for multi-phase streaming write.
         ///
@@ -487,7 +498,7 @@
         public static func openForStreaming(
             path: String,
             options: File.System.Write.Streaming.Options
-        ) throws(File.System.Write.Streaming.Error) -> WriteContext {
+        ) throws(File.System.Write.Streaming.Error) -> Write.Context {
 
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
@@ -497,7 +508,7 @@
             case .atomic(let atomicOptions):
                 let tempPath = generateTempPath(in: parent, for: resolvedPath)
                 let handle = try createFile(at: tempPath, exclusive: true)
-                return WriteContext(
+                return Write.Context(
                     handle: handle,
                     tempPath: tempPath,
                     resolvedPath: resolvedPath,
@@ -509,7 +520,7 @@
 
             case .direct(let directOptions):
                 let handle = try createFile(at: resolvedPath, exclusive: directOptions.strategy == .create)
-                return WriteContext(
+                return Write.Context(
                     handle: handle,
                     tempPath: nil,
                     resolvedPath: resolvedPath,
@@ -526,7 +537,7 @@
         /// The Span must not escape - callee uses it immediately and synchronously.
         public static func writeChunk(
             _ span: borrowing Span<UInt8>,
-            to context: borrowing WriteContext
+            to context: borrowing Write.Context
         ) throws(File.System.Write.Streaming.Error) {
             try writeAll(span, to: context.handle, path: context.tempPath ?? context.resolvedPath)
         }
@@ -537,7 +548,7 @@
         /// - Pre-publish failures throw normal errors
         /// - Post-publish I/O failures throw `.directorySyncFailedAfterCommit`
         public static func commit(
-            _ context: borrowing WriteContext
+            _ context: borrowing Write.Context
         ) throws(File.System.Write.Streaming.Error) {
 
             // Sync file data
@@ -581,7 +592,7 @@
         /// Cleans up a failed streaming write.
         ///
         /// Best-effort cleanup - closes handle and removes temp file if atomic mode.
-        public static func cleanup(_ context: borrowing WriteContext) {
+        public static func cleanup(_ context: borrowing Write.Context) {
             // Close handle if still open (ignore errors)
             _ = CloseHandle(context.handle)
 

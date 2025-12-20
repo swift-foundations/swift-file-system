@@ -45,62 +45,22 @@ extension File.System.Write {
     /// with explicit share mode control would be needed.
     public enum Streaming {
 
-        // MARK: - Commit Policy
+        // MARK: - Commit
 
-        /// Controls how chunks are committed to disk.
-        public enum CommitPolicy: Sendable {
-            /// Atomic write via temp file + rename (crash-safe).
-            ///
-            /// - Write chunks to temp file in same directory
-            /// - Sync temp file according to durability
-            /// - Atomically rename to destination
-            /// - Sync directory to persist rename
-            ///
-            /// Note: Unlike `File.System.Write.Atomic`, streaming does not support
-            /// metadata preservation (timestamps, xattrs, ACLs, ownership).
-            case atomic(AtomicOptions = .init())
-
-            /// Direct write to destination (faster, no crash-safety).
-            ///
-            /// On crash or cancellation, file may be partially written.
-            case direct(DirectOptions = .init())
+        /// Namespace for commit-related types.
+        public enum Commit {
         }
 
-        // MARK: - Atomic Options
+        // MARK: - Atomic
 
-        /// Options for atomic streaming writes.
-        ///
-        /// Note: Unlike `File.System.Write.Atomic.Options`, streaming writes do not support
-        /// metadata preservation. This is a simpler options type focused on
-        /// durability and existence semantics.
-        public struct AtomicOptions: Sendable {
-            /// Controls behavior when destination exists.
-            public var strategy: AtomicStrategy
-
-            /// Controls durability guarantees.
-            public var durability: Durability
-
-            public init(
-                strategy: AtomicStrategy = .replaceExisting,
-                durability: Durability = .full
-            ) {
-                self.strategy = strategy
-                self.durability = durability
-            }
+        /// Namespace for atomic streaming write types.
+        public enum Atomic {
         }
 
-        /// Strategy for atomic streaming writes.
-        public enum AtomicStrategy: Sendable {
-            /// Replace existing file (default).
-            case replaceExisting
+        // MARK: - Direct
 
-            /// Fail if destination already exists.
-            ///
-            /// Uses platform-specific atomic mechanisms:
-            /// - macOS/iOS: `renamex_np` with `RENAME_EXCL`
-            /// - Linux: `renameat2` with `RENAME_NOREPLACE`, fallback to `link+unlink`
-            /// - Windows: `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING`
-            case noClobber
+        /// Namespace for direct streaming write types.
+        public enum Direct {
         }
 
         // MARK: - Durability
@@ -120,42 +80,14 @@ extension File.System.Write {
             case none
         }
 
-        // MARK: - Direct Options
-
-        /// Options for non-atomic (direct) writes.
-        public struct DirectOptions: Sendable {
-            /// Controls behavior when destination exists.
-            public var strategy: DirectStrategy
-
-            /// Controls durability guarantees.
-            public var durability: Durability
-
-            public init(
-                strategy: DirectStrategy = .truncate,
-                durability: Durability = .full
-            ) {
-                self.strategy = strategy
-                self.durability = durability
-            }
-        }
-
-        /// Strategy for direct (non-atomic) writes.
-        public enum DirectStrategy: Sendable {
-            /// Fail if destination exists.
-            case create
-
-            /// Truncate existing file or create new.
-            case truncate
-        }
-
         // MARK: - Options
 
         /// Options controlling streaming write behavior.
         public struct Options: Sendable {
             /// How to commit chunks to disk.
-            public var commit: CommitPolicy
+            public var commit: Commit.Policy
 
-            public init(commit: CommitPolicy = .atomic(.init())) {
+            public init(commit: Commit.Policy = .atomic(.init())) {
                 self.commit = commit
             }
         }
@@ -225,6 +157,125 @@ extension File.System.Write {
             #endif
         }
     }
+}
+
+// MARK: - Commit.Policy
+
+extension File.System.Write.Streaming.Commit {
+    /// Controls how chunks are committed to disk.
+    public enum Policy: Sendable {
+        /// Atomic write via temp file + rename (crash-safe).
+        ///
+        /// - Write chunks to temp file in same directory
+        /// - Sync temp file according to durability
+        /// - Atomically rename to destination
+        /// - Sync directory to persist rename
+        ///
+        /// Note: Unlike `File.System.Write.Atomic`, streaming does not support
+        /// metadata preservation (timestamps, xattrs, ACLs, ownership).
+        case atomic(File.System.Write.Streaming.Atomic.Options = .init())
+
+        /// Direct write to destination (faster, no crash-safety).
+        ///
+        /// On crash or cancellation, file may be partially written.
+        case direct(File.System.Write.Streaming.Direct.Options = .init())
+    }
+}
+
+// MARK: - Atomic.Options
+
+extension File.System.Write.Streaming.Atomic {
+    /// Options for atomic streaming writes.
+    ///
+    /// Note: Unlike `File.System.Write.Atomic.Options`, streaming writes do not support
+    /// metadata preservation. This is a simpler options type focused on
+    /// durability and existence semantics.
+    public struct Options: Sendable {
+        /// Controls behavior when destination exists.
+        public var strategy: Strategy
+
+        /// Controls durability guarantees.
+        public var durability: File.System.Write.Streaming.Durability
+
+        public init(
+            strategy: Strategy = .replaceExisting,
+            durability: File.System.Write.Streaming.Durability = .full
+        ) {
+            self.strategy = strategy
+            self.durability = durability
+        }
+    }
+}
+
+// MARK: - Atomic.Strategy
+
+extension File.System.Write.Streaming.Atomic {
+    /// Strategy for atomic streaming writes.
+    public enum Strategy: Sendable {
+        /// Replace existing file (default).
+        case replaceExisting
+
+        /// Fail if destination already exists.
+        ///
+        /// Uses platform-specific atomic mechanisms:
+        /// - macOS/iOS: `renamex_np` with `RENAME_EXCL`
+        /// - Linux: `renameat2` with `RENAME_NOREPLACE`, fallback to `link+unlink`
+        /// - Windows: `MoveFileExW` without `MOVEFILE_REPLACE_EXISTING`
+        case noClobber
+    }
+}
+
+// MARK: - Direct.Options
+
+extension File.System.Write.Streaming.Direct {
+    /// Options for non-atomic (direct) writes.
+    public struct Options: Sendable {
+        /// Controls behavior when destination exists.
+        public var strategy: Strategy
+
+        /// Controls durability guarantees.
+        public var durability: File.System.Write.Streaming.Durability
+
+        public init(
+            strategy: Strategy = .truncate,
+            durability: File.System.Write.Streaming.Durability = .full
+        ) {
+            self.strategy = strategy
+            self.durability = durability
+        }
+    }
+}
+
+// MARK: - Direct.Strategy
+
+extension File.System.Write.Streaming.Direct {
+    /// Strategy for direct (non-atomic) writes.
+    public enum Strategy: Sendable {
+        /// Fail if destination exists.
+        case create
+
+        /// Truncate existing file or create new.
+        case truncate
+    }
+}
+
+// MARK: - Backward Compatibility
+
+extension File.System.Write.Streaming {
+    @available(*, deprecated, renamed: "Commit.Policy")
+    public typealias CommitPolicy = Commit.Policy
+
+    @available(*, deprecated, renamed: "Atomic.Options")
+    public typealias AtomicOptions = Atomic.Options
+
+    @available(*, deprecated, renamed: "Atomic.Strategy")
+    public typealias AtomicStrategy = Atomic.Strategy
+
+    @available(*, deprecated, renamed: "Direct.Options")
+    public typealias DirectOptions = Direct.Options
+
+    @available(*, deprecated, renamed: "Direct.Strategy")
+    public typealias DirectStrategy = Direct.Strategy
 }
 
 // MARK: - Internal Helpers

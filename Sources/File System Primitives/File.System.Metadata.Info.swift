@@ -22,8 +22,8 @@ extension File.System.Metadata {
         /// File timestamps.
         public let timestamps: Timestamps
 
-        /// File type.
-        public let type: FileType
+        /// File kind.
+        public let kind: Kind
 
         /// Inode number.
         public let inode: UInt64
@@ -39,7 +39,7 @@ extension File.System.Metadata {
             permissions: Permissions,
             owner: Ownership,
             timestamps: Timestamps,
-            type: FileType,
+            kind: Kind,
             inode: UInt64,
             deviceId: UInt64,
             linkCount: UInt32
@@ -48,15 +48,15 @@ extension File.System.Metadata {
             self.permissions = permissions
             self.owner = owner
             self.timestamps = timestamps
-            self.type = type
+            self.kind = kind
             self.inode = inode
             self.deviceId = deviceId
             self.linkCount = linkCount
         }
     }
 
-    /// File type classification.
-    public enum FileType: Sendable {
+    /// File kind classification.
+    public enum Kind: Sendable {
         case regular
         case directory
         case symbolicLink
@@ -67,9 +67,46 @@ extension File.System.Metadata {
     }
 }
 
+// MARK: - Backward Compatibility
+
+extension File.System.Metadata {
+    @available(*, deprecated, renamed: "Kind")
+    public typealias FileType = Kind
+}
+
+extension File.System.Metadata.Info {
+    /// Backward compatible property - use `kind` instead.
+    @available(*, deprecated, renamed: "kind")
+    public var type: File.System.Metadata.Kind { kind }
+
+    /// Backward compatible initializer.
+    @available(*, deprecated, message: "Use init(size:permissions:owner:timestamps:kind:inode:deviceId:linkCount:) instead")
+    public init(
+        size: Int64,
+        permissions: File.System.Metadata.Permissions,
+        owner: File.System.Metadata.Ownership,
+        timestamps: File.System.Metadata.Timestamps,
+        type: File.System.Metadata.Kind,
+        inode: UInt64,
+        deviceId: UInt64,
+        linkCount: UInt32
+    ) {
+        self.init(
+            size: size,
+            permissions: permissions,
+            owner: owner,
+            timestamps: timestamps,
+            kind: type,
+            inode: inode,
+            deviceId: deviceId,
+            linkCount: linkCount
+        )
+    }
+}
+
 // MARK: - RawRepresentable
 
-extension File.System.Metadata.FileType: RawRepresentable {
+extension File.System.Metadata.Kind: RawRepresentable {
     public var rawValue: UInt8 {
         switch self {
         case .regular: return 0
@@ -98,7 +135,7 @@ extension File.System.Metadata.FileType: RawRepresentable {
 
 // MARK: - Binary.Serializable
 
-extension File.System.Metadata.FileType: Binary.Serializable {
+extension File.System.Metadata.Kind: Binary.Serializable {
     @inlinable
     public static func serialize<Buffer: RangeReplaceableCollection>(
         _ value: Self,
