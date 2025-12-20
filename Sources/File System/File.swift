@@ -128,7 +128,63 @@ extension File {
     public func append(_ string: String) async throws {
         try await append(Array(string.utf8))
     }
+}
 
+// MARK: - Streaming Write Operations
+
+extension File {
+    /// Writes chunks to the file using streaming (memory-efficient).
+    ///
+    /// By default uses atomic mode (temp file + rename) for crash safety.
+    /// For large files, this is more memory-efficient than `write(_:)`.
+    ///
+    /// Accepts any `Sequence where Element == [UInt8]`, including lazy sequences.
+    ///
+    /// - Parameters:
+    ///   - chunks: Sequence of owned byte arrays to write.
+    ///   - options: Streaming write options.
+    /// - Throws: `File.System.Write.Streaming.Error` on failure.
+    public func write<Chunks: Sequence>(
+        streaming chunks: Chunks,
+        options: File.System.Write.Streaming.Options = .init()
+    ) throws where Chunks.Element == [UInt8] {
+        try File.System.Write.Streaming.write(chunks, to: path, options: options)
+    }
+
+    /// Writes chunks to the file using streaming (memory-efficient).
+    ///
+    /// Async variant. Accepts any `Sequence where Element == [UInt8]`.
+    ///
+    /// - Parameters:
+    ///   - chunks: Sequence of owned byte arrays to write.
+    ///   - options: Streaming write options.
+    /// - Throws: `File.System.Write.Streaming.Error` on failure.
+    public func write<Chunks: Sequence & Sendable>(
+        streaming chunks: Chunks,
+        options: File.System.Write.Streaming.Options = .init()
+    ) async throws where Chunks.Element == [UInt8] {
+        try await File.System.Write.Streaming.write(chunks, to: path, options: options)
+    }
+
+    /// Writes chunks from an async sequence to the file.
+    ///
+    /// Collects all chunks before writing to maintain atomicity.
+    ///
+    /// - Parameters:
+    ///   - chunks: Async sequence of owned byte arrays to write.
+    ///   - options: Streaming write options.
+    /// - Throws: `File.System.Write.Streaming.Error` on failure.
+    public func write<Chunks: AsyncSequence & Sendable>(
+        streaming chunks: Chunks,
+        options: File.System.Write.Streaming.Options = .init()
+    ) async throws where Chunks.Element == [UInt8] {
+        try await File.System.Write.Streaming.write(chunks, to: path, options: options)
+    }
+}
+
+// MARK: - Touch
+
+extension File {
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// - Returns: Self for chaining.

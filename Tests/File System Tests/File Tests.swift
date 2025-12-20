@@ -24,8 +24,7 @@ extension File.Test.Unit {
     }
 
     private func createTempFile(content: [UInt8] = []) throws -> File {
-        let pathString = "/tmp/file-test-\(uniqueId()).bin"
-        let file = try File(pathString)
+        let file = try File(.init("/tmp/file-test-\(uniqueId()).bin"))
         try file.write(content)
         return file
     }
@@ -45,13 +44,13 @@ extension File.Test.Unit {
 
     @Test("init from string")
     func initFromString() throws {
-        let file = try File("/tmp/test.txt")
+        let file = try File(.init("/tmp/test.txt"))
         #expect(file.path.string == "/tmp/test.txt")
     }
 
     @Test("init from string literal")
     func initFromStringLiteral() {
-        let file: File = "/tmp/test.txt"
+        let file: File = .init("/tmp/test.txt")
         #expect(file.path.string == "/tmp/test.txt")
     }
 
@@ -101,8 +100,7 @@ extension File.Test.Unit {
 
     @Test("write bytes to file")
     func writeBytesToFile() throws {
-        let pathString = "/tmp/file-write-\(uniqueId()).bin"
-        let file = try File(pathString)
+        let file = try File(.init("/tmp/file-write-\(uniqueId()).bin"))
         defer { cleanup(file) }
 
         let content: [UInt8] = [1, 2, 3, 4, 5]
@@ -114,8 +112,7 @@ extension File.Test.Unit {
 
     @Test("write string to file")
     func writeStringToFile() throws {
-        let pathString = "/tmp/file-write-string-\(uniqueId()).txt"
-        let file = try File(pathString)
+        let file = try File(.init("/tmp/file-write-string-\(uniqueId()).txt"))
         defer { cleanup(file) }
 
         let text = "Hello, World!"
@@ -127,8 +124,7 @@ extension File.Test.Unit {
 
     @Test("write async bytes to file")
     func writeAsyncBytesToFile() async throws {
-        let pathString = "/tmp/file-write-async-\(uniqueId()).bin"
-        let file = try File(pathString)
+        let file = try File(.init("/tmp/file-write-async-\(uniqueId()).bin"))
         defer { cleanup(file) }
 
         let content: [UInt8] = [10, 20, 30]
@@ -150,7 +146,7 @@ extension File.Test.Unit {
 
     @Test("exists returns false for non-existing file")
     func existsReturnsFalseForNonExisting() throws {
-        let file = try File("/tmp/non-existing-\(uniqueId())")
+        let file = try File(.init("/tmp/non-existing-\(uniqueId())"))
         #expect(file.exists == false)
     }
 
@@ -252,7 +248,7 @@ extension File.Test.Unit {
     func copyToFileCopiesFile() throws {
         let content: [UInt8] = [1, 2, 3]
         let source = try createTempFile(content: content)
-        let dest = try File("/tmp/file-copy-\(uniqueId()).bin")
+        let dest = try File(.init("/tmp/file-copy-\(uniqueId()).bin"))
         defer {
             cleanup(source)
             cleanup(dest)
@@ -287,7 +283,7 @@ extension File.Test.Unit {
     func moveToFileMovesFile() throws {
         let content: [UInt8] = [1, 2, 3]
         let source = try createTempFile(content: content)
-        let dest = try File("/tmp/file-move-\(uniqueId()).bin")
+        let dest = try File(.init("/tmp/file-move-\(uniqueId()).bin"))
         defer {
             cleanup(source)
             cleanup(dest)
@@ -303,7 +299,7 @@ extension File.Test.Unit {
 
     @Test("parent returns parent directory")
     func parentReturnsParent() {
-        let file: File = "/tmp/subdir/file.txt"
+        let file: File = .init("/tmp/subdir/file.txt")
         let parent = file.parent
 
         #expect(parent != nil)
@@ -312,38 +308,38 @@ extension File.Test.Unit {
 
     @Test("name returns filename")
     func nameReturnsFilename() {
-        let file: File = "/tmp/test.txt"
+        let file: File = .init("/tmp/test.txt")
         #expect(file.name == "test.txt")
     }
 
     @Test("extension returns file extension")
     func extensionReturnsExtension() {
-        let file: File = "/tmp/test.txt"
+        let file: File = .init("/tmp/test.txt")
         #expect(file.extension == "txt")
     }
 
     @Test("extension returns nil for no extension")
     func extensionReturnsNilForNoExtension() {
-        let file: File = "/tmp/Makefile"
+        let file: File = .init("/tmp/Makefile")
         #expect(file.extension == nil)
     }
 
     @Test("stem returns filename without extension")
     func stemReturnsStem() {
-        let file: File = "/tmp/test.txt"
+        let file: File = .init("/tmp/test.txt")
         #expect(file.stem == "test")
     }
 
     @Test("appending returns new file with appended path")
     func appendingReturnsNewFile() {
-        let file: File = "/tmp"
+        let file: File = .init("/tmp")
         let result = file.appending("subdir")
         #expect(result.path.string == "/tmp/subdir")
     }
 
     @Test("/ operator appends path")
     func slashOperatorAppendsPath() {
-        let file: File = "/tmp"
+        let file: File = .init("/tmp")
         let result = file / "subdir" / "file.txt"
         #expect(result.path.string == "/tmp/subdir/file.txt")
     }
@@ -352,9 +348,9 @@ extension File.Test.Unit {
 
     @Test("File is equatable")
     func fileIsEquatable() throws {
-        let file1 = try File("/tmp/test.txt")
-        let file2 = try File("/tmp/test.txt")
-        let file3 = try File("/tmp/other.txt")
+        let file1 = try File(.init("/tmp/test.txt"))
+        let file2 = try File(.init("/tmp/test.txt"))
+        let file3 = try File(.init("/tmp/other.txt"))
 
         #expect(file1 == file2)
         #expect(file1 != file3)
@@ -362,8 +358,8 @@ extension File.Test.Unit {
 
     @Test("File is hashable")
     func fileIsHashable() throws {
-        let file1 = try File("/tmp/test.txt")
-        let file2 = try File("/tmp/test.txt")
+        let file1 = try File(.init("/tmp/test.txt"))
+        let file2 = try File(.init("/tmp/test.txt"))
 
         var set = Set<File>()
         set.insert(file1)
@@ -376,13 +372,13 @@ extension File.Test.Unit {
 
     @Test("description returns path string")
     func descriptionReturnsPathString() {
-        let file: File = "/tmp/test.txt"
+        let file: File = .init("/tmp/test.txt")
         #expect(file.description == "/tmp/test.txt")
     }
 
     @Test("debugDescription returns formatted string")
     func debugDescriptionReturnsFormatted() {
-        let file: File = "/tmp/test.txt"
+        let file: File = .init("/tmp/test.txt")
         #expect(file.debugDescription == "File(\"/tmp/test.txt\")")
     }
 }

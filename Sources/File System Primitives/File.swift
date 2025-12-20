@@ -26,7 +26,7 @@
 ///     print("Size: \(try file.size)")
 /// }
 /// ```
-public struct File: Hashable, Sendable, ExpressibleByStringLiteral {
+public struct File: Hashable, Sendable {
     /// The underlying file path.
     public let path: File.Path
 
@@ -39,24 +39,16 @@ public struct File: Hashable, Sendable, ExpressibleByStringLiteral {
         self.path = path
     }
 
-    /// Creates a file from a string path.
-    ///
-    /// - Parameter string: The path string.
-    /// - Throws: `File.Path.Error` if the path is invalid.
-    public init(_ string: String) throws {
-        self.path = try File.Path(string)
-    }
-
-    /// Creates a file from a string literal.
-    ///
-    /// - Parameter value: The path string literal.
-    public init(stringLiteral value: String) {
-        do {
-            self.path = try File.Path(value)
-        } catch {
-            fatalError("Invalid path literal: \(error)")
-        }
-    }
+//    /// Creates a file from a string literal.
+//    ///
+//    /// - Parameter value: The path string literal.
+//    public init(stringLiteral value: String) {
+//        do {
+//            self.path = try File.Path(value)
+//        } catch {
+//            fatalError("Invalid path literal: \(error)")
+//        }
+//    }
 }
 
 // MARK: - CustomStringConvertible
