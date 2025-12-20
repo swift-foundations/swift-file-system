@@ -255,25 +255,28 @@ extension File.Directory.Contents.Test.Unit {
 import Foundation
 #endif
 
+import TestingPerformance
+
 extension File.Directory.Contents.Test.Performance {
 
-    /// Manual timing performance tests (no .timed() harness overhead)
+    /// Performance tests using .timed() harness with class fixture for setup isolation.
+    /// Setup runs once per test method (in init), not per .timed() iteration.
     @Suite(.serialized)
-    struct ManualBenchmarks {
+    final class DirectoryListingBenchmarks {
+        let testDir: File.Path
 
-        @Test("Directory listing benchmark (100 files, 100 iterations)")
-        func directoryListingBenchmark() throws {
+        init() throws {
             #if canImport(Foundation)
                 let tempDir = try File.Path(NSTemporaryDirectory())
             #else
                 let tempDir = try File.Path("/tmp")
             #endif
-            let testDir = File.Path(tempDir, appending: "bench_list_\(Int.random(in: 0..<Int.max))")
+            self.testDir = File.Path(tempDir, appending: "bench_\(Int.random(in: 0..<Int.max))")
 
-            // Setup
+            // Setup: create directory with 100 files
+            // Use durability: .none to avoid F_FULLFSYNC overhead
             try File.System.Create.Directory.create(at: testDir)
             let fileData = [UInt8](repeating: 0x00, count: 10)
-            // Use durability: .none to avoid F_FULLFSYNC overhead in benchmark setup
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
             for i in 0..<100 {
                 let filePath = File.Path(testDir, appending: "file_\(i).txt")
@@ -282,65 +285,27 @@ extension File.Directory.Contents.Test.Performance {
                     try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
                 }
             }
-            defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }
-
-            // Benchmark
-            let clock = ContinuousClock()
-            let n = 100
-
-            let start = clock.now
-            var sum = 0
-            for _ in 0..<n {
-                sum += try File.Directory.Contents.list(at: testDir).count
-            }
-            let elapsed = clock.now - start
-
-            #expect(sum == n * 100)
-            let avgMs = Double(elapsed.components.attoseconds) / 1e15 / Double(n)
-            print("list(): \(n) calls, avg = \(String(format: "%.3f", avgMs)) ms/call")
         }
 
-        @Test("Directory iteration benchmark (100 files, 100 iterations)")
-        func directoryIterationBenchmark() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
-            let testDir = File.Path(tempDir, appending: "bench_iter_\(Int.random(in: 0..<Int.max))")
+        deinit {
+            try? File.System.Delete.delete(at: testDir, options: .init(recursive: true))
+        }
 
-            // Setup
-            try File.System.Create.Directory.create(at: testDir)
-            let fileData = [UInt8](repeating: 0x00, count: 10)
-            // Use durability: .none to avoid F_FULLFSYNC overhead in benchmark setup
-            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
-            for i in 0..<100 {
-                let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                try fileData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
-                }
+        @Test("Directory contents listing (100 files)", .timed(iterations: 50, warmup: 5))
+        func directoryContentsListing() throws {
+            let entries = try File.Directory.Contents.list(at: testDir)
+            #expect(entries.count == 100)
+        }
+
+        @Test("Directory iteration (100 files)", .timed(iterations: 50, warmup: 5))
+        func directoryIteration() throws {
+            var iterator = try File.Directory.Iterator.open(at: testDir)
+            var count = 0
+            while try iterator.next() != nil {
+                count += 1
             }
-            defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }
-
-            // Benchmark
-            let clock = ContinuousClock()
-            let n = 100
-
-            let start = clock.now
-            var sum = 0
-            for _ in 0..<n {
-                var iterator = try File.Directory.Iterator.open(at: testDir)
-                while try iterator.next() != nil {
-                    sum += 1
-                }
-                iterator.close()
-            }
-            let elapsed = clock.now - start
-
-            #expect(sum == n * 100)
-            let avgMs = Double(elapsed.components.attoseconds) / 1e15 / Double(n)
-            print("Iterator: \(n) calls, avg = \(String(format: "%.3f", avgMs)) ms/call")
+            iterator.close()
+            #expect(count == 100)
         }
     }
 }
