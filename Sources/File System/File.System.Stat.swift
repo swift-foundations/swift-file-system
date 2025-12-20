@@ -12,7 +12,7 @@ extension File.System.Stat {
     /// - Returns: `true` if the path is a regular file, `false` otherwise.
     public static func isFile(at path: File.Path) -> Bool {
         guard let info = try? info(at: path) else { return false }
-        return info.type == .regular
+        return info.kind == .regular
     }
 
     /// Checks if the path is a directory.
@@ -21,7 +21,7 @@ extension File.System.Stat {
     /// - Returns: `true` if the path is a directory, `false` otherwise.
     public static func isDirectory(at path: File.Path) -> Bool {
         guard let info = try? info(at: path) else { return false }
-        return info.type == .directory
+        return info.kind == .directory
     }
 
     /// Checks if the path is a symbolic link.
@@ -30,6 +30,6 @@ extension File.System.Stat {
     /// - Returns: `true` if the path is a symbolic link, `false` otherwise.
     public static func isSymlink(at path: File.Path) -> Bool {
         guard let info = try? lstatInfo(at: path) else { return false }
-        return info.type == .symbolicLink
+        return info.kind == .symbolicLink
     }
 }

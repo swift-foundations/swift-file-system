@@ -86,7 +86,7 @@ extension File.Directory.Contents {
                 let entryPath = path.appending(name)
 
                 // Determine type
-                let entryType: File.Directory.EntryType
+                let entryType: File.Directory.Entry.Kind
                 #if canImport(Darwin)
                     switch Int32(entry.pointee.d_type) {
                     case DT_REG:
@@ -134,7 +134,7 @@ extension File.Directory.Contents {
                     }
                 #endif
 
-                entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
+                entries.append(File.Directory.Entry(name: name, path: entryPath, kind: entryType))
             }
 
             return entries
@@ -206,7 +206,7 @@ extension File.Directory.Contents {
                 let entryPath = path.appending(name)
 
                 // Determine type
-                let entryType: File.Directory.EntryType
+                let entryType: File.Directory.Entry.Kind
                 if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
@@ -215,7 +215,7 @@ extension File.Directory.Contents {
                     entryType = .file
                 }
 
-                entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
+                entries.append(File.Directory.Entry(name: name, path: entryPath, kind: entryType))
             } while _ok(FindNextFileW(handle, &findData))
 
             let lastError = GetLastError()

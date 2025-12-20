@@ -20,13 +20,6 @@ extension File.System.Metadata {
     }
 }
 
-// MARK: - Backward Compatibility
-
-extension File.System.Metadata {
-    @available(*, deprecated, renamed: "Kind")
-    public typealias FileType = Kind
-}
-
 // MARK: - RawRepresentable
 
 extension File.System.Metadata.Kind: RawRepresentable {

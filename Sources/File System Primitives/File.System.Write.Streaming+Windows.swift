@@ -489,9 +489,6 @@
     }
 
     extension WindowsStreaming {
-        @available(*, deprecated, renamed: "Write.Context")
-        public typealias WriteContext = Write.Context
-
         /// Opens a file for multi-phase streaming write.
         ///
         /// Returns a context that can be used for subsequent writeChunk and commit calls.

@@ -10,13 +10,3 @@ extension File.System.Write.Streaming {
     public enum Atomic {
     }
 }
-
-// MARK: - Backward Compatibility
-
-extension File.System.Write.Streaming {
-    @available(*, deprecated, renamed: "Atomic.Options")
-    public typealias AtomicOptions = Atomic.Options
-
-    @available(*, deprecated, renamed: "Atomic.Strategy")
-    public typealias AtomicStrategy = Atomic.Strategy
-}

@@ -10,10 +10,3 @@ extension File.System.Write.Streaming {
     public enum Commit {
     }
 }
-
-// MARK: - Backward Compatibility
-
-extension File.System.Write.Streaming {
-    @available(*, deprecated, renamed: "Commit.Policy")
-    public typealias CommitPolicy = Commit.Policy
-}

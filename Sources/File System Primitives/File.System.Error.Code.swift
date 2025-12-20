@@ -101,10 +101,3 @@ extension File.System.Error.Code {
     }
 }
 
-// MARK: - Backward Compatibility
-
-extension File.System {
-    /// Backward compatibility alias for `Error.Code`.
-    @available(*, deprecated, renamed: "Error.Code")
-    public typealias ErrorCode = Error.Code
-}

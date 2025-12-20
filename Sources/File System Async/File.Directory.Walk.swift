@@ -279,9 +279,9 @@ extension File.Directory.Async.WalkSequence {
 
                         // Check if we should recurse
                         let shouldRecurse: Bool
-                        if entry.type == .directory {
+                        if entry.kind == .directory {
                             shouldRecurse = true
-                        } else if options.followSymlinks && entry.type == .symbolicLink {
+                        } else if options.followSymlinks && entry.kind == .symbolicLink {
                             // Get inode for cycle detection
                             if let inode = await getInode(entry.path, io: io) {
                                 shouldRecurse = await state.markVisited(inode)

@@ -10,10 +10,3 @@ extension File.System.Write.Atomic {
     public enum Commit {
     }
 }
-
-// MARK: - Backward Compatibility
-
-extension File.System.Write.Atomic {
-    @available(*, deprecated, renamed: "Commit.Phase")
-    public typealias CommitPhase = Commit.Phase
-}

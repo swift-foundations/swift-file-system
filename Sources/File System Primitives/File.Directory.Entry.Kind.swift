@@ -21,13 +21,6 @@ extension File.Directory.Entry {
     }
 }
 
-// MARK: - Backward Compatibility
-
-extension File.Directory {
-    @available(*, deprecated, renamed: "Entry.Kind")
-    public typealias EntryType = Entry.Kind
-}
-
 // MARK: - RawRepresentable
 
 extension File.Directory.Entry.Kind: RawRepresentable {

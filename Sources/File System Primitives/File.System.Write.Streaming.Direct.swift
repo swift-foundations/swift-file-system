@@ -10,13 +10,3 @@ extension File.System.Write.Streaming {
     public enum Direct {
     }
 }
-
-// MARK: - Backward Compatibility
-
-extension File.System.Write.Streaming {
-    @available(*, deprecated, renamed: "Direct.Options")
-    public typealias DirectOptions = Direct.Options
-
-    @available(*, deprecated, renamed: "Direct.Strategy")
-    public typealias DirectStrategy = Direct.Strategy
-}

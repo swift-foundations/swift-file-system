@@ -54,34 +54,3 @@ extension File.System.Metadata {
     }
 }
 
-// MARK: - Backward Compatibility
-
-extension File.System.Metadata.Info {
-    /// Backward compatible property - use `kind` instead.
-    @available(*, deprecated, renamed: "kind")
-    public var type: File.System.Metadata.Kind { kind }
-
-    /// Backward compatible initializer.
-    @available(*, deprecated, message: "Use init(size:permissions:owner:timestamps:kind:inode:deviceId:linkCount:) instead")
-    public init(
-        size: Int64,
-        permissions: File.System.Metadata.Permissions,
-        owner: File.System.Metadata.Ownership,
-        timestamps: File.System.Metadata.Timestamps,
-        type: File.System.Metadata.Kind,
-        inode: UInt64,
-        deviceId: UInt64,
-        linkCount: UInt32
-    ) {
-        self.init(
-            size: size,
-            permissions: permissions,
-            owner: owner,
-            timestamps: timestamps,
-            kind: type,
-            inode: inode,
-            deviceId: deviceId,
-            linkCount: linkCount
-        )
-    }
-}

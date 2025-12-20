@@ -31,16 +31,3 @@ extension File.Directory {
     }
 }
 
-// MARK: - Backward Compatibility
-
-extension File.Directory.Entry {
-    /// Backward compatible property - use `kind` instead.
-    @available(*, deprecated, renamed: "kind")
-    public var type: Kind { kind }
-
-    /// Backward compatible initializer.
-    @available(*, deprecated, message: "Use init(name:path:kind:) instead")
-    public init(name: String, path: File.Path, type: Kind) {
-        self.init(name: name, path: path, kind: type)
-    }
-}

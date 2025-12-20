@@ -406,7 +406,7 @@ extension File.System.Stat {
     ) async -> Bool {
         do {
             let metadata = try await io.run { try File.System.Stat.info(at: path) }
-            return metadata.type == .regular
+            return metadata.kind == .regular
         } catch {
             return false
         }
@@ -419,7 +419,7 @@ extension File.System.Stat {
     ) async -> Bool {
         do {
             let metadata = try await io.run { try File.System.Stat.info(at: path) }
-            return metadata.type == .directory
+            return metadata.kind == .directory
         } catch {
             return false
         }
@@ -432,7 +432,7 @@ extension File.System.Stat {
     ) async -> Bool {
         do {
             let metadata = try await io.run { try File.System.Stat.lstatInfo(at: path) }
-            return metadata.type == .symbolicLink
+            return metadata.kind == .symbolicLink
         } catch {
             return false
         }
