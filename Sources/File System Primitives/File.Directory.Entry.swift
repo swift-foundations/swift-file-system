@@ -14,20 +14,19 @@ extension File.Directory {
         /// The full path to the entry.
         public let path: File.Path
 
-        /// The kind of the entry.
-        public let kind: Kind
+        /// The type of the entry.
+        public let type: `Type`
 
         /// Creates a directory entry.
         ///
         /// - Parameters:
         ///   - name: The entry's filename (not the full path).
         ///   - path: The full path to the entry.
-        ///   - kind: The kind of entry (file, directory, symlink, etc.).
-        public init(name: String, path: File.Path, kind: Kind) {
+        ///   - type: The type of entry (file, directory, symlink, etc.).
+        public init(name: String, path: File.Path, type: `Type`) {
             self.name = name
             self.path = path
-            self.kind = kind
+            self.type = type
         }
     }
 }
-

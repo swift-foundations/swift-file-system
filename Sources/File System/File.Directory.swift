@@ -200,7 +200,7 @@ extension File.Directory {
     /// - Throws: `File.Directory.Contents.Error` on failure.
     public func files() throws -> [File] {
         try contents()
-            .filter { $0.kind == .file }
+            .filter { $0.type == .file }
             .map { File($0.path) }
     }
 
@@ -210,7 +210,7 @@ extension File.Directory {
     /// - Throws: `File.Directory.Contents.Error` on failure.
     public func subdirectories() throws -> [File.Directory] {
         try contents()
-            .filter { $0.kind == .directory }
+            .filter { $0.type == .directory }
             .map { File.Directory($0.path) }
     }
 

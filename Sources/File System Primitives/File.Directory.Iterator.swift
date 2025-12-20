@@ -160,7 +160,7 @@ extension File.Directory.Iterator {
                 let entryPath = _basePath.appending(name)
 
                 // Determine type
-                let entryType: File.Directory.Entry.Kind
+                let entryType: File.Directory.Entry.`Type`
                 switch Int32(entry.pointee.d_type) {
                 case DT_REG:
                     entryType = .file
@@ -172,7 +172,7 @@ extension File.Directory.Iterator {
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, kind: entryType)
+                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
             }
 
             return nil
@@ -238,7 +238,7 @@ extension File.Directory.Iterator {
                 let entryPath = _basePath.appending(name)
 
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
-                let entryType: File.Directory.Entry.Kind
+                let entryType: File.Directory.Entry.`Type`
                 var entryStat = stat()
                 if Glibc.lstat(entryPath.string, &entryStat) == 0 {
                     switch entryStat.st_mode & S_IFMT {
@@ -255,7 +255,7 @@ extension File.Directory.Iterator {
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, kind: entryType)
+                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
             }
 
             return nil
@@ -345,7 +345,7 @@ extension File.Directory.Iterator {
                 let entryPath = _basePath.appending(name)
 
                 // Determine type (from previous findData)
-                let entryType: File.Directory.Entry.Kind
+                let entryType: File.Directory.Entry.`Type`
                 if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
@@ -354,7 +354,7 @@ extension File.Directory.Iterator {
                     entryType = .file
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, kind: entryType)
+                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
             }
         }
 

@@ -20,8 +20,8 @@ extension File.System.Metadata {
         /// File timestamps.
         public let timestamps: Timestamps
 
-        /// File kind.
-        public let kind: Kind
+        /// File type.
+        public let type: `Type`
 
         /// Inode number.
         public let inode: UInt64
@@ -37,7 +37,7 @@ extension File.System.Metadata {
             permissions: Permissions,
             owner: Ownership,
             timestamps: Timestamps,
-            kind: Kind,
+            type: `Type`,
             inode: UInt64,
             deviceId: UInt64,
             linkCount: UInt32
@@ -46,11 +46,10 @@ extension File.System.Metadata {
             self.permissions = permissions
             self.owner = owner
             self.timestamps = timestamps
-            self.kind = kind
+            self.type = type
             self.inode = inode
             self.deviceId = deviceId
             self.linkCount = linkCount
         }
     }
 }
-

@@ -1,5 +1,5 @@
 //
-//  File.Directory.Entry.Kind.swift
+//  File.Directory.Entry.Type.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
@@ -8,8 +8,8 @@
 import Binary
 
 extension File.Directory.Entry {
-    /// The kind of a directory entry.
-    public enum Kind: Sendable {
+    /// The type of a directory entry.
+    public enum `Type`: Sendable {
         /// A regular file.
         case file
         /// A directory (folder).
@@ -23,7 +23,7 @@ extension File.Directory.Entry {
 
 // MARK: - RawRepresentable
 
-extension File.Directory.Entry.Kind: RawRepresentable {
+extension File.Directory.Entry.`Type`: RawRepresentable {
     public var rawValue: UInt8 {
         switch self {
         case .file: return 0
@@ -46,7 +46,7 @@ extension File.Directory.Entry.Kind: RawRepresentable {
 
 // MARK: - Binary.Serializable
 
-extension File.Directory.Entry.Kind: Binary.Serializable {
+extension File.Directory.Entry.`Type`: Binary.Serializable {
     @inlinable
     public static func serialize<Buffer: RangeReplaceableCollection>(
         _ value: Self,

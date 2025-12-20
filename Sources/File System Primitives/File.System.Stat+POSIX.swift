@@ -62,7 +62,7 @@
 
         /// Creates Info from stat buffer.
         private static func _makeInfo(from statBuf: stat) -> File.System.Metadata.Info {
-            let fileType: File.System.Metadata.Kind
+            let fileType: File.System.Metadata.`Type`
             switch statBuf.st_mode & S_IFMT {
             case S_IFREG:
                 fileType = .regular
@@ -147,7 +147,7 @@
                 permissions: permissions,
                 owner: ownership,
                 timestamps: timestamps,
-                kind: fileType,
+                type: fileType,
                 inode: UInt64(statBuf.st_ino),
                 deviceId: UInt64(statBuf.st_dev),
                 linkCount: UInt32(statBuf.st_nlink)
