@@ -55,54 +55,54 @@ extension File.System.Metadata.Info.Test.Unit {
 
     @Test("FileType regular case")
     func fileTypeRegular() {
-        let type: File.System.Metadata.FileType = .regular
+        let type: File.System.Metadata.Kind = .regular
         #expect(type == .regular)
     }
 
     @Test("FileType directory case")
     func fileTypeDirectory() {
-        let type: File.System.Metadata.FileType = .directory
+        let type: File.System.Metadata.Kind = .directory
         #expect(type == .directory)
     }
 
     @Test("FileType symbolicLink case")
     func fileTypeSymbolicLink() {
-        let type: File.System.Metadata.FileType = .symbolicLink
+        let type: File.System.Metadata.Kind = .symbolicLink
         #expect(type == .symbolicLink)
     }
 
     @Test("FileType blockDevice case")
     func fileTypeBlockDevice() {
-        let type: File.System.Metadata.FileType = .blockDevice
+        let type: File.System.Metadata.Kind = .blockDevice
         #expect(type == .blockDevice)
     }
 
     @Test("FileType characterDevice case")
     func fileTypeCharacterDevice() {
-        let type: File.System.Metadata.FileType = .characterDevice
+        let type: File.System.Metadata.Kind = .characterDevice
         #expect(type == .characterDevice)
     }
 
     @Test("FileType fifo case")
     func fileTypeFifo() {
-        let type: File.System.Metadata.FileType = .fifo
+        let type: File.System.Metadata.Kind = .fifo
         #expect(type == .fifo)
     }
 
     @Test("FileType socket case")
     func fileTypeSocket() {
-        let type: File.System.Metadata.FileType = .socket
+        let type: File.System.Metadata.Kind = .socket
         #expect(type == .socket)
     }
 
     @Test("FileType cases are distinct")
     func fileTypeCasesAreDistinct() {
-        #expect(File.System.Metadata.FileType.regular != .directory)
-        #expect(File.System.Metadata.FileType.directory != .symbolicLink)
-        #expect(File.System.Metadata.FileType.symbolicLink != .blockDevice)
-        #expect(File.System.Metadata.FileType.blockDevice != .characterDevice)
-        #expect(File.System.Metadata.FileType.characterDevice != .fifo)
-        #expect(File.System.Metadata.FileType.fifo != .socket)
+        #expect(File.System.Metadata.Kind.regular != .directory)
+        #expect(File.System.Metadata.Kind.directory != .symbolicLink)
+        #expect(File.System.Metadata.Kind.symbolicLink != .blockDevice)
+        #expect(File.System.Metadata.Kind.blockDevice != .characterDevice)
+        #expect(File.System.Metadata.Kind.characterDevice != .fifo)
+        #expect(File.System.Metadata.Kind.fifo != .socket)
     }
 
     // MARK: - Info Properties
@@ -245,7 +245,7 @@ extension File.System.Metadata.Info.Test.Unit {
 
     @Test("FileType is sendable")
     func fileTypeIsSendable() async {
-        let type: File.System.Metadata.FileType = .directory
+        let type: File.System.Metadata.Kind = .directory
 
         await Task {
             #expect(type == .directory)

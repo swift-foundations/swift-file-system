@@ -1001,8 +1001,8 @@ extension File.System.Copy.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let sourcePath = tempDir.appending("perf_copy_src_\(Int.random(in: 0..<Int.max)).bin")
-        let destPath = tempDir.appending("perf_copy_dst_\(Int.random(in: 0..<Int.max)).bin")
+        let sourcePath = File.Path(tempDir, appending: "perf_copy_src_\(Int.random(in: 0..<Int.max)).bin")
+        let destPath = File.Path(tempDir, appending: "perf_copy_dst_\(Int.random(in: 0..<Int.max)).bin")
 
         // Setup
         let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)

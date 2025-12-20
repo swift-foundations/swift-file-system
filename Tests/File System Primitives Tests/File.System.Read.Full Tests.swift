@@ -258,7 +258,7 @@ extension File.System.Read.Full.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_sysread_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(tempDir, appending: "perf_sysread_\(Int.random(in: 0..<Int.max)).bin")
 
         // Setup
         let oneMB = [UInt8](repeating: 0xBE, count: 1_000_000)

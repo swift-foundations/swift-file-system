@@ -109,7 +109,7 @@ extension File.Path.Test.Unit {
     @Test("Appending string component")
     func appendingString() throws {
         let path = try File.Path("/usr/local")
-        let newPath = path.appending("bin")
+        let newPath = File.Path(path, appending: "bin")
         #expect(newPath.string == "/usr/local/bin")
     }
 
@@ -117,7 +117,7 @@ extension File.Path.Test.Unit {
     func appendingComponent() throws {
         let path = try File.Path("/usr/local")
         let component = try File.Path.Component("bin")
-        let newPath = path.appending(component)
+        let newPath = File.Path(path, appending: component)
         #expect(newPath.string == "/usr/local/bin")
     }
 
@@ -125,7 +125,7 @@ extension File.Path.Test.Unit {
     func appendingPath() throws {
         let base = try File.Path("/usr")
         let suffix = try File.Path("local/bin")
-        let newPath = base.appending(suffix)
+        let newPath = File.Path(base, appending: suffix)
         #expect(newPath.string == "/usr/local/bin")
     }
 
@@ -248,19 +248,6 @@ extension File.Path.Test.Unit {
         #expect(path1 != path3)
     }
 
-    @Test("CustomStringConvertible")
-    func customStringConvertible() throws {
-        let path = try File.Path("/usr/local/bin")
-        #expect(path.description == "/usr/local/bin")
-    }
-
-    @Test("CustomDebugStringConvertible")
-    func customDebugStringConvertible() throws {
-        let path = try File.Path("/usr/local")
-        #expect(path.debugDescription.contains("File.Path"))
-        #expect(path.debugDescription.contains("/usr/local"))
-    }
-
     @Test("ExpressibleByStringLiteral")
     func expressibleByStringLiteral() {
         let path: File.Path = "/usr/local/bin"
@@ -301,7 +288,7 @@ extension File.Path.Test.Performance {
         var path = base
 
         for i in 0..<20 {
-            path = path.appending("component_\(i)")
+            path = File.Path(path, appending: "component_\(i)")
         }
 
         #expect(path.string.contains("component_19"))

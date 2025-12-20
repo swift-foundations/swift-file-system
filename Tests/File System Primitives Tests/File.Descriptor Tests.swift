@@ -195,67 +195,6 @@ extension File.Descriptor.Test.Unit {
         #expect(File.Descriptor.Options.closeOnExec.rawValue == 1 << 5)
     }
 
-    // MARK: - Error descriptions
-
-    @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
-        let error = File.Descriptor.Error.pathNotFound(path)
-        #expect(error.description.contains("Path not found"))
-    }
-
-    @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
-        let error = File.Descriptor.Error.permissionDenied(path)
-        #expect(error.description.contains("Permission denied"))
-    }
-
-    @Test("alreadyExists error description")
-    func alreadyExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
-        let error = File.Descriptor.Error.alreadyExists(path)
-        #expect(error.description.contains("already exists"))
-    }
-
-    @Test("isDirectory error description")
-    func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
-        let error = File.Descriptor.Error.isDirectory(path)
-        #expect(error.description.contains("Is a directory"))
-    }
-
-    @Test("tooManyOpenFiles error description")
-    func tooManyOpenFilesErrorDescription() {
-        let error = File.Descriptor.Error.tooManyOpenFiles
-        #expect(error.description.contains("Too many open files"))
-    }
-
-    @Test("invalidDescriptor error description")
-    func invalidDescriptorErrorDescription() {
-        let error = File.Descriptor.Error.invalidDescriptor
-        #expect(error.description.contains("Invalid"))
-    }
-
-    @Test("openFailed error description")
-    func openFailedErrorDescription() {
-        let error = File.Descriptor.Error.openFailed(errno: 13, message: "Permission denied")
-        #expect(error.description.contains("Open failed"))
-        #expect(error.description.contains("Permission denied"))
-    }
-
-    @Test("closeFailed error description")
-    func closeFailedErrorDescription() {
-        let error = File.Descriptor.Error.closeFailed(errno: 9, message: "Bad file descriptor")
-        #expect(error.description.contains("Close failed"))
-    }
-
-    @Test("alreadyClosed error description")
-    func alreadyClosedErrorDescription() {
-        let error = File.Descriptor.Error.alreadyClosed
-        #expect(error.description.contains("already closed"))
-    }
-
     // MARK: - Error Equatable
 
     @Test("Errors are equatable")

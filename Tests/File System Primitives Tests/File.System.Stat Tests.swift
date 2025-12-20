@@ -342,7 +342,7 @@ extension File.System.Stat.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_stat_\(Int.random(in: 0..<Int.max)).txt")
+        let filePath = File.Path(tempDir, appending: "perf_stat_\(Int.random(in: 0..<Int.max)).txt")
 
         // Create file
         let data = [UInt8](repeating: 0x00, count: 1000)
@@ -363,7 +363,7 @@ extension File.System.Stat.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = tempDir.appending("perf_exists_\(Int.random(in: 0..<Int.max)).txt")
+        let filePath = File.Path(tempDir, appending: "perf_exists_\(Int.random(in: 0..<Int.max)).txt")
 
         // Create file
         let data = [UInt8](repeating: 0x00, count: 100)

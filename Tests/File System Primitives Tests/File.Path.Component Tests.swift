@@ -124,19 +124,6 @@ extension File.Path.Component.Test.Unit {
         #expect(comp1 != comp3)
     }
 
-    @Test("CustomStringConvertible")
-    func customStringConvertible() throws {
-        let component: File.Path.Component = try .init("file.txt")
-        #expect(component.description == "file.txt")
-    }
-
-    @Test("CustomDebugStringConvertible")
-    func customDebugStringConvertible() throws {
-        let component: File.Path.Component = try .init("file.txt")
-        #expect(component.debugDescription.contains("File.Path.Component"))
-        #expect(component.debugDescription.contains("file.txt"))
-    }
-
     @Test("ExpressibleByStringLiteral")
     func expressibleByStringLiteral() {
         let component: File.Path.Component = "file.txt"
@@ -172,7 +159,7 @@ extension File.Path.Component.Test.Unit {
     func componentAppendedToPath() throws {
         let path = try File.Path("/usr/local")
         let component: File.Path.Component = try .init("bin")
-        let newPath = path.appending(component)
+        let newPath = File.Path(path, appending: component)
         #expect(newPath.string == "/usr/local/bin")
     }
 

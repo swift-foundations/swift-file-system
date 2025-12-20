@@ -231,7 +231,7 @@ extension File.System.Create.Directory.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let testDir = tempDir.appending("perf_mkdir_\(Int.random(in: 0..<Int.max))")
+        let testDir = File.Path(tempDir, appending: "perf_mkdir_\(Int.random(in: 0..<Int.max))")
 
         try File.System.Create.Directory.create(at: testDir)
         try File.System.Delete.delete(at: testDir)

@@ -80,20 +80,6 @@ extension File.Path.Error.Test.Unit {
         }
     }
 
-    // MARK: - CustomStringConvertible
-
-    @Test("Empty error description")
-    func emptyErrorDescription() {
-        let error = File.Path.Error.empty
-        #expect(error.description == "Path is empty")
-    }
-
-    @Test("ContainsControlCharacters error description")
-    func containsControlCharactersErrorDescription() {
-        let error = File.Path.Error.containsControlCharacters
-        #expect(error.description == "Path contains control characters")
-    }
-
     // MARK: - Equatable
 
     @Test("Same errors are equal")

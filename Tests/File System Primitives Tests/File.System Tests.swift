@@ -738,7 +738,7 @@ extension File.System.Test.Performance {
             #else
                 let tempDir = try File.Path("/tmp")
             #endif
-            let filePath = tempDir.appending("perf_alloc_\(Int.random(in: 0..<Int.max)).bin")
+            let filePath = File.Path(tempDir, appending: "perf_alloc_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let size = 64 * 1024
@@ -767,7 +767,7 @@ extension File.System.Test.Performance {
             #else
                 let tempDir = try File.Path("/tmp")
             #endif
-            let filePath = tempDir.appending("perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt")
+            let filePath = File.Path(tempDir, appending: "perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt")
 
             // Setup
             let data = [UInt8](repeating: 0x00, count: 100)
@@ -800,7 +800,7 @@ extension File.System.Test.Performance {
             #else
                 let tempDir = try File.Path("/tmp")
             #endif
-            let filePath = tempDir.appending("perf_large_write_\(Int.random(in: 0..<Int.max)).bin")
+            let filePath = File.Path(tempDir, appending: "perf_large_write_\(Int.random(in: 0..<Int.max)).bin")
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -821,7 +821,7 @@ extension File.System.Test.Performance {
             #else
                 let tempDir = try File.Path("/tmp")
             #endif
-            let filePath = tempDir.appending("perf_large_read_\(Int.random(in: 0..<Int.max)).bin")
+            let filePath = File.Path(tempDir, appending: "perf_large_read_\(Int.random(in: 0..<Int.max)).bin")
 
             // Setup
             let tenMB = [UInt8](repeating: 0xFF, count: 10_000_000)
@@ -845,7 +845,7 @@ extension File.System.Test.Performance {
             #else
                 let tempDir = try File.Path("/tmp")
             #endif
-            let testDir = tempDir.appending("perf_many_\(Int.random(in: 0..<Int.max))")
+            let testDir = File.Path(tempDir, appending: "perf_many_\(Int.random(in: 0..<Int.max))")
 
             try File.System.Create.Directory.create(at: testDir)
             defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }
@@ -854,7 +854,7 @@ extension File.System.Test.Performance {
 
             // Create 100 small files
             for i in 0..<100 {
-                let filePath = testDir.appending("file_\(i).txt")
+                let filePath = File.Path(testDir, appending: "file_\(i).txt")
                 try smallData.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
                     try File.System.Write.Atomic.write(span, to: filePath)

@@ -226,25 +226,25 @@ extension File.Directory.Contents.Test.Unit {
 
     @Test("EntryType file case")
     func entryTypeFile() {
-        let type: File.Directory.EntryType = .file
+        let type: File.Directory.Entry.Kind = .file
         #expect(type == .file)
     }
 
     @Test("EntryType directory case")
     func entryTypeDirectory() {
-        let type: File.Directory.EntryType = .directory
+        let type: File.Directory.Entry.Kind = .directory
         #expect(type == .directory)
     }
 
     @Test("EntryType symbolicLink case")
     func entryTypeSymbolicLink() {
-        let type: File.Directory.EntryType = .symbolicLink
+        let type: File.Directory.Entry.Kind = .symbolicLink
         #expect(type == .symbolicLink)
     }
 
     @Test("EntryType other case")
     func entryTypeOther() {
-        let type: File.Directory.EntryType = .other
+        let type: File.Directory.Entry.Kind = .other
         #expect(type == .other)
     }
 }
@@ -264,14 +264,14 @@ extension File.Directory.Contents.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let testDir = tempDir.appending("perf_contents_100_\(Int.random(in: 0..<Int.max))")
+        let testDir = File.Path(tempDir, appending: "perf_contents_100_\(Int.random(in: 0..<Int.max))")
 
         // Setup: create directory with 100 files
         try File.System.Create.Directory.create(at: testDir)
 
         let fileData = [UInt8](repeating: 0x00, count: 10)
         for i in 0..<100 {
-            let filePath = testDir.appending("file_\(i).txt")
+            let filePath = File.Path(testDir, appending: "file_\(i).txt")
             try fileData.withUnsafeBufferPointer { buffer in
                 let span = Span<UInt8>(_unsafeElements: buffer)
                 try File.System.Write.Atomic.write(span, to: filePath)
@@ -291,14 +291,14 @@ extension File.Directory.Contents.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let testDir = tempDir.appending("perf_dir_100_\(Int.random(in: 0..<Int.max))")
+        let testDir = File.Path(tempDir, appending: "perf_dir_100_\(Int.random(in: 0..<Int.max))")
 
         // Setup: create directory with 100 files
         try File.System.Create.Directory.create(at: testDir)
 
         let fileData = [UInt8](repeating: 0x00, count: 10)
         for i in 0..<100 {
-            let filePath = testDir.appending("file_\(i).txt")
+            let filePath = File.Path(testDir, appending: "file_\(i).txt")
             try fileData.withUnsafeBufferPointer { buffer in
                 let span = Span<UInt8>(_unsafeElements: buffer)
                 try File.System.Write.Atomic.write(span, to: filePath)
