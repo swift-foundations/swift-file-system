@@ -10,6 +10,11 @@ extension File.System.Write.Streaming {
         case parentNotFound(path: File.Path)
         case parentNotDirectory(path: File.Path)
         case parentAccessDenied(path: File.Path)
+        /// Parent directory creation failed when createIntermediates was requested.
+        ///
+        /// The underlying error preserves the exact reason for failure (permission denied,
+        /// path component is a file, read-only filesystem, invalid name, etc.).
+        case parentCreationFailed(path: File.Path, underlying: File.System.Create.Directory.Error)
         case fileCreationFailed(path: File.Path, errno: Int32, message: String)
         /// Write operation failed.
         case writeFailed(path: File.Path, bytesWritten: Int, errno: Int32, message: String)
@@ -46,6 +51,8 @@ extension File.System.Write.Streaming.Error: CustomStringConvertible {
             return "Parent path is not a directory: \(path)"
         case .parentAccessDenied(let path):
             return "Access denied to parent directory: \(path)"
+        case .parentCreationFailed(let path, let underlying):
+            return "Failed to create parent directory '\(path)': \(underlying)"
         case .fileCreationFailed(let path, let errno, let message):
             return "Failed to create file '\(path)': \(message) (errno=\(errno))"
         case .writeFailed(let path, let written, let errno, let message):

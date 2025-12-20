@@ -10,9 +10,19 @@ extension File.System.Write.Streaming {
     public struct Options: Sendable {
         /// How to commit chunks to disk.
         public var commit: Commit.Policy
+        /// Create intermediate directories if they don't exist.
+        ///
+        /// When enabled, missing parent directories are created before writing.
+        /// Note: Creating intermediates may traverse symlinks in path components.
+        /// This is not hardened against symlink-based attacks.
+        public var createIntermediates: Bool
 
-        public init(commit: Commit.Policy = .atomic(.init())) {
+        public init(
+            commit: Commit.Policy = .atomic(.init()),
+            createIntermediates: Bool = false
+        ) {
             self.commit = commit
+            self.createIntermediates = createIntermediates
         }
     }
 }

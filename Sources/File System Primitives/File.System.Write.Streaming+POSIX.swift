@@ -29,7 +29,7 @@
 
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyParentDirectory(parent)
+            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
 
             switch options.commit {
             case .atomic(let atomicOptions):
@@ -209,8 +209,9 @@
             return path
         }
 
-        private static func verifyParentDirectory(
-            _ dir: String
+        private static func verifyOrCreateParentDirectory(
+            _ dir: String,
+            createIntermediates: Bool
         ) throws(File.System.Write.Streaming.Error) {
             var st = stat()
             let rc = dir.withCString { stat($0, &st) }
@@ -227,6 +228,19 @@
                 case ENOENT, ELOOP:
                     // ENOENT: path doesn't exist
                     // ELOOP: too many symlinks (treat as not found)
+                    if createIntermediates {
+                        // Try to create the parent directory with intermediates
+                        do {
+                            try File.System.Create.Directory.create(
+                                at: path,
+                                options: .init(createIntermediates: true)
+                            )
+                            return  // Successfully created
+                        } catch let createError {
+                            // Preserve the underlying error for proper diagnostics
+                            throw .parentCreationFailed(path: path, underlying: createError)
+                        }
+                    }
                     throw .parentNotFound(path: path)
                 default:
                     throw .parentNotFound(path: path)
@@ -677,7 +691,7 @@
 
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyParentDirectory(parent)
+            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
 
             switch options.commit {
             case .atomic(let atomicOptions):

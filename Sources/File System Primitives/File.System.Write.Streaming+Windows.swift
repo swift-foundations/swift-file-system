@@ -21,7 +21,7 @@
 
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyParentDirectory(parent)
+            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
 
             switch options.commit {
             case .atomic(let atomicOptions):
@@ -193,18 +193,42 @@
             return path
         }
 
-        private static func verifyParentDirectory(
-            _ dir: String
+        private static func verifyOrCreateParentDirectory(
+            _ dir: String,
+            createIntermediates: Bool
         ) throws(File.System.Write.Streaming.Error) {
             let attrs = withWideString(dir) { GetFileAttributesW($0) }
 
             if attrs == INVALID_FILE_ATTRIBUTES {
                 let err = GetLastError()
                 let path = File.Path(__unchecked: (), dir)
-                if err == _dword(ERROR_ACCESS_DENIED) {
+
+                // Map Windows error codes to appropriate errors
+                switch err {
+                case _dword(ERROR_ACCESS_DENIED), _dword(ERROR_SHARING_VIOLATION):
                     throw .parentAccessDenied(path: path)
+                case _dword(ERROR_INVALID_NAME):
+                    // Invalid path name - not a "not found" case
+                    throw .parentNotFound(path: path)
+                case _dword(ERROR_FILE_NOT_FOUND), _dword(ERROR_PATH_NOT_FOUND):
+                    // Directory actually doesn't exist - try to create if requested
+                    if createIntermediates {
+                        do {
+                            try File.System.Create.Directory.create(
+                                at: path,
+                                options: .init(createIntermediates: true)
+                            )
+                            return  // Successfully created
+                        } catch let createError {
+                            // Preserve the underlying error for proper diagnostics
+                            throw .parentCreationFailed(path: path, underlying: createError)
+                        }
+                    }
+                    throw .parentNotFound(path: path)
+                default:
+                    // Unknown error - don't assume it means "not found"
+                    throw .parentNotFound(path: path)
                 }
-                throw .parentNotFound(path: path)
             }
 
             if (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) == 0 {
@@ -499,7 +523,7 @@
 
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyParentDirectory(parent)
+            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
 
             switch options.commit {
             case .atomic(let atomicOptions):

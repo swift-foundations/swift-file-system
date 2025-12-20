@@ -141,7 +141,7 @@
             // 1. Resolve and validate parent directory
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyParentDirectory(parent)
+            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
 
             // 2. Stat destination if it exists (for metadata preservation)
             let destStat = try statIfExists(resolvedPath)
@@ -288,9 +288,10 @@
             return path
         }
 
-        /// Verifies the parent directory exists and is accessible.
-        private static func verifyParentDirectory(
-            _ dir: String
+        /// Verifies the parent directory exists and is accessible, optionally creating it.
+        private static func verifyOrCreateParentDirectory(
+            _ dir: String,
+            createIntermediates: Bool
         ) throws(File.System.Write.Atomic.Error) {
             var st = stat()
             let rc = dir.withCString { stat($0, &st) }
@@ -307,6 +308,19 @@
                 case ENOENT, ELOOP:
                     // ENOENT: path doesn't exist
                     // ELOOP: too many symlinks (treat as not found)
+                    if createIntermediates {
+                        // Try to create the parent directory with intermediates
+                        do {
+                            try File.System.Create.Directory.create(
+                                at: path,
+                                options: .init(createIntermediates: true)
+                            )
+                            return  // Successfully created
+                        } catch let createError {
+                            // Preserve the underlying error for proper diagnostics
+                            throw .parentCreationFailed(path: path, underlying: createError)
+                        }
+                    }
                     throw .parentNotFound(path: path)
                 default:
                     throw .parentNotFound(path: path)

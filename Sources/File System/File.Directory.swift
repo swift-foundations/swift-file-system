@@ -44,78 +44,115 @@ extension File.Directory {
 
     /// Copies the directory to a destination path.
     ///
-    /// - Parameter destination: The destination path.
+    /// - Parameters:
+    ///   - destination: The destination path.
+    ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
     /// - Throws: `File.System.Copy.Error` on failure.
-    public func copy(to destination: File.Path) throws {
-        try File.System.Copy.copy(from: path, to: destination)
+    public func copy(
+        to destination: File.Path,
+        options: File.System.Copy.Options = .init()
+    ) throws {
+        try File.System.Copy.copy(from: path, to: destination, options: options)
     }
 
     /// Copies the directory to a destination.
     ///
-    /// - Parameter destination: The destination directory.
+    /// - Parameters:
+    ///   - destination: The destination directory.
+    ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
     /// - Throws: `File.System.Copy.Error` on failure.
-    public func copy(to destination: File.Directory) throws {
-        try File.System.Copy.copy(from: path, to: destination.path)
+    public func copy(
+        to destination: File.Directory,
+        options: File.System.Copy.Options = .init()
+    ) throws {
+        try File.System.Copy.copy(from: path, to: destination.path, options: options)
     }
 
     /// Copies the directory to a destination path.
     ///
     /// Async variant.
-    public func copy(to destination: File.Path) async throws {
-        try await File.System.Copy.copy(from: path, to: destination)
+    public func copy(
+        to destination: File.Path,
+        options: File.System.Copy.Options = .init()
+    ) async throws {
+        try await File.System.Copy.copy(from: path, to: destination, options: options)
     }
 
     /// Copies the directory to a destination.
     ///
     /// Async variant.
-    public func copy(to destination: File.Directory) async throws {
-        try await File.System.Copy.copy(from: path, to: destination.path)
+    public func copy(
+        to destination: File.Directory,
+        options: File.System.Copy.Options = .init()
+    ) async throws {
+        try await File.System.Copy.copy(from: path, to: destination.path, options: options)
     }
 
     /// Moves the directory to a destination path.
     ///
-    /// - Parameter destination: The destination path.
+    /// - Parameters:
+    ///   - destination: The destination path.
+    ///   - options: Move options (overwrite).
     /// - Throws: `File.System.Move.Error` on failure.
-    public func move(to destination: File.Path) throws {
-        try File.System.Move.move(from: path, to: destination)
+    public func move(
+        to destination: File.Path,
+        options: File.System.Move.Options = .init()
+    ) throws {
+        try File.System.Move.move(from: path, to: destination, options: options)
     }
 
     /// Moves the directory to a destination.
     ///
-    /// - Parameter destination: The destination directory.
+    /// - Parameters:
+    ///   - destination: The destination directory.
+    ///   - options: Move options (overwrite).
     /// - Throws: `File.System.Move.Error` on failure.
-    public func move(to destination: File.Directory) throws {
-        try File.System.Move.move(from: path, to: destination.path)
+    public func move(
+        to destination: File.Directory,
+        options: File.System.Move.Options = .init()
+    ) throws {
+        try File.System.Move.move(from: path, to: destination.path, options: options)
     }
 
     /// Moves the directory to a destination path.
     ///
     /// Async variant.
-    public func move(to destination: File.Path) async throws {
-        try await File.System.Move.move(from: path, to: destination)
+    public func move(
+        to destination: File.Path,
+        options: File.System.Move.Options = .init()
+    ) async throws {
+        try await File.System.Move.move(from: path, to: destination, options: options)
     }
 
     /// Moves the directory to a destination.
     ///
     /// Async variant.
-    public func move(to destination: File.Directory) async throws {
-        try await File.System.Move.move(from: path, to: destination.path)
+    public func move(
+        to destination: File.Directory,
+        options: File.System.Move.Options = .init()
+    ) async throws {
+        try await File.System.Move.move(from: path, to: destination.path, options: options)
     }
 
     /// Renames the directory within the same parent directory.
     ///
-    /// - Parameter newName: The new directory name.
+    /// - Parameters:
+    ///   - newName: The new directory name.
+    ///   - options: Move options (overwrite).
     /// - Returns: The renamed directory.
     /// - Throws: `File.System.Move.Error` on failure.
     @discardableResult
-    public func rename(to newName: String) throws -> File.Directory {
+    public func rename(
+        to newName: String,
+        options: File.System.Move.Options = .init()
+    ) throws -> File.Directory {
         guard let parent = path.parent else {
             let destination = try File.Path(newName)
-            try File.System.Move.move(from: path, to: destination)
+            try File.System.Move.move(from: path, to: destination, options: options)
             return File.Directory(destination)
         }
         let destination = parent.appending(newName)
-        try File.System.Move.move(from: path, to: destination)
+        try File.System.Move.move(from: path, to: destination, options: options)
         return File.Directory(destination)
     }
 
@@ -123,14 +160,17 @@ extension File.Directory {
     ///
     /// Async variant.
     @discardableResult
-    public func rename(to newName: String) async throws -> File.Directory {
+    public func rename(
+        to newName: String,
+        options: File.System.Move.Options = .init()
+    ) async throws -> File.Directory {
         guard let parent = path.parent else {
             let destination = try File.Path(newName)
-            try await File.System.Move.move(from: path, to: destination)
+            try await File.System.Move.move(from: path, to: destination, options: options)
             return File.Directory(destination)
         }
         let destination = parent.appending(newName)
-        try await File.System.Move.move(from: path, to: destination)
+        try await File.System.Move.move(from: path, to: destination, options: options)
         return File.Directory(destination)
     }
 }
@@ -204,12 +244,30 @@ extension File.Directory {
             .map { File($0.path) }
     }
 
+    /// Returns all files in the directory.
+    ///
+    /// Async variant.
+    public func files() async throws -> [File] {
+        try await contents()
+            .filter { $0.type == .file }
+            .map { File($0.path) }
+    }
+
     /// Returns all subdirectories in the directory.
     ///
     /// - Returns: An array of directories.
     /// - Throws: `File.Directory.Contents.Error` on failure.
     public func subdirectories() throws -> [File.Directory] {
         try contents()
+            .filter { $0.type == .directory }
+            .map { File.Directory($0.path) }
+    }
+
+    /// Returns all subdirectories in the directory.
+    ///
+    /// Async variant.
+    public func subdirectories() async throws -> [File.Directory] {
+        try await contents()
             .filter { $0.type == .directory }
             .map { File.Directory($0.path) }
     }
@@ -223,9 +281,78 @@ extension File.Directory {
             try contents().isEmpty
         }
     }
+}
 
-    // Note: Async directory streaming (entries()) is available in the File System Async layer
-    // via File.Async.Directory.Entries
+// MARK: - Walk
+
+extension File.Directory {
+    /// Recursively walks the directory tree and returns all entries.
+    ///
+    /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
+    /// - Returns: An array of all entries found.
+    /// - Throws: `File.Directory.Walk.Error` on failure.
+    public func walk(
+        options: File.Directory.Walk.Options = .init()
+    ) throws -> [File.Directory.Entry] {
+        try File.Directory.Walk.walk(at: path, options: options)
+    }
+
+    /// Recursively walks the directory tree and returns all entries.
+    ///
+    /// Async variant.
+    public func walk(
+        options: File.Directory.Walk.Options = .init()
+    ) async throws -> [File.Directory.Entry] {
+        try await File.Directory.Walk.walk(at: path, options: options)
+    }
+
+    /// Recursively walks the directory tree and returns all files.
+    ///
+    /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
+    /// - Returns: An array of all files found.
+    /// - Throws: `File.Directory.Walk.Error` on failure.
+    public func walkFiles(
+        options: File.Directory.Walk.Options = .init()
+    ) throws -> [File] {
+        try walk(options: options)
+            .filter { $0.type == .file }
+            .map { File($0.path) }
+    }
+
+    /// Recursively walks the directory tree and returns all files.
+    ///
+    /// Async variant.
+    public func walkFiles(
+        options: File.Directory.Walk.Options = .init()
+    ) async throws -> [File] {
+        try await walk(options: options)
+            .filter { $0.type == .file }
+            .map { File($0.path) }
+    }
+
+    /// Recursively walks the directory tree and returns all subdirectories.
+    ///
+    /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
+    /// - Returns: An array of all directories found.
+    /// - Throws: `File.Directory.Walk.Error` on failure.
+    public func walkDirectories(
+        options: File.Directory.Walk.Options = .init()
+    ) throws -> [File.Directory] {
+        try walk(options: options)
+            .filter { $0.type == .directory }
+            .map { File.Directory($0.path) }
+    }
+
+    /// Recursively walks the directory tree and returns all subdirectories.
+    ///
+    /// Async variant.
+    public func walkDirectories(
+        options: File.Directory.Walk.Options = .init()
+    ) async throws -> [File.Directory] {
+        try await walk(options: options)
+            .filter { $0.type == .directory }
+            .map { File.Directory($0.path) }
+    }
 }
 
 // MARK: - Subscript Access

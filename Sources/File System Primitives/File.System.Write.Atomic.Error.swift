@@ -10,6 +10,11 @@ extension File.System.Write.Atomic {
         case parentNotFound(path: File.Path)
         case parentNotDirectory(path: File.Path)
         case parentAccessDenied(path: File.Path)
+        /// Parent directory creation failed when createIntermediates was requested.
+        ///
+        /// The underlying error preserves the exact reason for failure (permission denied,
+        /// path component is a file, read-only filesystem, invalid name, etc.).
+        case parentCreationFailed(path: File.Path, underlying: File.System.Create.Directory.Error)
         case destinationStatFailed(path: File.Path, code: File.System.Error.Code, message: String)
         case tempFileCreationFailed(directory: File.Path, code: File.System.Error.Code, message: String)
         case writeFailed(bytesWritten: Int, bytesExpected: Int, code: File.System.Error.Code, message: String)
@@ -52,6 +57,8 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
             return "Parent path is not a directory: \(path)"
         case .parentAccessDenied(let path):
             return "Access denied to parent directory: \(path)"
+        case .parentCreationFailed(let path, let underlying):
+            return "Failed to create parent directory '\(path)': \(underlying)"
         case .destinationStatFailed(let path, let code, let message):
             return "Failed to stat destination '\(path)': \(message) (\(code))"
         case .tempFileCreationFailed(let directory, let code, let message):
