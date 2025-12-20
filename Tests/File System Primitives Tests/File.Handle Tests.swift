@@ -353,6 +353,65 @@ extension File.Handle.Test.Unit {
         let error = File.Handle.Error.writeFailed(errno: 28, message: "No space left")
         #expect(error.description.contains("Write failed"))
     }
+
+    @Test("alreadyExists error description")
+    func alreadyExistsErrorDescription() throws {
+        let path = try File.Path("/tmp/existing")
+        let error = File.Handle.Error.alreadyExists(path)
+        #expect(error.description.contains("already exists"))
+    }
+
+    @Test("isDirectory error description")
+    func isDirectoryErrorDescription() throws {
+        let path = try File.Path("/tmp/dir")
+        let error = File.Handle.Error.isDirectory(path)
+        #expect(error.description.contains("directory"))
+    }
+
+    @Test("alreadyClosed error description")
+    func alreadyClosedErrorDescription() {
+        let error = File.Handle.Error.alreadyClosed
+        #expect(error.description.contains("closed"))
+    }
+
+    @Test("closeFailed error description")
+    func closeFailedErrorDescription() {
+        let error = File.Handle.Error.closeFailed(errno: 9, message: "Bad file descriptor")
+        #expect(error.description.contains("Close failed"))
+    }
+
+    @Test("openFailed error description")
+    func openFailedErrorDescription() {
+        let error = File.Handle.Error.openFailed(errno: 13, message: "Permission denied")
+        #expect(error.description.contains("Open failed"))
+    }
+
+    // MARK: - Error Equatable
+
+    @Test("Handle.Error is Equatable")
+    func errorEquatable() throws {
+        let path = try File.Path("/tmp/test")
+
+        #expect(File.Handle.Error.pathNotFound(path) == File.Handle.Error.pathNotFound(path))
+        #expect(File.Handle.Error.invalidHandle == File.Handle.Error.invalidHandle)
+        #expect(File.Handle.Error.alreadyClosed == File.Handle.Error.alreadyClosed)
+
+        let error1 = File.Handle.Error.seekFailed(errno: 22, message: "msg")
+        let error2 = File.Handle.Error.seekFailed(errno: 22, message: "msg")
+        #expect(error1 == error2)
+    }
+
+    @Test("Handle.Error is Sendable")
+    func errorSendable() async throws {
+        let path = try File.Path("/tmp/test")
+        let error = File.Handle.Error.pathNotFound(path)
+
+        let result = await Task {
+            error
+        }.value
+
+        #expect(result == error)
+    }
 }
 
 // MARK: - Performance Tests

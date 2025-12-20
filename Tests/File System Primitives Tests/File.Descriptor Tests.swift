@@ -169,6 +169,61 @@ extension File.Descriptor.Test.Unit {
         #expect(read != readWrite)
     }
 
+    @Test("Mode rawValue for .read")
+    func modeRawValueRead() {
+        #expect(File.Descriptor.Mode.read.rawValue == 0)
+    }
+
+    @Test("Mode rawValue for .write")
+    func modeRawValueWrite() {
+        #expect(File.Descriptor.Mode.write.rawValue == 1)
+    }
+
+    @Test("Mode rawValue for .readWrite")
+    func modeRawValueReadWrite() {
+        #expect(File.Descriptor.Mode.readWrite.rawValue == 2)
+    }
+
+    @Test("Mode rawValue round-trip")
+    func modeRawValueRoundTrip() {
+        for mode in [File.Descriptor.Mode.read, .write, .readWrite] {
+            let restored = File.Descriptor.Mode(rawValue: mode.rawValue)
+            #expect(restored == mode)
+        }
+    }
+
+    @Test("Mode invalid rawValue returns nil")
+    func modeInvalidRawValue() {
+        #expect(File.Descriptor.Mode(rawValue: 3) == nil)
+        #expect(File.Descriptor.Mode(rawValue: 255) == nil)
+    }
+
+    @Test("Mode Binary.Serializable")
+    func modeBinarySerialize() {
+        var buffer: [UInt8] = []
+        File.Descriptor.Mode.serialize(.read, into: &buffer)
+        #expect(buffer == [0])
+
+        buffer = []
+        File.Descriptor.Mode.serialize(.write, into: &buffer)
+        #expect(buffer == [1])
+
+        buffer = []
+        File.Descriptor.Mode.serialize(.readWrite, into: &buffer)
+        #expect(buffer == [2])
+    }
+
+    @Test("Mode is Sendable")
+    func modeSendable() async {
+        let mode: File.Descriptor.Mode = .readWrite
+
+        let result = await Task {
+            mode
+        }.value
+
+        #expect(result == .readWrite)
+    }
+
     // MARK: - Options OptionSet
 
     @Test("Options default is empty")
@@ -195,6 +250,41 @@ extension File.Descriptor.Test.Unit {
         #expect(File.Descriptor.Options.closeOnExec.rawValue == 1 << 5)
     }
 
+    @Test("Options all combined")
+    func optionsAllCombined() {
+        let options: File.Descriptor.Options = [
+            .create, .truncate, .exclusive, .append, .noFollow, .closeOnExec
+        ]
+        #expect(options.contains(.create))
+        #expect(options.contains(.truncate))
+        #expect(options.contains(.exclusive))
+        #expect(options.contains(.append))
+        #expect(options.contains(.noFollow))
+        #expect(options.contains(.closeOnExec))
+        // 1 + 2 + 4 + 8 + 16 + 32 = 63
+        #expect(options.rawValue == 63)
+    }
+
+    @Test("Options Binary.Serializable")
+    func optionsBinarySerialize() {
+        var buffer: [UInt8] = []
+        File.Descriptor.Options.serialize(.create, into: &buffer)
+        // UInt32 little-endian: 1 = [1, 0, 0, 0]
+        #expect(buffer.count == 4)
+        #expect(buffer[0] == 1)
+    }
+
+    @Test("Options is Sendable")
+    func optionsSendable() async {
+        let options: File.Descriptor.Options = [.create, .truncate]
+
+        let result = await Task {
+            options
+        }.value
+
+        #expect(result == [.create, .truncate])
+    }
+
     // MARK: - Error Equatable
 
     @Test("Errors are equatable")
@@ -212,4 +302,124 @@ extension File.Descriptor.Test.Unit {
         #expect(File.Descriptor.Error.alreadyClosed == File.Descriptor.Error.alreadyClosed)
     }
 
+    @Test("Errors are Sendable")
+    func errorsSendable() async throws {
+        let path = try File.Path("/tmp/test")
+        let error = File.Descriptor.Error.pathNotFound(path)
+
+        let result = await Task {
+            error
+        }.value
+
+        #expect(result == error)
+    }
+
+    // MARK: - All Error Cases
+
+    @Test("Error.pathNotFound")
+    func errorPathNotFound() throws {
+        let path = try File.Path("/tmp/missing")
+        let error = File.Descriptor.Error.pathNotFound(path)
+        if case .pathNotFound(let p) = error {
+            #expect(p == path)
+        } else {
+            Issue.record("Expected pathNotFound")
+        }
+    }
+
+    @Test("Error.permissionDenied")
+    func errorPermissionDenied() throws {
+        let path = try File.Path("/root/secret")
+        let error = File.Descriptor.Error.permissionDenied(path)
+        if case .permissionDenied(let p) = error {
+            #expect(p == path)
+        } else {
+            Issue.record("Expected permissionDenied")
+        }
+    }
+
+    @Test("Error.alreadyExists")
+    func errorAlreadyExists() throws {
+        let path = try File.Path("/tmp/existing")
+        let error = File.Descriptor.Error.alreadyExists(path)
+        if case .alreadyExists(let p) = error {
+            #expect(p == path)
+        } else {
+            Issue.record("Expected alreadyExists")
+        }
+    }
+
+    @Test("Error.isDirectory")
+    func errorIsDirectory() throws {
+        let path = try File.Path("/tmp")
+        let error = File.Descriptor.Error.isDirectory(path)
+        if case .isDirectory(let p) = error {
+            #expect(p == path)
+        } else {
+            Issue.record("Expected isDirectory")
+        }
+    }
+
+    @Test("Error.tooManyOpenFiles")
+    func errorTooManyOpenFiles() {
+        let error = File.Descriptor.Error.tooManyOpenFiles
+        if case .tooManyOpenFiles = error {
+            #expect(true)
+        } else {
+            Issue.record("Expected tooManyOpenFiles")
+        }
+    }
+
+    @Test("Error.invalidDescriptor")
+    func errorInvalidDescriptor() {
+        let error = File.Descriptor.Error.invalidDescriptor
+        if case .invalidDescriptor = error {
+            #expect(true)
+        } else {
+            Issue.record("Expected invalidDescriptor")
+        }
+    }
+
+    @Test("Error.openFailed")
+    func errorOpenFailed() {
+        let error = File.Descriptor.Error.openFailed(errno: 13, message: "Permission denied")
+        if case .openFailed(let errno, let message) = error {
+            #expect(errno == 13)
+            #expect(message == "Permission denied")
+        } else {
+            Issue.record("Expected openFailed")
+        }
+    }
+
+    @Test("Error.closeFailed")
+    func errorCloseFailed() {
+        let error = File.Descriptor.Error.closeFailed(errno: 9, message: "Bad file descriptor")
+        if case .closeFailed(let errno, let message) = error {
+            #expect(errno == 9)
+            #expect(message == "Bad file descriptor")
+        } else {
+            Issue.record("Expected closeFailed")
+        }
+    }
+
+    @Test("Error.duplicateFailed")
+    func errorDuplicateFailed() {
+        let error = File.Descriptor.Error.duplicateFailed(errno: 24, message: "Too many open files")
+        if case .duplicateFailed(let errno, let message) = error {
+            #expect(errno == 24)
+            #expect(message == "Too many open files")
+        } else {
+            Issue.record("Expected duplicateFailed")
+        }
+    }
+
+    @Test("Error.alreadyClosed")
+    func errorAlreadyClosed() {
+        let error = File.Descriptor.Error.alreadyClosed
+        if case .alreadyClosed = error {
+            #expect(true)
+        } else {
+            Issue.record("Expected alreadyClosed")
+        }
+    }
 }

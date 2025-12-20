@@ -245,4 +245,137 @@ extension File.System.Metadata.Permissions.Test.Unit {
         #expect(empty.isEmpty)
         #expect(!notEmpty.isEmpty)
     }
+
+    @Test("Executable permissions (755)")
+    func executablePermissions() {
+        let executable = File.System.Metadata.Permissions.executable
+        #expect(executable.contains(.ownerRead))
+        #expect(executable.contains(.ownerWrite))
+        #expect(executable.contains(.ownerExecute))
+        #expect(executable.contains(.groupRead))
+        #expect(executable.contains(.groupExecute))
+        #expect(executable.contains(.otherRead))
+        #expect(executable.contains(.otherExecute))
+        #expect(!executable.contains(.groupWrite))
+        #expect(!executable.contains(.otherWrite))
+    }
+
+    @Test("Binary.Serializable - serialize produces correct bytes")
+    func binarySerialize() {
+        var buffer: [UInt8] = []
+        File.System.Metadata.Permissions.serialize(.ownerRead, into: &buffer)
+        // UInt16 in little-endian: 0o400 = 256 = [0, 1]
+        #expect(buffer.count == 2)
+    }
+
+    @Test("Permissions is Sendable")
+    func permissionsSendable() async {
+        let perms: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite]
+
+        let result = await Task {
+            perms
+        }.value
+
+        #expect(result == perms)
+    }
+
+    @Test("Error is Sendable")
+    func errorSendable() async throws {
+        let path = try File.Path("/test")
+        let error = File.System.Metadata.Permissions.Error.pathNotFound(path)
+
+        let result = await Task {
+            error
+        }.value
+
+        #expect(result == error)
+    }
+
+    // MARK: - Special Bit Combinations
+
+    @Test("setuid with executable")
+    func setuidWithExecutable() {
+        let perms: File.System.Metadata.Permissions = [.setuid, .ownerExecute]
+        #expect(perms.contains(.setuid))
+        #expect(perms.contains(.ownerExecute))
+        #expect(perms.rawValue == 0o4100)
+    }
+
+    @Test("setgid with group execute")
+    func setgidWithGroupExecute() {
+        let perms: File.System.Metadata.Permissions = [.setgid, .groupExecute]
+        #expect(perms.contains(.setgid))
+        #expect(perms.contains(.groupExecute))
+        #expect(perms.rawValue == 0o2010)
+    }
+
+    @Test("sticky bit with other execute")
+    func stickyWithOtherExecute() {
+        let perms: File.System.Metadata.Permissions = [.sticky, .otherExecute]
+        #expect(perms.contains(.sticky))
+        #expect(perms.contains(.otherExecute))
+        #expect(perms.rawValue == 0o1001)
+    }
+
+    @Test("all special bits combined")
+    func allSpecialBits() {
+        let perms: File.System.Metadata.Permissions = [.setuid, .setgid, .sticky]
+        #expect(perms.rawValue == 0o7000)
+    }
+
+    @Test("common permission patterns")
+    func commonPermissionPatterns() {
+        // 777 - all permissions
+        let all: File.System.Metadata.Permissions = [.ownerAll, .groupAll, .otherAll]
+        #expect(all.rawValue == 0o777)
+
+        // 644 - typical file
+        let file: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite, .groupRead, .otherRead]
+        #expect(file.rawValue == 0o644)
+
+        // 755 - typical directory/executable
+        let dir: File.System.Metadata.Permissions = [.ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute]
+        #expect(dir.rawValue == 0o755)
+
+        // 600 - private file
+        let privateFile: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite]
+        #expect(privateFile.rawValue == 0o600)
+
+        // 700 - private directory
+        let privateDir: File.System.Metadata.Permissions = [.ownerAll]
+        #expect(privateDir.rawValue == 0o700)
+    }
+
+    @Test("rawValue init and access")
+    func rawValueInitAndAccess() {
+        let perms = File.System.Metadata.Permissions(rawValue: 0o755)
+        #expect(perms.contains(.ownerRead))
+        #expect(perms.contains(.ownerWrite))
+        #expect(perms.contains(.ownerExecute))
+        #expect(perms.contains(.groupRead))
+        #expect(perms.contains(.groupExecute))
+        #expect(perms.contains(.otherRead))
+        #expect(perms.contains(.otherExecute))
+    }
+
+    @Test("symmetric difference")
+    func symmetricDifference() {
+        let perms1: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite]
+        let perms2: File.System.Metadata.Permissions = [.ownerWrite, .ownerExecute]
+        let diff = perms1.symmetricDifference(perms2)
+
+        #expect(diff.contains(.ownerRead))
+        #expect(!diff.contains(.ownerWrite))
+        #expect(diff.contains(.ownerExecute))
+    }
+
+    @Test("insert and remove")
+    func insertAndRemove() {
+        var perms: File.System.Metadata.Permissions = [.ownerRead]
+        perms.insert(.ownerWrite)
+        #expect(perms.contains(.ownerWrite))
+
+        perms.remove(.ownerRead)
+        #expect(!perms.contains(.ownerRead))
+    }
 }

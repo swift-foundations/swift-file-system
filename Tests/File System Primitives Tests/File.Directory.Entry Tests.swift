@@ -174,4 +174,75 @@ extension File.Directory.Entry.Test.EdgeCase {
         #expect(String(entry.name) == ".hidden")
         #expect(entry.name.isHiddenByDotPrefix)
     }
+
+    @Test("Entry is Sendable")
+    func entrySendable() async throws {
+        let parent = try File.Path("/tmp")
+        let path = try File.Path("/tmp/file.txt")
+        let name = File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt"))
+        let entry = File.Directory.Entry(
+            name: name,
+            location: .absolute(parent: parent, path: path),
+            type: .file
+        )
+
+        let result = await Task {
+            (entry.name, entry.path, entry.type)
+        }.value
+
+        #expect(String(result.0) == "file.txt")
+        #expect(result.1 == path)
+        #expect(result.2 == .file)
+    }
+
+    @Test("Entry with undecodable name")
+    func entryWithUndecodableName() throws {
+        let parent = try File.Path("/tmp")
+        let name = File.Name(rawBytes: [0x80, 0x81, 0x82])  // Invalid UTF-8
+        let entry = File.Directory.Entry(
+            name: name,
+            location: .relative(parent: parent),
+            type: .file
+        )
+
+        // Name cannot be decoded to String
+        #expect(String(entry.name) == nil)
+        // But lossy decoding works
+        #expect(String(lossy: entry.name).contains("\u{FFFD}"))
+        // Path is nil for relative locations
+        #expect(entry.path == nil)
+        // Parent is still accessible
+        #expect(entry.parent == parent)
+    }
+
+    @Test("Entry stored in collection")
+    func entryInCollection() throws {
+        let parent = try File.Path("/tmp")
+
+        let entries: [File.Directory.Entry] = [
+            File.Directory.Entry(
+                name: File.Name(rawBytes: [UInt8].ascii.unchecked("file1.txt")),
+                location: .absolute(parent: parent, path: try File.Path("/tmp/file1.txt")),
+                type: .file
+            ),
+            File.Directory.Entry(
+                name: File.Name(rawBytes: [UInt8].ascii.unchecked("dir")),
+                location: .absolute(parent: parent, path: try File.Path("/tmp/dir")),
+                type: .directory
+            ),
+            File.Directory.Entry(
+                name: File.Name(rawBytes: [0x80]),
+                location: .relative(parent: parent),
+                type: .file
+            ),
+        ]
+
+        #expect(entries.count == 3)
+
+        let filesCount = entries.filter { $0.type == .file }.count
+        #expect(filesCount == 2)
+
+        let withPath = entries.compactMap { $0.path }
+        #expect(withPath.count == 2)
+    }
 }
