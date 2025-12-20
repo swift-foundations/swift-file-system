@@ -62,7 +62,7 @@
 
         /// Creates Info from stat buffer.
         private static func _makeInfo(from statBuf: stat) -> File.System.Metadata.Info {
-            let fileType: File.System.Metadata.`Type`
+            let fileType: File.System.Metadata.Kind
             switch statBuf.st_mode & S_IFMT {
             case S_IFREG:
                 fileType = .regular

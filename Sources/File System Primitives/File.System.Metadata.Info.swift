@@ -21,7 +21,7 @@ extension File.System.Metadata {
         public let timestamps: Timestamps
 
         /// File type.
-        public let type: `Type`
+        public let type: Kind
 
         /// Inode number.
         public let inode: UInt64
@@ -37,7 +37,7 @@ extension File.System.Metadata {
             permissions: Permissions,
             owner: Ownership,
             timestamps: Timestamps,
-            type: `Type`,
+            type: Kind,
             inode: UInt64,
             deviceId: UInt64,
             linkCount: UInt32

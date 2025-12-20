@@ -1,5 +1,5 @@
 //
-//  File.System.Metadata.Type.swift
+//  File.System.Metadata.Kind.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
@@ -9,7 +9,7 @@ import Binary
 
 extension File.System.Metadata {
     /// File type classification.
-    public enum `Type`: Sendable {
+    public enum Kind: Sendable {
         case regular
         case directory
         case symbolicLink
@@ -22,7 +22,7 @@ extension File.System.Metadata {
 
 // MARK: - RawRepresentable
 
-extension File.System.Metadata.`Type`: RawRepresentable {
+extension File.System.Metadata.Kind: RawRepresentable {
     public var rawValue: UInt8 {
         switch self {
         case .regular: return 0
@@ -51,7 +51,7 @@ extension File.System.Metadata.`Type`: RawRepresentable {
 
 // MARK: - Binary.Serializable
 
-extension File.System.Metadata.`Type`: Binary.Serializable {
+extension File.System.Metadata.Kind: Binary.Serializable {
     @inlinable
     public static func serialize<Buffer: RangeReplaceableCollection>(
         _ value: Self,

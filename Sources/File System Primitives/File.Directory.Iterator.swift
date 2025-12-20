@@ -160,7 +160,7 @@ extension File.Directory.Iterator {
                 let entryPath = File.Path(_basePath, appending: name)
 
                 // Determine type
-                let entryType: File.Directory.Entry.`Type`
+                let entryType: File.Directory.Entry.Kind
                 switch Int32(entry.pointee.d_type) {
                 case DT_REG:
                     entryType = .file
@@ -238,7 +238,7 @@ extension File.Directory.Iterator {
                 let entryPath = File.Path(_basePath, appending: name)
 
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
-                let entryType: File.Directory.Entry.`Type`
+                let entryType: File.Directory.Entry.Kind
                 var entryStat = stat()
                 if Glibc.lstat(entryPath.string, &entryStat) == 0 {
                     switch entryStat.st_mode & S_IFMT {
@@ -345,7 +345,7 @@ extension File.Directory.Iterator {
                 let entryPath = File.Path(_basePath, appending: name)
 
                 // Determine type (from previous findData)
-                let entryType: File.Directory.Entry.`Type`
+                let entryType: File.Directory.Entry.Kind
                 if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
