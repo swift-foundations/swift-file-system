@@ -179,67 +179,81 @@ import TestingPerformance
 
         // MARK: - Directory Operations
 
+        /// Shared fixture for async directory performance tests.
+        /// Creates test directories once per test, reused across iterations.
+        /// Uses class to enable deinit for cleanup.
         @Suite(.serialized)
-        struct `Directory Operations` {
+        final class `Directory Operations` {
+            let testDir100Files: File.Path
+            let testDirShallowTree: File.Path
+            let testDirDeepTree: File.Path
 
-            @Test("Async directory contents (100 files)", .timed(iterations: 10, warmup: 2))
-            func asyncDirectoryContents() async throws {
+            init() async throws {
                 #if canImport(Foundation)
                     let tempDir = try File.Path(NSTemporaryDirectory())
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                let testDir = File.Path(tempDir, appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))")
 
-                // Setup
-                try await File.System.Create.Directory.create(at: testDir)
                 let fileData = [UInt8](repeating: 0x00, count: 10)
+                // Use durability: .none to avoid F_FULLFSYNC overhead in benchmark setup
+                let writeOptions = File.System.Write.Atomic.Options(durability: .none)
+
+                // Setup: 100 files directory
+                self.testDir100Files = File.Path(tempDir, appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))")
+                try await File.System.Create.Directory.create(at: testDir100Files)
                 for i in 0..<100 {
-                    let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                    try await File.System.Write.Atomic.write(fileData, to: filePath)
+                    let filePath = File.Path(testDir100Files, appending: "file_\(i).txt")
+                    try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
                 }
 
-                defer {
-                    Task {
-                        try? await File.System.Delete.delete(
-                            at: testDir,
-                            options: .init(recursive: true)
-                        )
+                // Setup: shallow tree (10 dirs × 10 files)
+                self.testDirShallowTree = File.Path(tempDir, appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
+                try await File.System.Create.Directory.create(at: testDirShallowTree)
+                for i in 0..<10 {
+                    let subDir = File.Path(testDirShallowTree, appending: "dir_\(i)")
+                    try await File.System.Create.Directory.create(at: subDir)
+                    for j in 0..<10 {
+                        let filePath = File.Path(subDir, appending: "file_\(j).txt")
+                        try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
                     }
                 }
 
-                let entries = try await File.Directory.contents(at: testDir)
+                // Setup: deep tree (5 levels, 3 files per level)
+                self.testDirDeepTree = File.Path(tempDir, appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))")
+                try await File.System.Create.Directory.create(at: testDirDeepTree)
+                var currentDir = testDirDeepTree
+                for level in 0..<5 {
+                    for j in 0..<3 {
+                        let filePath = File.Path(currentDir, appending: "file_\(j).txt")
+                        try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
+                    }
+                    let subDir = File.Path(currentDir, appending: "level_\(level)")
+                    try await File.System.Create.Directory.create(at: subDir)
+                    currentDir = subDir
+                }
+                for j in 0..<3 {
+                    let filePath = File.Path(currentDir, appending: "file_\(j).txt")
+                    try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
+                }
+            }
+
+            deinit {
+                try? File.System.Delete.delete(at: testDir100Files, options: .init(recursive: true))
+                try? File.System.Delete.delete(at: testDirShallowTree, options: .init(recursive: true))
+                try? File.System.Delete.delete(at: testDirDeepTree, options: .init(recursive: true))
+            }
+
+            @Test("Async directory contents (100 files)", .timed(iterations: 50, warmup: 5))
+            func asyncDirectoryContents() async throws {
+                let entries = try await File.Directory.contents(at: testDir100Files)
                 #expect(entries.count == 100)
             }
 
-            @Test("Directory entries streaming (100 files)", .timed(iterations: 10, warmup: 2))
+            @Test("Directory entries streaming (100 files)", .timed(iterations: 50, warmup: 5))
             func directoryEntriesStreaming() async throws {
-                #if canImport(Foundation)
-                    let tempDir = try File.Path(NSTemporaryDirectory())
-                #else
-                    let tempDir = try File.Path("/tmp")
-                #endif
-                let testDir = File.Path(tempDir, appending: "perf_async_entries_\(Int.random(in: 0..<Int.max))")
-
-                // Setup
-                try await File.System.Create.Directory.create(at: testDir)
-                let fileData = [UInt8](repeating: 0x00, count: 10)
-                for i in 0..<100 {
-                    let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                    try await File.System.Write.Atomic.write(fileData, to: filePath)
-                }
-
-                defer {
-                    Task {
-                        try? await File.System.Delete.delete(
-                            at: testDir,
-                            options: .init(recursive: true)
-                        )
-                    }
-                }
-
                 var count = 0
-                for try await _ in File.Directory.entries(at: testDir) {
+                for try await _ in File.Directory.entries(at: testDir100Files) {
                     count += 1
                 }
                 #expect(count == 100)
@@ -247,91 +261,21 @@ import TestingPerformance
 
             @Test(
                 "Directory walk (shallow tree: 10 dirs × 10 files)",
-                .timed(iterations: 5, warmup: 1)
+                .timed(iterations: 20, warmup: 3)
             )
             func directoryWalkShallow() async throws {
-                #if canImport(Foundation)
-                    let tempDir = try File.Path(NSTemporaryDirectory())
-                #else
-                    let tempDir = try File.Path("/tmp")
-                #endif
-                let testDir = File.Path(tempDir, appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
-
-                // Setup: 10 subdirs, each with 10 files = 100 files total + 10 dirs
-                try await File.System.Create.Directory.create(at: testDir)
-                let fileData = [UInt8](repeating: 0x00, count: 10)
-
-                for i in 0..<10 {
-                    let subDir = File.Path(testDir, appending: "dir_\(i)")
-                    try await File.System.Create.Directory.create(at: subDir)
-
-                    for j in 0..<10 {
-                        let filePath = File.Path(subDir, appending: "file_\(j).txt")
-                        try await File.System.Write.Atomic.write(fileData, to: filePath)
-                    }
-                }
-
-                defer {
-                    Task {
-                        try? await File.System.Delete.delete(
-                            at: testDir,
-                            options: .init(recursive: true)
-                        )
-                    }
-                }
-
                 var count = 0
-                for try await _ in File.Directory.walk(at: testDir) {
+                for try await _ in File.Directory.walk(at: testDirShallowTree) {
                     count += 1
                 }
                 // 10 dirs + 100 files = 110 entries
                 #expect(count == 110)
             }
 
-            @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 5, warmup: 1))
+            @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 20, warmup: 3))
             func directoryWalkDeep() async throws {
-                #if canImport(Foundation)
-                    let tempDir = try File.Path(NSTemporaryDirectory())
-                #else
-                    let tempDir = try File.Path("/tmp")
-                #endif
-                let testDir = File.Path(tempDir, appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))")
-
-                // Setup: 5 levels deep with 3 files per level
-                try await File.System.Create.Directory.create(at: testDir)
-                let fileData = [UInt8](repeating: 0x00, count: 10)
-
-                var currentDir = testDir
-                for level in 0..<5 {
-                    // Add files at this level
-                    for j in 0..<3 {
-                        let filePath = File.Path(currentDir, appending: "file_\(j).txt")
-                        try await File.System.Write.Atomic.write(fileData, to: filePath)
-                    }
-
-                    // Create next level
-                    let subDir = File.Path(currentDir, appending: "level_\(level)")
-                    try await File.System.Create.Directory.create(at: subDir)
-                    currentDir = subDir
-                }
-
-                // Add files at deepest level
-                for j in 0..<3 {
-                    let filePath = File.Path(currentDir, appending: "file_\(j).txt")
-                    try await File.System.Write.Atomic.write(fileData, to: filePath)
-                }
-
-                defer {
-                    Task {
-                        try? await File.System.Delete.delete(
-                            at: testDir,
-                            options: .init(recursive: true)
-                        )
-                    }
-                }
-
                 var count = 0
-                for try await _ in File.Directory.walk(at: testDir) {
+                for try await _ in File.Directory.walk(at: testDirDeepTree) {
                     count += 1
                 }
                 // 5 dirs + (6 levels × 3 files) = 5 + 18 = 23 entries
@@ -533,13 +477,15 @@ import TestingPerformance
                 let testDir = File.Path(tempDir, appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))")
 
                 // Setup: 10 files, 100KB each
+                // Use durability: .none to avoid F_FULLFSYNC overhead in benchmark setup
                 try await File.System.Create.Directory.create(at: testDir)
                 let fileData = [UInt8](repeating: 0x55, count: 100_000)
+                let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
                 var filePaths: [File.Path] = []
                 for i in 0..<10 {
                     let filePath = File.Path(testDir, appending: "file_\(i).bin")
-                    try await File.System.Write.Atomic.write(fileData, to: filePath)
+                    try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
                     filePaths.append(filePath)
                 }
 
