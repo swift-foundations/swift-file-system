@@ -244,13 +244,13 @@ import TestingPerformance
                 try? File.System.Delete.delete(at: testDirDeepTree, options: .init(recursive: true))
             }
 
-            @Test("Async directory contents (100 files)", .timed(iterations: 50, warmup: 5))
+            @Test("Async directory contents (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
             func asyncDirectoryContents() async throws {
                 let entries = try await File.Directory.contents(at: testDir100Files)
                 #expect(entries.count == 100)
             }
 
-            @Test("Directory entries streaming (100 files)", .timed(iterations: 50, warmup: 5))
+            @Test("Directory entries streaming (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
             func directoryEntriesStreaming() async throws {
                 var count = 0
                 for try await _ in File.Directory.entries(at: testDir100Files) {
@@ -261,7 +261,7 @@ import TestingPerformance
 
             @Test(
                 "Directory walk (shallow tree: 10 dirs × 10 files)",
-                .timed(iterations: 20, warmup: 3)
+                .timed(iterations: 20, warmup: 3, trackAllocations: false)
             )
             func directoryWalkShallow() async throws {
                 var count = 0
@@ -272,7 +272,7 @@ import TestingPerformance
                 #expect(count == 110)
             }
 
-            @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 20, warmup: 3))
+            @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 20, warmup: 3, trackAllocations: false))
             func directoryWalkDeep() async throws {
                 var count = 0
                 for try await _ in File.Directory.walk(at: testDirDeepTree) {
@@ -288,7 +288,7 @@ import TestingPerformance
         @Suite(.serialized)
         struct `Byte Streaming` {
 
-            @Test("Stream 1MB file (64KB chunks)", .timed(iterations: 5, warmup: 1))
+            @Test("Stream 1MB file (64KB chunks)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
             func stream1MBFile() async throws {
                 #if canImport(Foundation)
                     let tempDir = try File.Path(NSTemporaryDirectory())
@@ -319,7 +319,7 @@ import TestingPerformance
                 #expect(totalBytes == 1_000_000)
             }
 
-            @Test("Stream 1MB file (4KB chunks)", .timed(iterations: 5, warmup: 1))
+            @Test("Stream 1MB file (4KB chunks)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
             func stream1MBSmallChunks() async throws {
                 #if canImport(Foundation)
                     let tempDir = try File.Path(NSTemporaryDirectory())
@@ -467,7 +467,7 @@ import TestingPerformance
         @Suite(.serialized)
         struct `Concurrency Stress` {
 
-            @Test("Concurrent file reads (10 files)", .timed(iterations: 5, warmup: 1))
+            @Test("Concurrent file reads (10 files)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
             func concurrentFileReads() async throws {
                 #if canImport(Foundation)
                     let tempDir = try File.Path(NSTemporaryDirectory())

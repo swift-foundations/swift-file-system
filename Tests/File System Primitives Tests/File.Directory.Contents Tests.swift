@@ -291,13 +291,13 @@ extension File.Directory.Contents.Test.Performance {
             try? File.System.Delete.delete(at: testDir, options: .init(recursive: true))
         }
 
-        @Test("Directory contents listing (100 files)", .timed(iterations: 50, warmup: 5))
+        @Test("Directory contents listing (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
         func directoryContentsListing() throws {
             let entries = try File.Directory.Contents.list(at: testDir)
             #expect(entries.count == 100)
         }
 
-        @Test("Directory iteration (100 files)", .timed(iterations: 50, warmup: 5))
+        @Test("Directory iteration (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
         func directoryIteration() throws {
             var iterator = try File.Directory.Iterator.open(at: testDir)
             var count = 0
