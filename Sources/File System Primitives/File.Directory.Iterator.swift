@@ -35,6 +35,9 @@ extension File.Directory {
         #elseif canImport(Glibc)
             // Use OpaquePointer on Linux (DIR type not exported in Swift's Glibc overlay)
             private var _dir: OpaquePointer?
+        #elseif canImport(Musl)
+            // Use OpaquePointer on Musl (same as Glibc)
+            private var _dir: OpaquePointer?
         #endif
         private let _basePath: File.Path
 
@@ -50,6 +53,10 @@ extension File.Directory {
             #elseif canImport(Glibc)
                 if let dir = _dir {
                     Glibc.closedir(dir)
+                }
+            #elseif canImport(Musl)
+                if let dir = _dir {
+                    Musl.closedir(dir)
                 }
             #endif
         }
@@ -113,6 +120,11 @@ extension File.Directory.Iterator {
                 Glibc.closedir(dir)
                 _dir = nil
             }
+        #elseif canImport(Musl)
+            if let dir = _dir {
+                Musl.closedir(dir)
+                _dir = nil
+            }
         #endif
     }
 }
@@ -149,17 +161,18 @@ extension File.Directory.Iterator {
             }
 
             while let entry = readdir(dir) {
-                let name = String(posixDirectoryEntryName: entry.pointee.d_name)
+                let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
                 // Skip . and ..
                 if name == "." || name == ".." {
                     continue
                 }
 
-                // Build full path using proper path composition
-                let entryPath = File.Path(_basePath, appending: name)
+                // Build full path using lossy string (File.Path is String-backed)
+                // File.Name preserves raw bytes for diagnostics
+                let entryPath = File.Path(_basePath, appending: String(lossy: name))
 
-                // Determine type
+                // Determine type - use lstat fallback for DT_UNKNOWN
                 let entryType: File.Directory.Entry.Kind
                 switch Int32(entry.pointee.d_type) {
                 case DT_REG:
@@ -168,6 +181,23 @@ extension File.Directory.Iterator {
                     entryType = .directory
                 case DT_LNK:
                     entryType = .symbolicLink
+                case DT_UNKNOWN:
+                    // Fallback to lstat for unknown type
+                    var entryStat = stat()
+                    if lstat(entryPath.string, &entryStat) == 0 {
+                        switch entryStat.st_mode & S_IFMT {
+                        case S_IFREG:
+                            entryType = .file
+                        case S_IFDIR:
+                            entryType = .directory
+                        case S_IFLNK:
+                            entryType = .symbolicLink
+                        default:
+                            entryType = .other
+                        }
+                    } else {
+                        entryType = .other
+                    }
                 default:
                     entryType = .other
                 }
@@ -227,20 +257,106 @@ extension File.Directory.Iterator {
             }
 
             while let entry = Glibc.readdir(dir) {
-                let name = String(posixDirectoryEntryName: entry.pointee.d_name)
+                let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
                 // Skip . and ..
                 if name == "." || name == ".." {
                     continue
                 }
 
-                // Build full path using proper path composition
-                let entryPath = File.Path(_basePath, appending: name)
+                // Build full path using lossy string (File.Path is String-backed)
+                // File.Name preserves raw bytes for diagnostics
+                let entryPath = File.Path(_basePath, appending: String(lossy: name))
 
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
                 var entryStat = stat()
                 if Glibc.lstat(entryPath.string, &entryStat) == 0 {
+                    switch entryStat.st_mode & S_IFMT {
+                    case S_IFREG:
+                        entryType = .file
+                    case S_IFDIR:
+                        entryType = .directory
+                    case S_IFLNK:
+                        entryType = .symbolicLink
+                    default:
+                        entryType = .other
+                    }
+                } else {
+                    entryType = .other
+                }
+
+                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+            }
+
+            return nil
+        }
+
+        private static func _mapErrno(_ errno: Int32, path: File.Path) -> Error {
+            switch errno {
+            case ENOENT:
+                return .pathNotFound(path)
+            case EACCES, EPERM:
+                return .permissionDenied(path)
+            case ENOTDIR:
+                return .notADirectory(path)
+            default:
+                let message: String
+                if let cString = strerror(errno) {
+                    message = String(cString: cString)
+                } else {
+                    message = "Unknown error"
+                }
+                return .readFailed(errno: errno, message: message)
+            }
+        }
+    }
+
+#elseif canImport(Musl)
+    extension File.Directory.Iterator {
+        private static func _openPOSIX(at path: File.Path) throws(Error) -> File.Directory.Iterator
+        {
+            // Verify it's a directory
+            var statBuf = stat()
+            guard stat(path.string, &statBuf) == 0 else {
+                throw _mapErrno(errno, path: path)
+            }
+
+            guard (statBuf.st_mode & S_IFMT) == S_IFDIR else {
+                throw .notADirectory(path)
+            }
+
+            guard let dir = Musl.opendir(path.string) else {
+                throw _mapErrno(errno, path: path)
+            }
+
+            return File.Directory.Iterator(
+                _dir: dir,
+                _basePath: path
+            )
+        }
+
+        private mutating func _nextPOSIX() throws(Error) -> File.Directory.Entry? {
+            guard let dir = _dir else {
+                return nil
+            }
+
+            while let entry = Musl.readdir(dir) {
+                let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
+
+                // Skip . and ..
+                if name == "." || name == ".." {
+                    continue
+                }
+
+                // Build full path using lossy string (File.Path is String-backed)
+                // File.Name preserves raw bytes for diagnostics
+                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+
+                // Determine type via lstat (Musl doesn't reliably expose d_type)
+                let entryType: File.Directory.Entry.Kind
+                var entryStat = stat()
+                if Musl.lstat(entryPath.string, &entryStat) == 0 {
                     switch entryStat.st_mode & S_IFMT {
                     case S_IFREG:
                         entryType = .file
@@ -296,7 +412,8 @@ extension File.Directory.Iterator {
             }
 
             guard attrs != INVALID_FILE_ATTRIBUTES else {
-                throw .pathNotFound(path)
+                // CRITICAL: Read GetLastError() immediately
+                throw _mapWindowsError(GetLastError(), path: path)
             }
 
             guard (attrs & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 else {
@@ -328,27 +445,38 @@ extension File.Directory.Iterator {
             }
 
             while true {
-                let name = String(windowsDirectoryEntryName: _findData.cFileName)
+                // Snapshot current entry BEFORE any advancement
+                let currentFindData = _findData
+                let name = File.Name(windowsDirectoryEntryName: currentFindData.cFileName)
+                let attributes = currentFindData.dwFileAttributes
 
-                // Advance to next entry for next call
+                // Advance to next entry for next iteration
+                // CRITICAL: Read GetLastError() immediately - no intervening WinAPI calls
                 if !_ok(FindNextFileW(handle, &_findData)) {
-                    _hasMore = false
+                    let err = GetLastError()
+                    if err == _dword(ERROR_NO_MORE_FILES) {
+                        _hasMore = false
+                    } else {
+                        // Actual error occurred during iteration
+                        throw _mapWindowsError(err, path: _basePath)
+                    }
                 }
 
-                // Skip . and ..
+                // Skip . and .. - uses snapshot name, advancement already done
                 if name == "." || name == ".." {
                     if !_hasMore { return nil }
                     continue
                 }
 
-                // Build full path using proper path composition
-                let entryPath = File.Path(_basePath, appending: name)
+                // Build full path using lossy string (File.Path is String-backed)
+                // File.Name preserves raw code units for diagnostics
+                let entryPath = File.Path(_basePath, appending: String(lossy: name))
 
-                // Determine type (from previous findData)
+                // Determine type from SNAPSHOT attributes (not current _findData)
                 let entryType: File.Directory.Entry.Kind
-                if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                if (attributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (_findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
+                } else if (attributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
                     entryType = .symbolicLink
                 } else {
                     entryType = .file

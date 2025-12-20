@@ -112,7 +112,13 @@ extension File.Directory.Walk {
 
         for entry in contents {
             // Filter hidden files if needed
-            if !options.includeHidden && entry.name.hasPrefix(".") {
+            // Check raw bytes directly - 0x2E is ASCII/UTF-16 for '.'
+            #if os(Windows)
+                let isHidden = entry.name.rawCodeUnits.first == 0x002E
+            #else
+                let isHidden = entry.name.rawBytes.first == 0x2E
+            #endif
+            if !options.includeHidden && isHidden {
                 continue
             }
 

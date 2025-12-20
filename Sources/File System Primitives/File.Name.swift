@@ -1,0 +1,255 @@
+//
+//  File.Name.swift
+//  swift-file-system
+//
+//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
+//
+
+import RFC_4648
+
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
+#elseif os(Windows)
+    public import WinSDK
+#endif
+
+extension File {
+    /// A directory entry name that preserves the raw filesystem encoding.
+    ///
+    /// ## Strict Encoding Policy
+    /// `File.Name` stores the raw bytes (POSIX) or UTF-16 code units (Windows)
+    /// exactly as returned by the filesystem. This ensures:
+    /// - **Referential integrity**: Names that cannot be decoded to `String` are still preserved
+    /// - **Round-trip correctness**: You can always re-open a file you can iterate
+    /// - **Debuggability**: Raw bytes available for diagnostics when decoding fails
+    ///
+    /// ## Usage
+    /// ```swift
+    /// for entry in try File.Directory.contents(at: path) {
+    ///     if let name = String(entry.name) {
+    ///         print("File: \(name)")
+    ///     } else {
+    ///         print("Undecodable filename: \(entry.name.debugDescription)")
+    ///     }
+    /// }
+    /// ```
+    public struct Name: Sendable, Equatable, Hashable {
+        #if os(Windows)
+            /// Raw UTF-16 code units from the filesystem.
+            public let rawCodeUnits: [UInt16]
+        #else
+            /// Raw bytes from the filesystem (typically UTF-8, but not guaranteed).
+            public let rawBytes: [UInt8]
+        #endif
+
+        #if os(Windows)
+            /// Creates a name from raw UTF-16 code units.
+            @usableFromInline
+            internal init(rawCodeUnits: [UInt16]) {
+                self.rawCodeUnits = rawCodeUnits
+            }
+        #else
+            /// Creates a name from raw bytes.
+            @usableFromInline
+            internal init(rawBytes: [UInt8]) {
+                self.rawBytes = rawBytes
+            }
+        #endif
+    }
+}
+
+// MARK: - String Conversion (Extension Inits)
+
+extension String {
+    /// Creates a string from a file name using strict UTF-8/UTF-16 decoding.
+    ///
+    /// Returns `nil` if the raw data contains invalid encoding.
+    ///
+    /// - POSIX: Returns `nil` if raw bytes are not valid UTF-8
+    /// - Windows: Returns `nil` if raw code units contain invalid UTF-16 (e.g., lone surrogates)
+    @inlinable
+    public init?(_ fileName: File.Name) {
+        #if os(Windows)
+            guard let decoded = String._strictUTF16Decode(fileName.rawCodeUnits) else {
+                return nil
+            }
+            self = decoded
+        #else
+            guard let decoded = String._strictUTF8Decode(fileName.rawBytes) else {
+                return nil
+            }
+            self = decoded
+        #endif
+    }
+
+    /// Creates a string from a file name using lossy decoding.
+    ///
+    /// Invalid sequences are replaced with the Unicode replacement character (U+FFFD).
+    ///
+    /// - Warning: Paths containing replacement characters cannot be used to re-open files.
+    @inlinable
+    public init(lossy fileName: File.Name) {
+        #if os(Windows)
+            self = Swift.String(decoding: fileName.rawCodeUnits, as: UTF16.self)
+        #else
+            self = Swift.String(decoding: fileName.rawBytes, as: UTF8.self)
+        #endif
+    }
+}
+
+// MARK: - Strict Decoding Helpers
+
+extension String {
+    #if !os(Windows)
+        /// Strictly decodes UTF-8 bytes, returning `nil` on any invalid sequence.
+        @usableFromInline
+        internal static func _strictUTF8Decode(_ bytes: [UInt8]) -> String? {
+            var utf8 = UTF8()
+            var iterator = bytes.makeIterator()
+            var scalars: [Unicode.Scalar] = []
+            scalars.reserveCapacity(bytes.count)
+
+            while true {
+                switch utf8.decode(&iterator) {
+                case .scalarValue(let scalar):
+                    scalars.append(scalar)
+                case .emptyInput:
+                    return String(String.UnicodeScalarView(scalars))
+                case .error:
+                    return nil
+                }
+            }
+        }
+    #endif
+
+    #if os(Windows)
+        /// Strictly decodes UTF-16 code units, returning `nil` on any invalid sequence.
+        /// Rejects lone surrogates and other malformed UTF-16.
+        @usableFromInline
+        internal static func _strictUTF16Decode(_ codeUnits: [UInt16]) -> String? {
+            var utf16 = UTF16()
+            var iterator = codeUnits.makeIterator()
+            var scalars: [Unicode.Scalar] = []
+            scalars.reserveCapacity(codeUnits.count)
+
+            while true {
+                switch utf16.decode(&iterator) {
+                case .scalarValue(let scalar):
+                    scalars.append(scalar)
+                case .emptyInput:
+                    return String(String.UnicodeScalarView(scalars))
+                case .error:
+                    return nil
+                }
+            }
+        }
+    #endif
+}
+
+// MARK: - CustomStringConvertible
+
+extension File.Name: CustomStringConvertible {
+    public var description: String {
+        String(self) ?? String(lossy: self)
+    }
+}
+
+// MARK: - CustomDebugStringConvertible
+
+extension File.Name: CustomDebugStringConvertible {
+    /// A debug description showing raw bytes/code units when decoding fails.
+    public var debugDescription: String {
+        if let str = String(self) {
+            return "File.Name(\"\(str)\")"
+        } else {
+            #if os(Windows)
+                // Convert UInt16 code units to bytes (big-endian) for hex encoding
+                var bytes: [UInt8] = []
+                bytes.reserveCapacity(rawCodeUnits.count * 2)
+                for codeUnit in rawCodeUnits {
+                    bytes.append(UInt8(codeUnit >> 8))
+                    bytes.append(UInt8(codeUnit & 0xFF))
+                }
+                let hex = bytes.hex.encoded(uppercase: true)
+                return "File.Name(invalidUTF16: [\(hex)])"
+            #else
+                let hex = rawBytes.hex.encoded(uppercase: true)
+                return "File.Name(invalidUTF8: [\(hex)])"
+            #endif
+        }
+    }
+}
+
+// MARK: - Initialization from dirent/WIN32_FIND_DATAW
+
+extension File.Name {
+    #if !os(Windows)
+        /// Creates a `File.Name` from a POSIX directory entry name (d_name).
+        ///
+        /// Extracts raw bytes using bounded access based on actual buffer size.
+        @usableFromInline
+        internal init<T>(posixDirectoryEntryName dName: T) {
+            self = withUnsafePointer(to: dName) { ptr in
+                let bufferSize = MemoryLayout<T>.size
+
+                return ptr.withMemoryRebound(to: UInt8.self, capacity: bufferSize) { bytes in
+                    // Find NUL terminator within bounds
+                    var length = 0
+                    while length < bufferSize && bytes[length] != 0 {
+                        length += 1
+                    }
+
+                    // Copy raw bytes
+                    let rawBytes = Array(UnsafeBufferPointer(start: bytes, count: length))
+                    return File.Name(rawBytes: rawBytes)
+                }
+            }
+        }
+    #endif
+
+    #if os(Windows)
+        /// Creates a `File.Name` from a Windows directory entry name (cFileName).
+        ///
+        /// Extracts raw UTF-16 code units using bounded access based on actual buffer size.
+        @usableFromInline
+        internal init<T>(windowsDirectoryEntryName cFileName: T) {
+            self = withUnsafePointer(to: cFileName) { ptr in
+                let bufferSize = MemoryLayout<T>.size
+                let elementCount = bufferSize / MemoryLayout<UInt16>.size
+
+                return ptr.withMemoryRebound(to: UInt16.self, capacity: elementCount) { wchars in
+                    // Find NUL terminator within bounds
+                    var length = 0
+                    while length < elementCount && wchars[length] != 0 {
+                        length += 1
+                    }
+
+                    // Copy raw code units
+                    let rawCodeUnits = Array(UnsafeBufferPointer(start: wchars, count: length))
+                    return File.Name(rawCodeUnits: rawCodeUnits)
+                }
+            }
+        }
+    #endif
+}
+
+// MARK: - Comparison with String
+
+extension File.Name {
+    /// Compares the name to a string.
+    ///
+    /// Returns `true` if the raw bytes/code units decode to exactly the given string.
+    @inlinable
+    public static func == (lhs: File.Name, rhs: String) -> Bool {
+        String(lhs) == rhs
+    }
+
+    @inlinable
+    public static func == (lhs: String, rhs: File.Name) -> Bool {
+        String(rhs) == lhs
+    }
+}

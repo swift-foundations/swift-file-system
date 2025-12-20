@@ -75,15 +75,15 @@ extension File.Directory.Contents {
             var entries: [File.Directory.Entry] = []
 
             while let entry = readdir(dir) {
-                let name = String(posixDirectoryEntryName: entry.pointee.d_name)
+                let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
                 // Skip . and ..
                 if name == "." || name == ".." {
                     continue
                 }
 
-                // Build full path using proper path composition
-                let entryPath = File.Path(path, appending: name)
+                // Build full path using lossy string (File.Path is String-backed)
+                let entryPath = File.Path(path, appending: String(lossy: name))
 
                 // Determine type
                 let entryType: File.Directory.Entry.Kind
@@ -195,15 +195,15 @@ extension File.Directory.Contents {
             defer { FindClose(handle) }
 
             repeat {
-                let name = String(windowsDirectoryEntryName: findData.cFileName)
+                let name = File.Name(windowsDirectoryEntryName: findData.cFileName)
 
                 // Skip . and ..
                 if name == "." || name == ".." {
                     continue
                 }
 
-                // Build full path using proper path composition
-                let entryPath = File.Path(path, appending: name)
+                // Build full path using lossy string (File.Path is String-backed)
+                let entryPath = File.Path(path, appending: String(lossy: name))
 
                 // Determine type
                 let entryType: File.Directory.Entry.Kind
