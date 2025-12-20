@@ -1,5 +1,5 @@
 //
-//  File.Directory+Convenience.swift
+//  File.Directory.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.

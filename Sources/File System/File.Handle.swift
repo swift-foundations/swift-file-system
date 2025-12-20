@@ -1,5 +1,5 @@
 //
-//  File.Handle+Convenience.swift
+//  File.Handle.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.

@@ -1,5 +1,5 @@
 //
-//  File.Descriptor+Convenience.swift
+//  File.Descriptor.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.

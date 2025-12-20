@@ -1,5 +1,5 @@
 //
-//  File.System.Stat+Convenience.swift
+//  File.System.Stat.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
