@@ -138,16 +138,21 @@ extension File.System.Write.Streaming {
                 if chunk.count >= maxSize {
                     // Large chunk: flush buffer first, then write-through
                     if !coalescingBuffer.isEmpty {
+                        // Transfer ownership to avoid allocation (consume + reinit)
+                        let bufferToWrite = consume coalescingBuffer
+                        coalescingBuffer = []
+                        coalescingBuffer.reserveCapacity(targetSize)
                         try await io.run {
-                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                            try bufferToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
                                 try POSIXStreaming.writeChunk(span, to: context)
                             }
                         }
-                        coalescingBuffer.removeAll(keepingCapacity: true)
                     }
+                    // chunk is already a let constant from for-await, safe to capture
+                    let chunkToWrite = chunk
                     try await io.run {
-                        try chunk.withUnsafeBufferPointer { buffer in
+                        try chunkToWrite.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
                             try POSIXStreaming.writeChunk(span, to: context)
                         }
@@ -155,21 +160,24 @@ extension File.System.Write.Streaming {
                 } else {
                     coalescingBuffer.append(contentsOf: chunk)
                     if coalescingBuffer.count >= targetSize {
+                        let bufferToWrite = consume coalescingBuffer
+                        coalescingBuffer = []
+                        coalescingBuffer.reserveCapacity(targetSize)
                         try await io.run {
-                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                            try bufferToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
                                 try POSIXStreaming.writeChunk(span, to: context)
                             }
                         }
-                        coalescingBuffer.removeAll(keepingCapacity: true)
                     }
                 }
             }
 
             // Flush remaining
             if !coalescingBuffer.isEmpty {
+                let bufferToWrite = consume coalescingBuffer
                 try await io.run {
-                    try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                    try bufferToWrite.withUnsafeBufferPointer { buffer in
                         let span = Span<UInt8>(_unsafeElements: buffer)
                         try POSIXStreaming.writeChunk(span, to: context)
                     }
@@ -213,16 +221,20 @@ extension File.System.Write.Streaming {
                 if chunk.count >= maxSize {
                     // Large chunk: flush buffer first, then write-through
                     if !coalescingBuffer.isEmpty {
+                        // Transfer ownership to avoid allocation (consume + reinit)
+                        let bufferToWrite = consume coalescingBuffer
+                        coalescingBuffer = []
+                        coalescingBuffer.reserveCapacity(targetSize)
                         try await io.run {
-                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                            try bufferToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
                                 try WindowsStreaming.writeChunk(span, to: context)
                             }
                         }
-                        coalescingBuffer.removeAll(keepingCapacity: true)
                     }
+                    let chunkToWrite = chunk
                     try await io.run {
-                        try chunk.withUnsafeBufferPointer { buffer in
+                        try chunkToWrite.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
                             try WindowsStreaming.writeChunk(span, to: context)
                         }
@@ -230,21 +242,24 @@ extension File.System.Write.Streaming {
                 } else {
                     coalescingBuffer.append(contentsOf: chunk)
                     if coalescingBuffer.count >= targetSize {
+                        let bufferToWrite = consume coalescingBuffer
+                        coalescingBuffer = []
+                        coalescingBuffer.reserveCapacity(targetSize)
                         try await io.run {
-                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                            try bufferToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
                                 try WindowsStreaming.writeChunk(span, to: context)
                             }
                         }
-                        coalescingBuffer.removeAll(keepingCapacity: true)
                     }
                 }
             }
 
             // Flush remaining
             if !coalescingBuffer.isEmpty {
+                let bufferToWrite = consume coalescingBuffer
                 try await io.run {
-                    try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                    try bufferToWrite.withUnsafeBufferPointer { buffer in
                         let span = Span<UInt8>(_unsafeElements: buffer)
                         try WindowsStreaming.writeChunk(span, to: context)
                     }

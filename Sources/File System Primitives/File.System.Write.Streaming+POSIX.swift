@@ -16,7 +16,7 @@
 
     // MARK: - POSIX Implementation
 
-    enum POSIXStreaming {
+    public enum POSIXStreaming {
 
         // MARK: - Generic Sequence API
 
@@ -646,21 +646,23 @@
     extension POSIXStreaming {
 
         /// Context for multi-phase streaming writes.
-        /// NOT Sendable - keep scoped to the async function, don't pass across task boundaries.
-        internal struct WriteContext {
-            let fd: Int32
-            let tempPath: String?  // nil for direct mode
-            let resolvedPath: String
-            let parent: String
-            let durability: File.System.Write.Streaming.Durability
-            let isAtomic: Bool
-            let strategy: File.System.Write.Streaming.AtomicStrategy?
+        ///
+        /// @unchecked Sendable because all fields are immutable value types (Int32, String).
+        /// Safe to pass to io.run closures within a single async function.
+        public struct WriteContext: @unchecked Sendable {
+            public let fd: Int32
+            public let tempPath: String?  // nil for direct mode
+            public let resolvedPath: String
+            public let parent: String
+            public let durability: File.System.Write.Streaming.Durability
+            public let isAtomic: Bool
+            public let strategy: File.System.Write.Streaming.AtomicStrategy?
         }
 
         /// Opens a file for multi-phase streaming write.
         ///
         /// Returns a context that can be used for subsequent writeChunk and commit calls.
-        internal static func openForStreaming(
+        public static func openForStreaming(
             path: String,
             options: File.System.Write.Streaming.Options
         ) throws(File.System.Write.Streaming.Error) -> WriteContext {
@@ -701,7 +703,7 @@
         /// Writes a chunk to an open streaming context.
         ///
         /// The Span must not escape - callee uses it immediately and synchronously.
-        internal static func writeChunk(
+        public static func writeChunk(
             _ span: borrowing Span<UInt8>,
             to context: borrowing WriteContext
         ) throws(File.System.Write.Streaming.Error) {
@@ -715,7 +717,7 @@
         /// - Post-publish I/O failures throw `.directorySyncFailedAfterCommit`
         /// - Caller should catch CancellationError after this returns and map to `.durabilityNotGuaranteed`
         ///   if commit had already published (but that requires caller tracking - see note below)
-        internal static func commit(
+        public static func commit(
             _ context: borrowing WriteContext
         ) throws(File.System.Write.Streaming.Error) {
 
@@ -755,7 +757,7 @@
         /// Cleans up a failed streaming write.
         ///
         /// Best-effort cleanup - closes fd and removes temp file if atomic mode.
-        internal static func cleanup(_ context: borrowing WriteContext) {
+        public static func cleanup(_ context: borrowing WriteContext) {
             // Close fd if still open (ignore errors)
             _ = close(context.fd)
 
