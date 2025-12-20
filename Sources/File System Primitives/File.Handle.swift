@@ -285,6 +285,12 @@ extension File.Handle {
                 throw .readFailed(errno: errno, message: String(cString: strerror(errno)))
             }
             return result
+        #elseif canImport(Musl)
+            let result = Musl.read(_descriptor.rawValue, buffer.baseAddress!, buffer.count)
+            if result < 0 {
+                throw .readFailed(errno: errno, message: String(cString: strerror(errno)))
+            }
+            return result
         #endif
     }
 
@@ -348,6 +354,22 @@ extension File.Handle {
                 while totalWritten < count {
                     let remaining = count - totalWritten
                     let w = Glibc.write(
+                        _descriptor.rawValue,
+                        base.advanced(by: totalWritten),
+                        remaining
+                    )
+                    if w > 0 {
+                        totalWritten += w
+                    } else if w < 0 {
+                        if errno == EINTR { continue }
+                        throw .writeFailed(errno: errno, message: String(cString: strerror(errno)))
+                    }
+                }
+            #elseif canImport(Musl)
+                var totalWritten = 0
+                while totalWritten < count {
+                    let remaining = count - totalWritten
+                    let w = Musl.write(
                         _descriptor.rawValue,
                         base.advanced(by: totalWritten),
                         remaining

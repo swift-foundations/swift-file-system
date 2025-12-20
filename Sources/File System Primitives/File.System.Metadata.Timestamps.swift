@@ -62,22 +62,25 @@ extension File.System.Metadata.Timestamps {
     }
 }
 
-// MARK: - Get/Set API
+// MARK: - Init from Path
 
 extension File.System.Metadata.Timestamps {
-    /// Gets the timestamps of a file.
+    /// Creates timestamps by reading from a file path.
     ///
     /// - Parameter path: The path to the file.
-    /// - Returns: The file timestamps.
     /// - Throws: `File.System.Metadata.Timestamps.Error` on failure.
-    public static func get(at path: File.Path) throws(Error) -> Self {
+    public init(at path: File.Path) throws(Error) {
         #if os(Windows)
-            return try _getWindows(path)
+            self = try Self._getWindows(path)
         #else
-            return try _getPOSIX(path)
+            self = try Self._getPOSIX(path)
         #endif
     }
+}
 
+// MARK: - Set API
+
+extension File.System.Metadata.Timestamps {
     /// Sets the timestamps of a file.
     ///
     /// Only access and modification times can be set. Change time is

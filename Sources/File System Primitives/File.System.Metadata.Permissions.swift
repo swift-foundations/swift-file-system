@@ -79,27 +79,30 @@ extension File.System.Metadata.Permissions {
     }
 }
 
-// MARK: - Get/Set API
+// MARK: - Init from Path
 
 extension File.System.Metadata.Permissions {
-    /// Gets the permissions of a file.
+    /// Creates permissions by reading from a file path.
     ///
     /// - Parameter path: The path to the file.
-    /// - Returns: The file permissions.
     /// - Throws: `File.System.Metadata.Permissions.Error` on failure.
-    public static func get(at path: File.Path) throws(Error) -> Self {
+    public init(at path: File.Path) throws(Error) {
         #if os(Windows)
             // Windows doesn't have POSIX permissions
-            return .defaultFile
+            self = .defaultFile
         #else
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
-                throw _mapErrno(errno, path: path)
+                throw Self._mapErrno(errno, path: path)
             }
-            return Self(rawValue: UInt16(statBuf.st_mode & 0o7777))
+            self.init(rawValue: UInt16(statBuf.st_mode & 0o7777))
         #endif
     }
+}
 
+// MARK: - Set API
+
+extension File.System.Metadata.Permissions {
     /// Sets the permissions of a file.
     ///
     /// - Parameters:

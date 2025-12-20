@@ -194,6 +194,8 @@ extension File.Descriptor {
     /// Closes the file descriptor.
     ///
     /// After calling this method, the descriptor is invalid and cannot be used.
+    /// The descriptor is consumed regardless of whether close succeeds or fails,
+    /// preventing double-close scenarios.
     ///
     /// - Throws: `File.Descriptor.Error` on failure.
     public consuming func close() throws(Error) {
@@ -201,11 +203,14 @@ extension File.Descriptor {
             guard let handle = _handle.value, handle != INVALID_HANDLE_VALUE else {
                 throw .alreadyClosed
             }
-            guard CloseHandle(handle) else {
+            // Invalidate first - handle is consumed regardless of CloseHandle result
+            // This prevents double-close via deinit if CloseHandle fails
+            let handleToClose = handle
+            _handle = UnsafeSendable(INVALID_HANDLE_VALUE)
+            guard CloseHandle(handleToClose) else {
                 let error = GetLastError()
                 throw .closeFailed(errno: Int32(error), message: Self._formatWindowsError(error))
             }
-            _handle = UnsafeSendable(INVALID_HANDLE_VALUE)  // Only invalidate after successful close
         #else
             guard _fd >= 0 else {
                 throw .alreadyClosed

@@ -44,27 +44,30 @@ extension File.System.Metadata.Ownership {
     }
 }
 
-// MARK: - Get/Set API
+// MARK: - Init from Path
 
 extension File.System.Metadata.Ownership {
-    /// Gets the ownership of a file.
+    /// Creates ownership by reading from a file path.
     ///
     /// - Parameter path: The path to the file.
-    /// - Returns: The file ownership.
     /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
-    public static func get(at path: File.Path) throws(Error) -> Self {
+    public init(at path: File.Path) throws(Error) {
         #if os(Windows)
             // Windows doesn't expose uid/gid
-            return Self(uid: 0, gid: 0)
+            self.init(uid: 0, gid: 0)
         #else
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
-                throw _mapErrno(errno, path: path)
+                throw Self._mapErrno(errno, path: path)
             }
-            return Self(uid: statBuf.st_uid, gid: statBuf.st_gid)
+            self.init(uid: statBuf.st_uid, gid: statBuf.st_gid)
         #endif
     }
+}
 
+// MARK: - Set API
+
+extension File.System.Metadata.Ownership {
     /// Sets the ownership of a file.
     ///
     /// Requires appropriate privileges (usually root).
