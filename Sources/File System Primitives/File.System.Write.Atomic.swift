@@ -114,6 +114,13 @@ extension File.System.Write {
             case renameFailed(from: File.Path, to: File.Path, errno: Int32, message: String)
             case destinationExists(path: File.Path)
             case directorySyncFailed(path: File.Path, errno: Int32, message: String)
+
+            /// Directory sync failed after successful rename.
+            ///
+            /// File exists with complete content, but durability is compromised.
+            /// This is an I/O error, not cancellation. The caller should NOT attempt
+            /// to "finish durability" - this is not reliably possible.
+            case directorySyncFailedAfterCommit(path: File.Path, errno: Int32, message: String)
         }
 
         // MARK: - Core API
@@ -218,6 +225,8 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
             return "Destination already exists (noClobber): \(path)"
         case .directorySyncFailed(let path, let errno, let message):
             return "Directory sync failed '\(path)': \(message) (errno=\(errno))"
+        case .directorySyncFailedAfterCommit(let path, let errno, let message):
+            return "Directory sync failed after commit '\(path)': \(message) (errno=\(errno))"
         }
     }
 }

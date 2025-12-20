@@ -49,14 +49,13 @@
         ) throws(File.System.Write.Streaming.Error)
         where Chunks.Element == [UInt8] {
 
-            // For noClobber: we still need to check existence, but the actual
-            // atomicity is enforced by the rename operation (see atomicRenameNoClobber)
-            // The pre-check here provides early failure for better UX
-            if case .noClobber = options.strategy {
-                if fileExists(resolvedPath) {
-                    throw .destinationExists(path: File.Path(__unchecked: (), resolvedPath))
-                }
-            }
+            // noClobber semantics are enforced by the atomic rename operation
+            // (renamex_np with RENAME_EXCL on Darwin, renameat2 with RENAME_NOREPLACE
+            // on Linux, or link+unlink fallback). We do NOT pre-check existence here
+            // because that would be semantically wrong: noClobber means "don't overwrite
+            // if file exists at publish time", not "fail if file exists at start time".
+            // A pre-check could cause incorrect early failure if the file is removed
+            // between check and publish.
 
             let tempPath = generateTempPath(in: parent, for: resolvedPath)
             let fd = try createFile(at: tempPath, exclusive: true)
@@ -90,8 +89,26 @@
             }
             didRename = true
 
-            if options.durability != .none {
-                try syncDirectory(parent)
+            // Directory sync after publish - only for .full durability.
+            // Directory sync is a metadata persistence step, so it should NOT be
+            // performed for .dataOnly (which explicitly states "metadata may not
+            // be persisted"). If this fails after publish, the file IS published
+            // but durability is not guaranteed.
+            if options.durability == .full {
+                do {
+                    try syncDirectory(parent)
+                } catch let syncError {
+                    // Extract errno from the sync error for the after-commit error
+                    if case .directorySyncFailed(let path, let e, let msg) = syncError {
+                        throw .directorySyncFailedAfterCommit(
+                            path: path,
+                            errno: e,
+                            message: msg
+                        )
+                    }
+                    // Shouldn't happen, but rethrow if unexpected error type
+                    throw syncError
+                }
             }
         }
 
@@ -201,10 +218,19 @@
             if rc != 0 {
                 let e = errno
                 let path = File.Path(__unchecked: (), dir)
-                if e == EACCES {
+                switch e {
+                case EACCES:
                     throw .parentAccessDenied(path: path)
+                case ENOTDIR:
+                    // A component of the path prefix is not a directory
+                    throw .parentNotDirectory(path: path)
+                case ENOENT, ELOOP:
+                    // ENOENT: path doesn't exist
+                    // ELOOP: too many symlinks (treat as not found)
+                    throw .parentNotFound(path: path)
+                default:
+                    throw .parentNotFound(path: path)
                 }
-                throw .parentNotFound(path: path)
             }
 
             if (st.st_mode & S_IFMT) != S_IFDIR {
@@ -217,7 +243,19 @@
             return path.withCString { lstat($0, &st) } == 0
         }
 
+        /// Generates temp file path in the same directory as destination.
+        ///
+        /// Invariant A1: Temp must be in same directory as dest for atomic
+        /// operations (especially link+unlink fallback which requires same filesystem).
         private static func generateTempPath(in parent: String, for destPath: String) -> String {
+            // Defensive assertion: verify parent matches destPath's actual parent
+            // This guards against future refactoring that might pass mismatched values
+            let destParent = parentDirectory(of: destPath)
+            precondition(
+                parent == destParent,
+                "Temp file must be in same directory as destination (got parent='\(parent)', destParent='\(destParent)')"
+            )
+
             let baseName = fileName(of: destPath)
             let random = randomToken(length: 12)
             return "\(parent)/.\(baseName).streaming.\(random).tmp"
@@ -599,6 +637,131 @@
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
+            }
+        }
+    }
+
+    // MARK: - Multi-phase Streaming Helpers (for async)
+
+    extension POSIXStreaming {
+
+        /// Context for multi-phase streaming writes.
+        /// NOT Sendable - keep scoped to the async function, don't pass across task boundaries.
+        internal struct WriteContext {
+            let fd: Int32
+            let tempPath: String?  // nil for direct mode
+            let resolvedPath: String
+            let parent: String
+            let durability: File.System.Write.Streaming.Durability
+            let isAtomic: Bool
+            let strategy: File.System.Write.Streaming.AtomicStrategy?
+        }
+
+        /// Opens a file for multi-phase streaming write.
+        ///
+        /// Returns a context that can be used for subsequent writeChunk and commit calls.
+        internal static func openForStreaming(
+            path: String,
+            options: File.System.Write.Streaming.Options
+        ) throws(File.System.Write.Streaming.Error) -> WriteContext {
+
+            let resolvedPath = resolvePath(path)
+            let parent = parentDirectory(of: resolvedPath)
+            try verifyParentDirectory(parent)
+
+            switch options.commit {
+            case .atomic(let atomicOptions):
+                let tempPath = generateTempPath(in: parent, for: resolvedPath)
+                let fd = try createFile(at: tempPath, exclusive: true)
+                return WriteContext(
+                    fd: fd,
+                    tempPath: tempPath,
+                    resolvedPath: resolvedPath,
+                    parent: parent,
+                    durability: atomicOptions.durability,
+                    isAtomic: true,
+                    strategy: atomicOptions.strategy
+                )
+
+            case .direct(let directOptions):
+                // For direct mode with .create strategy, we still need exclusive create
+                let fd = try createFile(at: resolvedPath, exclusive: directOptions.strategy == .create)
+                return WriteContext(
+                    fd: fd,
+                    tempPath: nil,
+                    resolvedPath: resolvedPath,
+                    parent: parent,
+                    durability: directOptions.durability,
+                    isAtomic: false,
+                    strategy: nil
+                )
+            }
+        }
+
+        /// Writes a chunk to an open streaming context.
+        ///
+        /// The Span must not escape - callee uses it immediately and synchronously.
+        internal static func writeChunk(
+            _ span: borrowing Span<UInt8>,
+            to context: borrowing WriteContext
+        ) throws(File.System.Write.Streaming.Error) {
+            try writeAll(span, to: context.fd, path: context.tempPath ?? context.resolvedPath)
+        }
+
+        /// Commits a streaming write, closing the file and performing the atomic rename if needed.
+        ///
+        /// This function owns post-publish error semantics:
+        /// - Pre-publish failures throw normal errors
+        /// - Post-publish I/O failures throw `.directorySyncFailedAfterCommit`
+        /// - Caller should catch CancellationError after this returns and map to `.durabilityNotGuaranteed`
+        ///   if commit had already published (but that requires caller tracking - see note below)
+        internal static func commit(
+            _ context: borrowing WriteContext
+        ) throws(File.System.Write.Streaming.Error) {
+
+            // Sync file data
+            try syncFile(context.fd, durability: context.durability)
+
+            // Close the file descriptor
+            try closeFile(context.fd)
+
+            if context.isAtomic, let tempPath = context.tempPath {
+                // Atomic rename
+                switch context.strategy {
+                case .replaceExisting, .none:
+                    try atomicRename(from: tempPath, to: context.resolvedPath)
+                case .noClobber:
+                    try atomicRenameNoClobber(from: tempPath, to: context.resolvedPath)
+                }
+
+                // Directory sync after publish - only for .full durability
+                if context.durability == .full {
+                    do {
+                        try syncDirectory(context.parent)
+                    } catch let syncError {
+                        if case .directorySyncFailed(let path, let e, let msg) = syncError {
+                            throw .directorySyncFailedAfterCommit(
+                                path: path,
+                                errno: e,
+                                message: msg
+                            )
+                        }
+                        throw syncError
+                    }
+                }
+            }
+        }
+
+        /// Cleans up a failed streaming write.
+        ///
+        /// Best-effort cleanup - closes fd and removes temp file if atomic mode.
+        internal static func cleanup(_ context: borrowing WriteContext) {
+            // Close fd if still open (ignore errors)
+            _ = close(context.fd)
+
+            // Remove temp file if atomic mode
+            if let tempPath = context.tempPath {
+                _ = tempPath.withCString { unlink($0) }
             }
         }
     }

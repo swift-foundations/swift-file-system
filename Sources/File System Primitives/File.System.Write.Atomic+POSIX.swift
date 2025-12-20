@@ -75,8 +75,26 @@
             }
             didRename = true
 
-            // 10. Sync directory to persist the rename
-            try syncDirectory(parent)
+            // 10. Sync directory to persist the rename - only for .full durability.
+            // Directory sync is a metadata persistence step, so it should NOT be
+            // performed for .dataOnly (which explicitly states "metadata may not
+            // be persisted"). If this fails after publish, the file IS published
+            // but durability is not guaranteed.
+            if options.durability == .full {
+                do {
+                    try syncDirectory(parent)
+                } catch let syncError {
+                    // Extract errno from the sync error for the after-commit error
+                    if case .directorySyncFailed(let path, let e, let msg) = syncError {
+                        throw .directorySyncFailedAfterCommit(
+                            path: path,
+                            errno: e,
+                            message: msg
+                        )
+                    }
+                    throw syncError
+                }
+            }
         }
     }
 
@@ -162,10 +180,19 @@
             if rc != 0 {
                 let e = errno
                 let path = File.Path(__unchecked: (), dir)
-                if e == EACCES {
+                switch e {
+                case EACCES:
                     throw .parentAccessDenied(path: path)
+                case ENOTDIR:
+                    // A component of the path prefix is not a directory
+                    throw .parentNotDirectory(path: path)
+                case ENOENT, ELOOP:
+                    // ENOENT: path doesn't exist
+                    // ELOOP: too many symlinks (treat as not found)
+                    throw .parentNotFound(path: path)
+                default:
+                    throw .parentNotFound(path: path)
                 }
-                throw .parentNotFound(path: path)
             }
 
             if (st.st_mode & S_IFMT) != S_IFDIR {
@@ -405,19 +432,19 @@
             }
         }
 
-        /// Closes a file descriptor.
+        /// Closes a file descriptor exactly once.
+        ///
+        /// POSIX: fd state is undefined after EINTR on close(). The fd may or may not
+        /// have been closed. Retrying risks closing an unrelated fd that was assigned
+        /// the same number by another thread. Therefore we do NOT retry on EINTR.
+        ///
+        /// Reference: POSIX.1-2017, Linux close(2), and Austin Group interpretations.
         private static func closeFile(_ fd: Int32) throws(File.System.Write.Atomic.Error) {
-            // Handle EINTR - close may need retry on some systems
-            while true {
-                if close(fd) == 0 {
-                    return
-                }
-                let e = errno
-                if e == EINTR {
-                    continue
-                }
-                throw .closeFailed(errno: e, message: File.System.Write.Atomic.errorMessage(for: e))
-            }
+            let rc = close(fd)
+            if rc == 0 { return }
+            let e = errno
+            // Do NOT retry on EINTR - fd state is undefined, retrying is unsafe
+            throw .closeFailed(errno: e, message: File.System.Write.Atomic.errorMessage(for: e))
         }
     }
 

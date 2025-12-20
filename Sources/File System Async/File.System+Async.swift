@@ -81,20 +81,21 @@ extension File.System.Write.Streaming {
 
     /// Writes an async sequence of byte chunks to a file.
     ///
-    /// Memory-efficient: writes chunks as they arrive without buffering
-    /// the entire stream in memory. Uses multi-phase I/O:
-    /// 1. Open temp file (atomic) or destination (direct)
-    /// 2. Write each chunk as it arrives
-    /// 3. Commit (sync, rename if atomic, dirsync)
+    /// True streaming implementation - processes chunks as they arrive with bounded
+    /// memory usage. Uses coalescing to reduce syscall overhead while maintaining
+    /// memory efficiency.
     ///
-    /// Small chunks are coalesced into ~256KB batches for better I/O performance.
+    /// **Important - Chunk Ownership:** Chunks must not be mutated after being
+    /// yielded. The implementation writes chunks immediately; mutating a chunk after
+    /// yield can cause data corruption. Each `[UInt8]` chunk is treated as an
+    /// owned, immutable value.
     ///
     /// ```swift
     /// try await File.System.Write.Streaming.write(asyncChunks, to: path)
     /// ```
     ///
     /// - Parameters:
-    ///   - chunks: Async sequence of owned byte arrays to write
+    ///   - chunks: Async sequence of owned `[UInt8]` arrays. Must not be mutated after yield.
     ///   - path: Destination file path
     ///   - options: Write options (atomic by default)
     ///   - io: IO executor for offloading blocking work
@@ -104,21 +105,162 @@ extension File.System.Write.Streaming {
         options: Options = .init(),
         io: File.IO.Executor = .default
     ) async throws where Chunks.Element == [UInt8] {
-        // For atomic writes, we still need to collect to maintain the
-        // "either full file or nothing" guarantee. The multi-phase approach
-        // would require exposing fd lifetime across io.run calls which adds
-        // complexity. For now, keep the simple approach.
-        //
-        // Note: For very large async streams, consider using direct mode
-        // where partial writes are acceptable.
-        var buffer: [[UInt8]] = []
-        for try await chunk in chunks {
-            try Task.checkCancellation()
-            buffer.append(chunk)
-        }
-        let collected = buffer
-        try await io.run { try write(collected, to: path, options: options) }
+        #if os(Windows)
+            try await writeAsyncStreamWindows(chunks, to: path, options: options, io: io)
+        #else
+            try await writeAsyncStreamPOSIX(chunks, to: path, options: options, io: io)
+        #endif
     }
+
+    #if !os(Windows)
+    /// POSIX implementation of async streaming write.
+    private static func writeAsyncStreamPOSIX<Chunks: AsyncSequence & Sendable>(
+        _ chunks: Chunks,
+        to path: File.Path,
+        options: Options,
+        io: File.IO.Executor
+    ) async throws where Chunks.Element == [UInt8] {
+        // Phase 1: Open
+        let context = try await io.run {
+            try POSIXStreaming.openForStreaming(path: path.string, options: options)
+        }
+
+        do {
+            // Phase 2: Write chunks with coalescing
+            var coalescingBuffer: [UInt8] = []
+            coalescingBuffer.reserveCapacity(256 * 1024)  // Pre-allocate target size
+            let targetSize = 256 * 1024  // 256KB target
+            let maxSize = 1024 * 1024    // 1MB cap
+
+            for try await chunk in chunks {
+                try Task.checkCancellation()
+
+                if chunk.count >= maxSize {
+                    // Large chunk: flush buffer first, then write-through
+                    if !coalescingBuffer.isEmpty {
+                        try await io.run {
+                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                                let span = Span<UInt8>(_unsafeElements: buffer)
+                                try POSIXStreaming.writeChunk(span, to: context)
+                            }
+                        }
+                        coalescingBuffer.removeAll(keepingCapacity: true)
+                    }
+                    try await io.run {
+                        try chunk.withUnsafeBufferPointer { buffer in
+                            let span = Span<UInt8>(_unsafeElements: buffer)
+                            try POSIXStreaming.writeChunk(span, to: context)
+                        }
+                    }
+                } else {
+                    coalescingBuffer.append(contentsOf: chunk)
+                    if coalescingBuffer.count >= targetSize {
+                        try await io.run {
+                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                                let span = Span<UInt8>(_unsafeElements: buffer)
+                                try POSIXStreaming.writeChunk(span, to: context)
+                            }
+                        }
+                        coalescingBuffer.removeAll(keepingCapacity: true)
+                    }
+                }
+            }
+
+            // Flush remaining
+            if !coalescingBuffer.isEmpty {
+                try await io.run {
+                    try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                        let span = Span<UInt8>(_unsafeElements: buffer)
+                        try POSIXStreaming.writeChunk(span, to: context)
+                    }
+                }
+            }
+
+            // Phase 3: Commit
+            try await io.run { try POSIXStreaming.commit(context) }
+
+        } catch {
+            // Primary cleanup path - AWAITED
+            try? await io.run { POSIXStreaming.cleanup(context) }
+            throw error
+        }
+    }
+    #endif
+
+    #if os(Windows)
+    /// Windows implementation of async streaming write.
+    private static func writeAsyncStreamWindows<Chunks: AsyncSequence & Sendable>(
+        _ chunks: Chunks,
+        to path: File.Path,
+        options: Options,
+        io: File.IO.Executor
+    ) async throws where Chunks.Element == [UInt8] {
+        // Phase 1: Open
+        let context = try await io.run {
+            try WindowsStreaming.openForStreaming(path: path.string, options: options)
+        }
+
+        do {
+            // Phase 2: Write chunks with coalescing
+            var coalescingBuffer: [UInt8] = []
+            coalescingBuffer.reserveCapacity(256 * 1024)  // Pre-allocate target size
+            let targetSize = 256 * 1024  // 256KB target
+            let maxSize = 1024 * 1024    // 1MB cap
+
+            for try await chunk in chunks {
+                try Task.checkCancellation()
+
+                if chunk.count >= maxSize {
+                    // Large chunk: flush buffer first, then write-through
+                    if !coalescingBuffer.isEmpty {
+                        try await io.run {
+                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                                let span = Span<UInt8>(_unsafeElements: buffer)
+                                try WindowsStreaming.writeChunk(span, to: context)
+                            }
+                        }
+                        coalescingBuffer.removeAll(keepingCapacity: true)
+                    }
+                    try await io.run {
+                        try chunk.withUnsafeBufferPointer { buffer in
+                            let span = Span<UInt8>(_unsafeElements: buffer)
+                            try WindowsStreaming.writeChunk(span, to: context)
+                        }
+                    }
+                } else {
+                    coalescingBuffer.append(contentsOf: chunk)
+                    if coalescingBuffer.count >= targetSize {
+                        try await io.run {
+                            try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                                let span = Span<UInt8>(_unsafeElements: buffer)
+                                try WindowsStreaming.writeChunk(span, to: context)
+                            }
+                        }
+                        coalescingBuffer.removeAll(keepingCapacity: true)
+                    }
+                }
+            }
+
+            // Flush remaining
+            if !coalescingBuffer.isEmpty {
+                try await io.run {
+                    try coalescingBuffer.withUnsafeBufferPointer { buffer in
+                        let span = Span<UInt8>(_unsafeElements: buffer)
+                        try WindowsStreaming.writeChunk(span, to: context)
+                    }
+                }
+            }
+
+            // Phase 3: Commit
+            try await io.run { try WindowsStreaming.commit(context) }
+
+        } catch {
+            // Primary cleanup path - AWAITED
+            try? await io.run { WindowsStreaming.cleanup(context) }
+            throw error
+        }
+    }
+    #endif
 }
 
 extension File.System.Write.Append {

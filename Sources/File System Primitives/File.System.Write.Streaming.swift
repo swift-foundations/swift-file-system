@@ -32,6 +32,17 @@ extension File.System.Write {
     /// ## Performance Note
     /// For optimal performance, provide chunks of 64KB–1MB. Smaller chunks work
     /// correctly but with higher overhead due to syscall frequency.
+    ///
+    /// ## Windows Note
+    ///
+    /// Streaming writes deny all file sharing during the write operation.
+    /// This is the safest default for data integrity but may cause:
+    /// - Antivirus scanner interference (`ERROR_ACCESS_DENIED`)
+    /// - File indexer conflicts
+    /// - Inability to read file while writing
+    ///
+    /// If concurrent read access is required during writes, a different API
+    /// with explicit share mode control would be needed.
     public enum Streaming {
 
         // MARK: - Commit Policy

@@ -66,8 +66,26 @@
             try atomicRename(from: tempPath, to: resolvedPath, options: options)
             renamed = true
 
-            // 10. Flush directory
-            try flushDirectory(parent)
+            // 10. Flush directory - only for .full durability.
+            // Directory sync is a metadata persistence step, so it should NOT be
+            // performed for .dataOnly (which explicitly states "metadata may not
+            // be persisted"). If this fails after publish, the file IS published
+            // but durability is not guaranteed.
+            if options.durability == .full {
+                do {
+                    try flushDirectory(parent)
+                } catch let syncError {
+                    // Extract errno from the sync error for the after-commit error
+                    if case .directorySyncFailed(let path, let e, let msg) = syncError {
+                        throw .directorySyncFailedAfterCommit(
+                            path: path,
+                            errno: e,
+                            message: msg
+                        )
+                    }
+                    throw syncError
+                }
+            }
         }
     }
 
@@ -363,7 +381,12 @@
                 let err = GetLastError()
 
                 // Check for destination exists in noClobber mode
-                if !replace && err == _dword(ERROR_ALREADY_EXISTS) {
+                // Multiple error codes can indicate "exists":
+                // - ERROR_ALREADY_EXISTS (183)
+                // - ERROR_FILE_EXISTS (80)
+                // Note: ERROR_ACCESS_DENIED can occur for various reasons,
+                // so we don't map it to destinationExists to avoid masking real permission errors
+                if !replace && (err == _dword(ERROR_ALREADY_EXISTS) || err == _dword(ERROR_FILE_EXISTS)) {
                     throw .destinationExists(path: File.Path(__unchecked: (), destPath))
                 }
 
