@@ -54,10 +54,13 @@ extension NIOComparison.Test {
 
         private static func measure(
             iterations: Int = 3,
+            warmup: Int = 1,
             _ block: () async throws -> Void
         ) async throws -> Double {
             // Warmup
-            try await block()
+            for _ in 0..<warmup {
+                try await block()
+            }
 
             var times: [Double] = []
             for _ in 0..<iterations {
@@ -74,8 +77,13 @@ extension NIOComparison.Test {
         func generateTable() async throws {
             var results: [BenchmarkResult] = []
 
-            // Read 100MB
+            // ═══════════════════════════════════════════════════════════════
+            // MARK: Read Benchmarks
+            // ═══════════════════════════════════════════════════════════════
+
             let readFixture = ReadFixture.shared
+
+            // Read 100MB (full file)
             let swiftRead = try await Self.measure {
                 let bytes = try await File.System.Read.Full.read(from: readFixture.filePath)
                 withExtendedLifetime(bytes.count) {}
@@ -89,76 +97,237 @@ extension NIOComparison.Test {
                 withExtendedLifetime(buffer.readableBytes) {}
                 try await handle.close()
             }
-            results.append(BenchmarkResult(operation: "Read 100MB", swiftTime: swiftRead, nioTime: nioRead))
+            results.append(BenchmarkResult(
+                operation: "Read 100MB",
+                swiftTime: swiftRead,
+                nioTime: nioRead
+            ))
 
-            // Write 100MB (preallocated vs pwrite)
+            // ═══════════════════════════════════════════════════════════════
+            // MARK: Write Benchmarks
+            // ═══════════════════════════════════════════════════════════════
+
             let writeFixture = WriteFixture.shared
-            let writeData = [UInt8](repeating: 0xCD, count: 100 * 1024 * 1024)
+            let fileSize = 100 * 1024 * 1024
+
+            // Pre-allocate data with page touching
+            let writeData: [UInt8] = {
+                var d = [UInt8](repeating: 0xCD, count: fileSize)
+                let pageSize = 16384
+                for i in stride(from: 0, to: fileSize, by: pageSize) {
+                    _ = d[i]
+                }
+                return d
+            }()
             let writeBuffer = ByteBuffer(bytes: writeData)
 
-            let swiftWrite = try await Self.measure {
+            // Write 100MB (single buffer, preallocated)
+            let swiftWriteSingle = try await Self.measure {
                 let (path, _) = writeFixture.uniquePath()
                 defer { try? File.System.Delete.delete(at: path) }
                 let chunks: AnySequence<[UInt8]> = AnySequence([writeData])
                 try File.System.Write.Streaming.write(
                     chunks,
                     to: path,
-                    options: .init(commit: .direct(.init(durability: .none, expectedSize: Int64(writeData.count))))
+                    options: .init(commit: .direct(.init(
+                        durability: .none,
+                        expectedSize: Int64(fileSize)
+                    )))
                 )
             }
-            let nioWrite = try await Self.measure {
+            let nioWriteSingle = try await Self.measure {
                 let (path, nioPath) = writeFixture.uniquePath()
                 defer { try? File.System.Delete.delete(at: path) }
                 try await FileSystem.shared.withFileHandle(
                     forWritingAt: nioPath,
                     options: .newFile(replaceExisting: true)
                 ) { handle in
-                    try await handle.write(contentsOf: writeBuffer.readableBytesView, toAbsoluteOffset: 0)
+                    try await handle.write(
+                        contentsOf: writeBuffer.readableBytesView,
+                        toAbsoluteOffset: 0
+                    )
                 }
             }
-            results.append(BenchmarkResult(operation: "Write 100MB", swiftTime: swiftWrite, nioTime: nioWrite))
+            results.append(BenchmarkResult(
+                operation: "Write 100MB (single buffer)",
+                swiftTime: swiftWriteSingle,
+                nioTime: nioWriteSingle
+            ))
 
-            // Directory iteration 1000 files
-            let iterFixture = DirectoryIterationFixture(name: "readme-iter", fileCount: 1000)
-            let iterDir = try iterFixture.path()
-            let nioIterPath = _NIOFileSystem.FilePath(iterDir.string)
+            // Write 100MB streaming (1MB chunks)
+            let chunkSize = 1024 * 1024
+            let chunkCount = fileSize / chunkSize
 
-            let swiftIter = try await Self.measure {
+            let swiftWriteStreaming = try await Self.measure {
+                let (path, _) = writeFixture.uniquePath()
+                defer { try? File.System.Delete.delete(at: path) }
+                let lazyChunks = (0..<chunkCount).lazy.map { _ in
+                    [UInt8](repeating: 0xCD, count: chunkSize)
+                }
+                try File.System.Write.Streaming.write(
+                    lazyChunks,
+                    to: path,
+                    options: .init(commit: .direct(.init(durability: .none)))
+                )
+            }
+            let nioWriteStreaming = try await Self.measure {
+                let (path, nioPath) = writeFixture.uniquePath()
+                defer { try? File.System.Delete.delete(at: path) }
+                try await FileSystem.shared.withFileHandle(
+                    forWritingAt: nioPath,
+                    options: .newFile(replaceExisting: true)
+                ) { handle in
+                    var offset: Int64 = 0
+                    for _ in 0..<chunkCount {
+                        let chunk = [UInt8](repeating: 0xCD, count: chunkSize)
+                        let buffer = ByteBuffer(bytes: chunk)
+                        try await handle.write(
+                            contentsOf: buffer.readableBytesView,
+                            toAbsoluteOffset: offset
+                        )
+                        offset += Int64(chunkSize)
+                    }
+                }
+            }
+            results.append(BenchmarkResult(
+                operation: "Write 100MB (streaming)",
+                swiftTime: swiftWriteStreaming,
+                nioTime: nioWriteStreaming
+            ))
+
+            // ═══════════════════════════════════════════════════════════════
+            // MARK: Directory Iteration Benchmarks
+            // ═══════════════════════════════════════════════════════════════
+
+            // Iterate 100 files
+            let iter100Fixture = DirectoryIterationFixture(name: "readme-iter-100", fileCount: 100)
+            let iter100Dir = try iter100Fixture.path()
+            let nioIter100Path = _NIOFileSystem.FilePath(iter100Dir.string)
+
+            let swiftIter100 = try await Self.measure(iterations: 5) {
                 var count = 0
-                for try await _ in File.Directory.entries(at: iterDir) { count += 1 }
+                for try await _ in File.Directory.entries(at: iter100Dir) { count += 1 }
                 withExtendedLifetime(count) {}
             }
-            let nioIter = try await Self.measure {
+            let nioIter100 = try await Self.measure(iterations: 5) {
                 var count = 0
-                let handle = try await FileSystem.shared.openDirectory(atPath: nioIterPath)
+                let handle = try await FileSystem.shared.openDirectory(atPath: nioIter100Path)
                 for try await _ in handle.listContents() { count += 1 }
                 try await handle.close()
                 withExtendedLifetime(count) {}
             }
-            results.append(
-                BenchmarkResult(operation: "Iterate 1000 files", swiftTime: swiftIter, nioTime: nioIter)
-            )
+            results.append(BenchmarkResult(
+                operation: "Iterate 100 files",
+                swiftTime: swiftIter100,
+                nioTime: nioIter100
+            ))
 
-            // Copy 100MB (clone)
+            // Iterate 1000 files
+            let iter1000Fixture = DirectoryIterationFixture(name: "readme-iter-1000", fileCount: 1000)
+            let iter1000Dir = try iter1000Fixture.path()
+            let nioIter1000Path = _NIOFileSystem.FilePath(iter1000Dir.string)
+
+            let swiftIter1000 = try await Self.measure {
+                var count = 0
+                for try await _ in File.Directory.entries(at: iter1000Dir) { count += 1 }
+                withExtendedLifetime(count) {}
+            }
+            let nioIter1000 = try await Self.measure {
+                var count = 0
+                let handle = try await FileSystem.shared.openDirectory(atPath: nioIter1000Path)
+                for try await _ in handle.listContents() { count += 1 }
+                try await handle.close()
+                withExtendedLifetime(count) {}
+            }
+            results.append(BenchmarkResult(
+                operation: "Iterate 1000 files",
+                swiftTime: swiftIter1000,
+                nioTime: nioIter1000
+            ))
+
+            // ═══════════════════════════════════════════════════════════════
+            // MARK: Copy Benchmarks
+            // ═══════════════════════════════════════════════════════════════
+
             let copyFixture = CopyFixture.shared
 
-            let swiftCopy = try await Self.measure {
+            // Copy 100MB (APFS clone)
+            let swiftCopyClone = try await Self.measure {
                 let (dest, _) = copyFixture.uniqueDestPath()
                 defer { try? File.System.Delete.delete(at: dest) }
                 try await File.System.Copy.copy(from: copyFixture.sourcePath, to: dest)
             }
-            let nioCopy = try await Self.measure {
+            let nioCopyClone = try await Self.measure {
                 let (dest, nioDest) = copyFixture.uniqueDestPath()
                 defer { try? File.System.Delete.delete(at: dest) }
                 try await FileSystem.shared.copyItem(at: copyFixture.nioSourcePath, to: nioDest)
             }
-            results.append(
-                BenchmarkResult(operation: "Copy 100MB (clone)", swiftTime: swiftCopy, nioTime: nioCopy)
-            )
+            results.append(BenchmarkResult(
+                operation: "Copy 100MB (APFS clone)",
+                swiftTime: swiftCopyClone,
+                nioTime: nioCopyClone
+            ))
 
-            // Concurrent reads
+            // Copy 100MB (byte-by-byte loop)
+            let copyChunkSize = 64 * 1024
+
+            let swiftCopyBytes = try await Self.measure {
+                let (dest, _) = copyFixture.uniqueDestPath()
+                defer { try? File.System.Delete.delete(at: dest) }
+                try await File.System.Copy.copy(
+                    from: copyFixture.sourcePath,
+                    to: dest,
+                    options: .init(copyAttributes: false)
+                )
+            }
+            let nioCopyBytes = try await Self.measure {
+                let (dest, nioDest) = copyFixture.uniqueDestPath()
+                defer { try? File.System.Delete.delete(at: dest) }
+
+                let readHandle = try await FileSystem.shared.openFile(
+                    forReadingAt: copyFixture.nioSourcePath,
+                    options: .init()
+                )
+
+                do {
+                    try await FileSystem.shared.withFileHandle(
+                        forWritingAt: nioDest,
+                        options: .newFile(replaceExisting: true)
+                    ) { writeHandle in
+                        var offset: Int64 = 0
+                        while true {
+                            let buffer = try await readHandle.readChunk(
+                                fromAbsoluteOffset: offset,
+                                length: .bytes(Int64(copyChunkSize))
+                            )
+                            if buffer.readableBytes == 0 { break }
+
+                            try await writeHandle.write(
+                                contentsOf: buffer.readableBytesView,
+                                toAbsoluteOffset: offset
+                            )
+                            offset += Int64(buffer.readableBytes)
+                        }
+                    }
+                    try await readHandle.close()
+                } catch {
+                    try? await readHandle.close()
+                    throw error
+                }
+            }
+            results.append(BenchmarkResult(
+                operation: "Copy 100MB (byte loop)",
+                swiftTime: swiftCopyBytes,
+                nioTime: nioCopyBytes
+            ))
+
+            // ═══════════════════════════════════════════════════════════════
+            // MARK: Concurrent Benchmarks
+            // ═══════════════════════════════════════════════════════════════
+
             let concurrentFixture = ConcurrentReadFixture.shared
 
+            // 100 concurrent 1MB reads
             let swiftConcurrent = try await Self.measure(iterations: 2) {
                 try await withThrowingTaskGroup(of: Void.self) { group in
                     for path in concurrentFixture.paths {
@@ -178,7 +347,9 @@ extension NIOComparison.Test {
                                 forReadingAt: nioPath,
                                 options: .init()
                             )
-                            let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(1 * 1024 * 1024))
+                            let buffer = try await handle.readToEnd(
+                                maximumSizeAllowed: .bytes(1 * 1024 * 1024)
+                            )
                             withExtendedLifetime(buffer.readableBytes) {}
                             try await handle.close()
                         }
@@ -186,15 +357,16 @@ extension NIOComparison.Test {
                     try await group.waitForAll()
                 }
             }
-            results.append(
-                BenchmarkResult(
-                    operation: "100 concurrent 1MB reads",
-                    swiftTime: swiftConcurrent,
-                    nioTime: nioConcurrent
-                )
-            )
+            results.append(BenchmarkResult(
+                operation: "100 concurrent 1MB reads",
+                swiftTime: swiftConcurrent,
+                nioTime: nioConcurrent
+            ))
 
-            // Generate markdown table
+            // ═══════════════════════════════════════════════════════════════
+            // MARK: Output
+            // ═══════════════════════════════════════════════════════════════
+
             print("")
             print("## Performance Comparison: swift-file-system vs NIOFileSystem")
             print("")
