@@ -1,18 +1,18 @@
 //
-//  File.Directory.Async.Walk.Sequence.Iterator.Box.swift
+//  File.Directory.Walk.Async.Sequence.Iterator.Box.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-extension File.Directory.Async.Walk.Sequence {
+extension File.Directory.Walk.Async.Sequence.Iterator {
     /// Heap-allocated box for the non-copyable iterator.
     ///
     /// ## Safety Invariant (for @unchecked Sendable)
     /// - Only accessed from within `io.run` closures (single-threaded access)
     /// - Never accessed concurrently
     /// - Caller ensures sequential access pattern
-    final class IteratorBox: @unchecked Sendable {
+    final class Box: @unchecked Sendable {
         private var storage: UnsafeMutablePointer<File.Directory.Iterator>?
 
         init(_ iterator: consuming File.Directory.Iterator) {
@@ -21,7 +21,7 @@ extension File.Directory.Async.Walk.Sequence {
         }
 
         deinit {
-            // INVARIANT: IteratorBox.deinit performs no cleanup.
+            // INVARIANT: Iterator.Box.deinit performs no cleanup.
             // All cleanup must occur via close() inside io.run.
             // This preserves the executor-confinement invariant.
             //
@@ -31,7 +31,7 @@ extension File.Directory.Async.Walk.Sequence {
             precondition(
                 storage == nil,
                 """
-                IteratorBox deallocated without close().
+                Iterator.Box deallocated without close().
                 This violates the io.run-only invariant.
                 The walk must complete or be terminated.
                 """

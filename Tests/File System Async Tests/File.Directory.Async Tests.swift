@@ -200,7 +200,7 @@ extension File.Directory.Async.Test.Unit {
                 try File.Directory.Async.Test.Unit.createFile(in: sub, name: "file.txt")
             }
 
-            let options = File.Directory.Async.Walk.Options(maxConcurrency: 2)
+            let options = File.Directory.Walk.Async.Options(maxConcurrency: 2)
             let walk = File.Directory.Async(io: io).walk(at: dir, options: options)
             var count = 0
 

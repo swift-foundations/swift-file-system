@@ -1,14 +1,14 @@
 //
-//  File.Directory.Async.Walk.State.swift
+//  File.Directory.Walk.Async.State.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
 /// Actor-protected state for the walk algorithm.
-extension File.Directory.Async.Walk {
+extension File.Directory.Walk.Async {
     actor State {
-        private var queue: [File.Path] = []
+        private var queue: [(path: File.Path, depth: Int)] = []
         private var activeWorkers: Int = 0
         private var visited: Set<Inode.Key> = []
 
@@ -26,8 +26,8 @@ extension File.Directory.Async.Walk {
             !queue.isEmpty || activeWorkers > 0
         }
 
-        func enqueue(_ path: File.Path) {
-            queue.append(path)
+        func enqueue(_ path: File.Path, depth: Int) {
+            queue.append((path, depth))
             activeWorkers += 1
             // Wake one completion waiter
             if let waiter = completionWaiters.first {
@@ -36,7 +36,7 @@ extension File.Directory.Async.Walk {
             }
         }
 
-        func dequeue() -> File.Path? {
+        func dequeue() -> (path: File.Path, depth: Int)? {
             guard !queue.isEmpty else { return nil }
             return queue.removeFirst()
         }

@@ -1,15 +1,15 @@
 //
-//  File.Directory.Async.Walk.Completion.Authority.swift
+//  File.Directory.Walk.Async.Completion.Authority.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
 /// State machine ensuring exactly one terminal state.
 ///
 /// States: `running` → `failed(Error)` | `cancelled` | `finished`
 /// First transition out of `running` wins.
-extension File.Directory.Async.Walk.Completion {
+extension File.Directory.Walk.Async.Completion {
     actor Authority {
         enum State {
             case running

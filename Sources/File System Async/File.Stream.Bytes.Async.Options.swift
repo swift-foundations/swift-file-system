@@ -1,12 +1,12 @@
 //
-//  File.Stream.Async.Bytes.Options.swift
+//  File.Stream.Bytes.Async.Options.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-extension File.Stream.Async.Bytes {
-    /// Options for byte streaming.
+extension File.Stream.Bytes.Async {
+    /// Options for async byte streaming.
     public struct Options: Sendable {
         /// Size of each chunk in bytes.
         public var chunkSize: Int

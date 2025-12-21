@@ -1,8 +1,8 @@
 //
-//  File.Directory.Async.Entries.swift
+//  File.Directory.Entries.Async.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
 // MARK: - Entries API
@@ -26,19 +26,19 @@ extension File.Directory.Async {
     /// - Breaking from the loop triggers cleanup via deinit (best-effort)
     /// - Use `iterator.terminate()` for explicit cleanup if needed
     /// - Resources are always cleaned up regardless of exit path
-    public func entries(at path: File.Path) -> Entries {
-        Entries(path: path, io: io, batchSize: 128)
+    public func entries(at path: File.Path) -> File.Directory.Entries.Async {
+        File.Directory.Entries.Async(path: path, io: io, batchSize: 128)
     }
 
     /// Internal: Returns an async sequence with configurable batch size for benchmarking.
-    internal func entries(at path: File.Path, batchSize: Int) -> Entries {
-        Entries(path: path, io: io, batchSize: batchSize)
+    internal func entries(at path: File.Path, batchSize: Int) -> File.Directory.Entries.Async {
+        File.Directory.Entries.Async(path: path, io: io, batchSize: batchSize)
     }
 }
 
 // MARK: - Entries AsyncSequence
 
-extension File.Directory.Async {
+extension File.Directory.Entries {
     /// An AsyncSequence of directory entries with explicit lifecycle control.
     ///
     /// ## Design
@@ -60,15 +60,15 @@ extension File.Directory.Async {
     /// ## Resource Cleanup
     /// The underlying directory iterator is always closed via `io.run`
     /// regardless of how iteration ends.
-    public struct Entries: AsyncSequence, Sendable {
+    public struct Async: AsyncSequence, Sendable {
         public typealias Element = File.Directory.Entry
 
         let path: File.Path
         let io: File.IO.Executor
         let batchSize: Int
 
-        public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(path: path, io: io, batchSize: batchSize)
+        public func makeAsyncIterator() -> Iterator {
+            Iterator(path: path, io: io, batchSize: batchSize)
         }
     }
 }

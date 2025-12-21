@@ -1,19 +1,19 @@
 //
-//  File.Directory.Async.Walk.Sequence.Iterator.Async.swift
+//  File.Directory.Walk.Async.Sequence.Iterator.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
 import AsyncAlgorithms
 
-extension File.Directory.Async.Walk.Sequence {
+extension File.Directory.Walk.Async.Sequence {
     /// The async iterator for directory walk.
     ///
     /// ## Thread Safety
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
-    public final class AsyncIterator: AsyncIteratorProtocol {
+    public final class Iterator: AsyncIteratorProtocol {
         private let channel: AsyncThrowingChannel<Element, any Error>
         private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
         private var producerTask: Task<Void, Never>?
@@ -31,11 +31,11 @@ extension File.Directory.Async.Walk.Sequence {
         /// Uses factory pattern to avoid init-region isolation issues.
         static func make(
             root: File.Path,
-            options: File.Directory.Async.Walk.Options,
+            options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor
-        ) -> AsyncIterator {
+        ) -> Iterator {
             let channel = AsyncThrowingChannel<Element, any Error>()
-            let iterator = AsyncIterator(
+            let iterator = Iterator(
                 channel: channel,
                 channelIterator: channel.makeAsyncIterator()
             )
@@ -88,15 +88,15 @@ extension File.Directory.Async.Walk.Sequence {
 
         private static func runWalk(
             root: File.Path,
-            options: File.Directory.Async.Walk.Options,
+            options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor,
             channel: AsyncThrowingChannel<Element, any Error>
         ) async {
-            let state = File.Directory.Async.Walk.State(maxConcurrency: options.maxConcurrency)
-            let authority = File.Directory.Async.Walk.Completion.Authority()
+            let state = File.Directory.Walk.Async.State(maxConcurrency: options.maxConcurrency)
+            let authority = File.Directory.Walk.Async.Completion.Authority()
 
             // Enqueue root
-            await state.enqueue(root)
+            await state.enqueue(root, depth: 0)
 
             // Process directories until done
             await withTaskGroup(of: Void.self) { group in
@@ -112,9 +112,15 @@ extension File.Directory.Async.Walk.Sequence {
                     }
 
                     // Try to get a directory to process
-                    guard let dir = await state.dequeue() else {
+                    guard let (dir, depth) = await state.dequeue() else {
                         // No dirs in queue - wait for active workers
                         await state.waitForWorkOrCompletion()
+                        continue
+                    }
+
+                    // Check depth limit
+                    if let maxDepth = options.maxDepth, depth > maxDepth {
+                        await state.decrementActive()
                         continue
                     }
 
@@ -125,6 +131,7 @@ extension File.Directory.Async.Walk.Sequence {
                     group.addTask {
                         await Self.processDirectory(
                             dir,
+                            depth: depth,
                             options: options,
                             io: io,
                             state: state,
@@ -154,10 +161,11 @@ extension File.Directory.Async.Walk.Sequence {
 
         private static func processDirectory(
             _ dir: File.Path,
-            options: File.Directory.Async.Walk.Options,
+            depth: Int,
+            options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor,
-            state: File.Directory.Async.Walk.State,
-            authority: File.Directory.Async.Walk.Completion.Authority,
+            state: File.Directory.Walk.Async.State,
+            authority: File.Directory.Walk.Async.Completion.Authority,
             channel: AsyncThrowingChannel<Element, any Error>
         ) async {
             // Check if already done
@@ -167,11 +175,11 @@ extension File.Directory.Async.Walk.Sequence {
             }
 
             // Open iterator
-            let boxResult: Result<IteratorBox, any Error> = await {
+            let boxResult: Result<Box, any Error> = await {
                 do {
                     let box = try await io.run {
                         let iterator = try File.Directory.Iterator.open(at: dir)
-                        return IteratorBox(iterator)
+                        return Box(iterator)
                     }
                     return .success(box)
                 } catch {
@@ -222,8 +230,33 @@ extension File.Directory.Async.Walk.Sequence {
 
                     // Process batch entries
                     for entry in batch {
+                        // Filter hidden files
+                        if !options.includeHidden && entry.name.isHiddenByDotPrefix {
+                            continue
+                        }
+
                         // Skip entries with undecodable names (no valid path)
                         guard let entryPath = entry.pathIfValid else {
+                            // Invoke undecodable callback
+                            let context = File.Directory.Walk.Undecodable.Context(
+                                parent: entry.parent,
+                                name: entry.name,
+                                type: entry.type,
+                                depth: depth
+                            )
+                            switch options.onUndecodable(context) {
+                            case .skip:
+                                continue
+                            case .emit:
+                                // Can't emit - no valid path
+                                continue
+                            case .stopAndThrow:
+                                await authority.fail(with: File.Directory.Walk.Error.undecodableEntry(
+                                    parent: entry.parent,
+                                    name: entry.name
+                                ))
+                                break
+                            }
                             continue
                         }
 
@@ -246,7 +279,7 @@ extension File.Directory.Async.Walk.Sequence {
                         }
 
                         if shouldRecurse {
-                            await state.enqueue(entryPath)
+                            await state.enqueue(entryPath, depth: depth + 1)
                         }
                     }
                 }
@@ -259,12 +292,12 @@ extension File.Directory.Async.Walk.Sequence {
             await state.decrementActive()
         }
 
-        private static func getInode(_ path: File.Path, io: File.IO.Executor) async -> File.Directory.Async.Walk.Inode.Key? {
+        private static func getInode(_ path: File.Path, io: File.IO.Executor) async -> File.Directory.Walk.Async.Inode.Key? {
             do {
                 return try await io.run {
                     // Use lstat to get the symlink's own inode, not its target's
                     let info = try File.System.Stat.lstatInfo(at: path)
-                    return File.Directory.Async.Walk.Inode.Key(device: info.deviceId, inode: info.inode)
+                    return File.Directory.Walk.Async.Inode.Key(device: info.deviceId, inode: info.inode)
                 }
             } catch {
                 return nil

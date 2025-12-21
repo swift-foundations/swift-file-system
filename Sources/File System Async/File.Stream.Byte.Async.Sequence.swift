@@ -1,8 +1,8 @@
 //
-//  File.Stream.Async.Byte.Sequence.swift
+//  File.Stream.Byte.Async.Sequence.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
 import AsyncAlgorithms
@@ -29,15 +29,15 @@ extension File.Stream.Async {
     /// Producer suspends when consumer is slow (via AsyncChannel).
     public func bytes(
         from path: File.Path,
-        options: Bytes.Options = Bytes.Options()
-    ) -> Byte.Sequence {
-        Byte.Sequence(path: path, chunkSize: options.chunkSize, io: io)
+        options: File.Stream.Bytes.Async.Options = .init()
+    ) -> File.Stream.Byte.Async.Sequence {
+        File.Stream.Byte.Async.Sequence(path: path, chunkSize: options.chunkSize, io: io)
     }
 }
 
-// MARK: - Byte.Sequence
+// MARK: - Byte.Async.Sequence
 
-extension File.Stream.Async.Byte {
+extension File.Stream.Byte.Async {
     /// An AsyncSequence of byte chunks from a file.
     ///
     /// ## Memory Contract
@@ -57,8 +57,8 @@ extension File.Stream.Async.Byte {
         let chunkSize: Int
         let io: File.IO.Executor
 
-        public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator.make(path: path, chunkSize: chunkSize, io: io)
+        public func makeAsyncIterator() -> Iterator {
+            Iterator.make(path: path, chunkSize: chunkSize, io: io)
         }
     }
 }

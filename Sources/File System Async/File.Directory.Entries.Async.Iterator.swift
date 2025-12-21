@@ -1,11 +1,11 @@
 //
-//  File.Directory.Async.Entries.Iterator.Async.swift
+//  File.Directory.Entries.Async.Iterator.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-extension File.Directory.Async.Entries {
+extension File.Directory.Entries.Async {
     /// Pull-based async iterator for directory entries.
     ///
     /// ## Design
@@ -21,18 +21,18 @@ extension File.Directory.Async.Entries {
     /// The non-Sendable conformance enforces this at compile time.
     ///
     /// ## HARD INVARIANT
-    /// - All observable effects on IteratorBox (`next`, `close`) occur exclusively
+    /// - All observable effects on Iterator.Box (`next`, `close`) occur exclusively
     ///   inside `io.run` closures.
-    /// - IteratorBox.deinit performs no cleanup.
+    /// - Iterator.Box.deinit performs no cleanup.
     /// - Deterministic cleanup requires exhausting the iterator or calling `terminate()`.
-    /// - AsyncIterator.deinit may schedule best-effort cleanup via `io.run`, but never
-    ///   touches IteratorBox directly.
-    public final class AsyncIterator: AsyncIteratorProtocol {
+    /// - Iterator.deinit may schedule best-effort cleanup via `io.run`, but never
+    ///   touches Iterator.Box directly.
+    public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = File.Directory.Entry
 
         private enum State {
             case unopened
-            case open(IteratorBox)
+            case open(Box)
             case finished
         }
 
@@ -50,11 +50,11 @@ extension File.Directory.Async.Entries {
         }
 
         deinit {
-            // INVARIANT: deinit never touches IteratorBox directly.
+            // INVARIANT: deinit never touches Iterator.Box directly.
             // Best-effort cleanup is mediated through io.run.
             #if DEBUG
             if case .open = state {
-                print("Warning: Entries.AsyncIterator deallocated without terminate() for path: \(path)")
+                print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
             }
             #endif
 
@@ -100,23 +100,23 @@ extension File.Directory.Async.Entries {
         }
 
         private func open() async throws {
-            // INVARIANT: IteratorBox only touched inside io.run
+            // INVARIANT: Iterator.Box only touched inside io.run
             let box = try await io.run { [path] in
                 let iterator = try File.Directory.Iterator.open(at: path)
-                return IteratorBox(iterator)
+                return Box(iterator)
             }
             state = .open(box)
             buffer = []
             cursor = 0
         }
 
-        private func refill(_ box: IteratorBox) async throws {
+        private func refill(_ box: Box) async throws {
             let batchSize = self.batchSize
 
             // Wrap in cancellation handler to ensure cleanup on cancellation
             try await withTaskCancellationHandler {
                 do {
-                    // INVARIANT: IteratorBox only touched inside io.run
+                    // INVARIANT: Iterator.Box only touched inside io.run
                     let entries = try await io.run {
                         var batch: [Element] = []
                         batch.reserveCapacity(batchSize)
@@ -132,7 +132,7 @@ extension File.Directory.Async.Entries {
 
                     if entries.isEmpty {
                         // EOF - close handle on executor
-                        // INVARIANT: IteratorBox only touched inside io.run
+                        // INVARIANT: Iterator.Box only touched inside io.run
                         await closeBox(box)
                         state = .finished
                     }
@@ -142,7 +142,7 @@ extension File.Directory.Async.Entries {
                     throw CancellationError()
                 } catch {
                     // Other error - close handle and rethrow
-                    // INVARIANT: IteratorBox only touched inside io.run
+                    // INVARIANT: Iterator.Box only touched inside io.run
                     await closeBox(box)
                     state = .finished
                     throw error
@@ -151,7 +151,7 @@ extension File.Directory.Async.Entries {
                 // Cancellation during io.run: job completes but we schedule cleanup
                 // Note: This runs on arbitrary thread, but only schedules a Task
                 // Explicit captures: io (executor) and box (to close)
-                // INVARIANT: IteratorBox only touched inside io.run
+                // INVARIANT: Iterator.Box only touched inside io.run
                 Task.detached {
                     _ = try? await io.run {
                         box.close()
@@ -160,8 +160,8 @@ extension File.Directory.Async.Entries {
             }
         }
 
-        private func closeBox(_ box: IteratorBox) async {
-            // INVARIANT: IteratorBox only touched inside io.run
+        private func closeBox(_ box: Box) async {
+            // INVARIANT: Iterator.Box only touched inside io.run
             _ = try? await io.run {
                 box.close()
             }
@@ -173,7 +173,7 @@ extension File.Directory.Async.Entries {
         /// Safe to call multiple times (idempotent).
         public func terminate() async {
             if case .open(let box) = state {
-                // INVARIANT: IteratorBox only touched inside io.run
+                // INVARIANT: Iterator.Box only touched inside io.run
                 await closeBox(box)
             }
             state = .finished

@@ -22,9 +22,9 @@ extension File.Stream {
     /// - Returns: An async sequence of byte chunks.
     public static func bytes(
         from path: File.Path,
-        options: Async.Bytes.Options = .init(),
+        options: File.Stream.Bytes.Async.Options = .init(),
         io: File.IO.Executor = .default
-    ) -> Async.Byte.Sequence {
+    ) -> File.Stream.Byte.Async.Sequence {
         Async(io: io).bytes(from: path, options: options)
     }
 }

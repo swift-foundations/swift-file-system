@@ -22,7 +22,7 @@ extension File.Directory {
     public static func entries(
         at path: File.Path,
         io: File.IO.Executor = .default
-    ) -> Async.Entries {
+    ) -> File.Directory.Entries.Async {
         Async(io: io).entries(at: path)
     }
 
@@ -56,9 +56,9 @@ extension File.Directory {
     /// - Returns: An async sequence of walk entries.
     public static func walk(
         at path: File.Path,
-        options: Async.Walk.Options = .init(),
+        options: File.Directory.Walk.Async.Options = .init(),
         io: File.IO.Executor = .default
-    ) -> Async.Walk.Sequence {
+    ) -> File.Directory.Walk.Async.Sequence {
         Async(io: io).walk(at: path, options: options)
     }
 }

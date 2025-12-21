@@ -374,7 +374,7 @@ import TestingPerformance
             @Test("Stream 1MB file (4KB chunks)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
             func stream1MBSmallChunks() async throws {
                 let stream = File.Stream.Async(io: executor)
-                let options = File.Stream.Async.Bytes.Options(chunkSize: 4096)
+                let options = File.Stream.Bytes.Async.Options(chunkSize: 4096)
                 var totalBytes = 0
                 var chunkCount = 0
                 for try await chunk in stream.bytes(from: file1MB, options: options) {

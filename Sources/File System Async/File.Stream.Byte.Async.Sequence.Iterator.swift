@@ -1,19 +1,19 @@
 //
-//  File.Stream.Async.Byte.Sequence.Iterator.Async.swift
+//  File.Stream.Byte.Async.Sequence.Iterator.swift
 //  swift-file-system
 //
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
+//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
 import AsyncAlgorithms
 
-extension File.Stream.Async.Byte.Sequence {
+extension File.Stream.Byte.Async.Sequence {
     /// The async iterator for byte streaming.
     ///
     /// ## Thread Safety
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
-    public final class AsyncIterator: AsyncIteratorProtocol {
+    public final class Iterator: AsyncIteratorProtocol {
         private let channel: AsyncThrowingChannel<Element, any Error>
         private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
         private var producerTask: Task<Void, Never>?
@@ -29,9 +29,9 @@ extension File.Stream.Async.Byte.Sequence {
 
         /// Factory method to create iterator and start producer.
         /// Uses factory pattern to avoid init-region isolation issues.
-        static func make(path: File.Path, chunkSize: Int, io: File.IO.Executor) -> AsyncIterator {
+        static func make(path: File.Path, chunkSize: Int, io: File.IO.Executor) -> Iterator {
             let channel = AsyncThrowingChannel<Element, any Error>()
-            let iterator = AsyncIterator(
+            let iterator = Iterator(
                 channel: channel,
                 channelIterator: channel.makeAsyncIterator()
             )

@@ -107,7 +107,7 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 100 byte chunks
-        let options = File.Stream.Async.Bytes.Options(chunkSize: 100)
+        let options = File.Stream.Bytes.Async.Options(chunkSize: 100)
         let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
 
         var chunkSizes: [Int] = []
@@ -133,7 +133,7 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 100 byte chunks
-        let options = File.Stream.Async.Bytes.Options(chunkSize: 100)
+        let options = File.Stream.Bytes.Async.Options(chunkSize: 100)
         let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
 
         var chunkSizes: [Int] = []
@@ -183,7 +183,7 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 1KB chunks
-        let options = File.Stream.Async.Bytes.Options(chunkSize: 1024)
+        let options = File.Stream.Bytes.Async.Options(chunkSize: 1024)
         let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
         var iterator = stream.makeAsyncIterator()
         var count = 0
@@ -215,7 +215,7 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 1KB chunks
-        let options = File.Stream.Async.Bytes.Options(chunkSize: 1024)
+        let options = File.Stream.Bytes.Async.Options(chunkSize: 1024)
         let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
         var iterator = stream.makeAsyncIterator()
         var count = 0

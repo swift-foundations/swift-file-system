@@ -132,7 +132,7 @@ extension File.Handle {
                 throw File.Handle.Error.invalidHandle
             }
             // Wrap for Sendable - safe because buffer used synchronously in io.run
-            let buffer = Sendable.Buffer(pointer: destination)
+            let buffer = File.Handle.Sendable.Async.Buffer(pointer: destination)
             return try await io.withHandle(id) { handle in
                 try handle.read(into: buffer.pointer)
             }
