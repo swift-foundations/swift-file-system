@@ -9,8 +9,10 @@
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
+    import CFileSystemShims
 #elseif canImport(Musl)
     import Musl
+    import CFileSystemShims
 #endif
 
 #if !os(Windows)

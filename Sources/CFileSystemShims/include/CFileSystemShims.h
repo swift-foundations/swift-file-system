@@ -11,6 +11,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef _WIN32
+#include <dirent.h>
+#endif
+
 #ifdef __linux__
 
 /// Attempts renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE).
