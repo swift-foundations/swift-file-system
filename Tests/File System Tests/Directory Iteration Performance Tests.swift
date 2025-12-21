@@ -120,12 +120,12 @@ final class DirectoryIterationPerformanceTests {
     @Test("Raw iteration cost - 1000 files × 100 loops")
     func rawIterationCost() throws {
         let loopCount = 100
-        let start = CFAbsoluteTimeGetCurrent()
-        
+        let start = Date().timeIntervalSinceReferenceDate
+
         for _ in 0..<loopCount {
             let (iterator, handle) = try File.Directory.Contents.makeIterator(at: testDir1000Files)
             defer { File.Directory.Contents.closeIterator(handle) }
-            
+
             var iter = iterator
             var count = 0
             while iter.next() != nil {
@@ -133,8 +133,8 @@ final class DirectoryIterationPerformanceTests {
             }
             #expect(count == 1000)
         }
-        
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
+
+        let elapsed = Date().timeIntervalSinceReferenceDate - start
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
         
@@ -147,14 +147,14 @@ final class DirectoryIterationPerformanceTests {
     @Test("Sync list cost - 1000 files × 100 loops")
     func syncListCost() throws {
         let loopCount = 100
-        let start = CFAbsoluteTimeGetCurrent()
-        
+        let start = Date().timeIntervalSinceReferenceDate
+
         for _ in 0..<loopCount {
             let entries = try File.Directory.Contents.list(at: testDir1000Files)
             #expect(entries.count == 1000)
         }
-        
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
+
+        let elapsed = Date().timeIntervalSinceReferenceDate - start
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
         
