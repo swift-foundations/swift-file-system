@@ -36,7 +36,7 @@ final class ReadFixture: @unchecked Sendable {
 
     static let shared: ReadFixture = {
         let fileSize = 100 * 1024 * 1024
-        let dir = try! File.Path("/tmp/nio-benchmark-read-fixture")
+        let dir: File.Path = "/tmp/nio-benchmark-read-fixture"
 
         // Clean up any previous run
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
@@ -66,7 +66,7 @@ final class CopyFixture: @unchecked Sendable {
 
     static let shared: CopyFixture = {
         let fileSize = 100 * 1024 * 1024
-        let dir = try! File.Path("/tmp/nio-benchmark-copy-fixture")
+        let dir: File.Path = "/tmp/nio-benchmark-copy-fixture"
 
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
         try! File.System.Create.Directory.create(at: dir)
@@ -98,7 +98,7 @@ final class ConcurrentReadFixture: @unchecked Sendable {
     static let shared: ConcurrentReadFixture = {
         let fileCount = 100
         let fileSize = 1 * 1024 * 1024
-        let dir = try! File.Path("/tmp/nio-benchmark-concurrent-fixture")
+        let dir: File.Path = "/tmp/nio-benchmark-concurrent-fixture"
 
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
         try! File.System.Create.Directory.create(at: dir)
@@ -129,7 +129,7 @@ final class WriteFixture: @unchecked Sendable {
     let nioDir: _NIOFileSystem.FilePath
 
     static let shared: WriteFixture = {
-        let dir = try! File.Path("/tmp/nio-benchmark-write-fixture")
+        let dir: File.Path = "/tmp/nio-benchmark-write-fixture"
 
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
         try! File.System.Create.Directory.create(at: dir)
@@ -296,7 +296,7 @@ extension NIOComparison.Test.Performance {
                 options: .newFile(replaceExisting: true)
             ) { handle in
                 // COW copy - does NOT copy 100MB, shares storage with Self.buffer
-                var buf = Self.buffer
+                let buf = Self.buffer
                 try await handle.write(contentsOf: buf.readableBytesView, toAbsoluteOffset: 0)
             }
         }
@@ -315,7 +315,7 @@ extension NIOComparison.Test.Performance {
             }
 
             // durability: .none for fair comparison (no fsync)
-            try await File.System.Write.Streaming.write(
+            try File.System.Write.Streaming.write(
                 lazyChunks,
                 to: filePath,
                 options: .init(commit: .direct(.init(durability: .none)))
@@ -463,25 +463,86 @@ extension NIOComparison.Test.Performance {
     @Suite
     struct Copy {
 
+        static let fileSize = 100 * 1024 * 1024 // 100 MB
+
         // Fixture is created ONCE, outside timed region
         static let fixture = CopyFixture.shared
 
-        @Test("swift-file-system: copy 100MB file", .timed(iterations: 3, warmup: 1, trackAllocations: false))
-        func swiftFileSystem() async throws {
+        // MARK: - Clone Copy (APFS fast path)
+        // These benchmarks use APFS copy-on-write cloning where available.
+        // Sub-millisecond times indicate clone semantics, not byte throughput.
+
+        @Test("swift-file-system: copy 100MB clone", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        func swiftFileSystemClone() async throws {
             let (destPath, _) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
 
-            // ONLY the copy is timed - source already exists
+            // Default options: copyAttributes=true enables COPYFILE_CLONE_FORCE
             try await File.System.Copy.copy(from: Self.fixture.sourcePath, to: destPath)
         }
 
-        @Test("NIOFileSystem: copy 100MB file", .timed(iterations: 3, warmup: 1, trackAllocations: false))
-        func nioFileSystem() async throws {
+        @Test("NIOFileSystem: copy 100MB clone", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        func nioFileSystemClone() async throws {
             let (destPath, nioDestPath) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
 
-            // ONLY the copy is timed - source already exists
+            // NIO's copyItem - likely uses clone fast path where available
             try await FileSystem.shared.copyItem(at: Self.fixture.nioSourcePath, to: nioDestPath)
+        }
+
+        // MARK: - Byte Copy (no cloning)
+        // These benchmarks force actual byte-by-byte copy, measuring storage throughput.
+        // Disabling cloning allows fair comparison of copy implementations.
+
+        @Test("swift-file-system: copy 100MB bytes", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        func swiftFileSystemBytes() async throws {
+            let (destPath, _) = Self.fixture.uniqueDestPath()
+            defer { try? File.System.Delete.delete(at: destPath) }
+
+            // copyAttributes=false skips Darwin COPYFILE_CLONE_FORCE fast path,
+            // falls through to manual 64KB buffer copy loop
+            try await File.System.Copy.copy(
+                from: Self.fixture.sourcePath,
+                to: destPath,
+                options: .init(copyAttributes: false)
+            )
+        }
+
+        @Test("NIOFileSystem: copy 100MB bytes", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        func nioFileSystemBytes() async throws {
+            let (destPath, nioDestPath) = Self.fixture.uniqueDestPath()
+            defer { try? File.System.Delete.delete(at: destPath) }
+
+            // Manual chunked copy using NIO read/write APIs (no copyItem which may clone)
+            // Uses 64KB chunks to match swift-file-system's _copyManualLoop buffer size
+            let chunkSize = 64 * 1024
+            let readHandle = try await FileSystem.shared.openFile(
+                forReadingAt: Self.fixture.nioSourcePath,
+                options: .init()
+            )
+            defer { Task { try? await readHandle.close() } }
+
+            try await FileSystem.shared.withFileHandle(
+                forWritingAt: nioDestPath,
+                options: .newFile(replaceExisting: true)
+            ) { writeHandle in
+                var offset: Int64 = 0
+                while true {
+                    // Read chunk from source
+                    let buffer = try await readHandle.readChunk(
+                        fromAbsoluteOffset: offset,
+                        length: .bytes(Int64(chunkSize))
+                    )
+                    if buffer.readableBytes == 0 { break }
+
+                    // Write chunk to destination
+                    try await writeHandle.write(
+                        contentsOf: buffer.readableBytesView,
+                        toAbsoluteOffset: offset
+                    )
+                    offset += Int64(buffer.readableBytes)
+                }
+            }
         }
     }
 }
