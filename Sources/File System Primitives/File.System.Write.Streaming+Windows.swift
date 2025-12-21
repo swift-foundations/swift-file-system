@@ -37,7 +37,7 @@
             _ chunks: Chunks,
             to resolvedPath: String,
             parent: String,
-            options: File.System.Write.Streaming.AtomicOptions
+            options: File.System.Write.Streaming.Atomic.Options
         ) throws(File.System.Write.Streaming.Error)
         where Chunks.Element == [UInt8] {
 
@@ -112,7 +112,7 @@
         private static func writeDirect<Chunks: Sequence>(
             _ chunks: Chunks,
             to resolvedPath: String,
-            options: File.System.Write.Streaming.DirectOptions
+            options: File.System.Write.Streaming.Direct.Options
         ) throws(File.System.Write.Streaming.Error)
         where Chunks.Element == [UInt8] {
 
