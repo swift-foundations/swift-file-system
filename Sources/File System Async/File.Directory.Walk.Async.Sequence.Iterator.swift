@@ -224,7 +224,8 @@ extension File.Directory.Walk.Async.Sequence {
                         for _ in 0..<batchSize {
                             // withValue returns nil if box is closed, next() returns nil at EOF
                             guard let maybeEntry = try box.withValue({ try $0.next() }),
-                                  let entry = maybeEntry else { break }
+                                let entry = maybeEntry
+                            else { break }
                             entries.append(entry)
                         }
                         return entries
@@ -255,11 +256,12 @@ extension File.Directory.Walk.Async.Sequence {
                                 // Can't emit - no valid path
                                 continue
                             case .stopAndThrow:
-                                await authority.fail(with: File.Directory.Walk.Error.undecodableEntry(
-                                    parent: entry.parent,
-                                    name: entry.name
-                                ))
-                                break
+                                await authority.fail(
+                                    with: File.Directory.Walk.Error.undecodableEntry(
+                                        parent: entry.parent,
+                                        name: entry.name
+                                    )
+                                )
                             }
                             continue
                         }
@@ -296,12 +298,18 @@ extension File.Directory.Walk.Async.Sequence {
             await state.decrementActive()
         }
 
-        private static func getInode(_ path: File.Path, io: File.IO.Executor) async -> File.Directory.Walk.Async.Inode.Key? {
+        private static func getInode(
+            _ path: File.Path,
+            io: File.IO.Executor
+        ) async -> File.Directory.Walk.Async.Inode.Key? {
             do {
                 return try await io.run {
                     // Use lstat to get the symlink's own inode, not its target's
                     let info = try File.System.Stat.lstatInfo(at: path)
-                    return File.Directory.Walk.Async.Inode.Key(device: info.deviceId, inode: info.inode)
+                    return File.Directory.Walk.Async.Inode.Key(
+                        device: info.deviceId,
+                        inode: info.inode
+                    )
                 }
             } catch {
                 return nil

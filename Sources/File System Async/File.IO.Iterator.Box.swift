@@ -38,13 +38,15 @@ extension File.IO.Iterator {
             // Per plan: "allowed to print debug warning, but must not spawn tasks
             // or perform best-effort cleanup"
             #if DEBUG
-            if storage != nil {
-                print("""
-                    Warning: File.IO.Iterator.Box deallocated without close().
-                    This violates the io.run-only invariant.
-                    Use terminate() on the owning iterator for deterministic cleanup.
-                    """)
-            }
+                if storage != nil {
+                    print(
+                        """
+                        Warning: File.IO.Iterator.Box deallocated without close().
+                        This violates the io.run-only invariant.
+                        Use terminate() on the owning iterator for deterministic cleanup.
+                        """
+                    )
+                }
             #endif
         }
 

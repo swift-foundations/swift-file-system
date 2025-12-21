@@ -54,9 +54,11 @@ extension File.Directory.Entries.Async {
             // INVARIANT: deinit never spawns tasks or performs async cleanup.
             // Users must call terminate() for deterministic resource release.
             #if DEBUG
-            if case .open = state {
-                print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
-            }
+                if case .open = state {
+                    print(
+                        "Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)"
+                    )
+                }
             #endif
         }
 
@@ -113,7 +115,8 @@ extension File.Directory.Entries.Async {
                     for _ in 0..<batchSize {
                         // withValue returns nil if box is closed, next() returns nil at EOF
                         guard let maybeEntry = try box.withValue({ try $0.next() }),
-                              let entry = maybeEntry else { break }
+                            let entry = maybeEntry
+                        else { break }
                         batch.append(entry)
                     }
                     return batch

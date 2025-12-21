@@ -168,7 +168,7 @@ extension File.IO {
                         try await _closeHandle(h)
                     } catch {
                         #if DEBUG
-                        print("Warning: Failed to close handle \(id) during shutdown: \(error)")
+                            print("Warning: Failed to close handle \(id) during shutdown: \(error)")
                         #endif
                     }
                 }
@@ -232,7 +232,8 @@ extension File.IO {
                 let token = entry.waiters.generateToken()
 
                 await withTaskCancellationHandler {
-                    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    await withCheckedContinuation {
+                        (continuation: CheckedContinuation<Void, Never>) in
                         entry.waiters.enqueue(token: token, continuation: continuation)
                     }
                 } onCancel: {
@@ -492,9 +493,9 @@ extension File.IO {
             // Open on lane (blocking operation)
             let context: PlatformWriteContext = try await lane.run(deadline: nil) {
                 #if os(Windows)
-                try WindowsStreaming.openForStreaming(path: pathString, options: options)
+                    try WindowsStreaming.openForStreaming(path: pathString, options: options)
                 #else
-                try POSIXStreaming.openForStreaming(path: pathString, options: options)
+                    try POSIXStreaming.openForStreaming(path: pathString, options: options)
                 #endif
             }
 
@@ -552,9 +553,9 @@ extension File.IO {
                     try bytes.withUnsafeBufferPointer { buffer in
                         let span = Span(_unsafeElements: buffer)
                         #if os(Windows)
-                        try WindowsStreaming.writeChunk(span, to: ctx)
+                            try WindowsStreaming.writeChunk(span, to: ctx)
                         #else
-                        try POSIXStreaming.writeChunk(span, to: ctx)
+                            try POSIXStreaming.writeChunk(span, to: ctx)
                         #endif
                     }
                 }
@@ -603,9 +604,9 @@ extension File.IO {
                 // Extract context before closure (ctx is Sendable)
                 try await lane.run(deadline: nil) {
                     #if os(Windows)
-                    try WindowsStreaming.commit(ctx)
+                        try WindowsStreaming.commit(ctx)
                     #else
-                    try POSIXStreaming.commit(ctx)
+                        try POSIXStreaming.commit(ctx)
                     #endif
                 }
 
@@ -650,9 +651,9 @@ extension File.IO {
                 // Best-effort cleanup
                 _ = try? await lane.run(deadline: nil) {
                     #if os(Windows)
-                    WindowsStreaming.cleanup(ctx)
+                        WindowsStreaming.cleanup(ctx)
                     #else
-                    POSIXStreaming.cleanup(ctx)
+                        POSIXStreaming.cleanup(ctx)
                     #endif
                 }
             }
@@ -686,7 +687,8 @@ extension File.IO {
             try Task.checkCancellation()
         }
 
-        private func _waitForWriteNonThrowing(id: File.IO.Write.Handle.ID, entry: Write.Entry) async {
+        private func _waitForWriteNonThrowing(id: File.IO.Write.Handle.ID, entry: Write.Entry) async
+        {
             let token = entry.waiters.generateToken()
 
             await withTaskCancellationHandler {

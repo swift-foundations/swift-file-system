@@ -21,7 +21,10 @@
 
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
+            try verifyOrCreateParentDirectory(
+                parent,
+                createIntermediates: options.createIntermediates
+            )
 
             switch options.commit {
             case .atomic(let atomicOptions):
@@ -61,7 +64,8 @@
 
             // Write all chunks - internally convert to Span for zero-copy writes
             for chunk in chunks {
-                try chunk.withUnsafeBufferPointer { buffer throws(File.System.Write.Streaming.Error) in
+                try chunk.withUnsafeBufferPointer {
+                    buffer throws(File.System.Write.Streaming.Error) in
                     let span = Span<UInt8>(_unsafeElements: buffer)
                     try writeAll(span, to: handle, path: resolvedPath)
                 }
@@ -132,7 +136,8 @@
 
             // Write all chunks - internally convert to Span for zero-copy writes
             for chunk in chunks {
-                try chunk.withUnsafeBufferPointer { buffer throws(File.System.Write.Streaming.Error) in
+                try chunk.withUnsafeBufferPointer {
+                    buffer throws(File.System.Write.Streaming.Error) in
                     let span = Span<UInt8>(_unsafeElements: buffer)
                     try writeAll(span, to: handle, path: resolvedPath)
                 }
@@ -403,7 +408,8 @@
             }
         }
 
-        private static func flushDirectory(_ path: String) throws(File.System.Write.Streaming.Error) {
+        private static func flushDirectory(_ path: String) throws(File.System.Write.Streaming.Error)
+        {
             let handle = withWideString(path) { wPath in
                 CreateFileW(
                     wPath,
@@ -492,7 +498,10 @@
 
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
+            try verifyOrCreateParentDirectory(
+                parent,
+                createIntermediates: options.createIntermediates
+            )
 
             switch options.commit {
             case .atomic(let atomicOptions):
@@ -509,7 +518,10 @@
                 )
 
             case .direct(let directOptions):
-                let handle = try createFile(at: resolvedPath, exclusive: directOptions.strategy == .create)
+                let handle = try createFile(
+                    at: resolvedPath,
+                    exclusive: directOptions.strategy == .create
+                )
                 return Write.Context(
                     handle: handle,
                     tempPath: nil,

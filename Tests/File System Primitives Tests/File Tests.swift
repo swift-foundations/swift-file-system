@@ -68,7 +68,7 @@ extension File.Test.Unit {
         let path1 = try File.Path("/tmp/test1.txt")
         let path2 = try File.Path("/tmp/test2.txt")
         let file1 = File(path1)
-        let file2 = File(path1) // same as file1
+        let file2 = File(path1)  // same as file1
         let file3 = File(path2)
 
         let set: Set<File> = [file1, file2, file3]

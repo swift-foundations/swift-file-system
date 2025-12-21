@@ -17,11 +17,6 @@ extension File.IO.Blocking.Threads {
     struct Worker {
         let id: Int
         let state: State
-
-        init(id: Int, state: State) {
-            self.id = id
-            self.state = state
-        }
     }
 }
 

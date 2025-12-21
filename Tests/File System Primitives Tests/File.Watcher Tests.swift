@@ -58,7 +58,7 @@ extension File.Watcher.Test.Unit {
     @Test("EventType all cases are distinct")
     func eventTypeAllCasesDistinct() {
         let allCases: [File.Watcher.EventType] = [
-            .created, .modified, .deleted, .renamed, .attributesChanged
+            .created, .modified, .deleted, .renamed, .attributesChanged,
         ]
         let rawValues = allCases.map(\.rawValue)
         #expect(Set(rawValues).count == allCases.count)
@@ -92,7 +92,7 @@ extension File.Watcher.Test.Unit {
     @Test("EventType rawValue round-trip")
     func eventTypeRawValueRoundTrip() {
         let allCases: [File.Watcher.EventType] = [
-            .created, .modified, .deleted, .renamed, .attributesChanged
+            .created, .modified, .deleted, .renamed, .attributesChanged,
         ]
         for eventType in allCases {
             let restored = File.Watcher.EventType(rawValue: eventType.rawValue)

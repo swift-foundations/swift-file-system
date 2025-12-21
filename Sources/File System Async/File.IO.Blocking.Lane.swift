@@ -117,36 +117,36 @@ extension File.IO.Blocking {
 // MARK: - Deadline Helpers
 
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #elseif canImport(Glibc)
-import Glibc
+    import Glibc
 #elseif os(Windows)
-import WinSDK
+    import WinSDK
 #endif
 
 extension File.IO.Blocking.Deadline {
     /// The current monotonic time.
     public static var now: Self {
         #if canImport(Darwin)
-        var ts = timespec()
-        clock_gettime(CLOCK_MONOTONIC, &ts)
-        let nanos = UInt64(ts.tv_sec) * 1_000_000_000 + UInt64(ts.tv_nsec)
-        return Self(instant: nanos)
+            var ts = timespec()
+            clock_gettime(CLOCK_MONOTONIC, &ts)
+            let nanos = UInt64(ts.tv_sec) * 1_000_000_000 + UInt64(ts.tv_nsec)
+            return Self(instant: nanos)
         #elseif canImport(Glibc)
-        var ts = timespec()
-        clock_gettime(CLOCK_MONOTONIC, &ts)
-        let nanos = UInt64(ts.tv_sec) * 1_000_000_000 + UInt64(ts.tv_nsec)
-        return Self(instant: nanos)
+            var ts = timespec()
+            clock_gettime(CLOCK_MONOTONIC, &ts)
+            let nanos = UInt64(ts.tv_sec) * 1_000_000_000 + UInt64(ts.tv_nsec)
+            return Self(instant: nanos)
         #elseif os(Windows)
-        var counter: LARGE_INTEGER = LARGE_INTEGER()
-        var frequency: LARGE_INTEGER = LARGE_INTEGER()
-        QueryPerformanceCounter(&counter)
-        QueryPerformanceFrequency(&frequency)
-        let nanos = UInt64(counter.QuadPart) * 1_000_000_000 / UInt64(frequency.QuadPart)
-        return Self(instant: nanos)
+            var counter: LARGE_INTEGER = LARGE_INTEGER()
+            var frequency: LARGE_INTEGER = LARGE_INTEGER()
+            QueryPerformanceCounter(&counter)
+            QueryPerformanceFrequency(&frequency)
+            let nanos = UInt64(counter.QuadPart) * 1_000_000_000 / UInt64(frequency.QuadPart)
+            return Self(instant: nanos)
         #else
-        // Fallback: no monotonic clock available
-        return Self(instant: 0)
+            // Fallback: no monotonic clock available
+            return Self(instant: 0)
         #endif
     }
 

@@ -66,10 +66,10 @@ extension File.Handle {
             // The handle remains in the executor's registry until shutdown
             if !isClosed {
                 #if DEBUG
-                print(
-                    "Warning: File.Handle.Async deallocated without close() for path: \(path). " +
-                    "Handle will remain open until executor shutdown."
-                )
+                    print(
+                        "Warning: File.Handle.Async deallocated without close() for path: \(path). "
+                            + "Handle will remain open until executor shutdown."
+                    )
                 #endif
             }
         }

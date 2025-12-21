@@ -12,11 +12,11 @@
 // They are used only by the Threads lane implementation.
 
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #elseif canImport(Glibc)
-import Glibc
+    import Glibc
 #elseif os(Windows)
-import WinSDK
+    import WinSDK
 #endif
 
 extension File.IO.Blocking.Threads {
@@ -27,30 +27,30 @@ extension File.IO.Blocking.Threads {
     /// - Wait operations must be called within locked context.
     final class Lock: @unchecked Sendable {
         #if os(Windows)
-        private var srwlock: SRWLOCK = SRWLOCK()
-        private var condvar: CONDITION_VARIABLE = CONDITION_VARIABLE()
+            private var srwlock: SRWLOCK = SRWLOCK()
+            private var condvar: CONDITION_VARIABLE = CONDITION_VARIABLE()
         #else
-        private var mutex: pthread_mutex_t = pthread_mutex_t()
-        private var cond: pthread_cond_t = pthread_cond_t()
+            private var mutex: pthread_mutex_t = pthread_mutex_t()
+            private var cond: pthread_cond_t = pthread_cond_t()
         #endif
 
         init() {
             #if os(Windows)
-            InitializeSRWLock(&srwlock)
-            InitializeConditionVariable(&condvar)
+                InitializeSRWLock(&srwlock)
+                InitializeConditionVariable(&condvar)
             #else
-            var attr = pthread_mutexattr_t()
-            pthread_mutexattr_init(&attr)
-            pthread_mutex_init(&mutex, &attr)
-            pthread_mutexattr_destroy(&attr)
-            pthread_cond_init(&cond, nil)
+                var attr = pthread_mutexattr_t()
+                pthread_mutexattr_init(&attr)
+                pthread_mutex_init(&mutex, &attr)
+                pthread_mutexattr_destroy(&attr)
+                pthread_cond_init(&cond, nil)
             #endif
         }
 
         deinit {
             #if !os(Windows)
-            pthread_cond_destroy(&cond)
-            pthread_mutex_destroy(&mutex)
+                pthread_cond_destroy(&cond)
+                pthread_mutex_destroy(&mutex)
             #endif
         }
 
@@ -58,28 +58,28 @@ extension File.IO.Blocking.Threads {
 
         func withLock<T>(_ body: () throws -> T) rethrows -> T {
             #if os(Windows)
-            AcquireSRWLockExclusive(&srwlock)
-            defer { ReleaseSRWLockExclusive(&srwlock) }
+                AcquireSRWLockExclusive(&srwlock)
+                defer { ReleaseSRWLockExclusive(&srwlock) }
             #else
-            pthread_mutex_lock(&mutex)
-            defer { pthread_mutex_unlock(&mutex) }
+                pthread_mutex_lock(&mutex)
+                defer { pthread_mutex_unlock(&mutex) }
             #endif
             return try body()
         }
 
         func lock() {
             #if os(Windows)
-            AcquireSRWLockExclusive(&srwlock)
+                AcquireSRWLockExclusive(&srwlock)
             #else
-            pthread_mutex_lock(&mutex)
+                pthread_mutex_lock(&mutex)
             #endif
         }
 
         func unlock() {
             #if os(Windows)
-            ReleaseSRWLockExclusive(&srwlock)
+                ReleaseSRWLockExclusive(&srwlock)
             #else
-            pthread_mutex_unlock(&mutex)
+                pthread_mutex_unlock(&mutex)
             #endif
         }
 
@@ -88,9 +88,9 @@ extension File.IO.Blocking.Threads {
         /// Wait on the condition. Must be called while holding the lock.
         func wait() {
             #if os(Windows)
-            _ = SleepConditionVariableSRW(&condvar, &srwlock, INFINITE, 0)
+                _ = SleepConditionVariableSRW(&condvar, &srwlock, INFINITE, 0)
             #else
-            pthread_cond_wait(&cond, &mutex)
+                pthread_cond_wait(&cond, &mutex)
             #endif
         }
 
@@ -100,45 +100,45 @@ extension File.IO.Blocking.Threads {
         /// - Returns: `true` if signaled, `false` if timed out.
         func wait(timeoutNanoseconds nanoseconds: UInt64) -> Bool {
             #if os(Windows)
-            let milliseconds = nanoseconds / 1_000_000
-            let result = SleepConditionVariableSRW(
-                &condvar,
-                &srwlock,
-                DWORD(min(milliseconds, UInt64(DWORD.max))),
-                0
-            )
-            return result != 0
+                let milliseconds = nanoseconds / 1_000_000
+                let result = SleepConditionVariableSRW(
+                    &condvar,
+                    &srwlock,
+                    DWORD(min(milliseconds, UInt64(DWORD.max))),
+                    0
+                )
+                return result != 0
             #else
-            var ts = timespec()
-            clock_gettime(CLOCK_REALTIME, &ts)
-            let seconds = nanoseconds / 1_000_000_000
-            let remainingNanos = nanoseconds % 1_000_000_000
-            ts.tv_sec += Int(seconds)
-            ts.tv_nsec += Int(remainingNanos)
-            if ts.tv_nsec >= 1_000_000_000 {
-                ts.tv_sec += 1
-                ts.tv_nsec -= 1_000_000_000
-            }
-            let result = pthread_cond_timedwait(&cond, &mutex, &ts)
-            return result == 0
+                var ts = timespec()
+                clock_gettime(CLOCK_REALTIME, &ts)
+                let seconds = nanoseconds / 1_000_000_000
+                let remainingNanos = nanoseconds % 1_000_000_000
+                ts.tv_sec += Int(seconds)
+                ts.tv_nsec += Int(remainingNanos)
+                if ts.tv_nsec >= 1_000_000_000 {
+                    ts.tv_sec += 1
+                    ts.tv_nsec -= 1_000_000_000
+                }
+                let result = pthread_cond_timedwait(&cond, &mutex, &ts)
+                return result == 0
             #endif
         }
 
         /// Signal one waiting thread.
         func signal() {
             #if os(Windows)
-            WakeConditionVariable(&condvar)
+                WakeConditionVariable(&condvar)
             #else
-            pthread_cond_signal(&cond)
+                pthread_cond_signal(&cond)
             #endif
         }
 
         /// Signal all waiting threads.
         func broadcast() {
             #if os(Windows)
-            WakeAllConditionVariable(&condvar)
+                WakeAllConditionVariable(&condvar)
             #else
-            pthread_cond_broadcast(&cond)
+                pthread_cond_broadcast(&cond)
             #endif
         }
     }
@@ -151,40 +151,45 @@ extension File.IO.Blocking.Threads {
     /// - Returns: An opaque handle to the thread.
     static func spawnThread(_ body: @escaping @Sendable () -> Void) -> ThreadHandle {
         #if os(Windows)
-        var threadHandle: HANDLE?
-        let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
-        context.initialize(to: body)
+            var threadHandle: HANDLE?
+            let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
+            context.initialize(to: body)
 
-        threadHandle = CreateThread(
-            nil,
-            0,
-            { context in
-                guard let ctx = context else { return 0 }
-                let body = ctx.assumingMemoryBound(to: (@Sendable () -> Void).self)
-                let work = body.move()
-                body.deallocate()
-                work()
-                return 0
-            },
-            context,
-            0,
-            nil
-        )
-        return ThreadHandle(handle: threadHandle!)
+            threadHandle = CreateThread(
+                nil,
+                0,
+                { context in
+                    guard let ctx = context else { return 0 }
+                    let body = ctx.assumingMemoryBound(to: (@Sendable () -> Void).self)
+                    let work = body.move()
+                    body.deallocate()
+                    work()
+                    return 0
+                },
+                context,
+                0,
+                nil
+            )
+            return ThreadHandle(handle: threadHandle!)
         #else
-        var thread: pthread_t?
-        let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
-        context.initialize(to: body)
+            var thread: pthread_t?
+            let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
+            context.initialize(to: body)
 
-        pthread_create(&thread, nil, { context in
-            let body = context.assumingMemoryBound(to: (@Sendable () -> Void).self)
-            let work = body.move()
-            body.deallocate()
-            work()
-            return nil
-        }, context)
+            pthread_create(
+                &thread,
+                nil,
+                { context in
+                    let body = context.assumingMemoryBound(to: (@Sendable () -> Void).self)
+                    let work = body.move()
+                    body.deallocate()
+                    work()
+                    return nil
+                },
+                context
+            )
 
-        return ThreadHandle(thread: thread!)
+            return ThreadHandle(thread: thread!)
         #endif
     }
 }
@@ -193,26 +198,26 @@ extension File.IO.Blocking.Threads {
     /// Opaque handle to an OS thread.
     struct ThreadHandle: @unchecked Sendable {
         #if os(Windows)
-        let handle: HANDLE
+            let handle: HANDLE
 
-        init(handle: HANDLE) {
-            self.handle = handle
-        }
+            init(handle: HANDLE) {
+                self.handle = handle
+            }
 
-        func join() {
-            WaitForSingleObject(handle, INFINITE)
-            CloseHandle(handle)
-        }
+            func join() {
+                WaitForSingleObject(handle, INFINITE)
+                CloseHandle(handle)
+            }
         #else
-        let thread: pthread_t
+            let thread: pthread_t
 
-        init(thread: pthread_t) {
-            self.thread = thread
-        }
+            init(thread: pthread_t) {
+                self.thread = thread
+            }
 
-        func join() {
-            pthread_join(thread, nil)
-        }
+            func join() {
+                pthread_join(thread, nil)
+            }
         #endif
     }
 }
@@ -223,13 +228,13 @@ extension File.IO.Blocking.Threads {
     /// Returns the number of active processors.
     static var processorCount: Int {
         #if canImport(Darwin)
-        return Int(sysconf(_SC_NPROCESSORS_ONLN))
+            return Int(sysconf(_SC_NPROCESSORS_ONLN))
         #elseif canImport(Glibc)
-        return Int(sysconf(Int32(_SC_NPROCESSORS_ONLN)))
+            return Int(sysconf(Int32(_SC_NPROCESSORS_ONLN)))
         #elseif os(Windows)
-        return Int(GetActiveProcessorCount(WORD(ALL_PROCESSOR_GROUPS)))
+            return Int(GetActiveProcessorCount(WORD(ALL_PROCESSOR_GROUPS)))
         #else
-        return 4
+            return 4
         #endif
     }
 }
@@ -299,7 +304,7 @@ extension File.IO.Blocking.Threads.Job {
         }
 
         /// An empty placeholder job.
-        static let empty = Instance { }
+        static let empty = Instance {}
 
         private init(_ work: @Sendable @escaping () -> Void) {
             self.work = work

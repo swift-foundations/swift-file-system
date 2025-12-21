@@ -5,11 +5,11 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Primitives
 import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
-import File_System_Primitives
 
 #if canImport(Foundation)
     import Foundation
@@ -199,7 +199,7 @@ import File_System_Primitives
             var count = 0
             let entries = File.Directory.Async(io: io).entries(at: dir)
             let iterator = entries.makeAsyncIterator()
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
                 if count >= 5 {
                     break
@@ -225,14 +225,15 @@ import File_System_Primitives
             }
 
             // Run two iterations concurrently using TaskGroup with proper cleanup
-            let counts = try await withThrowingTaskGroup(of: Int.self, returning: [Int].self) { group in
+            let counts = try await withThrowingTaskGroup(of: Int.self, returning: [Int].self) {
+                group in
                 for _ in 0..<2 {
                     group.addTask {
                         var c = 0
                         let entries = File.Directory.Async(io: io).entries(at: dir)
                         let iterator = entries.makeAsyncIterator()
                         do {
-                            while let _ = try await iterator.next() { c += 1 }
+                            while try await iterator.next() != nil { c += 1 }
                             await iterator.terminate()
                         } catch {
                             await iterator.terminate()
@@ -281,7 +282,7 @@ import File_System_Primitives
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root)
             let iterator = walk.makeAsyncIterator()
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
             }
             await iterator.terminate()
@@ -313,7 +314,7 @@ import File_System_Primitives
                 options: .init(followSymlinks: false)
             )
             let iterator = walk.makeAsyncIterator()
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
             }
             await iterator.terminate()
@@ -344,9 +345,12 @@ import File_System_Primitives
 
             // Walk with following symlinks - cycle detection should prevent infinite loop
             var count = 0
-            let walk = File.Directory.Async(io: io).walk(at: root, options: .init(followSymlinks: true))
+            let walk = File.Directory.Async(io: io).walk(
+                at: root,
+                options: .init(followSymlinks: true)
+            )
             let iterator = walk.makeAsyncIterator()
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
                 // Safety valve - if cycle detection fails, abort
                 if count > 100 {
@@ -371,7 +375,7 @@ import File_System_Primitives
             let iterator = walk.makeAsyncIterator()
 
             do {
-                while let _ = try await iterator.next() {
+                while try await iterator.next() != nil {
                     Issue.record("Should not yield anything")
                 }
                 Issue.record("Should have thrown error")
@@ -501,7 +505,7 @@ import File_System_Primitives
             let iterator = stream.makeAsyncIterator()
 
             do {
-                while let _ = try await iterator.next() {
+                while try await iterator.next() != nil {
                     Issue.record("Should not yield anything")
                 }
                 Issue.record("Should have thrown error")
@@ -560,7 +564,7 @@ import File_System_Primitives
                 let entries = File.Directory.Async(io: io).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 do {
-                    while let _ = try await iterator.next() {
+                    while try await iterator.next() != nil {
                         count += 1
                         try Task.checkCancellation()
                     }
@@ -611,7 +615,7 @@ import File_System_Primitives
                 let walk = File.Directory.Async(io: io).walk(at: root)
                 let iterator = walk.makeAsyncIterator()
                 do {
-                    while let _ = try await iterator.next() {
+                    while try await iterator.next() != nil {
                         count += 1
                         try Task.checkCancellation()
                     }
@@ -655,7 +659,7 @@ import File_System_Primitives
                 let entries = File.Directory.Async(io: io).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 do {
-                    while let _ = try await iterator.next() {
+                    while try await iterator.next() != nil {
                         count += 1
                         // Cancel after processing 70 entries (which should be in the middle of second batch)
                         if count == 70 {
@@ -711,7 +715,7 @@ import File_System_Primitives
                 let walk = File.Directory.Async(io: io).walk(at: root)
                 let iterator = walk.makeAsyncIterator()
                 do {
-                    while let _ = try await iterator.next() {
+                    while try await iterator.next() != nil {
                         count += 1
                         // Cancel after 100 entries (mid-iteration)
                         if count == 100 {
@@ -761,7 +765,7 @@ import File_System_Primitives
 
             // Consume slowly to verify producer doesn't accumulate unbounded batches
             do {
-                while let _ = try await iterator.next() {
+                while try await iterator.next() != nil {
                     processedCount += 1
                     // Add delay to simulate slow consumer
                     try await Task.sleep(for: .milliseconds(1))
@@ -829,7 +833,7 @@ import File_System_Primitives
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root)
             let iterator = walk.makeAsyncIterator()
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
             }
             await iterator.terminate()
@@ -856,7 +860,7 @@ import File_System_Primitives
                 let entries = File.Directory.Async(io: io).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 do {
-                    while let _ = try await iterator.next() {
+                    while try await iterator.next() != nil {
                         count += 1
                         // Small delay to allow deletion to happen
                         try await Task.sleep(for: .milliseconds(1))

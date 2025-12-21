@@ -74,7 +74,7 @@ extension File.Directory.Test.Unit {
         let path1 = try File.Path("/tmp/dir1")
         let path2 = try File.Path("/tmp/dir2")
         let dir1 = File.Directory(path1)
-        let dir2 = File.Directory(path1) // same as dir1
+        let dir2 = File.Directory(path1)  // same as dir1
         let dir3 = File.Directory(path2)
 
         let set: Set<File.Directory> = [dir1, dir2, dir3]

@@ -45,9 +45,9 @@ extension File.System.Error.Code: CustomStringConvertible {
         switch self {
         case .posix(let errno):
             #if !os(Windows)
-            if let msg = strerror(errno) {
-                return "errno \(errno): \(String(cString: msg))"
-            }
+                if let msg = strerror(errno) {
+                    return "errno \(errno): \(String(cString: msg))"
+                }
             #endif
             return "errno \(errno)"
 
@@ -66,9 +66,9 @@ extension File.System.Error.Code {
     @inline(__always)
     public static func current() -> Self {
         #if os(Windows)
-        return .windows(GetLastError())
+            return .windows(GetLastError())
         #else
-        return .posix(errno)
+            return .posix(errno)
         #endif
     }
 
@@ -89,9 +89,9 @@ extension File.System.Error.Code {
         switch self {
         case .posix(let errno):
             #if !os(Windows)
-            if let cString = strerror(errno) {
-                return String(cString: cString)
-            }
+                if let cString = strerror(errno) {
+                    return String(cString: cString)
+                }
             #endif
             return "error \(errno)"
 
@@ -100,4 +100,3 @@ extension File.System.Error.Code {
         }
     }
 }
-

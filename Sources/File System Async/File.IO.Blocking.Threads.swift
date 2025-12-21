@@ -105,7 +105,8 @@ extension File.IO.Blocking.Threads {
                 Task { [state, deadline] in
                     do {
                         try await withTaskCancellationHandler {
-                            try await withCheckedThrowingContinuation { (pendingCont: CheckedContinuation<Void, any Swift.Error>) in
+                            try await withCheckedThrowingContinuation {
+                                (pendingCont: CheckedContinuation<Void, any Swift.Error>) in
                                 state.lock.lock()
 
                                 // Check if shutdown happened while we were setting up
@@ -144,7 +145,9 @@ extension File.IO.Blocking.Threads {
                                         state.lock.lock()
                                         if let cancelled = state.pendingQueue.cancel(token: token) {
                                             state.lock.unlock()
-                                            cancelled.continuation.resume(throwing: Error.deadlineExceeded)
+                                            cancelled.continuation.resume(
+                                                throwing: Error.deadlineExceeded
+                                            )
                                         } else {
                                             state.lock.unlock()
                                         }
@@ -209,7 +212,7 @@ extension File.IO.Blocking.Threads {
                             state.inFlightCount == 0 && state.queue.isEmpty
                         }
                         if complete { break }
-                        try? await Task.sleep(nanoseconds: 1_000_000) // 1ms
+                        try? await Task.sleep(nanoseconds: 1_000_000)  // 1ms
                     }
                     continuation.resume()
                 }
