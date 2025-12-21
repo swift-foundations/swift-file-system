@@ -24,13 +24,12 @@
 //  - Syscall shape differences are named explicitly (not hidden)
 //
 
+import File_System
+import File_System_Async
 import Foundation
 import NIOCore
 import StandardsTestSupport
 import Testing
-
-import File_System
-import File_System_Async
 import _NIOFileSystem
 
 // MARK: - Benchmark Type
@@ -53,13 +52,26 @@ final class ReadFixture: @unchecked Sendable {
 
         // Clean up any previous run
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
-        try! File.System.Create.Directory.create(at: dir)
+
+        do {
+            try File.System.Create.Directory.create(at: dir)
+        } catch {
+            fatalError("Benchmark fixture setup failed: \(error)")
+        }
 
         let filePath = dir.appending("large-read.bin")
 
         // Create file with DIRECT write (no fsync overhead in setup)
         let data = [UInt8](repeating: 0xAB, count: fileSize)
-        try! File.System.Write.Streaming.write([data], to: filePath, options: .init(commit: .direct()))
+        do {
+            try File.System.Write.Streaming.write(
+                [data],
+                to: filePath,
+                options: .init(commit: .direct())
+            )
+        } catch {
+            fatalError("Benchmark fixture setup failed: \(error)")
+        }
 
         return ReadFixture(dir: dir, filePath: filePath)
     }()
@@ -82,11 +94,24 @@ final class CopyFixture: @unchecked Sendable {
         let dir: File.Path = "/tmp/nio-benchmark-copy-fixture"
 
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
-        try! File.System.Create.Directory.create(at: dir)
+
+        do {
+            try File.System.Create.Directory.create(at: dir)
+        } catch {
+            fatalError("Benchmark fixture setup failed: \(error)")
+        }
 
         let sourcePath = dir.appending("copy-source.bin")
         let data = [UInt8](repeating: 0xAB, count: fileSize)
-        try! File.System.Write.Streaming.write([data], to: sourcePath, options: .init(commit: .direct()))
+        do {
+            try File.System.Write.Streaming.write(
+                [data],
+                to: sourcePath,
+                options: .init(commit: .direct())
+            )
+        } catch {
+            fatalError("Benchmark fixture setup failed: \(error)")
+        }
 
         return CopyFixture(dir: dir, sourcePath: sourcePath)
     }()
@@ -114,7 +139,12 @@ final class ConcurrentReadFixture: @unchecked Sendable {
         let dir: File.Path = "/tmp/nio-benchmark-concurrent-fixture"
 
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
-        try! File.System.Create.Directory.create(at: dir)
+
+        do {
+            try File.System.Create.Directory.create(at: dir)
+        } catch {
+            fatalError("Benchmark fixture setup failed: \(error)")
+        }
 
         var paths: [File.Path] = []
         var nioPaths: [_NIOFileSystem.FilePath] = []
@@ -122,7 +152,15 @@ final class ConcurrentReadFixture: @unchecked Sendable {
 
         for i in 0..<fileCount {
             let filePath = dir.appending("concurrent-\(i).bin")
-            try! File.System.Write.Streaming.write([data], to: filePath, options: .init(commit: .direct()))
+            do {
+                try File.System.Write.Streaming.write(
+                    [data],
+                    to: filePath,
+                    options: .init(commit: .direct())
+                )
+            } catch {
+                fatalError("Benchmark fixture setup failed: \(error)")
+            }
             paths.append(filePath)
             nioPaths.append(_NIOFileSystem.FilePath(filePath.string))
         }
@@ -145,7 +183,12 @@ final class WriteFixture: @unchecked Sendable {
         let dir: File.Path = "/tmp/nio-benchmark-write-fixture"
 
         try? File.System.Delete.delete(at: dir, options: .init(recursive: true))
-        try! File.System.Create.Directory.create(at: dir)
+
+        do {
+            try File.System.Create.Directory.create(at: dir)
+        } catch {
+            fatalError("Benchmark fixture setup failed: \(error)")
+        }
 
         return WriteFixture(dir: dir)
     }()
@@ -191,44 +234,55 @@ extension NIOComparison.Test.Performance {
     @Suite
     struct Read {
 
-        static let fileSize = 100 * 1024 * 1024 // 100 MB
+        static let fileSize = 100 * 1024 * 1024  // 100 MB
 
         // Fixture is created ONCE, outside timed region
         static let fixture = ReadFixture.shared
 
-        @Test("swift-file-system: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: read 100MB (hot-cache)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystem() async throws {
             // Measures: kernel → user copy from page cache + API overhead
             let bytes = try await File.System.Read.Full.read(from: Self.fixture.filePath)
             // Consume buffer to prevent optimization (symmetric with NIO test)
             #if DEBUG
-            // Cheap consumption for debug-mode sanity testing
-            let sample = bytes.first ?? 0
-            withExtendedLifetime((bytes.count, sample)) {}
+                // Cheap consumption for debug-mode sanity testing
+                let sample = bytes.first ?? 0
+                withExtendedLifetime((bytes.count, sample)) {}
             #else
-            // Full traversal in release - measures actual consumption cost
-            var checksum: UInt8 = 0
-            for byte in bytes { checksum &+= byte }
-            withExtendedLifetime((bytes.count, checksum)) {}
+                // Full traversal in release - measures actual consumption cost
+                var checksum: UInt8 = 0
+                for byte in bytes { checksum &+= byte }
+                withExtendedLifetime((bytes.count, checksum)) {}
             #endif
         }
 
-        @Test("NIOFileSystem: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: read 100MB (hot-cache)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystem() async throws {
             // Measures: kernel → user copy from page cache + API overhead
             // Note: readToEnd returns ByteBuffer; we consume via readableBytesView (no extra copy)
-            let handle = try await FileSystem.shared.openFile(forReadingAt: Self.fixture.nioPath, options: .init())
-            let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(Int64(Self.fileSize)))
+            let handle = try await FileSystem.shared.openFile(
+                forReadingAt: Self.fixture.nioPath,
+                options: .init()
+            )
+            let buffer = try await handle.readToEnd(
+                maximumSizeAllowed: .bytes(Int64(Self.fileSize))
+            )
             // Consume buffer to prevent optimization (symmetric with swift test)
             #if DEBUG
-            // Cheap consumption for debug-mode sanity testing - use ByteBuffer API for O(1) access
-            let sample: UInt8 = buffer.getInteger(at: buffer.readerIndex) ?? 0
-            withExtendedLifetime((buffer.readableBytes, sample)) {}
+                // Cheap consumption for debug-mode sanity testing - use ByteBuffer API for O(1) access
+                let sample: UInt8 = buffer.getInteger(at: buffer.readerIndex) ?? 0
+                withExtendedLifetime((buffer.readableBytes, sample)) {}
             #else
-            // Full traversal in release - measures actual consumption cost
-            var checksum: UInt8 = 0
-            for byte in buffer.readableBytesView { checksum &+= byte }
-            withExtendedLifetime((buffer.readableBytes, checksum)) {}
+                // Full traversal in release - measures actual consumption cost
+                var checksum: UInt8 = 0
+                for byte in buffer.readableBytesView { checksum &+= byte }
+                withExtendedLifetime((buffer.readableBytes, checksum)) {}
             #endif
             try await handle.close()
         }
@@ -255,7 +309,7 @@ extension NIOComparison.Test.Performance {
     @Suite
     struct Write {
 
-        static let fileSize = 100 * 1024 * 1024 // 100 MB
+        static let fileSize = 100 * 1024 * 1024  // 100 MB
 
         // Fixture: directory created ONCE, outside timed region
         static let fixture = WriteFixture.shared
@@ -276,7 +330,10 @@ extension NIOComparison.Test.Performance {
 
         // MARK: - Sequential write(2) pattern
 
-        @Test("swift-file-system: write 100MB (write sequential)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: write 100MB (write sequential)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemRaw() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
@@ -284,13 +341,20 @@ extension NIOComparison.Test.Performance {
             // Uses sequential write(2) syscall - file position advances implicitly
             try Self.data.withUnsafeBufferPointer { buffer in
                 let span = Span<UInt8>(_unsafeElements: buffer)
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .truncate])
+                var handle = try File.Handle.open(
+                    filePath,
+                    mode: .write,
+                    options: [.create, .truncate]
+                )
                 try handle.write(span)
                 try handle.close()
             }
         }
 
-        @Test("swift-file-system: write 100MB streaming-sync", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: write 100MB streaming-sync",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemStreamingSync() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
@@ -305,7 +369,10 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("swift-file-system: write 100MB streaming-async", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: write 100MB streaming-async",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemStreamingAsync() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
@@ -319,7 +386,10 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("swift-file-system: write 100MB preallocated", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: write 100MB preallocated",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemPreallocated() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
@@ -329,13 +399,18 @@ extension NIOComparison.Test.Performance {
             try File.System.Write.Streaming.write(
                 chunks,
                 to: filePath,
-                options: .init(commit: .direct(.init(durability: .none, expectedSize: Int64(Self.fileSize))))
+                options: .init(
+                    commit: .direct(.init(durability: .none, expectedSize: Int64(Self.fileSize)))
+                )
             )
         }
 
         // MARK: - pwrite-style (absolute offset) pattern
 
-        @Test("NIOFileSystem: write 100MB (pwrite offset)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: write 100MB (pwrite offset)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystem() async throws {
             let (_, nioPath) = Self.fixture.uniquePath()
             let filePath = Self.fixture.dir.appending(nioPath.lastComponent!.string)
@@ -353,7 +428,10 @@ extension NIOComparison.Test.Performance {
 
         // MARK: - Streaming (chunked) benchmarks
 
-        @Test("swift-file-system: write 100MB streaming-lazy", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: write 100MB streaming-lazy",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemStreaming() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
@@ -372,7 +450,10 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("NIOFileSystem: write 100MB streaming (pwrite loop)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: write 100MB streaming (pwrite loop)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystemStreaming() async throws {
             let (_, nioPath) = Self.fixture.uniquePath()
             let filePath = Self.fixture.dir.appending(nioPath.lastComponent!.string)
@@ -390,7 +471,10 @@ extension NIOComparison.Test.Performance {
                 for _ in 0..<chunkCount {
                     let chunk = [UInt8](repeating: 0xCD, count: chunkSize)
                     let buffer = ByteBuffer(bytes: chunk)
-                    try await handle.write(contentsOf: buffer.readableBytesView, toAbsoluteOffset: offset)
+                    try await handle.write(
+                        contentsOf: buffer.readableBytesView,
+                        toAbsoluteOffset: offset
+                    )
                     offset += Int64(chunkSize)
                 }
             }
@@ -409,7 +493,10 @@ extension NIOComparison.Test.Performance {
         static let dir100 = DirectoryIterationFixture(name: "iter-100", fileCount: 100)
         static let dir1000 = DirectoryIterationFixture(name: "iter-1000", fileCount: 1000)
 
-        @Test("swift-file-system: iterate 100 files", .timed(iterations: 5, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: iterate 100 files",
+            .timed(iterations: 5, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystem100() async throws {
             let dir = try Self.dir100.path()
 
@@ -420,7 +507,10 @@ extension NIOComparison.Test.Performance {
             #expect(count == 100)
         }
 
-        @Test("NIOFileSystem: iterate 100 files", .timed(iterations: 5, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: iterate 100 files",
+            .timed(iterations: 5, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystem100() async throws {
             let dir = try Self.dir100.path()
 
@@ -435,7 +525,10 @@ extension NIOComparison.Test.Performance {
             #expect(count == 100)
         }
 
-        @Test("swift-file-system: iterate 1000 files", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: iterate 1000 files",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystem1000() async throws {
             let dir = try Self.dir1000.path()
 
@@ -446,7 +539,10 @@ extension NIOComparison.Test.Performance {
             #expect(count == 1000)
         }
 
-        @Test("NIOFileSystem: iterate 1000 files", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: iterate 1000 files",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystem1000() async throws {
             let dir = try Self.dir1000.path()
 
@@ -498,7 +594,11 @@ final class DirectoryIterationFixture: @unchecked Sendable {
         let content = [UInt8]("content".utf8)
         for i in 0..<fileCount {
             let filePath = dir.appending("file-\(String(format: "%05d", i)).txt")
-            try File.System.Write.Streaming.write([content], to: filePath, options: .init(commit: .direct()))
+            try File.System.Write.Streaming.write(
+                [content],
+                to: filePath,
+                options: .init(commit: .direct())
+            )
         }
 
         cachedPath = dir
@@ -522,7 +622,7 @@ extension NIOComparison.Test.Performance {
     @Suite
     struct Copy {
 
-        static let fileSize = 100 * 1024 * 1024 // 100 MB
+        static let fileSize = 100 * 1024 * 1024  // 100 MB
 
         // Fixture is created ONCE, outside timed region
         static let fixture = CopyFixture.shared
@@ -532,7 +632,10 @@ extension NIOComparison.Test.Performance {
         // Sub-millisecond times indicate filesystem clone semantics.
         // This measures API overhead + clone syscall, NOT byte throughput.
 
-        @Test("swift-file-system: copy 100MB (APFS clone)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: copy 100MB (APFS clone)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemClone() async throws {
             let (destPath, _) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
@@ -541,7 +644,10 @@ extension NIOComparison.Test.Performance {
             try await File.System.Copy.copy(from: Self.fixture.sourcePath, to: destPath)
         }
 
-        @Test("NIOFileSystem: copy 100MB (APFS clone)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: copy 100MB (APFS clone)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystemClone() async throws {
             let (destPath, nioDestPath) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
@@ -558,7 +664,10 @@ extension NIOComparison.Test.Performance {
         //
         // This compares sync vs async loop overhead, not storage throughput.
 
-        @Test("swift-file-system: copy 100MB (sync loop)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: copy 100MB (sync loop)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemBytes() async throws {
             let (destPath, _) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
@@ -571,7 +680,10 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("NIOFileSystem: copy 100MB (async loop)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: copy 100MB (async loop)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystemBytes() async throws {
             let (destPath, nioDestPath) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
@@ -620,12 +732,15 @@ extension NIOComparison.Test.Performance {
     @Suite
     struct Concurrent {
 
-        static let fileSize = 1 * 1024 * 1024 // 1 MB each
+        static let fileSize = 1 * 1024 * 1024  // 1 MB each
 
         // Fixture is created ONCE, outside timed region
         static let fixture = ConcurrentReadFixture.shared
 
-        @Test("swift-file-system: 100 concurrent 1MB reads", .timed(iterations: 2, warmup: 1, trackAllocations: false))
+        @Test(
+            "swift-file-system: 100 concurrent 1MB reads",
+            .timed(iterations: 2, warmup: 1, trackAllocations: false)
+        )
         func swiftFileSystemConcurrentReads() async throws {
             // ONLY the concurrent reads are timed - files already exist
             try await withThrowingTaskGroup(of: Void.self) { group in
@@ -634,12 +749,12 @@ extension NIOComparison.Test.Performance {
                         let bytes = try await File.System.Read.Full.read(from: path)
                         // Consume buffer (symmetric with NIO test)
                         #if DEBUG
-                        let sample = bytes.first ?? 0
-                        withExtendedLifetime((bytes.count, sample)) {}
+                            let sample = bytes.first ?? 0
+                            withExtendedLifetime((bytes.count, sample)) {}
                         #else
-                        var checksum: UInt8 = 0
-                        for byte in bytes { checksum &+= byte }
-                        withExtendedLifetime((bytes.count, checksum)) {}
+                            var checksum: UInt8 = 0
+                            for byte in bytes { checksum &+= byte }
+                            withExtendedLifetime((bytes.count, checksum)) {}
                         #endif
                     }
                 }
@@ -647,7 +762,10 @@ extension NIOComparison.Test.Performance {
             }
         }
 
-        @Test("NIOFileSystem: 100 concurrent 1MB reads", .timed(iterations: 2, warmup: 1, trackAllocations: false))
+        @Test(
+            "NIOFileSystem: 100 concurrent 1MB reads",
+            .timed(iterations: 2, warmup: 1, trackAllocations: false)
+        )
         func nioFileSystemConcurrentReads() async throws {
             let maxSize = Int64(Self.fileSize)
 
@@ -655,16 +773,19 @@ extension NIOComparison.Test.Performance {
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for nioPath in Self.fixture.nioPaths {
                     group.addTask {
-                        let handle = try await FileSystem.shared.openFile(forReadingAt: nioPath, options: .init())
+                        let handle = try await FileSystem.shared.openFile(
+                            forReadingAt: nioPath,
+                            options: .init()
+                        )
                         let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(maxSize))
                         // Consume buffer without extra copy (symmetric with swift test)
                         #if DEBUG
-                        let sample: UInt8 = buffer.getInteger(at: buffer.readerIndex) ?? 0
-                        withExtendedLifetime((buffer.readableBytes, sample)) {}
+                            let sample: UInt8 = buffer.getInteger(at: buffer.readerIndex) ?? 0
+                            withExtendedLifetime((buffer.readableBytes, sample)) {}
                         #else
-                        var checksum: UInt8 = 0
-                        for byte in buffer.readableBytesView { checksum &+= byte }
-                        withExtendedLifetime((buffer.readableBytes, checksum)) {}
+                            var checksum: UInt8 = 0
+                            for byte in buffer.readableBytesView { checksum &+= byte }
+                            withExtendedLifetime((buffer.readableBytes, checksum)) {}
                         #endif
                         try await handle.close()
                     }
