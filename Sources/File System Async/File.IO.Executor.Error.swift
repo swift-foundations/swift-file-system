@@ -5,9 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-extension File.IO {
+extension File.IO.Executor {
     /// Errors specific to the executor.
-    public enum ExecutorError: Error, Sendable {
+    public enum Error: Swift.Error, Sendable {
         /// The executor has been shut down.
         case shutdownInProgress
     }

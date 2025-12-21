@@ -9,6 +9,7 @@ import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
+import File_System_Primitives
 
 #if canImport(Foundation)
     import Foundation
@@ -106,7 +107,6 @@ import Testing
         @Test("Iterate directory with many files")
         func manyFiles() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -124,12 +124,12 @@ import Testing
             }
 
             #expect(count == 100)
+            await io.shutdown()
         }
 
         @Test("Iterate directory that gets modified during iteration")
         func directoryModifiedDuringIteration() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -142,26 +142,32 @@ import Testing
 
             var count = 0
             let entries = File.Directory.Async(io: io).entries(at: dir)
-            for try await entry in entries {
-                count += 1
-                // Add new files during iteration (may or may not be seen)
-                if count == 5 {
-                    let newPath = try File.Path(
-                        "\(dir.string)/added-during-\(Int.random(in: 0..<Int.max)).txt"
-                    )
-                    try createFile(at: newPath)
+            let iterator = entries.makeAsyncIterator()
+            do {
+                while let entry = try await iterator.next() {
+                    count += 1
+                    // Add new files during iteration (may or may not be seen)
+                    if count == 5 {
+                        let newPath = try File.Path(
+                            "\(dir.string)/added-during-\(Int.random(in: 0..<Int.max)).txt"
+                        )
+                        try createFile(at: newPath)
+                    }
+                    _ = entry
                 }
-                _ = entry
+            } catch {
+                await iterator.terminate()
+                throw error
             }
 
             // Should have iterated at least the original 10
             #expect(count >= 10)
+            await io.shutdown()
         }
 
         @Test("Iterate empty directory")
         func emptyDirectory() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -173,12 +179,12 @@ import Testing
             }
 
             #expect(count == 0)
+            await io.shutdown()
         }
 
         @Test("Break from iteration early")
         func breakEarly() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -191,20 +197,22 @@ import Testing
 
             var count = 0
             let entries = File.Directory.Async(io: io).entries(at: dir)
-            for try await _ in entries {
+            let iterator = entries.makeAsyncIterator()
+            while let _ = try await iterator.next() {
                 count += 1
                 if count >= 5 {
                     break
                 }
             }
+            await iterator.terminate()
 
             #expect(count == 5)
+            await io.shutdown()
         }
 
         @Test("Multiple iterators on same directory")
         func multipleIterators() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -215,24 +223,34 @@ import Testing
                 try createFile(at: filePath)
             }
 
-            // Run two iterations concurrently
-            async let count1: Int = {
-                var c = 0
-                let entries = File.Directory.Async(io: io).entries(at: dir)
-                for try await _ in entries { c += 1 }
-                return c
-            }()
+            // Run two iterations concurrently using TaskGroup with proper cleanup
+            let counts = try await withThrowingTaskGroup(of: Int.self, returning: [Int].self) { group in
+                for _ in 0..<2 {
+                    group.addTask {
+                        var c = 0
+                        let entries = File.Directory.Async(io: io).entries(at: dir)
+                        let iterator = entries.makeAsyncIterator()
+                        do {
+                            while let _ = try await iterator.next() { c += 1 }
+                        } catch {
+                            await iterator.terminate()
+                            throw error
+                        }
+                        return c
+                    }
+                }
+                var results: [Int] = []
+                for try await count in group {
+                    results.append(count)
+                }
+                return results
+            }
 
-            async let count2: Int = {
-                var c = 0
-                let entries = File.Directory.Async(io: io).entries(at: dir)
-                for try await _ in entries { c += 1 }
-                return c
-            }()
-
-            let (c1, c2) = try await (count1, count2)
-            #expect(c1 == 20)
-            #expect(c2 == 20)
+            #expect(counts.count == 2)
+            for count in counts {
+                #expect(count == 20)
+            }
+            await io.shutdown()
         }
 
         // MARK: - Walk Edge Cases
@@ -240,7 +258,6 @@ import Testing
         @Test("Walk deeply nested directory")
         func walkDeeplyNested() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
@@ -267,27 +284,27 @@ import Testing
 
             // 10 directories + 10 files = 20 entries
             #expect(count == 20)
+            await io.shutdown()
         }
 
         @Test("Walk with symlink cycle - followSymlinks=false")
         func walkSymlinkCycleNoFollow() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
 
             // Create subdirectory
             let subPath = try File.Path("\(root.string)/subdir")
-            try await File.System.Create.Directory.create(at: subPath)
+            try File.System.Create.Directory.create(at: subPath)
 
             // Create symlink to parent (cycle)
             let linkPath = try File.Path("\(subPath.string)/parent-link")
-            try await File.System.Link.Symbolic.create(at: linkPath, pointingTo: root)
+            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: root)
 
             // Walk without following symlinks - should complete fine
             var count = 0
-            let walk = File.Directory.walk(
+            let walk = File.Directory.Async(io: io).walk(
                 at: root,
                 options: .init(followSymlinks: false)
             )
@@ -297,23 +314,23 @@ import Testing
 
             // Should see: subdir + parent-link = 2
             #expect(count == 2)
+            await io.shutdown()
         }
 
         @Test("Walk with symlink cycle - followSymlinks=true detects cycle")
         func walkSymlinkCycleWithFollow() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
 
             // Create subdirectory
             let subPath = try File.Path("\(root.string)/subdir")
-            try await File.System.Create.Directory.create(at: subPath)
+            try File.System.Create.Directory.create(at: subPath)
 
             // Create symlink to parent (cycle)
             let linkPath = try File.Path("\(subPath.string)/parent-link")
-            try await File.System.Link.Symbolic.create(at: linkPath, pointingTo: root)
+            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: root)
 
             // Create a file so we can verify walk works
             let filePath = try File.Path("\(root.string)/file.txt")
@@ -321,43 +338,52 @@ import Testing
 
             // Walk with following symlinks - cycle detection should prevent infinite loop
             var count = 0
-            let walk = File.Directory.walk(at: root, options: .init(followSymlinks: true))
-            for try await _ in walk {
+            let walk = File.Directory.Async(io: io).walk(at: root, options: .init(followSymlinks: true))
+            let iterator = walk.makeAsyncIterator()
+            var didBreak = false
+            while let _ = try await iterator.next() {
                 count += 1
                 // Safety valve - if cycle detection fails, abort
                 if count > 100 {
                     Issue.record("Cycle detection failed - infinite loop detected")
+                    didBreak = true
                     break
                 }
+            }
+            if didBreak {
+                await iterator.terminate()
             }
 
             // Should complete without infinite loop
             #expect(count <= 10)  // Reasonable upper bound
+            await io.shutdown()
         }
 
         @Test("Walk non-existent directory fails")
         func walkNonExistent() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
             let walk = File.Directory.Async(io: io).walk(at: path)
+            let iterator = walk.makeAsyncIterator()
 
             do {
-                for try await _ in walk {
+                while let _ = try await iterator.next() {
                     Issue.record("Should not yield anything")
                 }
                 Issue.record("Should have thrown error")
             } catch {
                 // Expected - directory doesn't exist
+                await iterator.terminate()
             }
+
+            await io.shutdown()
         }
 
         @Test("Walk directory with mixed file types")
         func walkMixedTypes() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
@@ -368,18 +394,18 @@ import Testing
 
             // Create subdirectory
             let subPath = try File.Path("\(root.string)/subdir")
-            try await File.System.Create.Directory.create(at: subPath)
+            try File.System.Create.Directory.create(at: subPath)
 
             // Create symlink to file
             let linkPath = try File.Path("\(root.string)/link")
-            try await File.System.Link.Symbolic.create(at: linkPath, pointingTo: filePath)
+            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: filePath)
 
             // Create file in subdir
             let subFilePath = try File.Path("\(subPath.string)/nested.txt")
             try createFile(at: subFilePath)
 
             var paths: [String] = []
-            let walk = File.Directory.walk(at: root)
+            let walk = File.Directory.Async(io: io).walk(at: root)
             for try await path in walk {
                 if let component = path.lastComponent {
                     paths.append(component.string)
@@ -391,6 +417,7 @@ import Testing
             #expect(paths.contains("subdir"))
             #expect(paths.contains("link"))
             #expect(paths.contains("nested.txt"))
+            await io.shutdown()
         }
 
         // MARK: - Byte Stream Edge Cases
@@ -398,7 +425,6 @@ import Testing
         @Test("Stream empty file")
         func streamEmptyFile() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -412,12 +438,12 @@ import Testing
             }
 
             #expect(chunks.isEmpty)
+            await io.shutdown()
         }
 
         @Test("Stream file smaller than chunk size")
         func streamSmallFile() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -435,12 +461,12 @@ import Testing
             }
 
             #expect(allBytes == data)
+            await io.shutdown()
         }
 
         @Test("Stream file with very small chunk size")
         func streamTinyChunks() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -458,31 +484,34 @@ import Testing
 
             #expect(chunkCount == 100)
             #expect(allBytes == data)
+            await io.shutdown()
         }
 
         @Test("Stream non-existent file fails")
         func streamNonExistent() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
             let stream = File.Stream.Async(io: io).bytes(from: path)
+            let iterator = stream.makeAsyncIterator()
 
             do {
-                for try await _ in stream {
+                while let _ = try await iterator.next() {
                     Issue.record("Should not yield anything")
                 }
                 Issue.record("Should have thrown error")
             } catch {
                 // Expected - file doesn't exist
+                await iterator.terminate()
             }
+
+            await io.shutdown()
         }
 
         @Test("Break from stream early")
         func breakFromStreamEarly() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -493,15 +522,18 @@ import Testing
 
             var bytesRead = 0
             let stream = File.Stream.Async(io: io).bytes(from: path, options: .init(chunkSize: 100))
-            for try await chunk in stream {
+            let iterator = stream.makeAsyncIterator()
+            while let chunk = try await iterator.next() {
                 bytesRead += chunk.count
                 if bytesRead >= 500 {
                     break
                 }
             }
+            await iterator.terminate()
 
             #expect(bytesRead >= 500)
             #expect(bytesRead < 10000)
+            await io.shutdown()
         }
 
         // MARK: - Cancellation Edge Cases
@@ -509,7 +541,6 @@ import Testing
         @Test("Cancel during directory iteration")
         func cancelDuringIteration() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -523,9 +554,15 @@ import Testing
             let task = Task {
                 var count = 0
                 let entries = File.Directory.Async(io: io).entries(at: dir)
-                for try await _ in entries {
-                    count += 1
-                    try Task.checkCancellation()
+                let iterator = entries.makeAsyncIterator()
+                do {
+                    while let _ = try await iterator.next() {
+                        count += 1
+                        try Task.checkCancellation()
+                    }
+                } catch {
+                    await iterator.terminate()
+                    throw error
                 }
                 return count
             }
@@ -540,12 +577,13 @@ import Testing
             } catch is CancellationError {
                 // Expected
             }
+
+            await io.shutdown()
         }
 
         @Test("Cancel during walk")
         func cancelDuringWalk() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
@@ -566,9 +604,15 @@ import Testing
             let task = Task {
                 var count = 0
                 let walk = File.Directory.Async(io: io).walk(at: root)
-                for try await _ in walk {
-                    count += 1
-                    try Task.checkCancellation()
+                let iterator = walk.makeAsyncIterator()
+                do {
+                    while let _ = try await iterator.next() {
+                        count += 1
+                        try Task.checkCancellation()
+                    }
+                } catch {
+                    await iterator.terminate()
+                    throw error
                 }
                 return count
             }
@@ -582,12 +626,13 @@ import Testing
             } catch is CancellationError {
                 // Expected
             }
+
+            await io.shutdown()
         }
 
         @Test("Cancellation within batch - directory entries")
         func cancellationWithinBatch() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -602,12 +647,18 @@ import Testing
             let task = Task {
                 var count = 0
                 let entries = File.Directory.Async(io: io).entries(at: dir)
-                for try await _ in entries {
-                    count += 1
-                    // Cancel after processing 70 entries (which should be in the middle of second batch)
-                    if count == 70 {
-                        try Task.checkCancellation()
+                let iterator = entries.makeAsyncIterator()
+                do {
+                    while let _ = try await iterator.next() {
+                        count += 1
+                        // Cancel after processing 70 entries (which should be in the middle of second batch)
+                        if count == 70 {
+                            try Task.checkCancellation()
+                        }
                     }
+                } catch {
+                    await iterator.terminate()
+                    throw error
                 }
                 return count
             }
@@ -623,12 +674,13 @@ import Testing
             } catch is CancellationError {
                 // Expected - cancellation was checked and honored
             }
+
+            await io.shutdown()
         }
 
         @Test("Cancellation within batch - directory walk")
         func cancellationWithinBatchWalk() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
@@ -650,12 +702,18 @@ import Testing
             let task = Task {
                 var count = 0
                 let walk = File.Directory.Async(io: io).walk(at: root)
-                for try await _ in walk {
-                    count += 1
-                    // Cancel after 100 entries (mid-iteration)
-                    if count == 100 {
-                        try Task.checkCancellation()
+                let iterator = walk.makeAsyncIterator()
+                do {
+                    while let _ = try await iterator.next() {
+                        count += 1
+                        // Cancel after 100 entries (mid-iteration)
+                        if count == 100 {
+                            try Task.checkCancellation()
+                        }
                     }
+                } catch {
+                    await iterator.terminate()
+                    throw error
                 }
                 return count
             }
@@ -670,6 +728,8 @@ import Testing
             } catch is CancellationError {
                 // Expected
             }
+
+            await io.shutdown()
         }
 
         // MARK: - Backpressure Edge Cases
@@ -677,7 +737,6 @@ import Testing
         @Test("Backpressure respected with slow consumer")
         func backpressureRespectedSlowConsumer() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -690,24 +749,30 @@ import Testing
 
             var processedCount = 0
             let entries = File.Directory.Async(io: io).entries(at: dir)
+            let iterator = entries.makeAsyncIterator()
 
             // Consume slowly to verify producer doesn't accumulate unbounded batches
-            for try await _ in entries {
-                processedCount += 1
-                // Add delay to simulate slow consumer
-                try await Task.sleep(for: .milliseconds(1))
+            do {
+                while let _ = try await iterator.next() {
+                    processedCount += 1
+                    // Add delay to simulate slow consumer
+                    try await Task.sleep(for: .milliseconds(1))
+                }
+            } catch {
+                await iterator.terminate()
+                throw error
             }
 
             // Should process all files despite slow consumption
             #expect(processedCount == 500)
             // If backpressure wasn't working, memory would grow unboundedly
             // The AsyncThrowingChannel with 1-element buffer ensures bounded memory
+            await io.shutdown()
         }
 
         @Test("Large directory iteration completes - 1000+ files")
         func largeDirectoryIteration() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -726,12 +791,12 @@ import Testing
             }
 
             #expect(count == fileCount)
+            await io.shutdown()
         }
 
         @Test("Large walk completes - 1000+ entries")
         func largeWalkIteration() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let root = try createTempDir()
             defer { cleanupPath(root) }
@@ -759,12 +824,12 @@ import Testing
             }
 
             #expect(count == 1025)
+            await io.shutdown()
         }
 
         @Test("Directory deleted during iteration")
         func directoryDeletedDuringIteration() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let dir = try createTempDir()
             defer { cleanupPath(dir) }
@@ -778,8 +843,9 @@ import Testing
             let task = Task {
                 var count = 0
                 let entries = File.Directory.Async(io: io).entries(at: dir)
+                let iterator = entries.makeAsyncIterator()
                 do {
-                    for try await _ in entries {
+                    while let _ = try await iterator.next() {
                         count += 1
                         // Small delay to allow deletion to happen
                         try await Task.sleep(for: .milliseconds(1))
@@ -787,6 +853,7 @@ import Testing
                 } catch {
                     // May throw error if directory structure changes during iteration
                     // This is acceptable behavior
+                    await iterator.terminate()
                 }
                 return count
             }
@@ -805,6 +872,7 @@ import Testing
             // Just verify it doesn't crash or hang
             #expect(count >= 0)
             #expect(count <= 100)
+            await io.shutdown()
         }
 
         // MARK: - Handle Edge Cases
@@ -812,7 +880,6 @@ import Testing
         @Test("Async handle double close")
         func asyncHandleDoubleClose() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -827,12 +894,12 @@ import Testing
             try await handle.close()
             // Second close should be safe
             try await handle.close()
+            await io.shutdown()
         }
 
         @Test("Read from async handle after close fails")
         func readAfterClose() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -851,6 +918,7 @@ import Testing
             } catch {
                 // Expected
             }
+            await io.shutdown()
         }
 
         // MARK: - System Operation Edge Cases
@@ -858,19 +926,18 @@ import Testing
         @Test("Async exists on non-existent path")
         func asyncExistsNonExistent() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
-            let exists = await File.System.Stat.exists(at: path, io: io)
+            let exists = try await io.run { File.System.Stat.exists(at: path) }
 
             #expect(!exists)
+            await io.shutdown()
         }
 
         @Test("Async stat on symlink")
         func asyncStatSymlink() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let target = try File.Path(createTempPath() + ".target")
             let link = try File.Path(createTempPath() + ".link")
@@ -880,13 +947,14 @@ import Testing
             }
 
             try createFile(at: target, content: [1, 2, 3])
-            try await File.System.Link.Symbolic.create(at: link, pointingTo: target)
+            try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
-            let info = try await File.System.Stat.info(at: link)
+            let info = try await io.run { try File.System.Stat.info(at: link) }
 
             // stat follows symlinks
             #expect(info.type == .regular)
             #expect(info.size == 3)
+            await io.shutdown()
         }
 
         // MARK: - Concurrent Operations
@@ -894,7 +962,6 @@ import Testing
         @Test("Many concurrent file operations")
         func manyConcurrentOps() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let basePath = createTempPath()
 
@@ -922,12 +989,12 @@ import Testing
 
                 try await group.waitForAll()
             }
+            await io.shutdown()
         }
 
         @Test("Concurrent reads of same file")
         func concurrentReadsOfSameFile() async throws {
             let io = File.IO.Executor()
-            defer { Task { await io.shutdown() } }
 
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
@@ -953,6 +1020,7 @@ import Testing
                     #expect(result == data)
                 }
             }
+            await io.shutdown()
         }
 
     }

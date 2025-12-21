@@ -50,39 +50,6 @@ extension File {
     }
 }
 
-// MARK: - Error
-
-extension File.Handle {
-    /// Errors that can occur during handle operations.
-    public enum Error: Swift.Error, Equatable, Sendable {
-        case pathNotFound(File.Path)
-        case permissionDenied(File.Path)
-        case alreadyExists(File.Path)
-        case isDirectory(File.Path)
-        case invalidHandle
-        case alreadyClosed
-        case seekFailed(errno: Int32, message: String)
-        case readFailed(errno: Int32, message: String)
-        case writeFailed(errno: Int32, message: String)
-        case closeFailed(errno: Int32, message: String)
-        case openFailed(errno: Int32, message: String)
-    }
-}
-
-// MARK: - SeekOrigin
-
-extension File.Handle {
-    /// The origin for seek operations.
-    public enum SeekOrigin: Sendable {
-        /// Seek from the beginning of the file.
-        case start
-        /// Seek from the current position.
-        case current
-        /// Seek from the end of the file.
-        case end
-    }
-}
-
 // MARK: - Core API
 
 extension File.Handle {
@@ -395,7 +362,7 @@ extension File.Handle {
     @discardableResult
     public mutating func seek(
         to offset: Int64,
-        from origin: SeekOrigin = .start
+        from origin: Seek.Origin = .start
     ) throws(Error) -> Int64 {
         guard _descriptor.isValid else {
             throw .invalidHandle
@@ -486,64 +453,4 @@ extension File.Handle {
     }
 }
 
-// MARK: - CustomStringConvertible for Error
 
-extension File.Handle.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .pathNotFound(let path):
-            return "Path not found: \(path)"
-        case .permissionDenied(let path):
-            return "Permission denied: \(path)"
-        case .alreadyExists(let path):
-            return "File already exists: \(path)"
-        case .isDirectory(let path):
-            return "Is a directory: \(path)"
-        case .invalidHandle:
-            return "Invalid file handle"
-        case .alreadyClosed:
-            return "Handle already closed"
-        case .seekFailed(let errno, let message):
-            return "Seek failed: \(message) (errno=\(errno))"
-        case .readFailed(let errno, let message):
-            return "Read failed: \(message) (errno=\(errno))"
-        case .writeFailed(let errno, let message):
-            return "Write failed: \(message) (errno=\(errno))"
-        case .closeFailed(let errno, let message):
-            return "Close failed: \(message) (errno=\(errno))"
-        case .openFailed(let errno, let message):
-            return "Open failed: \(message) (errno=\(errno))"
-        }
-    }
-}
-
-// MARK: - Binary.Serializable
-
-extension File.Handle.SeekOrigin: RawRepresentable {
-    public var rawValue: UInt8 {
-        switch self {
-        case .start: return 0
-        case .current: return 1
-        case .end: return 2
-        }
-    }
-
-    public init?(rawValue: UInt8) {
-        switch rawValue {
-        case 0: self = .start
-        case 1: self = .current
-        case 2: self = .end
-        default: return nil
-        }
-    }
-}
-
-extension File.Handle.SeekOrigin: Binary.Serializable {
-    @inlinable
-    public static func serialize<Buffer: RangeReplaceableCollection>(
-        _ value: Self,
-        into buffer: inout Buffer
-    ) where Buffer.Element == UInt8 {
-        buffer.append(value.rawValue)
-    }
-}

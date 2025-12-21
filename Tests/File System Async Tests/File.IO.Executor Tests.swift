@@ -9,6 +9,7 @@ import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
+import File_System
 
 #if canImport(Foundation)
     import Foundation
@@ -69,7 +70,7 @@ import Testing
             let executor = File.IO.Executor()
             await executor.shutdown()
 
-            await #expect(throws: File.IO.ExecutorError.self) {
+            await #expect(throws: File.IO.Executor.Error.self) {
                 try await executor.run { 42 }
             }
         }

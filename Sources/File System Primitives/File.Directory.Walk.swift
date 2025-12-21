@@ -20,52 +20,6 @@ extension File.Directory {
     public enum Walk {}
 }
 
-// MARK: - Options
-
-extension File.Directory.Walk {
-    /// Options for directory traversal.
-    public struct Options: Sendable {
-        /// Maximum depth to traverse (nil for unlimited).
-        public var maxDepth: Int?
-
-        /// Whether to follow symbolic links.
-        public var followSymlinks: Bool
-
-        /// Whether to include hidden files.
-        public var includeHidden: Bool
-
-        /// Callback invoked when an entry with an undecodable name is encountered.
-        ///
-        /// Default: `.skip` (do not emit, do not descend).
-        public var onUndecodable: @Sendable (Undecodable.Context) -> Undecodable.Policy
-
-        public init(
-            maxDepth: Int? = nil,
-            followSymlinks: Bool = false,
-            includeHidden: Bool = true,
-            onUndecodable: @escaping @Sendable (Undecodable.Context) -> Undecodable.Policy = { _ in .skip }
-        ) {
-            self.maxDepth = maxDepth
-            self.followSymlinks = followSymlinks
-            self.includeHidden = includeHidden
-            self.onUndecodable = onUndecodable
-        }
-    }
-}
-
-// MARK: - Error
-
-extension File.Directory.Walk {
-    /// Errors that can occur during directory walk operations.
-    public enum Error: Swift.Error, Equatable, Sendable {
-        case pathNotFound(File.Path)
-        case permissionDenied(File.Path)
-        case notADirectory(File.Path)
-        case walkFailed(errno: Int32, message: String)
-        case undecodableEntry(parent: File.Path, name: File.Name)
-    }
-}
-
 // MARK: - Core API
 
 extension File.Directory.Walk {
@@ -160,21 +114,3 @@ extension File.Directory.Walk {
     }
 }
 
-// MARK: - CustomStringConvertible for Error
-
-extension File.Directory.Walk.Error: CustomStringConvertible {
-    public var description: String {
-        switch self {
-        case .pathNotFound(let path):
-            return "Path not found: \(path)"
-        case .permissionDenied(let path):
-            return "Permission denied: \(path)"
-        case .notADirectory(let path):
-            return "Not a directory: \(path)"
-        case .walkFailed(let errno, let message):
-            return "Walk failed: \(message) (errno=\(errno))"
-        case .undecodableEntry(let parent, let name):
-            return "Undecodable entry in \(parent): \(name.debugDescription)"
-        }
-    }
-}

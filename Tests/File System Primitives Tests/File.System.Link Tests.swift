@@ -24,6 +24,6 @@ extension File.System.Link.Test.Unit {
         _ = File.System.Link.self
         _ = File.System.Link.Hard.self
         _ = File.System.Link.Symbolic.self
-        _ = File.System.Link.ReadTarget.self
+        _ = File.System.Link.Read.Target.self
     }
 }

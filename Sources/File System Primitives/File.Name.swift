@@ -130,15 +130,15 @@ extension String {
 
     /// Creates a string from a file name using strict decoding.
     ///
-    /// Throws `File.Name.DecodeError` if the raw data contains invalid encoding,
+    /// Throws `File.Name.Decode.Error` if the raw data contains invalid encoding,
     /// allowing callers to access the raw bytes for diagnostics.
     ///
     /// - Parameter fileName: The file name to decode.
-    /// - Throws: `File.Name.DecodeError` if decoding fails.
+    /// - Throws: `File.Name.Decode.Error` if decoding fails.
     @inlinable
-    public init(validating fileName: File.Name) throws(File.Name.DecodeError) {
+    public init(validating fileName: File.Name) throws(File.Name.Decode.Error) {
         guard let decoded = String(fileName) else {
-            throw File.Name.DecodeError(name: fileName)
+            throw File.Name.Decode.Error(name: fileName)
         }
         self = decoded
     }

@@ -48,22 +48,6 @@ extension File.Path {
     }
 }
 
-// MARK: - Error
-
-extension File.Path.Component {
-    /// Errors that can occur during component construction.
-    public enum Error: Swift.Error, Equatable, Sendable {
-        /// The component string is empty.
-        case empty
-        /// The component contains a path separator.
-        case containsPathSeparator
-        /// The component contains control characters.
-        case containsControlCharacters
-        /// The component is invalid.
-        case invalid
-    }
-}
-
 // MARK: - Properties
 
 extension File.Path.Component {

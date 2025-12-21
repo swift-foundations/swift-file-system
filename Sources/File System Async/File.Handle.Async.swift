@@ -14,7 +14,7 @@ extension File.Handle {
     /// ## Architecture
     /// The actor does NOT directly own the `File.Handle`. Instead:
     /// - The primitive `File.Handle` lives in the executor's handle store
-    /// - This actor holds only a `HandleID` (Sendable token)
+    /// - This actor holds only a `Handle.ID` (Sendable token)
     /// - All operations go through `io.withHandle(id) { ... }`
     ///
     /// This design solves Swift 6's restrictions on non-Sendable, non-copyable
@@ -34,7 +34,7 @@ extension File.Handle {
     /// ```
     public actor Async {
         /// The handle ID in the executor's store.
-        private let id: File.IO.HandleID
+        private let id: File.IO.Handle.ID
 
         /// The executor that owns the handle store.
         private let io: File.IO.Executor
@@ -53,7 +53,7 @@ extension File.Handle {
         /// - Parameters:
         ///   - handle: The primitive handle (ownership transferred to executor store).
         ///   - io: The executor that will manage this handle.
-        /// - Throws: `ExecutorError.shutdownInProgress` if executor is shut down.
+        /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
         public init(_ handle: consuming File.Handle, io: File.IO.Executor) throws {
             self.path = handle.path
             self.mode = handle.mode
@@ -63,7 +63,7 @@ extension File.Handle {
 
         /// Internal initializer for when handle is already registered.
         internal init(
-            id: File.IO.HandleID,
+            id: File.IO.Handle.ID,
             path: File.Path,
             mode: File.Handle.Mode,
             io: File.IO.Executor
@@ -132,7 +132,7 @@ extension File.Handle {
                 throw File.Handle.Error.invalidHandle
             }
             // Wrap for Sendable - safe because buffer used synchronously in io.run
-            let buffer = _SendableBuffer(pointer: destination)
+            let buffer = File.Handle.Sendable.Async.Buffer(pointer: destination)
             return try await io.withHandle(id) { handle in
                 try handle.read(into: buffer.pointer)
             }
@@ -179,7 +179,7 @@ extension File.Handle {
         @discardableResult
         public func seek(
             to offset: Int64,
-            from origin: File.Handle.SeekOrigin = .start
+            from origin: File.Handle.Seek.Origin = .start
         ) async throws -> Int64 {
             guard !isClosed else {
                 throw File.Handle.Error.invalidHandle

@@ -46,8 +46,8 @@ extension File.IO {
     /// Use `registerHandle`, `withHandle`, and `destroyHandle` for handle operations.
     public actor Executor {
         private let configuration: Configuration
-        private var queue: _RingBuffer<any _Job>
-        private var capacityWaiters: [ObjectIdentifier: _WaiterState] = [:]
+        private var queue: Ring.Buffer<any Job>
+        private var capacityWaiters: [ObjectIdentifier: Waiter.State] = [:]
         private var isStarted: Bool = false
         private var isShutdown: Bool = false
         private var inFlightCount: Int = 0
@@ -62,7 +62,7 @@ extension File.IO {
         private var dispatchQueues: [DispatchQueue] = []
 
         // Handle store for stateful file handle management
-        private let handleStore: HandleStore
+        private let handleStore: Handle.Store
 
         // Whether this is the shared default executor (does not require shutdown)
         private let isDefaultExecutor: Bool
@@ -95,16 +95,16 @@ extension File.IO {
         /// when no longer needed using `shutdown()`.
         public init(_ configuration: Configuration = .init()) {
             self.configuration = configuration
-            self.queue = _RingBuffer(capacity: min(configuration.queueLimit, 1024))
-            self.handleStore = HandleStore()
+            self.queue = Ring.Buffer(capacity: min(configuration.queueLimit, 1024))
+            self.handleStore = Handle.Store()
             self.isDefaultExecutor = false
         }
 
         /// Private initializer for the default executor.
         private init(default configuration: Configuration) {
             self.configuration = configuration
-            self.queue = _RingBuffer(capacity: min(configuration.queueLimit, 1024))
-            self.handleStore = HandleStore()
+            self.queue = Ring.Buffer(capacity: min(configuration.queueLimit, 1024))
+            self.handleStore = Handle.Store()
             self.isDefaultExecutor = true
         }
 
@@ -115,7 +115,7 @@ extension File.IO {
         /// - Cancellation after enqueue → **job still runs** (mutation occurs),
         ///   but caller receives `CancellationError` instead of result
         ///
-        /// - Throws: `ExecutorError.shutdownInProgress` if executor is shut down
+        /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down
         /// - Throws: `CancellationError` if task is cancelled
         public func run<T: Sendable>(
             _ operation: @Sendable @escaping () throws -> T
@@ -125,7 +125,7 @@ extension File.IO {
 
             // Reject if shutdown
             guard !isShutdown else {
-                throw ExecutorError.shutdownInProgress
+                throw Executor.Error.shutdownInProgress
             }
 
             // Lazy start workers on first call
@@ -136,12 +136,12 @@ extension File.IO {
 
             // Wait for queue space if full (cancellation-safe, single-owner)
             while queue.count >= configuration.queueLimit {
-                let waiterBox = _WaiterBox()
+                let waiterBox = Waiter.Box()
 
                 await withTaskCancellationHandler {
                     await withCheckedContinuation {
                         (continuation: CheckedContinuation<Void, Never>) in
-                        let waiterState = _WaiterState(continuation)
+                        let waiterState = Waiter.State(continuation)
                         waiterBox.state = waiterState
                         capacityWaiters[ObjectIdentifier(waiterState)] = waiterState
                     }
@@ -159,19 +159,19 @@ extension File.IO {
 
                 // Re-check shutdown after waking
                 guard !isShutdown else {
-                    throw ExecutorError.shutdownInProgress
+                    throw Executor.Error.shutdownInProgress
                 }
             }
 
             // Track whether caller was cancelled during execution
-            let wasCancelled = _CancellationBox()
+            let wasCancelled = Cancellation.Box()
 
             // Enqueue and wait for result
             // Note: Once enqueued, job completes regardless of caller cancellation
             let result = try await withTaskCancellationHandler {
                 try await withCheckedThrowingContinuation {
-                    (continuation: CheckedContinuation<T, any Error>) in
-                    let job = _JobBox(operation: operation, continuation: continuation)
+                    (continuation: CheckedContinuation<T, any Swift.Error>) in
+                    let job = JobBox(operation: operation, continuation: continuation)
                     queue.enqueue(job)
                     // Signal workers that a job is available
                     jobSignal?.yield()
@@ -210,7 +210,7 @@ extension File.IO {
             // 1. Fail all queued jobs atomically
             let pendingJobs = queue.drainAll()
             for job in pendingJobs {
-                job.fail(with: ExecutorError.shutdownInProgress)
+                job.fail(with: Executor.Error.shutdownInProgress)
             }
 
             // 2. Resume all capacity waiters (single-owner: skip if already cancelled)
@@ -246,8 +246,8 @@ extension File.IO {
         ///
         /// - Parameter handle: The handle to register (ownership transferred).
         /// - Returns: A unique handle ID for future operations.
-        /// - Throws: `ExecutorError.shutdownInProgress` if executor is shut down.
-        public nonisolated func registerHandle(_ handle: consuming File.Handle) throws -> HandleID {
+        /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
+        public nonisolated func registerHandle(_ handle: consuming File.Handle) throws -> Handle.ID {
             try handleStore.register(handle)
         }
 
@@ -260,11 +260,11 @@ extension File.IO {
         ///   - id: The handle ID.
         ///   - body: Closure receiving inout access to the handle.
         /// - Returns: The result of the closure.
-        /// - Throws: `HandleError.scopeMismatch` if ID belongs to different executor.
-        /// - Throws: `HandleError.invalidHandleID` if handle was already destroyed.
+        /// - Throws: `Handle.Error.scopeMismatch` if ID belongs to different executor.
+        /// - Throws: `Handle.Error.invalidID` if handle was already destroyed.
         /// - Throws: Any error from the closure.
         public func withHandle<T: Sendable>(
-            _ id: HandleID,
+            _ id: Handle.ID,
             _ body: @Sendable @escaping (inout File.Handle) throws -> T
         ) async throws -> T {
             try await run {
@@ -275,10 +275,10 @@ extension File.IO {
         /// Close and remove a handle.
         ///
         /// - Parameter id: The handle ID.
-        /// - Throws: `HandleError.scopeMismatch` if ID belongs to different executor.
+        /// - Throws: `Handle.Error.scopeMismatch` if ID belongs to different executor.
         /// - Throws: Close errors from the underlying handle.
         /// - Note: Idempotent for handles that were already destroyed.
-        public func destroyHandle(_ id: HandleID) async throws {
+        public func destroyHandle(_ id: Handle.ID) async throws {
             try await run {
                 try self.handleStore.destroy(id)
             }
@@ -288,7 +288,7 @@ extension File.IO {
         ///
         /// - Parameter id: The handle ID to check.
         /// - Returns: `true` if the handle exists and is open.
-        public nonisolated func isHandleValid(_ id: HandleID) -> Bool {
+        public nonisolated func isHandleValid(_ id: Handle.ID) -> Bool {
             handleStore.isValid(id)
         }
 
@@ -366,7 +366,7 @@ extension File.IO {
             }
         }
 
-        private func dequeueJob() -> (any _Job)? {
+        private func dequeueJob() -> (any Job)? {
             guard let job = queue.dequeue() else { return nil }
 
             inFlightCount += 1
@@ -390,7 +390,7 @@ extension File.IO {
         }
 
         /// Execute job outside actor isolation.
-        private nonisolated func executeJob(_ job: any _Job) async {
+        private nonisolated func executeJob(_ job: any Job) async {
             job.run()
         }
     }

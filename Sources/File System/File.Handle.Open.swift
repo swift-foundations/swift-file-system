@@ -38,7 +38,7 @@ extension File.Handle {
     ///     try handle.write(bytes)
     /// }
     /// ```
-    public struct Open: Sendable {
+    public struct Open: Swift.Sendable {
         /// The path to open.
         public let path: File.Path
         /// Options for opening.
