@@ -32,6 +32,91 @@ extension File.Directory.Contents {
     }
 }
 
+// MARK: - Iterator (POSIX)
+
+#if !os(Windows)
+    extension File.Directory.Contents {
+        /// Iterator for directory names (POSIX).
+        ///
+        /// Yields `File.Name` values one-by-one without constructing paths.
+        /// Use this for performance-critical iteration where you only need names.
+        public struct Iterator: IteratorProtocol {
+            internal let _dir: UnsafeMutablePointer<DIR>
+            internal var _finished: Bool = false
+
+            internal init(dir: UnsafeMutablePointer<DIR>) {
+                self._dir = dir
+            }
+
+            public mutating func next() -> File.Name? {
+                guard !_finished else { return nil }
+
+                // Set errno before readdir to distinguish end-of-stream from error
+                errno = 0
+                guard let entry = readdir(_dir) else {
+                    _finished = true
+                    // errno != 0 means error, but IteratorProtocol.next() can't throw
+                    // Caller should use iteratorError(for:) after iteration if needed
+                    return nil
+                }
+
+                let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
+                if name.isDotOrDotDot {
+                    return next()  // Skip . and ..
+                }
+                return name
+            }
+        }
+
+        /// Creates an iterator for directory names.
+        ///
+        /// The caller is responsible for closing the handle via `closeIterator(_:)`.
+        ///
+        /// - Parameter path: The path to the directory.
+        /// - Returns: A tuple of the iterator and an opaque handle for cleanup.
+        /// - Throws: `Error` if the directory cannot be opened.
+        public static func makeIterator(
+            at path: File.Path
+        ) throws(Error) -> (iterator: Iterator, handle: OpaquePointer) {
+            var statBuf = stat()
+            guard stat(path.string, &statBuf) == 0 else {
+                throw _mapErrno(errno, path: path)
+            }
+            guard (statBuf.st_mode & S_IFMT) == S_IFDIR else {
+                throw .notADirectory(path)
+            }
+
+            guard let dir = opendir(path.string) else {
+                throw _mapErrno(errno, path: path)
+            }
+
+            return (Iterator(dir: dir), OpaquePointer(dir))
+        }
+
+        /// Closes an iterator handle.
+        ///
+        /// Must be called after iteration is complete to release system resources.
+        ///
+        /// - Parameter handle: The opaque handle returned by `makeIterator(at:)`.
+        public static func closeIterator(_ handle: OpaquePointer) {
+            closedir(UnsafeMutablePointer(handle))
+        }
+
+        /// Checks if there was an error during iteration.
+        ///
+        /// Call this after the iterator returns `nil` to check if iteration
+        /// ended due to an error or end-of-stream.
+        ///
+        /// - Returns: An error if `errno` was set, `nil` otherwise.
+        public static func iteratorError(for path: File.Path) -> Error? {
+            if errno != 0 {
+                return _mapErrno(errno, path: path)
+            }
+            return nil
+        }
+    }
+#endif
+
 // MARK: - Core API
 
 extension File.Directory.Contents {
@@ -47,7 +132,6 @@ extension File.Directory.Contents {
             return try _listPOSIX(at: path)
         #endif
     }
-
 }
 
 // MARK: - POSIX Implementation
@@ -74,27 +158,18 @@ extension File.Directory.Contents {
 
             var entries: [File.Directory.Entry] = []
 
+            // Set errno before loop to detect errors
+            errno = 0
             while let entry = readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
                 // Skip . and .. using raw byte comparison (no decoding)
                 if name.isDotOrDotDot {
+                    errno = 0  // Reset for next iteration
                     continue
                 }
 
-                // Construct location - strict, using File.Path.Component for validation
-                let location: File.Directory.Entry.Location
-                if let nameString = String(name),
-                   let component = try? File.Path.Component(nameString) {
-                    // Valid UTF-8 AND valid path component (no separators, etc.)
-                    let entryPath = File.Path(path, appending: component)
-                    location = .absolute(parent: path, path: entryPath)
-                } else {
-                    // Either decoding failed OR contains invalid characters (separators)
-                    location = .relative(parent: path)
-                }
-
-                // Determine type
+                // Determine type from d_type (path computed lazily via Entry.path())
                 let entryType: File.Directory.Entry.Kind
                 #if canImport(Darwin)
                     switch Int32(entry.pointee.d_type) {
@@ -109,7 +184,6 @@ extension File.Directory.Contents {
                     }
                 #else
                     // Linux/Glibc - trust d_type when available, fallback to lstat only for DT_UNKNOWN
-                    // This avoids N syscalls for N files, massive perf improvement for large directories
                     let dtype = Int32(entry.pointee.d_type)
                     if dtype != Int32(DT_UNKNOWN) {
                         switch dtype {
@@ -124,8 +198,13 @@ extension File.Directory.Contents {
                         }
                     } else {
                         // Filesystem doesn't support d_type (e.g., some network filesystems)
-                        // Fall back to lstat for this entry (need path for this)
-                        if let entryPath = location.path {
+                        // Fall back to lstat for this entry
+                        // Construct path on-demand for lstat only
+                        if let entryPath = File.Directory.Entry(
+                            name: name,
+                            parent: path,
+                            type: .other
+                        ).pathIfValid {
                             var entryStat = stat()
                             if lstat(entryPath.string, &entryStat) == 0 {
                                 switch entryStat.st_mode & S_IFMT {
@@ -148,7 +227,15 @@ extension File.Directory.Contents {
                     }
                 #endif
 
-                entries.append(File.Directory.Entry(name: name, location: location, type: entryType))
+                entries.append(File.Directory.Entry(name: name, parent: path, type: entryType))
+
+                // Reset errno for next iteration
+                errno = 0
+            }
+
+            // Check for error after loop
+            if errno != 0 {
+                throw _mapErrno(errno, path: path)
             }
 
             return entries
@@ -216,19 +303,7 @@ extension File.Directory.Contents {
                     continue
                 }
 
-                // Construct location - strict, using File.Path.Component for validation
-                let location: File.Directory.Entry.Location
-                if let nameString = String(name),
-                   let component = try? File.Path.Component(nameString) {
-                    // Valid UTF-16 AND valid path component (no separators, etc.)
-                    let entryPath = File.Path(path, appending: component)
-                    location = .absolute(parent: path, path: entryPath)
-                } else {
-                    // Either decoding failed OR contains invalid characters (separators)
-                    location = .relative(parent: path)
-                }
-
-                // Determine type
+                // Determine type (path computed lazily via Entry.path())
                 let entryType: File.Directory.Entry.Kind
                 if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
@@ -240,7 +315,7 @@ extension File.Directory.Contents {
                     entryType = .file
                 }
 
-                entries.append(File.Directory.Entry(name: name, location: location, type: entryType))
+                entries.append(File.Directory.Entry(name: name, parent: path, type: entryType))
             } while _ok(FindNextFileW(handle, &findData))
 
             let lastError = GetLastError()

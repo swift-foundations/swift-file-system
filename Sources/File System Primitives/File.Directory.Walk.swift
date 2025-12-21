@@ -124,9 +124,8 @@ extension File.Directory.Walk {
                 continue
             }
 
-            // Check if undecodable BEFORE appending
-            switch entry.location {
-            case .absolute(_, let entryPath):
+            // Try to get the path - if successful, entry is decodable
+            if let entryPath = entry.pathIfValid {
                 // Decodable - emit and recurse if directory
                 entries.append(entry)
 
@@ -140,11 +139,10 @@ extension File.Directory.Walk {
                         try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
                     }
                 }
-
-            case .relative(let parent):
+            } else {
                 // Undecodable - invoke callback to decide
                 let context = Undecodable.Context(
-                    parent: parent,
+                    parent: entry.parent,
                     name: entry.name,
                     type: entry.type,
                     depth: depth
@@ -153,9 +151,9 @@ extension File.Directory.Walk {
                 case .skip:
                     continue  // Do not emit, do not descend
                 case .emit:
-                    entries.append(entry)  // Emit with relative location, do not descend
+                    entries.append(entry)  // Emit entry, do not descend
                 case .stopAndThrow:
-                    throw .undecodableEntry(parent: parent, name: entry.name)
+                    throw .undecodableEntry(parent: entry.parent, name: entry.name)
                 }
             }
         }

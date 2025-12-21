@@ -1,5 +1,5 @@
 // Concatenated export of: File System Primitives
-// Generated: Sat Dec 20 21:08:09 CET 2025
+// Generated: Sun Dec 21 11:59:20 CET 2025
 
 
 // ============================================================
@@ -734,13 +734,22 @@ extension File.Directory.Contents {
             while let entry = readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                let entryPath = File.Path(path, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(path, appending: component)
+                    location = .absolute(parent: path, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: path)
+                }
 
                 // Determine type
                 let entryType: File.Directory.Entry.Kind
@@ -772,26 +781,31 @@ extension File.Directory.Contents {
                         }
                     } else {
                         // Filesystem doesn't support d_type (e.g., some network filesystems)
-                        // Fall back to lstat for this entry
-                        var entryStat = stat()
-                        if lstat(entryPath.string, &entryStat) == 0 {
-                            switch entryStat.st_mode & S_IFMT {
-                            case S_IFREG:
-                                entryType = .file
-                            case S_IFDIR:
-                                entryType = .directory
-                            case S_IFLNK:
-                                entryType = .symbolicLink
-                            default:
+                        // Fall back to lstat for this entry (need path for this)
+                        if let entryPath = location.path {
+                            var entryStat = stat()
+                            if lstat(entryPath.string, &entryStat) == 0 {
+                                switch entryStat.st_mode & S_IFMT {
+                                case S_IFREG:
+                                    entryType = .file
+                                case S_IFDIR:
+                                    entryType = .directory
+                                case S_IFLNK:
+                                    entryType = .symbolicLink
+                                default:
+                                    entryType = .other
+                                }
+                            } else {
                                 entryType = .other
                             }
                         } else {
+                            // Cannot lstat undecodable path - mark as other
                             entryType = .other
                         }
                     }
                 #endif
 
-                entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
+                entries.append(File.Directory.Entry(name: name, location: location, type: entryType))
             }
 
             return entries
@@ -854,25 +868,36 @@ extension File.Directory.Contents {
             repeat {
                 let name = File.Name(windowsDirectoryEntryName: findData.cFileName)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                let entryPath = File.Path(path, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-16 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(path, appending: component)
+                    location = .absolute(parent: path, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: path)
+                }
 
                 // Determine type
                 let entryType: File.Directory.Entry.Kind
                 if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                    entryType = .symbolicLink
+                    // Conservative classification: reparse points include junctions,
+                    // mount points, OneDrive placeholders, etc. - not just symlinks
+                    entryType = .other
                 } else {
                     entryType = .file
                 }
 
-                entries.append(File.Directory.Entry(name: name, path: entryPath, type: entryType))
+                entries.append(File.Directory.Entry(name: name, location: location, type: entryType))
             } while _ok(FindNextFileW(handle, &findData))
 
             let lastError = GetLastError()
@@ -909,6 +934,68 @@ extension File.Directory.Contents.Error: CustomStringConvertible {
             return "Not a directory: \(path)"
         case .readFailed(let errno, let message):
             return "Read failed: \(message) (errno=\(errno))"
+        }
+    }
+}
+
+// ============================================================
+// MARK: - File.Directory.Entry.Location.swift
+// ============================================================
+
+//
+//  File.Directory.Entry.Location.swift
+//  swift-file-system
+//
+//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
+//
+
+extension File.Directory.Entry {
+    /// The location of a directory entry.
+    ///
+    /// Both cases store parent explicitly - no computed fallback needed.
+    /// This ensures the parent is always available regardless of whether
+    /// the name could be decoded to a String.
+    ///
+    /// ## Cases
+    /// - `.absolute(parent:path:)`: Name was successfully decoded to String.
+    ///   Both parent and full path are stored explicitly.
+    /// - `.relative(parent:)`: Name could not be decoded (invalid UTF-8/UTF-16
+    ///   or contains invalid path characters). Only parent is available;
+    ///   use `Entry.name` for raw filesystem operations.
+    public enum Location: Sendable, Equatable {
+        /// Absolute path - name was successfully decoded to String.
+        ///
+        /// Parent is stored explicitly (no fallback computation).
+        case absolute(parent: File.Path, path: File.Path)
+
+        /// Relative reference - name could not be decoded.
+        ///
+        /// Use the parent path and raw `Entry.name` for operations.
+        case relative(parent: File.Path)
+    }
+}
+
+// MARK: - Convenience Accessors
+
+extension File.Directory.Entry.Location {
+    /// The parent directory path. Always available.
+    @inlinable
+    public var parent: File.Path {
+        switch self {
+        case .absolute(let parent, _): return parent
+        case .relative(let parent): return parent
+        }
+    }
+
+    /// The absolute path, if the name was decodable.
+    ///
+    /// Returns `nil` for `.relative` locations where the name could not
+    /// be decoded to a valid String.
+    @inlinable
+    public var path: File.Path? {
+        switch self {
+        case .absolute(_, let path): return path
+        case .relative: return nil
         }
     }
 }
@@ -996,8 +1083,11 @@ extension File.Directory {
         /// potentially lossy) string representation.
         public let name: File.Name
 
-        /// The full path to the entry.
-        public let path: File.Path
+        /// The location of the entry.
+        ///
+        /// Contains either an absolute path (if name was decodable) or a relative
+        /// reference to the parent directory (if name could not be decoded).
+        public let location: Location
 
         /// The type of the entry.
         public let type: Kind
@@ -1005,15 +1095,29 @@ extension File.Directory {
         /// Creates a directory entry.
         ///
         /// - Parameters:
-        ///   - name: The entry's filename (not the full path).
-        ///   - path: The full path to the entry.
+        ///   - name: The entry's filename (raw bytes preserved).
+        ///   - location: The location of the entry (absolute or relative).
         ///   - type: The type of entry (file, directory, symlink, etc.).
-        public init(name: File.Name, path: File.Path, type: Kind) {
+        public init(name: File.Name, location: Location, type: Kind) {
             self.name = name
-            self.path = path
+            self.location = location
             self.type = type
         }
     }
+}
+
+// MARK: - Convenience Accessors
+
+extension File.Directory.Entry {
+    /// The absolute path, if the name was decodable.
+    ///
+    /// Returns `nil` if the entry has a `.relative` location (name could not be decoded).
+    @inlinable
+    public var path: File.Path? { location.path }
+
+    /// The parent directory path. Always available.
+    @inlinable
+    public var parent: File.Path { location.parent }
 }
 
 // ============================================================
@@ -1185,14 +1289,22 @@ extension File.Directory.Iterator {
             while let entry = readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw bytes for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type - use lstat fallback for DT_UNKNOWN
                 let entryType: File.Directory.Entry.Kind
@@ -1204,27 +1316,32 @@ extension File.Directory.Iterator {
                 case DT_LNK:
                     entryType = .symbolicLink
                 case DT_UNKNOWN:
-                    // Fallback to lstat for unknown type
-                    var entryStat = stat()
-                    if lstat(entryPath.string, &entryStat) == 0 {
-                        switch entryStat.st_mode & S_IFMT {
-                        case S_IFREG:
-                            entryType = .file
-                        case S_IFDIR:
-                            entryType = .directory
-                        case S_IFLNK:
-                            entryType = .symbolicLink
-                        default:
+                    // Fallback to lstat for unknown type (need path for this)
+                    if let path = location.path {
+                        var entryStat = stat()
+                        if lstat(path.string, &entryStat) == 0 {
+                            switch entryStat.st_mode & S_IFMT {
+                            case S_IFREG:
+                                entryType = .file
+                            case S_IFDIR:
+                                entryType = .directory
+                            case S_IFLNK:
+                                entryType = .symbolicLink
+                            default:
+                                entryType = .other
+                            }
+                        } else {
                             entryType = .other
                         }
                     } else {
+                        // Cannot lstat undecodable path - mark as other
                         entryType = .other
                     }
                 default:
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
 
             return nil
@@ -1281,34 +1398,47 @@ extension File.Directory.Iterator {
             while let entry = Glibc.readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw bytes for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
-                var entryStat = stat()
-                if Glibc.lstat(entryPath.string, &entryStat) == 0 {
-                    switch entryStat.st_mode & S_IFMT {
-                    case S_IFREG:
-                        entryType = .file
-                    case S_IFDIR:
-                        entryType = .directory
-                    case S_IFLNK:
-                        entryType = .symbolicLink
-                    default:
+                if let path = location.path {
+                    var entryStat = stat()
+                    if Glibc.lstat(path.string, &entryStat) == 0 {
+                        switch entryStat.st_mode & S_IFMT {
+                        case S_IFREG:
+                            entryType = .file
+                        case S_IFDIR:
+                            entryType = .directory
+                        case S_IFLNK:
+                            entryType = .symbolicLink
+                        default:
+                            entryType = .other
+                        }
+                    } else {
                         entryType = .other
                     }
                 } else {
+                    // Cannot lstat undecodable path - mark as other
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
 
             return nil
@@ -1366,34 +1496,47 @@ extension File.Directory.Iterator {
             while let entry = Musl.readdir(dir) {
                 let name = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw bytes for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-8 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type via lstat (Musl doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
-                var entryStat = stat()
-                if Musl.lstat(entryPath.string, &entryStat) == 0 {
-                    switch entryStat.st_mode & S_IFMT {
-                    case S_IFREG:
-                        entryType = .file
-                    case S_IFDIR:
-                        entryType = .directory
-                    case S_IFLNK:
-                        entryType = .symbolicLink
-                    default:
+                if let path = location.path {
+                    var entryStat = stat()
+                    if Musl.lstat(path.string, &entryStat) == 0 {
+                        switch entryStat.st_mode & S_IFMT {
+                        case S_IFREG:
+                            entryType = .file
+                        case S_IFDIR:
+                            entryType = .directory
+                        case S_IFLNK:
+                            entryType = .symbolicLink
+                        default:
+                            entryType = .other
+                        }
+                    } else {
                         entryType = .other
                     }
                 } else {
+                    // Cannot lstat undecodable path - mark as other
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
 
             return nil
@@ -1484,27 +1627,37 @@ extension File.Directory.Iterator {
                     }
                 }
 
-                // Skip . and .. - uses snapshot name, advancement already done
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if name.isDotOrDotDot {
                     if !_hasMore { return nil }
                     continue
                 }
 
-                // Build full path using lossy string (File.Path is String-backed)
-                // File.Name preserves raw code units for diagnostics
-                let entryPath = File.Path(_basePath, appending: String(lossy: name))
+                // Construct location - strict, using File.Path.Component for validation
+                let location: File.Directory.Entry.Location
+                if let nameString = String(name),
+                   let component = try? File.Path.Component(nameString) {
+                    // Valid UTF-16 AND valid path component (no separators, etc.)
+                    let entryPath = File.Path(_basePath, appending: component)
+                    location = .absolute(parent: _basePath, path: entryPath)
+                } else {
+                    // Either decoding failed OR contains invalid characters (separators)
+                    location = .relative(parent: _basePath)
+                }
 
                 // Determine type from SNAPSHOT attributes (not current _findData)
                 let entryType: File.Directory.Entry.Kind
                 if (attributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
                 } else if (attributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                    entryType = .symbolicLink
+                    // Conservative classification: reparse points include junctions,
+                    // mount points, OneDrive placeholders, etc. - not just symlinks
+                    entryType = .other
                 } else {
                     entryType = .file
                 }
 
-                return File.Directory.Entry(name: name, path: entryPath, type: entryType)
+                return File.Directory.Entry(name: name, location: location, type: entryType)
             }
         }
 
@@ -1536,6 +1689,130 @@ extension File.Directory.Iterator.Error: CustomStringConvertible {
             return "Read failed: \(message) (errno=\(errno))"
         }
     }
+}
+
+// ============================================================
+// MARK: - File.Directory.Walk.Undecodable.Context.swift
+// ============================================================
+
+//
+//  File.Directory.Walk.Undecodable.Context.swift
+//  swift-file-system
+//
+//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
+//
+
+extension File.Directory.Walk.Undecodable {
+    /// Context provided when an undecodable entry is encountered during walk.
+    ///
+    /// This context allows the callback to make an informed decision about
+    /// how to handle the entry, and provides access to raw name bytes for
+    /// diagnostics or logging.
+    public struct Context: Sendable {
+        /// The parent directory (which is decodable).
+        public let parent: File.Path
+
+        /// The undecodable entry name (raw bytes/code units preserved).
+        ///
+        /// Use `name.debugDescription` for logging or `String(lossy: name)`
+        /// for a best-effort string representation.
+        public let name: File.Name
+
+        /// The type of the entry.
+        public let type: File.Directory.Entry.Kind
+
+        /// Current depth in the walk (0 = root directory).
+        public let depth: Int
+
+        /// Creates an undecodable context.
+        ///
+        /// - Parameters:
+        ///   - parent: The parent directory path.
+        ///   - name: The undecodable entry name.
+        ///   - type: The type of the entry.
+        ///   - depth: Current depth in the walk.
+        public init(
+            parent: File.Path,
+            name: File.Name,
+            type: File.Directory.Entry.Kind,
+            depth: Int
+        ) {
+            self.parent = parent
+            self.name = name
+            self.type = type
+            self.depth = depth
+        }
+    }
+}
+
+// ============================================================
+// MARK: - File.Directory.Walk.Undecodable.Policy.swift
+// ============================================================
+
+//
+//  File.Directory.Walk.Undecodable.Policy.swift
+//  swift-file-system
+//
+//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
+//
+
+extension File.Directory.Walk.Undecodable {
+    /// Policy for handling entries with undecodable names during directory walk.
+    ///
+    /// ## Semantics
+    /// - `.skip`: Do NOT emit entry, do NOT descend into directory
+    /// - `.emit`: Emit entry (with `.relative` location), do NOT descend into directory
+    /// - `.stopAndThrow`: Stop the walk and throw an error with context
+    ///
+    /// ## Usage
+    /// ```swift
+    /// let options = File.Directory.Walk.Options(
+    ///     onUndecodable: { context in
+    ///         print("Found undecodable entry: \(context.name.debugDescription)")
+    ///         return .emit  // Include it but don't descend
+    ///     }
+    /// )
+    /// ```
+    public enum Policy: Sendable {
+        /// Skip entirely - do not emit, do not descend.
+        ///
+        /// The entry will not appear in walk results. If it's a directory,
+        /// its contents will not be traversed.
+        case skip
+
+        /// Emit the entry with relative location, but do not descend.
+        ///
+        /// The entry will appear in walk results with a `.relative(parent:)` location.
+        /// If it's a directory, its contents will not be traversed (since we cannot
+        /// construct a valid path to descend into).
+        case emit
+
+        /// Stop the walk and throw an error.
+        ///
+        /// The walk will terminate immediately with an `undecodableEntry` error
+        /// containing the parent path and raw name.
+        case stopAndThrow
+    }
+}
+
+// ============================================================
+// MARK: - File.Directory.Walk.Undecodable.swift
+// ============================================================
+
+//
+//  File.Directory.Walk.Undecodable.swift
+//  swift-file-system
+//
+//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
+//
+
+extension File.Directory.Walk {
+    /// Namespace for handling entries with undecodable names during directory walk.
+    ///
+    /// When traversing directories, some filenames may contain byte sequences
+    /// that cannot be decoded to valid UTF-8 (POSIX) or UTF-16 (Windows).
+    /// This namespace provides types to handle such entries.
+    public enum Undecodable {}
 }
 
 // ============================================================
@@ -1578,14 +1855,21 @@ extension File.Directory.Walk {
         /// Whether to include hidden files.
         public var includeHidden: Bool
 
+        /// Callback invoked when an entry with an undecodable name is encountered.
+        ///
+        /// Default: `.skip` (do not emit, do not descend).
+        public var onUndecodable: @Sendable (Undecodable.Context) -> Undecodable.Policy
+
         public init(
             maxDepth: Int? = nil,
             followSymlinks: Bool = false,
-            includeHidden: Bool = true
+            includeHidden: Bool = true,
+            onUndecodable: @escaping @Sendable (Undecodable.Context) -> Undecodable.Policy = { _ in .skip }
         ) {
             self.maxDepth = maxDepth
             self.followSymlinks = followSymlinks
             self.includeHidden = includeHidden
+            self.onUndecodable = onUndecodable
         }
     }
 }
@@ -1599,6 +1883,7 @@ extension File.Directory.Walk {
         case permissionDenied(File.Path)
         case notADirectory(File.Path)
         case walkFailed(errno: Int32, message: String)
+        case undecodableEntry(parent: File.Path, name: File.Name)
     }
 }
 
@@ -1655,28 +1940,43 @@ extension File.Directory.Walk {
         }
 
         for entry in contents {
-            // Filter hidden files if needed
-            // Check raw bytes directly - 0x2E is ASCII/UTF-16 for '.'
-            #if os(Windows)
-                let isHidden = entry.name.rawCodeUnits.first == 0x002E
-            #else
-                let isHidden = entry.name.rawBytes.first == 0x2E
-            #endif
-            if !options.includeHidden && isHidden {
+            // Filter hidden files using semantic predicate (no raw access)
+            if !options.includeHidden && entry.name.isHiddenByDotPrefix {
                 continue
             }
 
-            entries.append(entry)
+            // Check if undecodable BEFORE appending
+            switch entry.location {
+            case .absolute(_, let entryPath):
+                // Decodable - emit and recurse if directory
+                entries.append(entry)
 
-            // Recurse into directories
-            if entry.type == .directory {
-                try _walk(at: entry.path, options: options, depth: depth + 1, entries: &entries)
-            } else if entry.type == .symbolicLink && options.followSymlinks {
-                // Check if symlink points to a directory (follows symlink via stat)
-                if let info = try? File.System.Stat.info(at: entry.path),
-                    info.type == .directory
-                {
-                    try _walk(at: entry.path, options: options, depth: depth + 1, entries: &entries)
+                if entry.type == .directory {
+                    try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
+                } else if entry.type == .symbolicLink && options.followSymlinks {
+                    // Check if symlink points to a directory (follows symlink via stat)
+                    if let info = try? File.System.Stat.info(at: entryPath),
+                        info.type == .directory
+                    {
+                        try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
+                    }
+                }
+
+            case .relative(let parent):
+                // Undecodable - invoke callback to decide
+                let context = Undecodable.Context(
+                    parent: parent,
+                    name: entry.name,
+                    type: entry.type,
+                    depth: depth
+                )
+                switch options.onUndecodable(context) {
+                case .skip:
+                    continue  // Do not emit, do not descend
+                case .emit:
+                    entries.append(entry)  // Emit with relative location, do not descend
+                case .stopAndThrow:
+                    throw .undecodableEntry(parent: parent, name: entry.name)
                 }
             }
         }
@@ -1696,6 +1996,8 @@ extension File.Directory.Walk.Error: CustomStringConvertible {
             return "Not a directory: \(path)"
         case .walkFailed(let errno, let message):
             return "Walk failed: \(message) (errno=\(errno))"
+        case .undecodableEntry(let parent, let name):
+            return "Undecodable entry in \(parent): \(name.debugDescription)"
         }
     }
 }
@@ -2418,6 +2720,67 @@ extension File.Handle.SeekOrigin: Binary.Serializable {
 }
 
 // ============================================================
+// MARK: - File.Name.DecodeError.swift
+// ============================================================
+
+//
+//  File.Name.DecodeError.swift
+//  swift-file-system
+//
+//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
+//
+
+import RFC_4648
+
+extension File.Name {
+    /// Error thrown when decoding a `File.Name` to `String` fails.
+    ///
+    /// This error preserves the undecodable name so callers can:
+    /// - Report diagnostics with raw byte information
+    /// - Retry with lossy decoding if appropriate
+    /// - Handle the entry using raw filesystem operations
+    public struct DecodeError: Swift.Error, Sendable, Equatable {
+        /// The undecodable name (raw bytes/code units preserved).
+        public let name: File.Name
+
+        /// Creates a decode error for the given undecodable name.
+        public init(name: File.Name) {
+            self.name = name
+        }
+    }
+}
+
+// MARK: - CustomStringConvertible
+
+extension File.Name.DecodeError: CustomStringConvertible {
+    public var description: String {
+        "File.Name.DecodeError: \(name.debugDescription)"
+    }
+}
+
+// MARK: - Debug Representation
+
+extension File.Name.DecodeError {
+    /// Debug description of the raw bytes (hex encoded).
+    ///
+    /// Useful for logging and diagnostics when a filename cannot be decoded.
+    public var debugRawBytes: String {
+        #if os(Windows)
+            // Convert UInt16 code units to bytes (big-endian) for hex encoding
+            var bytes: [UInt8] = []
+            bytes.reserveCapacity(name._rawCodeUnits.count * 2)
+            for codeUnit in name._rawCodeUnits {
+                bytes.append(UInt8(codeUnit >> 8))
+                bytes.append(UInt8(codeUnit & 0xFF))
+            }
+            return bytes.hex.encoded(uppercase: true)
+        #else
+            return name._rawBytes.hex.encoded(uppercase: true)
+        #endif
+    }
+}
+
+// ============================================================
 // MARK: - File.Name.swift
 // ============================================================
 
@@ -2462,26 +2825,53 @@ extension File {
     /// ```
     public struct Name: Sendable, Equatable, Hashable {
         #if os(Windows)
-            /// Raw UTF-16 code units from the filesystem.
-            public let rawCodeUnits: [UInt16]
+            /// Raw UTF-16 code units from the filesystem (internal storage).
+            @usableFromInline
+            internal let _rawCodeUnits: [UInt16]
         #else
-            /// Raw bytes from the filesystem (typically UTF-8, but not guaranteed).
-            public let rawBytes: [UInt8]
+            /// Raw bytes from the filesystem (internal storage).
+            @usableFromInline
+            internal let _rawBytes: [UInt8]
         #endif
 
         #if os(Windows)
             /// Creates a name from raw UTF-16 code units.
             @usableFromInline
             internal init(rawCodeUnits: [UInt16]) {
-                self.rawCodeUnits = rawCodeUnits
+                self._rawCodeUnits = rawCodeUnits
             }
         #else
             /// Creates a name from raw bytes.
             @usableFromInline
             internal init(rawBytes: [UInt8]) {
-                self.rawBytes = rawBytes
+                self._rawBytes = rawBytes
             }
         #endif
+
+        // MARK: - Semantic Predicates
+
+        /// True if this name is "." or ".." (dot entries to skip during iteration).
+        @usableFromInline
+        internal var isDotOrDotDot: Bool {
+            #if os(Windows)
+                _rawCodeUnits == [0x002E] || _rawCodeUnits == [0x002E, 0x002E]
+            #else
+                _rawBytes == [0x2E] || _rawBytes == [0x2E, 0x2E]
+            #endif
+        }
+
+        /// True if this name starts with '.' (hidden file convention on Unix-like systems).
+        ///
+        /// This is a semantic predicate - Walk uses this to filter hidden files
+        /// without accessing raw storage directly.
+        @inlinable
+        public var isHiddenByDotPrefix: Bool {
+            #if os(Windows)
+                _rawCodeUnits.first == 0x002E
+            #else
+                _rawBytes.first == 0x2E
+            #endif
+        }
     }
 }
 
@@ -2497,12 +2887,12 @@ extension String {
     @inlinable
     public init?(_ fileName: File.Name) {
         #if os(Windows)
-            guard let decoded = String._strictUTF16Decode(fileName.rawCodeUnits) else {
+            guard let decoded = String._strictUTF16Decode(fileName._rawCodeUnits) else {
                 return nil
             }
             self = decoded
         #else
-            guard let decoded = String._strictUTF8Decode(fileName.rawBytes) else {
+            guard let decoded = String._strictUTF8Decode(fileName._rawBytes) else {
                 return nil
             }
             self = decoded
@@ -2517,10 +2907,25 @@ extension String {
     @inlinable
     public init(lossy fileName: File.Name) {
         #if os(Windows)
-            self = Swift.String(decoding: fileName.rawCodeUnits, as: UTF16.self)
+            self = Swift.String(decoding: fileName._rawCodeUnits, as: UTF16.self)
         #else
-            self = Swift.String(decoding: fileName.rawBytes, as: UTF8.self)
+            self = Swift.String(decoding: fileName._rawBytes, as: UTF8.self)
         #endif
+    }
+
+    /// Creates a string from a file name using strict decoding.
+    ///
+    /// Throws `File.Name.DecodeError` if the raw data contains invalid encoding,
+    /// allowing callers to access the raw bytes for diagnostics.
+    ///
+    /// - Parameter fileName: The file name to decode.
+    /// - Throws: `File.Name.DecodeError` if decoding fails.
+    @inlinable
+    public init(validating fileName: File.Name) throws(File.Name.DecodeError) {
+        guard let decoded = String(fileName) else {
+            throw File.Name.DecodeError(name: fileName)
+        }
+        self = decoded
     }
 }
 
@@ -2592,15 +2997,15 @@ extension File.Name: CustomDebugStringConvertible {
             #if os(Windows)
                 // Convert UInt16 code units to bytes (big-endian) for hex encoding
                 var bytes: [UInt8] = []
-                bytes.reserveCapacity(rawCodeUnits.count * 2)
-                for codeUnit in rawCodeUnits {
+                bytes.reserveCapacity(_rawCodeUnits.count * 2)
+                for codeUnit in _rawCodeUnits {
                     bytes.append(UInt8(codeUnit >> 8))
                     bytes.append(UInt8(codeUnit & 0xFF))
                 }
                 let hex = bytes.hex.encoded(uppercase: true)
                 return "File.Name(invalidUTF16: [\(hex)])"
             #else
-                let hex = rawBytes.hex.encoded(uppercase: true)
+                let hex = _rawBytes.hex.encoded(uppercase: true)
                 return "File.Name(invalidUTF8: [\(hex)])"
             #endif
         }
@@ -2660,22 +3065,10 @@ extension File.Name {
     #endif
 }
 
-// MARK: - Comparison with String
-
-extension File.Name {
-    /// Compares the name to a string.
-    ///
-    /// Returns `true` if the raw bytes/code units decode to exactly the given string.
-    @inlinable
-    public static func == (lhs: File.Name, rhs: String) -> Bool {
-        String(lhs) == rhs
-    }
-
-    @inlinable
-    public static func == (lhs: String, rhs: File.Name) -> Bool {
-        String(rhs) == lhs
-    }
-}
+// REMOVED: == (File.Name, String) operators
+// Under strict policy, undecodable names would silently return false,
+// encouraging string-like usage. Use String(name) explicitly when
+// comparison is needed.
 
 // ============================================================
 // MARK: - File.Path.Component.swift
@@ -2715,7 +3108,9 @@ extension File.Path {
             guard !string.isEmpty else {
                 throw .empty
             }
-            guard !string.contains("/") else {
+            // Check BOTH separators on all platforms
+            // POSIX forbids `/` in filenames, Windows forbids both `/` and `\`
+            guard !string.contains("/") && !string.contains("\\") else {
                 throw .containsPathSeparator
             }
             if string.utf8.contains(where: \.ascii.isControl) {
@@ -4016,10 +4411,16 @@ extension File.System.Create {
 
             // Iterate through entries
             while let entry = readdir(dir) {
-                let name = String(posixDirectoryEntryName: entry.pointee.d_name)
+                let fileName = File.Name(posixDirectoryEntryName: entry.pointee.d_name)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if fileName.isDotOrDotDot {
+                    continue
+                }
+
+                // For delete, we need a valid string path
+                // If name can't be decoded, skip (can't safely delete what we can't name)
+                guard let name = String(fileName) else {
                     continue
                 }
 
@@ -4142,10 +4543,16 @@ extension File.System.Create {
             defer { FindClose(handle) }
 
             repeat {
-                let name = String(windowsDirectoryEntryName: findData.cFileName)
+                let fileName = File.Name(windowsDirectoryEntryName: findData.cFileName)
 
-                // Skip . and ..
-                if name == "." || name == ".." {
+                // Skip . and .. using raw byte comparison (no decoding)
+                if fileName.isDotOrDotDot {
+                    continue
+                }
+
+                // For delete, we need a valid string path
+                // If name can't be decoded, skip (can't safely delete what we can't name)
+                guard let name = String(fileName) else {
                     continue
                 }
 
@@ -5094,27 +5501,30 @@ extension File.System.Metadata.Ownership {
     }
 }
 
-// MARK: - Get/Set API
+// MARK: - Init from Path
 
 extension File.System.Metadata.Ownership {
-    /// Gets the ownership of a file.
+    /// Creates ownership by reading from a file path.
     ///
     /// - Parameter path: The path to the file.
-    /// - Returns: The file ownership.
     /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
-    public static func get(at path: File.Path) throws(Error) -> Self {
+    public init(at path: File.Path) throws(Error) {
         #if os(Windows)
             // Windows doesn't expose uid/gid
-            return Self(uid: 0, gid: 0)
+            self.init(uid: 0, gid: 0)
         #else
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
-                throw _mapErrno(errno, path: path)
+                throw Self._mapErrno(errno, path: path)
             }
-            return Self(uid: statBuf.st_uid, gid: statBuf.st_gid)
+            self.init(uid: statBuf.st_uid, gid: statBuf.st_gid)
         #endif
     }
+}
 
+// MARK: - Set API
+
+extension File.System.Metadata.Ownership {
     /// Sets the ownership of a file.
     ///
     /// Requires appropriate privileges (usually root).
@@ -5267,27 +5677,30 @@ extension File.System.Metadata.Permissions {
     }
 }
 
-// MARK: - Get/Set API
+// MARK: - Init from Path
 
 extension File.System.Metadata.Permissions {
-    /// Gets the permissions of a file.
+    /// Creates permissions by reading from a file path.
     ///
     /// - Parameter path: The path to the file.
-    /// - Returns: The file permissions.
     /// - Throws: `File.System.Metadata.Permissions.Error` on failure.
-    public static func get(at path: File.Path) throws(Error) -> Self {
+    public init(at path: File.Path) throws(Error) {
         #if os(Windows)
             // Windows doesn't have POSIX permissions
-            return .defaultFile
+            self = .defaultFile
         #else
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
-                throw _mapErrno(errno, path: path)
+                throw Self._mapErrno(errno, path: path)
             }
-            return Self(rawValue: UInt16(statBuf.st_mode & 0o7777))
+            self.init(rawValue: UInt16(statBuf.st_mode & 0o7777))
         #endif
     }
+}
 
+// MARK: - Set API
+
+extension File.System.Metadata.Permissions {
     /// Sets the permissions of a file.
     ///
     /// - Parameters:
@@ -5420,22 +5833,25 @@ extension File.System.Metadata.Timestamps {
     }
 }
 
-// MARK: - Get/Set API
+// MARK: - Init from Path
 
 extension File.System.Metadata.Timestamps {
-    /// Gets the timestamps of a file.
+    /// Creates timestamps by reading from a file path.
     ///
     /// - Parameter path: The path to the file.
-    /// - Returns: The file timestamps.
     /// - Throws: `File.System.Metadata.Timestamps.Error` on failure.
-    public static func get(at path: File.Path) throws(Error) -> Self {
+    public init(at path: File.Path) throws(Error) {
         #if os(Windows)
-            return try _getWindows(path)
+            self = try Self._getWindows(path)
         #else
-            return try _getPOSIX(path)
+            self = try Self._getPOSIX(path)
         #endif
     }
+}
 
+// MARK: - Set API
+
+extension File.System.Metadata.Timestamps {
     /// Sets the timestamps of a file.
     ///
     /// Only access and modification times can be set. Change time is
@@ -9717,6 +10133,14 @@ extension File.System.Write.Atomic {
                 if !didClose { _ = close(fd) }
             }
 
+            // Preallocate if expectedSize is provided (macOS/iOS only)
+            // This can improve write throughput by up to 2x for large files
+            #if canImport(Darwin)
+            if let expectedSize = options.expectedSize, expectedSize > 0 {
+                preallocate(fd: fd, size: expectedSize)
+            }
+            #endif
+
             // Write all chunks - internally convert to Span for zero-copy writes
             for chunk in chunks {
                 try chunk.withUnsafeBufferPointer { buffer throws(File.System.Write.Streaming.Error) in
@@ -9884,6 +10308,40 @@ extension File.System.Write.Atomic {
 
             return fd
         }
+
+        #if canImport(Darwin)
+        /// Preallocates disk space for a file using fcntl(F_PREALLOCATE).
+        ///
+        /// This reduces APFS metadata updates during sequential writes, improving
+        /// throughput by up to 2x for large files. Preallocation is best-effort
+        /// reservation only - failures are silently ignored since writes will
+        /// still succeed (just slower).
+        ///
+        /// Note: This does NOT change the file's EOF. The actual file length is
+        /// determined by the bytes written. This preserves the semantic that
+        /// "file length equals bytes successfully written".
+        ///
+        /// - Parameters:
+        ///   - fd: File descriptor to preallocate for
+        ///   - size: Expected total file size in bytes
+        private static func preallocate(fd: Int32, size: Int64) {
+            // Try contiguous allocation first (best performance)
+            var fstore = fstore_t(
+                fst_flags: UInt32(F_ALLOCATECONTIG),
+                fst_posmode: Int32(F_PEOFPOSMODE),
+                fst_offset: 0,
+                fst_length: off_t(size),
+                fst_bytesalloc: 0
+            )
+
+            if fcntl(fd, F_PREALLOCATE, &fstore) == -1 {
+                // Contiguous failed, try non-contiguous
+                fstore.fst_flags = UInt32(F_ALLOCATEALL)
+                _ = fcntl(fd, F_PREALLOCATE, &fstore)
+            }
+            // Do NOT ftruncate - let actual writes determine file length
+        }
+        #endif
 
         /// Writes all bytes to fd, handling partial writes and EINTR.
         private static func writeAll(
@@ -10080,21 +10538,16 @@ extension File.System.Write.Atomic {
 
             #elseif os(Linux)
                 // Linux: Try renameat2 with RENAME_NOREPLACE, fallback to link+unlink
+                var outErrno: Int32 = 0
                 let rc = tempPath.withCString { fromPtr in
                     destPath.withCString { toPtr in
-                        atomicfilewrite_renameat2(
-                            AT_FDCWD,
-                            fromPtr,
-                            AT_FDCWD,
-                            toPtr,
-                            UInt32(ATOMICFILEWRITE_RENAME_NOREPLACE)
-                        )
+                        atomicfilewrite_renameat2_noreplace(fromPtr, toPtr, &outErrno)
                     }
                 }
 
                 if rc == 0 { return }
 
-                let e = errno
+                let e = outErrno
                 switch e {
                 case EEXIST:
                     throw .destinationExists(path: File.Path(__unchecked: (), destPath))
@@ -10385,7 +10838,7 @@ extension File.System.Write.Atomic {
             _ chunks: Chunks,
             to resolvedPath: String,
             parent: String,
-            options: File.System.Write.Streaming.AtomicOptions
+            options: File.System.Write.Streaming.Atomic.Options
         ) throws(File.System.Write.Streaming.Error)
         where Chunks.Element == [UInt8] {
 
@@ -10460,7 +10913,7 @@ extension File.System.Write.Atomic {
         private static func writeDirect<Chunks: Sequence>(
             _ chunks: Chunks,
             to resolvedPath: String,
-            options: File.System.Write.Streaming.DirectOptions
+            options: File.System.Write.Streaming.Direct.Options
         ) throws(File.System.Write.Streaming.Error)
         where Chunks.Element == [UInt8] {
 
@@ -11089,12 +11542,27 @@ extension File.System.Write.Streaming.Direct {
         /// Controls durability guarantees.
         public var durability: File.System.Write.Streaming.Durability
 
+        /// Expected total size in bytes. When provided on macOS/iOS, enables
+        /// preallocation via `fcntl(F_PREALLOCATE)` which can significantly
+        /// improve write throughput for large files (up to 2x faster).
+        ///
+        /// ## Tradeoffs
+        /// - **Pro**: Reduces APFS metadata updates during sequential writes
+        /// - **Con**: Changes ENOSPC behavior - fails upfront if space unavailable
+        /// - **Con**: Preallocates even if actual write is smaller
+        ///
+        /// Only used when total size is known upfront (e.g., bulk writes).
+        /// Ignored for streaming writes where total size is unknown.
+        public var expectedSize: Int64?
+
         public init(
             strategy: Strategy = .truncate,
-            durability: File.System.Write.Streaming.Durability = .full
+            durability: File.System.Write.Streaming.Durability = .full,
+            expectedSize: Int64? = nil
         ) {
             self.strategy = strategy
             self.durability = durability
+            self.expectedSize = expectedSize
         }
     }
 }

@@ -108,3 +108,70 @@ extension File.Path.Component: ExpressibleByStringLiteral {
         }
     }
 }
+
+// MARK: - Byte-Level Initialization (POSIX)
+
+#if !os(Windows)
+    extension File.Path.Component {
+        /// Creates a validated component from raw UTF-8 bytes.
+        ///
+        /// POSIX semantics: only rejects `/` (0x2F) and `NUL` (0x00).
+        /// Backslash and control characters are allowed on POSIX systems.
+        ///
+        /// - Parameter bytes: The UTF-8 encoded component bytes.
+        /// - Throws: `Error` if the bytes are empty, contain forbidden characters,
+        ///           or cannot be decoded as valid UTF-8.
+        @inlinable
+        public init<Bytes: Sequence>(utf8 bytes: Bytes) throws(Error)
+        where Bytes.Element == UInt8 {
+            // Collect bytes while checking for forbidden chars
+            var collected: [UInt8] = []
+            for byte in bytes {
+                // POSIX: only / (0x2F) and NUL (0x00) are forbidden
+                if byte == 0x2F || byte == 0x00 {
+                    throw .containsPathSeparator
+                }
+                collected.append(byte)
+            }
+
+            guard !collected.isEmpty else { throw .empty }
+
+            // Convert to String for FilePath.Component bridge
+            guard let string = String._strictUTF8Decode(collected),
+                let component = FilePath.Component(string)
+            else {
+                throw .invalid
+            }
+            self._component = component
+        }
+
+        /// Creates a validated component from an UnsafeBufferPointer of UTF-8 bytes.
+        ///
+        /// POSIX semantics: only rejects `/` (0x2F) and `NUL` (0x00).
+        /// This overload avoids intermediate allocation when the buffer is already available.
+        ///
+        /// - Parameter buffer: The UTF-8 encoded component bytes.
+        /// - Throws: `Error` if the buffer is empty, contains forbidden characters,
+        ///           or cannot be decoded as valid UTF-8.
+        @inlinable
+        public init(utf8 buffer: UnsafeBufferPointer<UInt8>) throws(Error) {
+            guard !buffer.isEmpty else { throw .empty }
+
+            // POSIX: only / (0x2F) and NUL (0x00) are forbidden
+            for byte in buffer {
+                if byte == 0x2F || byte == 0x00 {
+                    throw .containsPathSeparator
+                }
+            }
+
+            // Convert to String for FilePath.Component bridge
+            // Array allocation is unavoidable here because FilePath.Component requires String
+            guard let string = String._strictUTF8Decode(Array(buffer)),
+                let component = FilePath.Component(string)
+            else {
+                throw .invalid
+            }
+            self._component = component
+        }
+    }
+#endif

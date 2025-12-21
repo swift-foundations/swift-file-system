@@ -35,7 +35,7 @@ import TestingPerformance
         /// Tests executor overhead with pre-created executor.
         /// Startup latency test intentionally creates executor inside timed region.
         @Suite(.serialized)
-        final class `Executor Performance` {
+        final class `Executor Performance`: @unchecked Sendable {
             let executor: File.IO.Executor
             let statFilePath: File.Path
             var statFd: Int32 = -1
@@ -173,9 +173,9 @@ import TestingPerformance
             func handleRegistrationDestruction() async throws {
                 // File and executor from fixture
                 for _ in 0..<20 {
-                    let handleId = try await executor.run {
-                        let handle = try File.Handle.open(self.filePath, mode: .read)
-                        return try self.executor.registerHandle(handle)
+                    let handleId = try await executor.run { [path = self.filePath, executor = self.executor] in
+                        let handle = try File.Handle.open(path, mode: .read)
+                        return try executor.registerHandle(handle)
                     }
                     try await executor.destroyHandle(handleId)
                 }
@@ -183,9 +183,9 @@ import TestingPerformance
 
             @Test("withHandle access pattern", .timed(iterations: 20, warmup: 3))
             func withHandleAccess() async throws {
-                let handleId = try await executor.run {
-                    let handle = try File.Handle.open(self.filePath, mode: .read)
-                    return try self.executor.registerHandle(handle)
+                let handleId = try await executor.run { [path = self.filePath, executor = self.executor] in
+                    let handle = try File.Handle.open(path, mode: .read)
+                    return try executor.registerHandle(handle)
                 }
 
                 // 50 withHandle accesses
@@ -321,20 +321,23 @@ import TestingPerformance
                     let tempDir = try File.Path("/tmp")
                 #endif
 
-                // Create 1MB file
-                self.file1MB = File.Path(tempDir, appending: "perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin")
+                // Initialize all paths first (before any closures)
+                let path1MB = File.Path(tempDir, appending: "perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin")
+                let path5MB = File.Path(tempDir, appending: "perf_stream_5mb_\(Int.random(in: 0..<Int.max)).bin")
+                self.file1MB = path1MB
+                self.file5MB = path5MB
+
+                // Now create files using local variables (not self)
                 let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
                 try oneMB.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: file1MB)
+                    try File.System.Write.Atomic.write(span, to: path1MB)
                 }
 
-                // Create 5MB file for early termination test
-                self.file5MB = File.Path(tempDir, appending: "perf_stream_5mb_\(Int.random(in: 0..<Int.max)).bin")
                 let fiveMB = [UInt8](repeating: 0xEF, count: 5_000_000)
                 try fiveMB.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: file5MB)
+                    try File.System.Write.Atomic.write(span, to: path5MB)
                 }
             }
 
@@ -402,25 +405,28 @@ import TestingPerformance
                     let tempDir = try File.Path("/tmp")
                 #endif
 
-                // Create file for stat testing
-                self.statFile = File.Path(tempDir, appending: "perf_async_stat_\(Int.random(in: 0..<Int.max)).txt")
+                // Initialize all paths first (before any closures)
+                let pathStatFile = File.Path(tempDir, appending: "perf_async_stat_\(Int.random(in: 0..<Int.max)).txt")
+                let pathCopySource = File.Path(tempDir, appending: "perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin")
+                let pathCopyDestDir = File.Path(tempDir, appending: "perf_async_copy_dest_\(Int.random(in: 0..<Int.max))")
+                self.statFile = pathStatFile
+                self.copySource = pathCopySource
+                self.copyDestDir = pathCopyDestDir
+
+                // Now create files using local variables (not self)
                 let statData = [UInt8](repeating: 0x00, count: 1000)
                 try statData.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: statFile)
+                    try File.System.Write.Atomic.write(span, to: pathStatFile)
                 }
 
-                // Create 1MB file for copy testing
-                self.copySource = File.Path(tempDir, appending: "perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin")
                 let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)
                 try oneMB.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: copySource)
+                    try File.System.Write.Atomic.write(span, to: pathCopySource)
                 }
 
-                // Create directory for copy destinations
-                self.copyDestDir = File.Path(tempDir, appending: "perf_async_copy_dest_\(Int.random(in: 0..<Int.max))")
-                try File.System.Create.Directory.create(at: copyDestDir)
+                try await File.System.Create.Directory.create(at: pathCopyDestDir)
             }
 
             deinit {
@@ -454,7 +460,7 @@ import TestingPerformance
 
         /// Tests concurrent operations with pre-created files and executor.
         @Suite(.serialized)
-        final class `Concurrency Stress` {
+        final class `Concurrency Stress`: @unchecked Sendable {
             let executor: File.IO.Executor
             let testDir: File.Path
             let filePaths: [File.Path]
@@ -470,7 +476,7 @@ import TestingPerformance
 
                 // Create test directory with 10 files, 100KB each
                 self.testDir = File.Path(tempDir, appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))")
-                try File.System.Create.Directory.create(at: testDir)
+                try await File.System.Create.Directory.create(at: testDir)
 
                 let fileData = [UInt8](repeating: 0x55, count: 100_000)
                 let writeOptions = File.System.Write.Atomic.Options(durability: .none)
@@ -566,20 +572,23 @@ import TestingPerformance
                     let tempDir = try File.Path("/tmp")
                 #endif
 
-                // Create small file for handle tests
-                self.testFile = File.Path(tempDir, appending: "perf_mem_handle_\(Int.random(in: 0..<Int.max)).txt")
+                // Initialize all paths first (before any closures)
+                let pathTestFile = File.Path(tempDir, appending: "perf_mem_handle_\(Int.random(in: 0..<Int.max)).txt")
+                let pathStreamFile = File.Path(tempDir, appending: "perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin")
+                self.testFile = pathTestFile
+                self.streamFile = pathStreamFile
+
+                // Now create files using local variables (not self)
                 let smallData = [UInt8](repeating: 0x00, count: 100)
                 try smallData.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: testFile)
+                    try File.System.Write.Atomic.write(span, to: pathTestFile)
                 }
 
-                // Create 1MB file for streaming test
-                self.streamFile = File.Path(tempDir, appending: "perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin")
                 let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
                 try oneMB.withUnsafeBufferPointer { buffer in
                     let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: streamFile)
+                    try File.System.Write.Atomic.write(span, to: pathStreamFile)
                 }
             }
 
@@ -616,9 +625,9 @@ import TestingPerformance
             func handleStoreCleanup() async throws {
                 // Use pre-created file from fixture
                 for _ in 0..<50 {
-                    let handleId = try await executor.run {
-                        let handle = try File.Handle.open(self.testFile, mode: .read)
-                        return try self.executor.registerHandle(handle)
+                    let handleId = try await executor.run { [testFile = self.testFile, executor = self.executor] in
+                        let handle = try File.Handle.open(testFile, mode: .read)
+                        return try executor.registerHandle(handle)
                     }
                     try await executor.destroyHandle(handleId)
                 }

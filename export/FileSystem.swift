@@ -1,5 +1,5 @@
 // Concatenated export of: File System
-// Generated: Sat Dec 20 21:08:10 CET 2025
+// Generated: Sun Dec 21 11:59:20 CET 2025
 
 
 // ============================================================
@@ -572,7 +572,7 @@ extension File.Directory {
     public func files() throws -> [File] {
         try contents()
             .filter { $0.type == .file }
-            .map { File($0.path) }
+            .compactMap { $0.path.map { File($0) } }
     }
 
     /// Returns all files in the directory.
@@ -581,7 +581,7 @@ extension File.Directory {
     public func files() async throws -> [File] {
         try await contents()
             .filter { $0.type == .file }
-            .map { File($0.path) }
+            .compactMap { $0.path.map { File($0) } }
     }
 
     /// Returns all subdirectories in the directory.
@@ -591,7 +591,7 @@ extension File.Directory {
     public func subdirectories() throws -> [File.Directory] {
         try contents()
             .filter { $0.type == .directory }
-            .map { File.Directory($0.path) }
+            .compactMap { $0.path.map { File.Directory($0) } }
     }
 
     /// Returns all subdirectories in the directory.
@@ -600,7 +600,7 @@ extension File.Directory {
     public func subdirectories() async throws -> [File.Directory] {
         try await contents()
             .filter { $0.type == .directory }
-            .map { File.Directory($0.path) }
+            .compactMap { $0.path.map { File.Directory($0) } }
     }
 
     /// Returns whether the directory is empty.
@@ -647,7 +647,7 @@ extension File.Directory {
     ) throws -> [File] {
         try walk(options: options)
             .filter { $0.type == .file }
-            .map { File($0.path) }
+            .compactMap { $0.path.map { File($0) } }
     }
 
     /// Recursively walks the directory tree and returns all files.
@@ -658,7 +658,7 @@ extension File.Directory {
     ) async throws -> [File] {
         try await walk(options: options)
             .filter { $0.type == .file }
-            .map { File($0.path) }
+            .compactMap { $0.path.map { File($0) } }
     }
 
     /// Recursively walks the directory tree and returns all subdirectories.
@@ -671,7 +671,7 @@ extension File.Directory {
     ) throws -> [File.Directory] {
         try walk(options: options)
             .filter { $0.type == .directory }
-            .map { File.Directory($0.path) }
+            .compactMap { $0.path.map { File.Directory($0) } }
     }
 
     /// Recursively walks the directory tree and returns all subdirectories.
@@ -682,7 +682,7 @@ extension File.Directory {
     ) async throws -> [File.Directory] {
         try await walk(options: options)
             .filter { $0.type == .directory }
-            .map { File.Directory($0.path) }
+            .compactMap { $0.path.map { File.Directory($0) } }
     }
 }
 

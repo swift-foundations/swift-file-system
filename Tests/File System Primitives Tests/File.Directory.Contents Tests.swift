@@ -159,7 +159,7 @@ extension File.Directory.Contents.Test.Unit {
         
         let entry = entries[0]
         #expect(String(entry.name) == "test.txt")
-        #expect(entry.path?.string.hasSuffix("/test.txt") == true)
+        #expect(entry.pathIfValid?.string.hasSuffix("/test.txt") == true)
     }
     
     // MARK: - Error Cases

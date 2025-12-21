@@ -194,7 +194,7 @@ extension File.Directory.Async.WalkSequence {
                     // Process batch entries
                     for entry in batch {
                         // Skip entries with undecodable names (no valid path)
-                        guard let entryPath = entry.path else {
+                        guard let entryPath = entry.pathIfValid else {
                             continue
                         }
 
