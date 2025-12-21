@@ -7,6 +7,9 @@
 
 extension File.Directory {
     /// A directory entry representing a file or subdirectory.
+    ///
+    /// Stores the raw file name and parent path. The full path is computed
+    /// lazily on demand via `path()` to avoid per-entry allocation overhead.
     public struct Entry: Sendable {
         /// The name of the entry.
         ///
@@ -15,11 +18,8 @@ extension File.Directory {
         /// potentially lossy) string representation.
         public let name: File.Name
 
-        /// The location of the entry.
-        ///
-        /// Contains either an absolute path (if name was decodable) or a relative
-        /// reference to the parent directory (if name could not be decoded).
-        public let location: Location
+        /// The parent directory path.
+        public let parent: File.Path
 
         /// The type of the entry.
         public let type: Kind
@@ -28,26 +28,45 @@ extension File.Directory {
         ///
         /// - Parameters:
         ///   - name: The entry's filename (raw bytes preserved).
-        ///   - location: The location of the entry (absolute or relative).
+        ///   - parent: The parent directory path.
         ///   - type: The type of entry (file, directory, symlink, etc.).
-        public init(name: File.Name, location: Location, type: Kind) {
+        public init(name: File.Name, parent: File.Path, type: Kind) {
             self.name = name
-            self.location = location
+            self.parent = parent
             self.type = type
         }
     }
 }
 
-// MARK: - Convenience Accessors
+// MARK: - Path Computation
 
 extension File.Directory.Entry {
-    /// The absolute path, if the name was decodable.
+    /// The absolute path, computed on demand.
     ///
-    /// Returns `nil` if the entry has a `.relative` location (name could not be decoded).
+    /// Throws if the name cannot be decoded as valid UTF-8 or contains
+    /// forbidden path characters.
+    ///
+    /// - Returns: The full path to this entry.
+    /// - Throws: `File.Path.Component.Error` if the name is invalid.
     @inlinable
-    public var path: File.Path? { location.path }
+    public func path() throws(File.Path.Component.Error) -> File.Path {
+        #if os(Windows)
+            guard let nameString = String(name) else {
+                throw .invalid
+            }
+            let component = try File.Path.Component(nameString)
+        #else
+            // Use direct byte access for typed throws compatibility
+            let component = try File.Path.Component(utf8: name._rawBytes)
+        #endif
+        return File.Path(parent, appending: component)
+    }
 
-    /// The parent directory path. Always available.
+    /// The absolute path, or nil if invalid.
+    ///
+    /// Use `path()` for the throwing version with error details.
     @inlinable
-    public var parent: File.Path { location.parent }
+    public var pathIfValid: File.Path? {
+        try? path()
+    }
 }

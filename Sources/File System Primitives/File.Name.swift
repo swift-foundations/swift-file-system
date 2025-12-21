@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 20/12/2025.
 //
 
+import Binary
 import RFC_4648
 
 #if canImport(Darwin)
@@ -39,13 +40,13 @@ extension File {
     /// ```
     public struct Name: Sendable, Equatable, Hashable {
         #if os(Windows)
-            /// Raw UTF-16 code units from the filesystem (internal storage).
+            /// Raw UTF-16 code units from the filesystem.
             @usableFromInline
-            internal let _rawCodeUnits: [UInt16]
+            package let _rawCodeUnits: [UInt16]
         #else
-            /// Raw bytes from the filesystem (internal storage).
+            /// Raw bytes from the filesystem.
             @usableFromInline
-            internal let _rawBytes: [UInt8]
+            package let _rawBytes: [UInt8]
         #endif
 
         #if os(Windows)
@@ -149,7 +150,7 @@ extension String {
     #if !os(Windows)
         /// Strictly decodes UTF-8 bytes, returning `nil` on any invalid sequence.
         @usableFromInline
-        internal static func _strictUTF8Decode(_ bytes: [UInt8]) -> String? {
+        package static func _strictUTF8Decode(_ bytes: [UInt8]) -> String? {
             var utf8 = UTF8()
             var iterator = bytes.makeIterator()
             var scalars: [Unicode.Scalar] = []
@@ -283,3 +284,70 @@ extension File.Name {
 // Under strict policy, undecodable names would silently return false,
 // encouraging string-like usage. Use String(name) explicitly when
 // comparison is needed.
+
+// MARK: - Zero-Copy Byte Access
+
+extension File.Name {
+    #if !os(Windows)
+        /// Zero-copy access to raw UTF-8 bytes (POSIX only).
+        ///
+        /// Use this for performance-critical iteration paths.
+        /// The bytes remain valid only for the duration of the closure.
+        @inlinable
+        public func withUnsafeUTF8Bytes<R>(
+            _ body: (UnsafeBufferPointer<UInt8>) throws -> R
+        ) rethrows -> R {
+            try _rawBytes.withUnsafeBufferPointer(body)
+        }
+    #endif
+
+    #if os(Windows)
+        /// Zero-copy access to raw UTF-16 code units (Windows only).
+        ///
+        /// Use this for performance-critical iteration paths.
+        /// The code units remain valid only for the duration of the closure.
+        @inlinable
+        public func withUnsafeCodeUnits<R>(
+            _ body: (UnsafeBufferPointer<UInt16>) throws -> R
+        ) rethrows -> R {
+            try _rawCodeUnits.withUnsafeBufferPointer(body)
+        }
+
+        /// Access as UTF-8 bytes (allocates temporary buffer).
+        ///
+        /// For zero-copy access on Windows, use `withUnsafeCodeUnits` instead.
+        /// This method is provided for cross-platform code that needs UTF-8.
+        @inlinable
+        public func withUTF8Bytes<R>(
+            _ body: ([UInt8]) throws -> R
+        ) rethrows -> R {
+            var utf8Bytes: [UInt8] = []
+            utf8Bytes.reserveCapacity(_rawCodeUnits.count * 3)  // worst case UTF-8 expansion
+            for scalar in String(decoding: _rawCodeUnits, as: UTF16.self).unicodeScalars {
+                UTF8.encode(scalar) { utf8Bytes.append($0) }
+            }
+            return try body(utf8Bytes)
+        }
+    #endif
+}
+
+// MARK: - Binary.Serializable
+
+extension File.Name: Binary.Serializable {
+    /// Serializes as UTF-8 bytes (cross-platform stable format).
+    ///
+    /// - POSIX: Zero-copy append of raw bytes
+    /// - Windows: Allocates during serialization (UTF-16 → UTF-8 conversion)
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ value: Self, into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        #if os(Windows)
+            for scalar in String(decoding: value._rawCodeUnits, as: UTF16.self).unicodeScalars {
+                UTF8.encode(scalar) { buffer.append($0) }
+            }
+        #else
+            buffer.append(contentsOf: value._rawBytes)
+        #endif
+    }
+}

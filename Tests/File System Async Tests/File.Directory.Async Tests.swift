@@ -366,7 +366,7 @@ extension File.Directory.Async.Test.Unit {
             }
 
             #expect(foundEntry != nil)
-            #expect(foundEntry?.path?.string == dir.string + "/test.txt")
+            #expect(foundEntry?.pathIfValid?.string == dir.string + "/test.txt")
         }
     }
 

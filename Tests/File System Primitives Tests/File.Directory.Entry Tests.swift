@@ -18,27 +18,25 @@ extension File.Directory.Entry.Test.Unit {
     @Test("init with all properties")
     func initWithAllProperties() throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/testfile.txt")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("testfile.txt"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .file
         )
 
         #expect(String(entry.name) == "testfile.txt")
-        #expect(entry.path == path)
+        #expect(try entry.path().string == "/tmp/testfile.txt")
         #expect(entry.type == .file)
     }
 
     @Test("init with directory type")
     func initWithDirectoryType() throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/mydir")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("mydir"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .directory
         )
 
@@ -49,11 +47,10 @@ extension File.Directory.Entry.Test.Unit {
     @Test("init with symbolic link type")
     func initWithSymbolicLinkType() throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/mylink")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("mylink"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .symbolicLink
         )
 
@@ -64,11 +61,10 @@ extension File.Directory.Entry.Test.Unit {
     @Test("init with other type")
     func initWithOtherType() throws {
         let parent = try File.Path("/dev")
-        let path = try File.Path("/dev/null")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("null"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .other
         )
 
@@ -76,55 +72,45 @@ extension File.Directory.Entry.Test.Unit {
         #expect(entry.type == .other)
     }
 
-    @Test("name property is independent of path")
-    func namePropertyIndependent() throws {
+    @Test("path is computed from parent and name")
+    func pathComputedFromParentAndName() throws {
         let parent = try File.Path("/usr/local/bin")
-        let path = try File.Path("/usr/local/bin/test")
-        let name = File.Name(rawBytes: [UInt8].ascii.unchecked("custom_name"))
+        let name = File.Name(rawBytes: [UInt8].ascii.unchecked("test"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .file
         )
 
-        // name is explicitly set, not derived from path
-        #expect(String(entry.name) == "custom_name")
-        #expect(entry.path?.string == "/usr/local/bin/test")
+        #expect(String(entry.name) == "test")
+        #expect(try entry.path().string == "/usr/local/bin/test")
     }
 
-    @Test("relative location has no path")
-    func relativeLocationHasNoPath() throws {
+    @Test("pathIfValid returns path for valid entry")
+    func pathIfValidReturnsPath() throws {
         let parent = try File.Path("/tmp")
-        let name = File.Name(rawBytes: [UInt8].ascii.unchecked("undecodable"))
+        let name = File.Name(rawBytes: [UInt8].ascii.unchecked("valid.txt"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .relative(parent: parent),
+            parent: parent,
             type: .file
         )
 
-        #expect(entry.path == nil)
+        #expect(entry.pathIfValid != nil)
+        #expect(entry.pathIfValid?.string == "/tmp/valid.txt")
+    }
+
+    @Test("parent is accessible")
+    func parentAccessible() throws {
+        let parent = try File.Path("/tmp")
+        let name = File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt"))
+        let entry = File.Directory.Entry(
+            name: name,
+            parent: parent,
+            type: .file
+        )
+
         #expect(entry.parent == parent)
-    }
-
-    @Test("parent is accessible from both location types")
-    func parentAccessibleFromBothTypes() throws {
-        let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/file.txt")
-
-        let absoluteEntry = File.Directory.Entry(
-            name: File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt")),
-            location: .absolute(parent: parent, path: path),
-            type: .file
-        )
-
-        let relativeEntry = File.Directory.Entry(
-            name: File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt")),
-            location: .relative(parent: parent),
-            type: .file
-        )
-
-        #expect(absoluteEntry.parent == parent)
-        #expect(relativeEntry.parent == parent)
     }
 }
 
@@ -134,40 +120,39 @@ extension File.Directory.Entry.Test.EdgeCase {
     @Test("entry with name containing spaces")
     func entryWithSpacesInName() throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/my file.txt")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("my file.txt"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .file
         )
 
         #expect(String(entry.name) == "my file.txt")
+        #expect(try entry.path().string == "/tmp/my file.txt")
     }
 
     @Test("entry with unicode name")
     func entryWithUnicodeName() throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/日本語ファイル.txt")
         // Use UTF-8 bytes directly for non-ASCII names
         let name = File.Name(rawBytes: Array("日本語ファイル.txt".utf8))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .file
         )
 
         #expect(String(entry.name) == "日本語ファイル.txt")
+        #expect(try entry.path().string == "/tmp/日本語ファイル.txt")
     }
 
     @Test("entry with hidden file name")
     func entryWithHiddenFileName() throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/.hidden")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked(".hidden"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .file
         )
 
@@ -178,20 +163,19 @@ extension File.Directory.Entry.Test.EdgeCase {
     @Test("Entry is Sendable")
     func entrySendable() async throws {
         let parent = try File.Path("/tmp")
-        let path = try File.Path("/tmp/file.txt")
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt"))
         let entry = File.Directory.Entry(
             name: name,
-            location: .absolute(parent: parent, path: path),
+            parent: parent,
             type: .file
         )
 
         let result = await Task {
-            (entry.name, entry.path, entry.type)
+            (entry.name, entry.pathIfValid, entry.type)
         }.value
 
         #expect(String(result.0) == "file.txt")
-        #expect(result.1 == path)
+        #expect(result.1?.string == "/tmp/file.txt")
         #expect(result.2 == .file)
     }
 
@@ -201,7 +185,7 @@ extension File.Directory.Entry.Test.EdgeCase {
         let name = File.Name(rawBytes: [0x80, 0x81, 0x82])  // Invalid UTF-8
         let entry = File.Directory.Entry(
             name: name,
-            location: .relative(parent: parent),
+            parent: parent,
             type: .file
         )
 
@@ -209,8 +193,12 @@ extension File.Directory.Entry.Test.EdgeCase {
         #expect(String(entry.name) == nil)
         // But lossy decoding works
         #expect(String(lossy: entry.name).contains("\u{FFFD}"))
-        // Path is nil for relative locations
-        #expect(entry.path == nil)
+        // pathIfValid is nil for undecodable names
+        #expect(entry.pathIfValid == nil)
+        // path() throws for undecodable names
+        #expect(throws: File.Path.Component.Error.self) {
+            _ = try entry.path()
+        }
         // Parent is still accessible
         #expect(entry.parent == parent)
     }
@@ -222,17 +210,17 @@ extension File.Directory.Entry.Test.EdgeCase {
         let entries: [File.Directory.Entry] = [
             File.Directory.Entry(
                 name: File.Name(rawBytes: [UInt8].ascii.unchecked("file1.txt")),
-                location: .absolute(parent: parent, path: try File.Path("/tmp/file1.txt")),
+                parent: parent,
                 type: .file
             ),
             File.Directory.Entry(
                 name: File.Name(rawBytes: [UInt8].ascii.unchecked("dir")),
-                location: .absolute(parent: parent, path: try File.Path("/tmp/dir")),
+                parent: parent,
                 type: .directory
             ),
             File.Directory.Entry(
                 name: File.Name(rawBytes: [0x80]),
-                location: .relative(parent: parent),
+                parent: parent,
                 type: .file
             ),
         ]
@@ -242,7 +230,7 @@ extension File.Directory.Entry.Test.EdgeCase {
         let filesCount = entries.filter { $0.type == .file }.count
         #expect(filesCount == 2)
 
-        let withPath = entries.compactMap { $0.path }
+        let withPath = entries.compactMap { $0.pathIfValid }
         #expect(withPath.count == 2)
     }
 }

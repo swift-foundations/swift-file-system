@@ -168,18 +168,6 @@ extension File.Directory.Iterator {
                     continue
                 }
 
-                // Construct location - strict, using File.Path.Component for validation
-                let location: File.Directory.Entry.Location
-                if let nameString = String(name),
-                   let component = try? File.Path.Component(nameString) {
-                    // Valid UTF-8 AND valid path component (no separators, etc.)
-                    let entryPath = File.Path(_basePath, appending: component)
-                    location = .absolute(parent: _basePath, path: entryPath)
-                } else {
-                    // Either decoding failed OR contains invalid characters (separators)
-                    location = .relative(parent: _basePath)
-                }
-
                 // Determine type - use lstat fallback for DT_UNKNOWN
                 let entryType: File.Directory.Entry.Kind
                 switch Int32(entry.pointee.d_type) {
@@ -190,10 +178,15 @@ extension File.Directory.Iterator {
                 case DT_LNK:
                     entryType = .symbolicLink
                 case DT_UNKNOWN:
-                    // Fallback to lstat for unknown type (need path for this)
-                    if let path = location.path {
+                    // Fallback to lstat for unknown type
+                    // Construct path on-demand for lstat only
+                    if let entryPath = File.Directory.Entry(
+                        name: name,
+                        parent: _basePath,
+                        type: .other
+                    ).pathIfValid {
                         var entryStat = stat()
-                        if lstat(path.string, &entryStat) == 0 {
+                        if lstat(entryPath.string, &entryStat) == 0 {
                             switch entryStat.st_mode & S_IFMT {
                             case S_IFREG:
                                 entryType = .file
@@ -215,7 +208,7 @@ extension File.Directory.Iterator {
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, location: location, type: entryType)
+                return File.Directory.Entry(name: name, parent: _basePath, type: entryType)
             }
 
             return nil
@@ -277,23 +270,15 @@ extension File.Directory.Iterator {
                     continue
                 }
 
-                // Construct location - strict, using File.Path.Component for validation
-                let location: File.Directory.Entry.Location
-                if let nameString = String(name),
-                   let component = try? File.Path.Component(nameString) {
-                    // Valid UTF-8 AND valid path component (no separators, etc.)
-                    let entryPath = File.Path(_basePath, appending: component)
-                    location = .absolute(parent: _basePath, path: entryPath)
-                } else {
-                    // Either decoding failed OR contains invalid characters (separators)
-                    location = .relative(parent: _basePath)
-                }
-
                 // Determine type via lstat (Glibc doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
-                if let path = location.path {
+                if let entryPath = File.Directory.Entry(
+                    name: name,
+                    parent: _basePath,
+                    type: .other
+                ).pathIfValid {
                     var entryStat = stat()
-                    if Glibc.lstat(path.string, &entryStat) == 0 {
+                    if Glibc.lstat(entryPath.string, &entryStat) == 0 {
                         switch entryStat.st_mode & S_IFMT {
                         case S_IFREG:
                             entryType = .file
@@ -312,7 +297,7 @@ extension File.Directory.Iterator {
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, location: location, type: entryType)
+                return File.Directory.Entry(name: name, parent: _basePath, type: entryType)
             }
 
             return nil
@@ -375,23 +360,15 @@ extension File.Directory.Iterator {
                     continue
                 }
 
-                // Construct location - strict, using File.Path.Component for validation
-                let location: File.Directory.Entry.Location
-                if let nameString = String(name),
-                   let component = try? File.Path.Component(nameString) {
-                    // Valid UTF-8 AND valid path component (no separators, etc.)
-                    let entryPath = File.Path(_basePath, appending: component)
-                    location = .absolute(parent: _basePath, path: entryPath)
-                } else {
-                    // Either decoding failed OR contains invalid characters (separators)
-                    location = .relative(parent: _basePath)
-                }
-
                 // Determine type via lstat (Musl doesn't reliably expose d_type)
                 let entryType: File.Directory.Entry.Kind
-                if let path = location.path {
+                if let entryPath = File.Directory.Entry(
+                    name: name,
+                    parent: _basePath,
+                    type: .other
+                ).pathIfValid {
                     var entryStat = stat()
-                    if Musl.lstat(path.string, &entryStat) == 0 {
+                    if Musl.lstat(entryPath.string, &entryStat) == 0 {
                         switch entryStat.st_mode & S_IFMT {
                         case S_IFREG:
                             entryType = .file
@@ -410,7 +387,7 @@ extension File.Directory.Iterator {
                     entryType = .other
                 }
 
-                return File.Directory.Entry(name: name, location: location, type: entryType)
+                return File.Directory.Entry(name: name, parent: _basePath, type: entryType)
             }
 
             return nil
@@ -507,18 +484,6 @@ extension File.Directory.Iterator {
                     continue
                 }
 
-                // Construct location - strict, using File.Path.Component for validation
-                let location: File.Directory.Entry.Location
-                if let nameString = String(name),
-                   let component = try? File.Path.Component(nameString) {
-                    // Valid UTF-16 AND valid path component (no separators, etc.)
-                    let entryPath = File.Path(_basePath, appending: component)
-                    location = .absolute(parent: _basePath, path: entryPath)
-                } else {
-                    // Either decoding failed OR contains invalid characters (separators)
-                    location = .relative(parent: _basePath)
-                }
-
                 // Determine type from SNAPSHOT attributes (not current _findData)
                 let entryType: File.Directory.Entry.Kind
                 if (attributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
@@ -531,7 +496,7 @@ extension File.Directory.Iterator {
                     entryType = .file
                 }
 
-                return File.Directory.Entry(name: name, location: location, type: entryType)
+                return File.Directory.Entry(name: name, parent: _basePath, type: entryType)
             }
         }
 
