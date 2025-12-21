@@ -51,22 +51,13 @@ extension File.Directory.Entries.Async {
         }
 
         deinit {
-            // INVARIANT: deinit never touches IteratorBox directly.
-            // Best-effort cleanup is mediated through io.run.
+            // INVARIANT: deinit never spawns tasks or performs async cleanup.
+            // Users must call terminate() for deterministic resource release.
             #if DEBUG
             if case .open = state {
                 print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
             }
             #endif
-
-            if case .open(let box) = state {
-                let io = self.io
-                Task.detached {
-                    _ = try? await io.run {
-                        box.close { $0.close() }
-                    }
-                }
-            }
         }
 
         public func next() async throws -> Element? {
@@ -114,52 +105,41 @@ extension File.Directory.Entries.Async {
         private func refill(_ box: Box) async throws {
             let batchSize = self.batchSize
 
-            // Wrap in cancellation handler to ensure cleanup on cancellation
-            try await withTaskCancellationHandler {
-                do {
-                    // INVARIANT: IteratorBox only touched inside io.run
-                    let entries = try await io.run {
-                        var batch: [Element] = []
-                        batch.reserveCapacity(batchSize)
-                        for _ in 0..<batchSize {
-                            // withValue returns nil if box is closed, next() returns nil at EOF
-                            guard let maybeEntry = try box.withValue({ try $0.next() }),
-                                  let entry = maybeEntry else { break }
-                            batch.append(entry)
-                        }
-                        return batch
+            do {
+                // INVARIANT: IteratorBox only touched inside io.run
+                let entries = try await io.run {
+                    var batch: [Element] = []
+                    batch.reserveCapacity(batchSize)
+                    for _ in 0..<batchSize {
+                        // withValue returns nil if box is closed, next() returns nil at EOF
+                        guard let maybeEntry = try box.withValue({ try $0.next() }),
+                              let entry = maybeEntry else { break }
+                        batch.append(entry)
                     }
+                    return batch
+                }
 
-                    buffer = entries
-                    cursor = 0
+                buffer = entries
+                cursor = 0
 
-                    if entries.isEmpty {
-                        // EOF - close handle on executor
-                        // INVARIANT: IteratorBox only touched inside io.run
-                        await closeBox(box)
-                        state = .finished
-                    }
-                } catch is CancellationError {
-                    // Cancelled - cleanup already scheduled in onCancel handler
-                    state = .finished
-                    throw CancellationError()
-                } catch {
-                    // Other error - close handle and rethrow
+                if entries.isEmpty {
+                    // EOF - close handle on executor
                     // INVARIANT: IteratorBox only touched inside io.run
                     await closeBox(box)
                     state = .finished
-                    throw error
                 }
-            } onCancel: { [io = self.io, box] in
-                // Cancellation during io.run: job completes but we schedule cleanup
-                // Note: This runs on arbitrary thread, but only schedules a Task
-                // Explicit captures: io (executor) and box (to close)
+            } catch is CancellationError {
+                // Cancelled - cleanup deterministically before rethrowing
                 // INVARIANT: IteratorBox only touched inside io.run
-                Task.detached {
-                    _ = try? await io.run {
-                        box.close { $0.close() }
-                    }
-                }
+                await closeBox(box)
+                state = .finished
+                throw CancellationError()
+            } catch {
+                // Other error - close handle and rethrow
+                // INVARIANT: IteratorBox only touched inside io.run
+                await closeBox(box)
+                state = .finished
+                throw error
             }
         }
 

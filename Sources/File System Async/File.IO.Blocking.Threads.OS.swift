@@ -542,3 +542,26 @@ extension File.IO.Blocking.Threads.Iterator {
         }
     }
 }
+
+// MARK: - Atomic Counter
+
+extension File.IO.Blocking.Threads {
+    /// Thread-safe counter for generating unique IDs.
+    ///
+    /// Uses the Lock from this file to ensure all synchronization primitives
+    /// are consolidated in Threads.OS.swift.
+    final class Counter: @unchecked Sendable {
+        private let lock = Lock()
+        private var value: UInt64 = 0
+
+        init() {}
+
+        func next() -> UInt64 {
+            lock.withLock {
+                let result = value
+                value += 1
+                return result
+            }
+        }
+    }
+}

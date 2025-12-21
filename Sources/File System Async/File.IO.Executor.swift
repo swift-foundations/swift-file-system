@@ -44,7 +44,7 @@ extension File.IO {
         private var handles: [File.IO.Handle.ID: Handle.Entry] = [:]
 
         /// Global counter for generating unique scope IDs.
-        private static let scopeCounter = Atomic.Counter()
+        private static let scopeCounter = File.IO.Blocking.Threads.Counter()
 
         // MARK: - Shared Default Executor
 
