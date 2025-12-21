@@ -2,7 +2,7 @@
 
 ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 
-Type-safe file system operations for Swift with kernel-assisted I/O and async streaming. Zero-copy APFS clones, batched directory iteration (48x speedup), and configurable durability. Swift 6 strict concurrency with actor-based I/O executor.
+Type-safe file system operations for Swift with kernel-assisted I/O and async streaming. APFS clones, pull-based batched directory iteration, and configurable durability. Swift 6 strict concurrency with actor-based I/O executor.
 
 ## Table of Contents
 
@@ -28,8 +28,8 @@ Foundation's `FileManager` and `URL` APIs are designed for simplicity, not perfo
 
 | Problem | Foundation | swift-file-system |
 |---------|------------|-------------------|
-| **Async iteration** | Blocks thread per entry | Batched async with 48x fewer executor hops |
-| **File copy** | Always reads+writes bytes | APFS clone (0.2ms), kernel-assisted paths |
+| **Async iteration** | Blocks thread per entry | Pull-based batching (~0.6ms per 1000 files) |
+| **File copy** | Always reads+writes bytes | APFS clone, kernel-assisted paths (~7.5ms for 1MB) |
 | **Durability control** | No control over fsync | `.full`, `.dataOnly`, `.none` modes |
 | **Thread pool starvation** | Blocking I/O starves cooperative pool | Dedicated executor option isolates I/O |
 | **Concurrency safety** | Requires manual synchronization | `Sendable` throughout, actor-isolated state |
@@ -62,8 +62,8 @@ Use `File.Path` for structured path manipulation, but do not rely on it as a sec
 
 ## Features
 
-- **Kernel-assisted file copy**: APFS cloning (0.2ms for 100MB), `copyfile()` on Darwin, `copy_file_range`/`sendfile` on Linux
-- **Batched directory iteration**: 48x speedup by reducing executor hops from N to N/64
+- **Kernel-assisted file copy**: APFS cloning, `copyfile()` on Darwin, `copy_file_range`/`sendfile` on Linux (~7.5ms for 1MB)
+- **Batched directory iteration**: Pull-based async with configurable batch sizes (~0.6ms per 1000 files)
 - **Async streaming**: `AsyncSequence` for file bytes, directory entries, and recursive walks
 - **Atomic writes**: Crash-safe write-sync-rename pattern with configurable durability modes
 - **Dedicated I/O executor**: Actor-based thread pool that doesn't starve Swift's cooperative pool
@@ -320,21 +320,62 @@ await io.shutdown()
 
 ## Performance
 
-### File Copy
+Benchmarks from `swift test -c release` on Apple Silicon.
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| 100MB APFS clone | 0.2ms | Same filesystem, instant metadata copy |
-| 100MB kernel copy | ~50ms | Cross-filesystem, `copyfile()` on Darwin |
-| 100MB manual loop | ~150ms | 64KB buffer read/write fallback |
+### File Operations
+
+| Operation | Median | Throughput | Notes |
+|-----------|--------|------------|-------|
+| Read 1MB | 5.94ms | ~168 MB/s | `File.System.Read.Full.read` |
+| Write 1MB (atomic) | 6.03ms | ~166 MB/s | Write-sync-rename pattern |
+| Write 1MB (direct) | 1.87ms | ~535 MB/s | No atomicity guarantees |
+| Copy 1MB | 7.51ms | ~133 MB/s | APFS clone or kernel-assisted |
+| Read 10MB | 17.80ms | ~562 MB/s | Large file throughput |
+| Write 10MB | 17.01ms | ~588 MB/s | Large file throughput |
 
 ### Directory Iteration
 
-| Approach | Time (1000 files) | Executor Hops |
-|----------|-------------------|---------------|
-| Per-entry hop | 14.81ms | 1000 |
-| Batched (64) | 0.31ms | 15 |
-| **Speedup** | **48x** | |
+Measured with 1000 files × 100 loops (100,000 total iterations):
+
+| Approach | Total Time | Per 1000 Files | Notes |
+|----------|------------|----------------|-------|
+| Sync iterator | 32.90ms | 0.33ms | Blocking, fastest |
+| Async batch 64 | 78.00ms | 0.78ms | Pull-based batching |
+| Async batch 128 | 57.34ms | 0.57ms | Optimal batch size |
+| Async batch 256 | 63.77ms | 0.64ms | Diminishing returns |
+
+Async iteration trades ~1.7x overhead for non-blocking execution. The batching architecture reduces executor hops from N to N/batch_size, avoiding cooperative pool starvation.
+
+### Streaming
+
+| Operation | Median | Notes |
+|-----------|--------|-------|
+| Stream 1MB (64KB chunks) | 14.20ms | `AsyncSequence` with backpressure |
+| Stream 1MB (4KB chunks) | 17.22ms | Smaller chunks, more overhead |
+| Early termination | 16.29ms | Clean resource cleanup on break |
+
+### Executor Performance
+
+| Operation | Median | Notes |
+|-----------|--------|-------|
+| Submit 1000 jobs | 8.10ms | Job queue throughput |
+| Sequential execution | 6.32ms | Per-job overhead |
+| Handle registration | 7.37ms | 1000 handles |
+
+### Comparison with NIO FileSystem
+
+Head-to-head benchmarks against [swift-nio](https://github.com/apple/swift-nio)'s `_NIOFileSystem`:
+
+| Operation | swift-file-system | NIO FileSystem | Difference |
+|-----------|-------------------|----------------|------------|
+| Read 1MB | 6.05ms | 6.36ms | 1.05x faster |
+| Write 1MB | 5.38ms | 5.08ms | 0.94x |
+| Stat | 5.83ms | 7.80ms | 1.34x faster |
+| Directory list (100 files) | 19.85ms | 91.36ms | **4.6x faster** |
+| Directory walk (100 entries) | 50.75ms | 91.41ms | **1.8x faster** |
+| Copy 1MB | 7.23ms | 7.07ms | ~same |
+
+swift-file-system's pull-based batching architecture provides significant advantages for directory operations. File I/O performance is comparable, with slight variations depending on operation type.
 
 ### Memory Usage
 
@@ -342,15 +383,16 @@ The async executor maintains bounded memory regardless of workload:
 - Queue limit prevents unbounded accumulation
 - Batched iteration reduces intermediate allocations
 - Handle store tracks open files without leaks
+- Zero-allocation stat operations verified
 
 ### Methodology
 
 Performance numbers are indicative, not guarantees. Measured on:
-- Apple Silicon M1 (8 cores), 24 GB RAM
-- macOS 26.0, Swift 6.2
-- Release builds (`swift build -c release`)
+- Apple Silicon (M-series), macOS 26.0, Swift 6.2
+- Release builds (`swift test -c release`)
 - Warm filesystem cache (files read once before timing)
 - APFS filesystem on internal NVMe SSD
+- Statistical analysis: min, median, mean, p95, p99, stddev
 
 Your results will vary based on hardware, filesystem, and workload characteristics.
 
@@ -445,7 +487,7 @@ This library intentionally does not provide:
 ## Testing
 
 ```bash
-# All tests (660 tests)
+# All tests (1143 tests in 381 suites)
 swift test
 
 # Specific test suites
