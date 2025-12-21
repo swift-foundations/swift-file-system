@@ -199,15 +199,27 @@ extension NIOComparison.Test.Performance {
         @Test("swift-file-system: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystem() async throws {
             // Measures: kernel → user copy from page cache + API overhead
-            let _ = try await File.System.Read.Full.read(from: Self.fixture.filePath)
+            let bytes = try await File.System.Read.Full.read(from: Self.fixture.filePath)
+            // Consume buffer to prevent optimization (symmetric with NIO test)
+            var checksum: UInt8 = 0
+            for byte in bytes {
+                checksum &+= byte
+            }
+            withExtendedLifetime(checksum) {}
         }
 
         @Test("NIOFileSystem: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func nioFileSystem() async throws {
             // Measures: kernel → user copy from page cache + API overhead
+            // Note: readToEnd returns ByteBuffer; we consume via readableBytesView (no extra copy)
             let handle = try await FileSystem.shared.openFile(forReadingAt: Self.fixture.nioPath, options: .init())
-            var buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(Int64(Self.fileSize)))
-            let _ = buffer.readBytes(length: buffer.readableBytes)
+            let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(Int64(Self.fileSize)))
+            // Consume buffer to prevent optimization (symmetric with swift test)
+            var checksum: UInt8 = 0
+            for byte in buffer.readableBytesView {
+                checksum &+= byte
+            }
+            withExtendedLifetime(checksum) {}
             try await handle.close()
         }
     }
@@ -560,26 +572,32 @@ extension NIOComparison.Test.Performance {
                 forReadingAt: Self.fixture.nioSourcePath,
                 options: .init()
             )
-            defer { Task { try? await readHandle.close() } }
 
-            try await FileSystem.shared.withFileHandle(
-                forWritingAt: nioDestPath,
-                options: .newFile(replaceExisting: true)
-            ) { writeHandle in
-                var offset: Int64 = 0
-                while true {
-                    let buffer = try await readHandle.readChunk(
-                        fromAbsoluteOffset: offset,
-                        length: .bytes(Int64(chunkSize))
-                    )
-                    if buffer.readableBytes == 0 { break }
+            do {
+                try await FileSystem.shared.withFileHandle(
+                    forWritingAt: nioDestPath,
+                    options: .newFile(replaceExisting: true)
+                ) { writeHandle in
+                    var offset: Int64 = 0
+                    while true {
+                        let buffer = try await readHandle.readChunk(
+                            fromAbsoluteOffset: offset,
+                            length: .bytes(Int64(chunkSize))
+                        )
+                        if buffer.readableBytes == 0 { break }
 
-                    try await writeHandle.write(
-                        contentsOf: buffer.readableBytesView,
-                        toAbsoluteOffset: offset
-                    )
-                    offset += Int64(buffer.readableBytes)
+                        try await writeHandle.write(
+                            contentsOf: buffer.readableBytesView,
+                            toAbsoluteOffset: offset
+                        )
+                        offset += Int64(buffer.readableBytes)
+                    }
                 }
+                // Explicit close - no async Task overlap with next iteration
+                try await readHandle.close()
+            } catch {
+                try? await readHandle.close()
+                throw error
             }
         }
     }
@@ -603,7 +621,13 @@ extension NIOComparison.Test.Performance {
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for path in Self.fixture.paths {
                     group.addTask {
-                        let _ = try await File.System.Read.Full.read(from: path)
+                        let bytes = try await File.System.Read.Full.read(from: path)
+                        // Consume buffer (symmetric with NIO test)
+                        var checksum: UInt8 = 0
+                        for byte in bytes {
+                            checksum &+= byte
+                        }
+                        withExtendedLifetime(checksum) {}
                     }
                 }
                 try await group.waitForAll()
@@ -619,8 +643,13 @@ extension NIOComparison.Test.Performance {
                 for nioPath in Self.fixture.nioPaths {
                     group.addTask {
                         let handle = try await FileSystem.shared.openFile(forReadingAt: nioPath, options: .init())
-                        var buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(maxSize))
-                        let _ = buffer.readBytes(length: buffer.readableBytes)
+                        let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(maxSize))
+                        // Consume buffer without extra copy (symmetric with swift test)
+                        var checksum: UInt8 = 0
+                        for byte in buffer.readableBytesView {
+                            checksum &+= byte
+                        }
+                        withExtendedLifetime(checksum) {}
                         try await handle.close()
                     }
                 }
