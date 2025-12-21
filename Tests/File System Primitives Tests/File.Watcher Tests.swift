@@ -16,7 +16,7 @@ extension File.Watcher {
 
 extension File.Watcher.Test.Unit {
     // File.Watcher is currently a namespace with nested types
-    // Tests focus on the nested types: Event, EventType, Options
+    // Tests focus on the nested types: Event, Event.Kind, Options
 }
 
 // MARK: - Event Tests
@@ -52,12 +52,12 @@ extension File.Watcher.Test.Unit {
     }
 }
 
-// MARK: - EventType Tests
+// MARK: - Event.Kind Tests
 
 extension File.Watcher.Test.Unit {
     @Test("EventType all cases are distinct")
     func eventTypeAllCasesDistinct() {
-        let allCases: [File.Watcher.EventType] = [
+        let allCases: [File.Watcher.Event.Kind] = [
             .created, .modified, .deleted, .renamed, .attributesChanged,
         ]
         let rawValues = allCases.map(\.rawValue)
@@ -66,36 +66,36 @@ extension File.Watcher.Test.Unit {
 
     @Test("EventType rawValue for .created")
     func eventTypeRawValueCreated() {
-        #expect(File.Watcher.EventType.created.rawValue == 0)
+        #expect(File.Watcher.Event.Kind.created.rawValue == 0)
     }
 
     @Test("EventType rawValue for .modified")
     func eventTypeRawValueModified() {
-        #expect(File.Watcher.EventType.modified.rawValue == 1)
+        #expect(File.Watcher.Event.Kind.modified.rawValue == 1)
     }
 
     @Test("EventType rawValue for .deleted")
     func eventTypeRawValueDeleted() {
-        #expect(File.Watcher.EventType.deleted.rawValue == 2)
+        #expect(File.Watcher.Event.Kind.deleted.rawValue == 2)
     }
 
     @Test("EventType rawValue for .renamed")
     func eventTypeRawValueRenamed() {
-        #expect(File.Watcher.EventType.renamed.rawValue == 3)
+        #expect(File.Watcher.Event.Kind.renamed.rawValue == 3)
     }
 
     @Test("EventType rawValue for .attributesChanged")
     func eventTypeRawValueAttributesChanged() {
-        #expect(File.Watcher.EventType.attributesChanged.rawValue == 4)
+        #expect(File.Watcher.Event.Kind.attributesChanged.rawValue == 4)
     }
 
     @Test("EventType rawValue round-trip")
     func eventTypeRawValueRoundTrip() {
-        let allCases: [File.Watcher.EventType] = [
+        let allCases: [File.Watcher.Event.Kind] = [
             .created, .modified, .deleted, .renamed, .attributesChanged,
         ]
         for eventType in allCases {
-            let restored = File.Watcher.EventType(rawValue: eventType.rawValue)
+            let restored = File.Watcher.Event.Kind(rawValue: eventType.rawValue)
             #expect(restored == eventType)
         }
     }
@@ -103,23 +103,23 @@ extension File.Watcher.Test.Unit {
     @Test("EventType Binary.Serializable")
     func eventTypeBinarySerialize() {
         var buffer: [UInt8] = []
-        File.Watcher.EventType.serialize(.created, into: &buffer)
+        File.Watcher.Event.Kind.serialize(.created, into: &buffer)
         #expect(buffer == [0])
 
         buffer = []
-        File.Watcher.EventType.serialize(.modified, into: &buffer)
+        File.Watcher.Event.Kind.serialize(.modified, into: &buffer)
         #expect(buffer == [1])
 
         buffer = []
-        File.Watcher.EventType.serialize(.deleted, into: &buffer)
+        File.Watcher.Event.Kind.serialize(.deleted, into: &buffer)
         #expect(buffer == [2])
 
         buffer = []
-        File.Watcher.EventType.serialize(.renamed, into: &buffer)
+        File.Watcher.Event.Kind.serialize(.renamed, into: &buffer)
         #expect(buffer == [3])
 
         buffer = []
-        File.Watcher.EventType.serialize(.attributesChanged, into: &buffer)
+        File.Watcher.Event.Kind.serialize(.attributesChanged, into: &buffer)
         #expect(buffer == [4])
     }
 }
@@ -159,18 +159,18 @@ extension File.Watcher.Test.Unit {
 extension File.Watcher.Test.EdgeCase {
     @Test("EventType invalid rawValue returns nil")
     func eventTypeInvalidRawValue() {
-        #expect(File.Watcher.EventType(rawValue: 255) == nil)
+        #expect(File.Watcher.Event.Kind(rawValue: 255) == nil)
     }
 
     @Test("EventType boundary rawValue")
     func eventTypeBoundaryRawValue() {
-        #expect(File.Watcher.EventType(rawValue: 5) == nil)
+        #expect(File.Watcher.Event.Kind(rawValue: 5) == nil)
     }
 
     @Test("EventType all invalid rawValues")
     func eventTypeAllInvalidRawValues() {
         for rawValue in UInt8(5)...UInt8(255) {
-            #expect(File.Watcher.EventType(rawValue: rawValue) == nil)
+            #expect(File.Watcher.Event.Kind(rawValue: rawValue) == nil)
         }
     }
 }
