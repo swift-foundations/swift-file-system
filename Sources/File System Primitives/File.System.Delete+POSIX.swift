@@ -14,7 +14,6 @@
         import CFileSystemShims
     #elseif canImport(Musl)
         import Musl
-        import CFileSystemShims
     #endif
 
     extension File.System.Delete {

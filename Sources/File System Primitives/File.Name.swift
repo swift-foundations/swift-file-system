@@ -340,7 +340,8 @@ extension File.Name: Binary.Serializable {
     /// - Windows: Allocates during serialization (UTF-16 → UTF-8 conversion)
     @inlinable
     public static func serialize<Buffer: RangeReplaceableCollection>(
-        _ value: Self, into buffer: inout Buffer
+        _ value: Self,
+        into buffer: inout Buffer
     ) where Buffer.Element == UInt8 {
         #if os(Windows)
             for scalar in String(decoding: value._rawCodeUnits, as: UTF16.self).unicodeScalars {

@@ -253,7 +253,7 @@ extension File.Descriptor.Test.Unit {
     @Test("Options all combined")
     func optionsAllCombined() {
         let options: File.Descriptor.Options = [
-            .create, .truncate, .exclusive, .append, .noFollow, .closeOnExec
+            .create, .truncate, .exclusive, .append, .noFollow, .closeOnExec,
         ]
         #expect(options.contains(.create))
         #expect(options.contains(.truncate))

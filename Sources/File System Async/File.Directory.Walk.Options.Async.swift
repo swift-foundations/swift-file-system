@@ -22,7 +22,9 @@ extension File.Directory.Walk.Async {
         public var includeHidden: Bool
 
         /// Callback invoked when an entry with an undecodable name is encountered.
-        public var onUndecodable: @Sendable (File.Directory.Walk.Undecodable.Context) -> File.Directory.Walk.Undecodable.Policy
+        public var onUndecodable:
+            @Sendable (File.Directory.Walk.Undecodable.Context) ->
+                File.Directory.Walk.Undecodable.Policy
 
         /// Maximum concurrent directory reads.
         public var maxConcurrency: Int
@@ -39,7 +41,9 @@ extension File.Directory.Walk.Async {
             maxDepth: Int? = nil,
             followSymlinks: Bool = false,
             includeHidden: Bool = true,
-            onUndecodable: @escaping @Sendable (File.Directory.Walk.Undecodable.Context) -> File.Directory.Walk.Undecodable.Policy = { _ in .skip },
+            onUndecodable:
+                @escaping @Sendable (File.Directory.Walk.Undecodable.Context) ->
+                File.Directory.Walk.Undecodable.Policy = { _ in .skip },
             maxConcurrency: Int = 8
         ) {
             self.maxDepth = maxDepth

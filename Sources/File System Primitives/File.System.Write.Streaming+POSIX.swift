@@ -29,7 +29,10 @@
 
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
+            try verifyOrCreateParentDirectory(
+                parent,
+                createIntermediates: options.createIntermediates
+            )
 
             switch options.commit {
             case .atomic(let atomicOptions):
@@ -70,7 +73,8 @@
 
             // Write all chunks - internally convert to Span for zero-copy writes
             for chunk in chunks {
-                try chunk.withUnsafeBufferPointer { buffer throws(File.System.Write.Streaming.Error) in
+                try chunk.withUnsafeBufferPointer {
+                    buffer throws(File.System.Write.Streaming.Error) in
                     let span = Span<UInt8>(_unsafeElements: buffer)
                     try writeAll(span, to: fd, path: resolvedPath)
                 }
@@ -138,14 +142,15 @@
             // Preallocate if expectedSize is provided (macOS/iOS only)
             // This can improve write throughput by up to 2x for large files
             #if canImport(Darwin)
-            if let expectedSize = options.expectedSize, expectedSize > 0 {
-                preallocate(fd: fd, size: expectedSize)
-            }
+                if let expectedSize = options.expectedSize, expectedSize > 0 {
+                    preallocate(fd: fd, size: expectedSize)
+                }
             #endif
 
             // Write all chunks - internally convert to Span for zero-copy writes
             for chunk in chunks {
-                try chunk.withUnsafeBufferPointer { buffer throws(File.System.Write.Streaming.Error) in
+                try chunk.withUnsafeBufferPointer {
+                    buffer throws(File.System.Write.Streaming.Error) in
                     let span = Span<UInt8>(_unsafeElements: buffer)
                     try writeAll(span, to: fd, path: resolvedPath)
                 }
@@ -312,37 +317,37 @@
         }
 
         #if canImport(Darwin)
-        /// Preallocates disk space for a file using fcntl(F_PREALLOCATE).
-        ///
-        /// This reduces APFS metadata updates during sequential writes, improving
-        /// throughput by up to 2x for large files. Preallocation is best-effort
-        /// reservation only - failures are silently ignored since writes will
-        /// still succeed (just slower).
-        ///
-        /// Note: This does NOT change the file's EOF. The actual file length is
-        /// determined by the bytes written. This preserves the semantic that
-        /// "file length equals bytes successfully written".
-        ///
-        /// - Parameters:
-        ///   - fd: File descriptor to preallocate for
-        ///   - size: Expected total file size in bytes
-        private static func preallocate(fd: Int32, size: Int64) {
-            // Try contiguous allocation first (best performance)
-            var fstore = fstore_t(
-                fst_flags: UInt32(F_ALLOCATECONTIG),
-                fst_posmode: Int32(F_PEOFPOSMODE),
-                fst_offset: 0,
-                fst_length: off_t(size),
-                fst_bytesalloc: 0
-            )
+            /// Preallocates disk space for a file using fcntl(F_PREALLOCATE).
+            ///
+            /// This reduces APFS metadata updates during sequential writes, improving
+            /// throughput by up to 2x for large files. Preallocation is best-effort
+            /// reservation only - failures are silently ignored since writes will
+            /// still succeed (just slower).
+            ///
+            /// Note: This does NOT change the file's EOF. The actual file length is
+            /// determined by the bytes written. This preserves the semantic that
+            /// "file length equals bytes successfully written".
+            ///
+            /// - Parameters:
+            ///   - fd: File descriptor to preallocate for
+            ///   - size: Expected total file size in bytes
+            private static func preallocate(fd: Int32, size: Int64) {
+                // Try contiguous allocation first (best performance)
+                var fstore = fstore_t(
+                    fst_flags: UInt32(F_ALLOCATECONTIG),
+                    fst_posmode: Int32(F_PEOFPOSMODE),
+                    fst_offset: 0,
+                    fst_length: off_t(size),
+                    fst_bytesalloc: 0
+                )
 
-            if fcntl(fd, F_PREALLOCATE, &fstore) == -1 {
-                // Contiguous failed, try non-contiguous
-                fstore.fst_flags = UInt32(F_ALLOCATEALL)
-                _ = fcntl(fd, F_PREALLOCATE, &fstore)
+                if fcntl(fd, F_PREALLOCATE, &fstore) == -1 {
+                    // Contiguous failed, try non-contiguous
+                    fstore.fst_flags = UInt32(F_ALLOCATEALL)
+                    _ = fcntl(fd, F_PREALLOCATE, &fstore)
+                }
+                // Do NOT ftruncate - let actual writes determine file length
             }
-            // Do NOT ftruncate - let actual writes determine file length
-        }
         #endif
 
         /// Writes all bytes to fd, handling partial writes and EINTR.
@@ -570,7 +575,8 @@
                             from: File.Path(__unchecked: (), tempPath),
                             to: File.Path(__unchecked: (), destPath),
                             errno: EPERM,
-                            message: "renameat2 returned EPERM, fallback also failed: \(fallbackError)"
+                            message:
+                                "renameat2 returned EPERM, fallback also failed: \(fallbackError)"
                         )
                     }
 
@@ -630,7 +636,8 @@
             }
         }
 
-        private static func syncDirectory(_ path: String) throws(File.System.Write.Streaming.Error) {
+        private static func syncDirectory(_ path: String) throws(File.System.Write.Streaming.Error)
+        {
             var flags: Int32 = O_RDONLY | O_CLOEXEC
             #if os(Linux)
                 flags |= O_DIRECTORY
@@ -696,7 +703,10 @@
 
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
+            try verifyOrCreateParentDirectory(
+                parent,
+                createIntermediates: options.createIntermediates
+            )
 
             switch options.commit {
             case .atomic(let atomicOptions):
@@ -714,7 +724,10 @@
 
             case .direct(let directOptions):
                 // For direct mode with .create strategy, we still need exclusive create
-                let fd = try createFile(at: resolvedPath, exclusive: directOptions.strategy == .create)
+                let fd = try createFile(
+                    at: resolvedPath,
+                    exclusive: directOptions.strategy == .create
+                )
                 return Write.Context(
                     fd: fd,
                     tempPath: nil,

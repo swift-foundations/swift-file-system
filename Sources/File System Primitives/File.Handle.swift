@@ -452,5 +452,3 @@ extension File.Handle {
         _descriptor.isValid
     }
 }
-
-

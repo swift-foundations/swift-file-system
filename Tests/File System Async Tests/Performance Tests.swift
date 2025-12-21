@@ -50,7 +50,10 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                self.statFilePath = File.Path(tempDir, appending: "perf_executor_stat_\(Int.random(in: 0..<Int.max)).txt")
+                self.statFilePath = File.Path(
+                    tempDir,
+                    appending: "perf_executor_stat_\(Int.random(in: 0..<Int.max)).txt"
+                )
 
                 let data = [UInt8](repeating: 0x00, count: 100)
                 try data.withUnsafeBufferPointer { buffer in
@@ -155,7 +158,10 @@ import TestingPerformance
                 #else
                     let tempDir = try File.Path("/tmp")
                 #endif
-                self.filePath = File.Path(tempDir, appending: "perf_handle_\(Int.random(in: 0..<Int.max)).txt")
+                self.filePath = File.Path(
+                    tempDir,
+                    appending: "perf_handle_\(Int.random(in: 0..<Int.max)).txt"
+                )
 
                 // Create test file with 1KB of data
                 let data = [UInt8](repeating: 0x42, count: 1000)
@@ -173,7 +179,8 @@ import TestingPerformance
             func handleRegistrationDestruction() async throws {
                 // File and executor from fixture
                 for _ in 0..<20 {
-                    let handleId = try await executor.run { [path = self.filePath, executor = self.executor] in
+                    let handleId = try await executor.run {
+                        [path = self.filePath, executor = self.executor] in
                         let handle = try File.Handle.open(path, mode: .read)
                         return try executor.registerHandle(handle)
                     }
@@ -183,7 +190,8 @@ import TestingPerformance
 
             @Test("withHandle access pattern", .timed(iterations: 20, warmup: 3))
             func withHandleAccess() async throws {
-                let handleId = try await executor.run { [path = self.filePath, executor = self.executor] in
+                let handleId = try await executor.run {
+                    [path = self.filePath, executor = self.executor] in
                     let handle = try File.Handle.open(path, mode: .read)
                     return try executor.registerHandle(handle)
                 }
@@ -225,18 +233,28 @@ import TestingPerformance
                 let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
                 // Setup: 100 files directory
-                self.testDir100Files = File.Path(tempDir, appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))")
+                self.testDir100Files = File.Path(
+                    tempDir,
+                    appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))"
+                )
                 try File.System.Create.Directory.create(at: testDir100Files)
                 for i in 0..<100 {
                     let filePath = File.Path(testDir100Files, appending: "file_\(i).txt")
                     try fileData.withUnsafeBufferPointer { buffer in
                         let span = Span<UInt8>(_unsafeElements: buffer)
-                        try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                        try File.System.Write.Atomic.write(
+                            span,
+                            to: filePath,
+                            options: writeOptions
+                        )
                     }
                 }
 
                 // Setup: shallow tree (10 dirs × 10 files)
-                self.testDirShallowTree = File.Path(tempDir, appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
+                self.testDirShallowTree = File.Path(
+                    tempDir,
+                    appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))"
+                )
                 try File.System.Create.Directory.create(at: testDirShallowTree)
                 for i in 0..<10 {
                     let subDir = File.Path(testDirShallowTree, appending: "dir_\(i)")
@@ -245,13 +263,20 @@ import TestingPerformance
                         let filePath = File.Path(subDir, appending: "file_\(j).txt")
                         try fileData.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
-                            try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                            try File.System.Write.Atomic.write(
+                                span,
+                                to: filePath,
+                                options: writeOptions
+                            )
                         }
                     }
                 }
 
                 // Setup: deep tree (5 levels, 3 files per level)
-                self.testDirDeepTree = File.Path(tempDir, appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))")
+                self.testDirDeepTree = File.Path(
+                    tempDir,
+                    appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))"
+                )
                 try File.System.Create.Directory.create(at: testDirDeepTree)
                 var currentDir = testDirDeepTree
                 for level in 0..<5 {
@@ -259,7 +284,11 @@ import TestingPerformance
                         let filePath = File.Path(currentDir, appending: "file_\(j).txt")
                         try fileData.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
-                            try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                            try File.System.Write.Atomic.write(
+                                span,
+                                to: filePath,
+                                options: writeOptions
+                            )
                         }
                     }
                     let subDir = File.Path(currentDir, appending: "level_\(level)")
@@ -270,24 +299,39 @@ import TestingPerformance
                     let filePath = File.Path(currentDir, appending: "file_\(j).txt")
                     try fileData.withUnsafeBufferPointer { buffer in
                         let span = Span<UInt8>(_unsafeElements: buffer)
-                        try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                        try File.System.Write.Atomic.write(
+                            span,
+                            to: filePath,
+                            options: writeOptions
+                        )
                     }
                 }
             }
 
             deinit {
                 try? File.System.Delete.delete(at: testDir100Files, options: .init(recursive: true))
-                try? File.System.Delete.delete(at: testDirShallowTree, options: .init(recursive: true))
+                try? File.System.Delete.delete(
+                    at: testDirShallowTree,
+                    options: .init(recursive: true)
+                )
                 try? File.System.Delete.delete(at: testDirDeepTree, options: .init(recursive: true))
             }
 
-            @Test("Async directory contents (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
+            @Test(
+                "Async directory contents (100 files)",
+                .timed(iterations: 50, warmup: 5, trackAllocations: false)
+            )
             func asyncDirectoryContents() async throws {
-                let entries = try await File.Directory.Async(io: executor).contents(at: testDir100Files)
+                let entries = try await File.Directory.Async(io: executor).contents(
+                    at: testDir100Files
+                )
                 #expect(entries.count == 100)
             }
 
-            @Test("Directory entries streaming (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
+            @Test(
+                "Directory entries streaming (100 files)",
+                .timed(iterations: 50, warmup: 5, trackAllocations: false)
+            )
             func directoryEntriesStreaming() async throws {
                 var count = 0
                 for try await _ in File.Directory.Async(io: executor).entries(at: testDir100Files) {
@@ -308,7 +352,10 @@ import TestingPerformance
                 #expect(count == 110)
             }
 
-            @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 20, warmup: 3, trackAllocations: false))
+            @Test(
+                "Directory walk (deep tree: 5 levels)",
+                .timed(iterations: 20, warmup: 3, trackAllocations: false)
+            )
             func directoryWalkDeep() async throws {
                 var count = 0
                 for try await _ in File.Directory.Async(io: executor).walk(at: testDirDeepTree) {
@@ -337,8 +384,14 @@ import TestingPerformance
                 #endif
 
                 // Initialize all paths first (before any closures)
-                let path1MB = File.Path(tempDir, appending: "perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin")
-                let path5MB = File.Path(tempDir, appending: "perf_stream_5mb_\(Int.random(in: 0..<Int.max)).bin")
+                let path1MB = File.Path(
+                    tempDir,
+                    appending: "perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin"
+                )
+                let path5MB = File.Path(
+                    tempDir,
+                    appending: "perf_stream_5mb_\(Int.random(in: 0..<Int.max)).bin"
+                )
                 self.file1MB = path1MB
                 self.file5MB = path5MB
 
@@ -361,7 +414,10 @@ import TestingPerformance
                 try? File.System.Delete.delete(at: file5MB)
             }
 
-            @Test("Stream 1MB file (64KB chunks)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
+            @Test(
+                "Stream 1MB file (64KB chunks)",
+                .timed(iterations: 5, warmup: 1, trackAllocations: false)
+            )
             func stream1MBFile() async throws {
                 let stream = File.Stream.Async(io: executor)
                 var totalBytes = 0
@@ -371,7 +427,10 @@ import TestingPerformance
                 #expect(totalBytes == 1_000_000)
             }
 
-            @Test("Stream 1MB file (4KB chunks)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
+            @Test(
+                "Stream 1MB file (4KB chunks)",
+                .timed(iterations: 5, warmup: 1, trackAllocations: false)
+            )
             func stream1MBSmallChunks() async throws {
                 let stream = File.Stream.Async(io: executor)
                 let options = File.Stream.Bytes.Async.Options(chunkSize: 4096)
@@ -421,9 +480,18 @@ import TestingPerformance
                 #endif
 
                 // Initialize all paths first (before any closures)
-                let pathStatFile = File.Path(tempDir, appending: "perf_async_stat_\(Int.random(in: 0..<Int.max)).txt")
-                let pathCopySource = File.Path(tempDir, appending: "perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin")
-                let pathCopyDestDir = File.Path(tempDir, appending: "perf_async_copy_dest_\(Int.random(in: 0..<Int.max))")
+                let pathStatFile = File.Path(
+                    tempDir,
+                    appending: "perf_async_stat_\(Int.random(in: 0..<Int.max)).txt"
+                )
+                let pathCopySource = File.Path(
+                    tempDir,
+                    appending: "perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin"
+                )
+                let pathCopyDestDir = File.Path(
+                    tempDir,
+                    appending: "perf_async_copy_dest_\(Int.random(in: 0..<Int.max))"
+                )
                 self.statFile = pathStatFile
                 self.copySource = pathCopySource
                 self.copyDestDir = pathCopyDestDir
@@ -463,7 +531,10 @@ import TestingPerformance
             @Test("Async file copy (1MB)", .timed(iterations: 5, warmup: 1))
             func asyncFileCopy() async throws {
                 let source = copySource
-                let destPath = File.Path(copyDestDir, appending: "copy_\(Int.random(in: 0..<Int.max)).bin")
+                let destPath = File.Path(
+                    copyDestDir,
+                    appending: "copy_\(Int.random(in: 0..<Int.max)).bin"
+                )
                 defer { try? File.System.Delete.delete(at: destPath) }
 
                 try await executor.run { try File.System.Copy.copy(from: source, to: destPath) }
@@ -492,7 +563,10 @@ import TestingPerformance
                 #endif
 
                 // Create test directory with 10 files, 100KB each
-                self.testDir = File.Path(tempDir, appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))")
+                self.testDir = File.Path(
+                    tempDir,
+                    appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))"
+                )
                 try File.System.Create.Directory.create(at: testDir)
 
                 let fileData = [UInt8](repeating: 0x55, count: 100_000)
@@ -503,7 +577,11 @@ import TestingPerformance
                     let filePath = File.Path(testDir, appending: "file_\(i).bin")
                     try fileData.withUnsafeBufferPointer { buffer in
                         let span = Span<UInt8>(_unsafeElements: buffer)
-                        try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                        try File.System.Write.Atomic.write(
+                            span,
+                            to: filePath,
+                            options: writeOptions
+                        )
                     }
                     paths.append(filePath)
                 }
@@ -515,7 +593,10 @@ import TestingPerformance
                 try? File.System.Delete.delete(at: testDir, options: .init(recursive: true))
             }
 
-            @Test("Concurrent file reads (10 files)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
+            @Test(
+                "Concurrent file reads (10 files)",
+                .timed(iterations: 5, warmup: 1, trackAllocations: false)
+            )
             func concurrentFileReads() async throws {
                 // Read all files concurrently - files from fixture
                 await withTaskGroup(of: Int.self) { group in
@@ -590,8 +671,14 @@ import TestingPerformance
                 #endif
 
                 // Initialize all paths first (before any closures)
-                let pathTestFile = File.Path(tempDir, appending: "perf_mem_handle_\(Int.random(in: 0..<Int.max)).txt")
-                let pathStreamFile = File.Path(tempDir, appending: "perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin")
+                let pathTestFile = File.Path(
+                    tempDir,
+                    appending: "perf_mem_handle_\(Int.random(in: 0..<Int.max)).txt"
+                )
+                let pathStreamFile = File.Path(
+                    tempDir,
+                    appending: "perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin"
+                )
                 self.testFile = pathTestFile
                 self.streamFile = pathStreamFile
 
@@ -642,7 +729,8 @@ import TestingPerformance
             func handleStoreCleanup() async throws {
                 // Use pre-created file from fixture
                 for _ in 0..<50 {
-                    let handleId = try await executor.run { [testFile = self.testFile, executor = self.executor] in
+                    let handleId = try await executor.run {
+                        [testFile = self.testFile, executor = self.executor] in
                         let handle = try File.Handle.open(testFile, mode: .read)
                         return try executor.registerHandle(handle)
                     }

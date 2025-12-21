@@ -449,4 +449,3 @@ extension File.Directory: CustomDebugStringConvertible {
         "File.Directory(\(path.string.debugDescription))"
     }
 }
-

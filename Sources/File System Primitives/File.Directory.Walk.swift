@@ -90,7 +90,12 @@ extension File.Directory.Walk {
                     if let info = try? File.System.Stat.info(at: entryPath),
                         info.type == .directory
                     {
-                        try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
+                        try _walk(
+                            at: entryPath,
+                            options: options,
+                            depth: depth + 1,
+                            entries: &entries
+                        )
                     }
                 }
             } else {
@@ -113,4 +118,3 @@ extension File.Directory.Walk {
         }
     }
 }
-

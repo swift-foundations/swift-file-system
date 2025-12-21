@@ -18,7 +18,7 @@ struct FileSystemMetadataTypeTests {
         func allCasesDistinct() {
             let allCases: [File.System.Metadata.Kind] = [
                 .regular, .directory, .symbolicLink, .blockDevice,
-                .characterDevice, .fifo, .socket
+                .characterDevice, .fifo, .socket,
             ]
             let rawValues = allCases.map(\.rawValue)
             #expect(Set(rawValues).count == allCases.count)
@@ -63,7 +63,7 @@ struct FileSystemMetadataTypeTests {
         func rawValueRoundTripAllCases() {
             let allCases: [File.System.Metadata.Kind] = [
                 .regular, .directory, .symbolicLink, .blockDevice,
-                .characterDevice, .fifo, .socket
+                .characterDevice, .fifo, .socket,
             ]
             for type in allCases {
                 let restored = File.System.Metadata.Kind(rawValue: type.rawValue)

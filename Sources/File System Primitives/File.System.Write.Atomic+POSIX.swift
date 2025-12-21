@@ -20,20 +20,24 @@
         /// Injectable syscall layer for testing error paths.
         /// All syscall wrappers check these overrides first.
         enum SyscallOverrides {
-            nonisolated(unsafe) static var openOverride: (
-                (UnsafePointer<CChar>, Int32, mode_t) -> Int32
-            )?
+            nonisolated(unsafe) static var openOverride:
+                (
+                    (UnsafePointer<CChar>, Int32, mode_t) -> Int32
+                )?
             nonisolated(unsafe) static var fsyncOverride: ((Int32) -> Int32)?
             nonisolated(unsafe) static var fdatasyncOverride: ((Int32) -> Int32)?
-            nonisolated(unsafe) static var getrandomOverride: (
-                (UnsafeMutableRawPointer, Int, UInt32) -> Int
-            )?
-            nonisolated(unsafe) static var renameOverride: (
-                (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
-            )?
-            nonisolated(unsafe) static var renameat2Override: (
-                (String, String) -> (result: Int32, errno: Int32)
-            )?
+            nonisolated(unsafe) static var getrandomOverride:
+                (
+                    (UnsafeMutableRawPointer, Int, UInt32) -> Int
+                )?
+            nonisolated(unsafe) static var renameOverride:
+                (
+                    (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
+                )?
+            nonisolated(unsafe) static var renameat2Override:
+                (
+                    (String, String) -> (result: Int32, errno: Int32)
+                )?
 
             /// Reset all overrides (call in test tearDown)
             static func reset() {
@@ -141,7 +145,10 @@
             // 1. Resolve and validate parent directory
             let resolvedPath = resolvePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
+            try verifyOrCreateParentDirectory(
+                parent,
+                createIntermediates: options.createIntermediates
+            )
 
             // 2. Stat destination if it exists (for metadata preservation)
             let destStat = try statIfExists(resolvedPath)
@@ -381,21 +388,27 @@
                     var filled = 0
                     while filled < length {
                         #if DEBUG
-                        let result = SyscallOverrides.getrandomOverride?(
-                            base.advanced(by: filled),
-                            length - filled,
-                            0
-                        ) ?? Int(atomicfilewrite_getrandom(
-                            base.advanced(by: filled),
-                            length - filled,
-                            0
-                        ))
+                            let result =
+                                SyscallOverrides.getrandomOverride?(
+                                    base.advanced(by: filled),
+                                    length - filled,
+                                    0
+                                )
+                                ?? Int(
+                                    atomicfilewrite_getrandom(
+                                        base.advanced(by: filled),
+                                        length - filled,
+                                        0
+                                    )
+                                )
                         #else
-                        let result = Int(atomicfilewrite_getrandom(
-                            base.advanced(by: filled),
-                            length - filled,
-                            0
-                        ))
+                            let result = Int(
+                                atomicfilewrite_getrandom(
+                                    base.advanced(by: filled),
+                                    length - filled,
+                                    0
+                                )
+                            )
                         #endif
                         if result > 0 {
                             filled += result
@@ -603,7 +616,10 @@
             if rc == 0 { return }
             let e = errno
             // Do NOT retry on EINTR - fd state is undefined, retrying is unsafe
-            throw .closeFailed(code: .posix(e), message: File.System.Write.Atomic.errorMessage(for: e))
+            throw .closeFailed(
+                code: .posix(e),
+                message: File.System.Write.Atomic.errorMessage(for: e)
+            )
         }
     }
 

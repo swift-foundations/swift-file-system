@@ -5,11 +5,11 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System
 import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
-import File_System
 
 #if canImport(Foundation)
     import Foundation
@@ -288,7 +288,9 @@ import File_System
                         group.addTask {
                             try await executor.run {
                                 // Atomically increment and get new value
-                                let newCurrent = concurrentCount.wrappingIncrementThenLoad(ordering: .acquiring)
+                                let newCurrent = concurrentCount.wrappingIncrementThenLoad(
+                                    ordering: .acquiring
+                                )
 
                                 // Update max using compare-exchange loop
                                 var currentMax = maxConcurrent.load(ordering: .acquiring)

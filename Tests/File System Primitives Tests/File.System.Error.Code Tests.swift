@@ -17,7 +17,7 @@ extension File.System.Error.Code {
 extension File.System.Error.Code.Test.Unit {
     @Test(".posix case")
     func posixCase() {
-        let code = File.System.Error.Code.posix(2) // ENOENT
+        let code = File.System.Error.Code.posix(2)  // ENOENT
         if case .posix(let errno) = code {
             #expect(errno == 2)
         } else {
@@ -27,7 +27,7 @@ extension File.System.Error.Code.Test.Unit {
 
     @Test(".windows case")
     func windowsCase() {
-        let code = File.System.Error.Code.windows(5) // ERROR_ACCESS_DENIED
+        let code = File.System.Error.Code.windows(5)  // ERROR_ACCESS_DENIED
         if case .windows(let error) = code {
             #expect(error == 5)
         } else {
@@ -122,9 +122,9 @@ extension File.System.Error.Code.Test.Unit {
         // Should return either .posix or .windows depending on platform
         switch code {
         case .posix(let errno):
-            #expect(errno >= 0 || errno < 0) // Any value is valid
+            #expect(errno >= 0 || errno < 0)  // Any value is valid
         case .windows(let error):
-            #expect(error >= 0) // Windows errors are unsigned
+            #expect(error >= 0)  // Windows errors are unsigned
         }
     }
 }

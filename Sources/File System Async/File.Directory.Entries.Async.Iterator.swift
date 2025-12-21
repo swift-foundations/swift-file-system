@@ -55,7 +55,9 @@ extension File.Directory.Entries.Async {
             // Direct close is safe here and prevents resource leaks.
             if case .open(let box) = state {
                 #if DEBUG
-                print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
+                    print(
+                        "Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)"
+                    )
                 #endif
                 box.close()
             }

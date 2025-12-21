@@ -266,7 +266,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
     @Test("parent missing error description")
     func parentMissingErrorDescription() throws {
-        let parentError = File.System.Parent.Check.Error.missing(path: try File.Path("/nonexistent/parent"))
+        let parentError = File.System.Parent.Check.Error.missing(
+            path: try File.Path("/nonexistent/parent")
+        )
         let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("Parent directory"))
     }
@@ -280,7 +282,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
     @Test("parent notDirectory error description")
     func parentNotDirectoryErrorDescription() throws {
-        let parentError = File.System.Parent.Check.Error.notDirectory(path: try File.Path("/tmp/file"))
+        let parentError = File.System.Parent.Check.Error.notDirectory(
+            path: try File.Path("/tmp/file")
+        )
         let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("not a directory"))
     }
@@ -384,7 +388,10 @@ extension File.System.Write.Atomic.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

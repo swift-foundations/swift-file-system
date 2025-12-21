@@ -27,7 +27,8 @@ extension File.Directory.Walk.Undecodable.Test.Unit {
     func namespaceContainsNestedTypes() {
         // Verify the namespace contains the expected nested types by instantiating them
         let _: File.Directory.Walk.Undecodable.Policy = .skip
-        let _: File.Directory.Walk.Undecodable.Context.Type = File.Directory.Walk.Undecodable.Context.self
+        let _: File.Directory.Walk.Undecodable.Context.Type = File.Directory.Walk.Undecodable
+            .Context.self
 
         // If this compiles, the namespace structure is correct
         #expect(true)

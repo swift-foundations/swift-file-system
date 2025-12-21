@@ -185,7 +185,9 @@ extension File.Name.Decode.Error.Test.EdgeCase {
     @Test("error can be used in Result type")
     func usableInResult() {
         let name = File.Name(rawBytes: [0x80])
-        let result: Result<String, File.Name.Decode.Error> = .failure(File.Name.Decode.Error(name: name))
+        let result: Result<String, File.Name.Decode.Error> = .failure(
+            File.Name.Decode.Error(name: name)
+        )
 
         switch result {
         case .success:

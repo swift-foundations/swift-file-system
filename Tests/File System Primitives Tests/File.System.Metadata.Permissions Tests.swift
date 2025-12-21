@@ -330,11 +330,15 @@ extension File.System.Metadata.Permissions.Test.Unit {
         #expect(all.rawValue == 0o777)
 
         // 644 - typical file
-        let file: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite, .groupRead, .otherRead]
+        let file: File.System.Metadata.Permissions = [
+            .ownerRead, .ownerWrite, .groupRead, .otherRead,
+        ]
         #expect(file.rawValue == 0o644)
 
         // 755 - typical directory/executable
-        let dir: File.System.Metadata.Permissions = [.ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute]
+        let dir: File.System.Metadata.Permissions = [
+            .ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute,
+        ]
         #expect(dir.rawValue == 0o755)
 
         // 600 - private file

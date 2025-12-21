@@ -26,7 +26,9 @@ extension File.Directory.Walk {
             maxDepth: Int? = nil,
             followSymlinks: Bool = false,
             includeHidden: Bool = true,
-            onUndecodable: @escaping @Sendable (Undecodable.Context) -> Undecodable.Policy = { _ in .skip }
+            onUndecodable: @escaping @Sendable (Undecodable.Context) -> Undecodable.Policy = { _ in
+                .skip
+            }
         ) {
             self.maxDepth = maxDepth
             self.followSymlinks = followSymlinks

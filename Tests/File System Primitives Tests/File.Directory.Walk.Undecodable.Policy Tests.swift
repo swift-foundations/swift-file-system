@@ -223,7 +223,9 @@ extension File.Directory.Walk.Undecodable.Policy.Test.EdgeCase {
 
     @Test("Policy default value pattern")
     func defaultValuePattern() {
-        func getPolicy(_ override: File.Directory.Walk.Undecodable.Policy? = nil) -> File.Directory.Walk.Undecodable.Policy {
+        func getPolicy(
+            _ override: File.Directory.Walk.Undecodable.Policy? = nil
+        ) -> File.Directory.Walk.Undecodable.Policy {
             override ?? .skip  // Default to skip
         }
 
