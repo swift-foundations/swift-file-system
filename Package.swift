@@ -17,7 +17,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-system", from: "1.4.0"),
         .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
-        .package(url: "https://github.com/swift-standards/swift-standards", from: "0.19.3"),
+        .package(url: "https://github.com/swift-standards/swift-standards", from: "0.19.4"),
         .package(url: "https://github.com/swift-standards/swift-incits-4-1986", from: "0.7.1"),
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
     ],
