@@ -155,6 +155,7 @@ import Testing
                     }
                     _ = entry
                 }
+                await iterator.terminate()
             } catch {
                 await iterator.terminate()
                 throw error
@@ -233,6 +234,7 @@ import Testing
                         let iterator = entries.makeAsyncIterator()
                         do {
                             while try await iterator.next() != nil { c += 1 }
+                            await iterator.terminate()
                         } catch {
                             await iterator.terminate()
                             throw error
@@ -279,9 +281,11 @@ import Testing
 
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root)
-            for try await _ in walk {
+            let iterator = walk.makeAsyncIterator()
+            while try await iterator.next() != nil {
                 count += 1
             }
+            await iterator.terminate()
 
             // 10 directories + 10 files = 20 entries
             #expect(count == 20)
@@ -309,9 +313,11 @@ import Testing
                 at: root,
                 options: .init(followSymlinks: false)
             )
-            for try await _ in walk {
+            let iterator = walk.makeAsyncIterator()
+            while try await iterator.next() != nil {
                 count += 1
             }
+            await iterator.terminate()
 
             // Should see: subdir + parent-link = 2
             #expect(count == 2)
@@ -344,19 +350,15 @@ import Testing
                 options: .init(followSymlinks: true)
             )
             let iterator = walk.makeAsyncIterator()
-            var didBreak = false
             while try await iterator.next() != nil {
                 count += 1
                 // Safety valve - if cycle detection fails, abort
                 if count > 100 {
                     Issue.record("Cycle detection failed - infinite loop detected")
-                    didBreak = true
                     break
                 }
             }
-            if didBreak {
-                await iterator.terminate()
-            }
+            await iterator.terminate()
 
             // Should complete without infinite loop
             #expect(count <= 10)  // Reasonable upper bound
@@ -410,11 +412,13 @@ import Testing
 
             var paths: [String] = []
             let walk = File.Directory.Async(io: io).walk(at: root)
-            for try await path in walk {
+            let iterator = walk.makeAsyncIterator()
+            while let path = try await iterator.next() {
                 if let component = path.lastComponent {
                     paths.append(component.string)
                 }
             }
+            await iterator.terminate()
 
             #expect(paths.count == 4)
             #expect(paths.contains("file.txt"))
@@ -564,6 +568,7 @@ import Testing
                         count += 1
                         try Task.checkCancellation()
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -614,6 +619,7 @@ import Testing
                         count += 1
                         try Task.checkCancellation()
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -660,6 +666,7 @@ import Testing
                             try Task.checkCancellation()
                         }
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -715,6 +722,7 @@ import Testing
                             try Task.checkCancellation()
                         }
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -762,6 +770,7 @@ import Testing
                     // Add delay to simulate slow consumer
                     try await Task.sleep(for: .milliseconds(1))
                 }
+                await iterator.terminate()
             } catch {
                 await iterator.terminate()
                 throw error
@@ -823,9 +832,11 @@ import Testing
 
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root)
-            for try await _ in walk {
+            let iterator = walk.makeAsyncIterator()
+            while try await iterator.next() != nil {
                 count += 1
             }
+            await iterator.terminate()
 
             #expect(count == 1025)
             await io.shutdown()
@@ -854,6 +865,7 @@ import Testing
                         // Small delay to allow deletion to happen
                         try await Task.sleep(for: .milliseconds(1))
                     }
+                    await iterator.terminate()
                 } catch {
                     // May throw error if directory structure changes during iteration
                     // This is acceptable behavior
@@ -888,12 +900,12 @@ import Testing
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
 
-            let primHandle = try File.Handle.open(
+            let handle = try await File.Handle.Async.open(
                 path,
                 mode: .write,
-                options: [.create, .closeOnExec]
+                options: [.create, .closeOnExec],
+                io: io
             )
-            let handle = try File.Handle.Async(primHandle, io: io)
 
             try await handle.close()
             // Second close should be safe
@@ -911,8 +923,7 @@ import Testing
             let data: [UInt8] = [1, 2, 3, 4, 5]
             try createFile(at: path, content: data)
 
-            let primHandle = try File.Handle.open(path, mode: .read)
-            let handle = try File.Handle.Async(primHandle, io: io)
+            let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
 
             try await handle.close()
 

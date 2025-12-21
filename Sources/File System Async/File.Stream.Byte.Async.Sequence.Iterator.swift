@@ -93,13 +93,10 @@ extension File.Stream.Byte.Async.Sequence {
             io: File.IO.Executor,
             channel: AsyncThrowingChannel<Element, any Error>
         ) async {
-            // Open file
+            // Open file and register with executor
             let handleResult: Result<File.IO.Handle.ID, any Error> = await {
                 do {
-                    let id = try await io.run {
-                        let handle = try File.Handle.open(path, mode: .read)
-                        return try io.registerHandle(handle)
-                    }
+                    let id = try await io.openFile(path, mode: .read)
                     return .success(id)
                 } catch {
                     return .failure(error)
