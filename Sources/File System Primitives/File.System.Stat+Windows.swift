@@ -94,7 +94,7 @@
             deviceId: UInt64 = 0,
             fileIndex: UInt64 = 0
         ) -> File.System.Metadata.Info {
-            let fileType: File.System.Metadata.FileType
+            let fileType: File.System.Metadata.Kind
             if (data.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                 fileType = .directory
             } else if (data.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
