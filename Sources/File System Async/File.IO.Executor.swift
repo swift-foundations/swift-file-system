@@ -43,6 +43,10 @@ extension File.IO {
         /// Each entry holds a File.Handle (or nil if checked out) plus waiters.
         private var handles: [File.IO.Handle.ID: Handle.Entry] = [:]
 
+        /// Actor-owned streaming write registry.
+        /// Each entry holds a platform write context plus state and waiters.
+        private var writes: [File.IO.Write.Handle.ID: Write.Entry] = [:]
+
         /// Global counter for generating unique scope IDs.
         private static let scopeCounter = File.IO.Blocking.Threads.Counter()
 
@@ -436,6 +440,249 @@ extension File.IO {
         public func isHandleValid(_ id: File.IO.Handle.ID) -> Bool {
             guard let entry = handles[id] else { return false }
             return !entry.isDestroyed
+        }
+
+        // MARK: - Streaming Write Operations
+
+        /// Opens a streaming write to the specified path.
+        ///
+        /// Returns an ID that can be used for subsequent `writeChunk`, `commitWrite`,
+        /// and `abortWrite` calls. The write context lives in the executor's registry.
+        ///
+        /// ## Serialization
+        /// Only one operation may be in-flight at a time per write ID.
+        /// Concurrent calls to `writeChunk` will serialize automatically.
+        ///
+        /// - Parameters:
+        ///   - path: The destination path.
+        ///   - options: Streaming write options (commit strategy, durability).
+        /// - Returns: A write handle ID for subsequent operations.
+        public func openWriteStreaming(
+            to path: File.Path,
+            options: File.System.Write.Streaming.Options = .init()
+        ) async throws -> File.IO.Write.Handle.ID {
+            guard !isShutdown else {
+                throw File.IO.Blocking.Threads.Error.shutdown
+            }
+
+            // Capture path string for Sendable closure
+            let pathString = path.string
+
+            // Open on lane (blocking operation)
+            let context: PlatformWriteContext = try await lane.run(deadline: nil) {
+                #if os(Windows)
+                try WindowsStreaming.openForStreaming(path: pathString, options: options)
+                #else
+                try POSIXStreaming.openForStreaming(path: pathString, options: options)
+                #endif
+            }
+
+            // Generate ID and register
+            let id = generateWriteID()
+            let entry = Write.Entry(context: context, path: path, options: options)
+            writes[id] = entry
+
+            return id
+        }
+
+        /// Writes a chunk of bytes to a streaming write.
+        ///
+        /// Chunks are written in order. This method serializes with other operations
+        /// on the same write ID.
+        ///
+        /// - Parameters:
+        ///   - bytes: The bytes to write.
+        ///   - id: The write handle ID from `openWriteStreaming`.
+        public func writeChunk(
+            _ bytes: [UInt8],
+            to id: File.IO.Write.Handle.ID
+        ) async throws {
+            guard id.scope == scope else {
+                throw File.IO.Executor.Error.scopeMismatch
+            }
+
+            guard let entry = writes[id] else {
+                throw File.IO.Executor.Error.handleNotFound
+            }
+
+            guard entry.state == .open else {
+                throw File.IO.Executor.Error.invalidState
+            }
+
+            // Wait if operation in flight
+            if entry.isOperationInFlight {
+                try await _waitForWrite(id: id, entry: entry)
+            }
+
+            // Re-check state after waiting
+            guard entry.state == .open else {
+                throw File.IO.Executor.Error.invalidState
+            }
+
+            guard let ctx = entry.context else {
+                throw File.IO.Executor.Error.invalidState
+            }
+
+            entry.isOperationInFlight = true
+
+            do {
+                // Extract context before closure (ctx is Sendable)
+                try await lane.run(deadline: nil) {
+                    try bytes.withUnsafeBufferPointer { buffer in
+                        let span = Span(_unsafeElements: buffer)
+                        #if os(Windows)
+                        try WindowsStreaming.writeChunk(span, to: ctx)
+                        #else
+                        try POSIXStreaming.writeChunk(span, to: ctx)
+                        #endif
+                    }
+                }
+                entry.isOperationInFlight = false
+                entry.waiters.resumeNext()
+            } catch {
+                entry.isOperationInFlight = false
+                entry.waiters.resumeNext()
+                throw error
+            }
+        }
+
+        /// Commits a streaming write, making it durable.
+        ///
+        /// This syncs the file, performs atomic rename (if configured), and
+        /// syncs the directory. After this call, the write ID is no longer valid.
+        ///
+        /// - Parameter id: The write handle ID from `openWriteStreaming`.
+        /// - Throws: `File.System.Write.Streaming.Error` on failure.
+        public func commitWrite(_ id: File.IO.Write.Handle.ID) async throws {
+            guard id.scope == scope else {
+                throw File.IO.Executor.Error.scopeMismatch
+            }
+
+            guard let entry = writes[id] else {
+                throw File.IO.Executor.Error.handleNotFound
+            }
+
+            guard entry.state == .open else {
+                throw File.IO.Executor.Error.invalidState
+            }
+
+            // Wait if operation in flight
+            if entry.isOperationInFlight {
+                try await _waitForWrite(id: id, entry: entry)
+            }
+
+            guard let ctx = entry.context else {
+                throw File.IO.Executor.Error.invalidState
+            }
+
+            entry.state = .committing
+            entry.isOperationInFlight = true
+
+            do {
+                // Extract context before closure (ctx is Sendable)
+                try await lane.run(deadline: nil) {
+                    #if os(Windows)
+                    try WindowsStreaming.commit(ctx)
+                    #else
+                    try POSIXStreaming.commit(ctx)
+                    #endif
+                }
+
+                // Success - clean up
+                entry.context = nil
+                entry.state = .closed
+                entry.isOperationInFlight = false
+                writes.removeValue(forKey: id)
+                entry.waiters.resumeAll()
+
+            } catch {
+                // Commit failed - state is now uncertain
+                entry.state = .closed
+                entry.isOperationInFlight = false
+                entry.waiters.resumeAll()
+                writes.removeValue(forKey: id)
+                throw error
+            }
+        }
+
+        /// Aborts a streaming write, cleaning up the temporary file.
+        ///
+        /// This is idempotent - calling it multiple times is safe.
+        /// After this call, the write ID is no longer valid.
+        ///
+        /// - Parameter id: The write handle ID from `openWriteStreaming`.
+        public func abortWrite(_ id: File.IO.Write.Handle.ID) async {
+            guard id.scope == scope else { return }
+            guard let entry = writes[id] else { return }
+            guard entry.state == .open || entry.state == .aborting else { return }
+
+            // Wait if operation in flight
+            if entry.isOperationInFlight {
+                await _waitForWriteNonThrowing(id: id, entry: entry)
+            }
+
+            entry.state = .aborting
+            entry.isOperationInFlight = true
+
+            // Extract context before closure (ctx is Sendable)
+            if let ctx = entry.context {
+                // Best-effort cleanup
+                _ = try? await lane.run(deadline: nil) {
+                    #if os(Windows)
+                    WindowsStreaming.cleanup(ctx)
+                    #else
+                    POSIXStreaming.cleanup(ctx)
+                    #endif
+                }
+            }
+
+            entry.context = nil
+            entry.state = .closed
+            entry.isOperationInFlight = false
+            writes.removeValue(forKey: id)
+            entry.waiters.resumeAll()
+        }
+
+        // MARK: - Write Helpers
+
+        private func generateWriteID() -> File.IO.Write.Handle.ID {
+            let raw = nextRawID
+            nextRawID += 1
+            return File.IO.Write.Handle.ID(raw: raw, scope: scope)
+        }
+
+        private func _waitForWrite(id: File.IO.Write.Handle.ID, entry: Write.Entry) async throws {
+            let token = entry.waiters.generateToken()
+
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    entry.waiters.enqueue(token: token, continuation: continuation)
+                }
+            } onCancel: {
+                Task { await self._cancelWriteWaiter(token: token, for: id) }
+            }
+
+            try Task.checkCancellation()
+        }
+
+        private func _waitForWriteNonThrowing(id: File.IO.Write.Handle.ID, entry: Write.Entry) async {
+            let token = entry.waiters.generateToken()
+
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    entry.waiters.enqueue(token: token, continuation: continuation)
+                }
+            } onCancel: {
+                Task { await self._cancelWriteWaiter(token: token, for: id) }
+            }
+        }
+
+        /// Cancel a write waiter (called from cancellation handler).
+        private func _cancelWriteWaiter(token: UInt64, for id: File.IO.Write.Handle.ID) {
+            guard let entry = writes[id] else { return }
+            if let continuation = entry.waiters.cancel(token: token) {
+                continuation.resume()
+            }
         }
     }
 }
