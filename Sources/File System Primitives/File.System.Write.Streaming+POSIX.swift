@@ -135,6 +135,14 @@
                 if !didClose { _ = close(fd) }
             }
 
+            // Preallocate if expectedSize is provided (macOS/iOS only)
+            // This can improve write throughput by up to 2x for large files
+            #if canImport(Darwin)
+            if let expectedSize = options.expectedSize, expectedSize > 0 {
+                preallocate(fd: fd, size: expectedSize)
+            }
+            #endif
+
             // Write all chunks - internally convert to Span for zero-copy writes
             for chunk in chunks {
                 try chunk.withUnsafeBufferPointer { buffer throws(File.System.Write.Streaming.Error) in
@@ -302,6 +310,40 @@
 
             return fd
         }
+
+        #if canImport(Darwin)
+        /// Preallocates disk space for a file using fcntl(F_PREALLOCATE).
+        ///
+        /// This reduces APFS metadata updates during sequential writes, improving
+        /// throughput by up to 2x for large files. Preallocation is best-effort
+        /// reservation only - failures are silently ignored since writes will
+        /// still succeed (just slower).
+        ///
+        /// Note: This does NOT change the file's EOF. The actual file length is
+        /// determined by the bytes written. This preserves the semantic that
+        /// "file length equals bytes successfully written".
+        ///
+        /// - Parameters:
+        ///   - fd: File descriptor to preallocate for
+        ///   - size: Expected total file size in bytes
+        private static func preallocate(fd: Int32, size: Int64) {
+            // Try contiguous allocation first (best performance)
+            var fstore = fstore_t(
+                fst_flags: UInt32(F_ALLOCATECONTIG),
+                fst_posmode: Int32(F_PEOFPOSMODE),
+                fst_offset: 0,
+                fst_length: off_t(size),
+                fst_bytesalloc: 0
+            )
+
+            if fcntl(fd, F_PREALLOCATE, &fstore) == -1 {
+                // Contiguous failed, try non-contiguous
+                fstore.fst_flags = UInt32(F_ALLOCATEALL)
+                _ = fcntl(fd, F_PREALLOCATE, &fstore)
+            }
+            // Do NOT ftruncate - let actual writes determine file length
+        }
+        #endif
 
         /// Writes all bytes to fd, handling partial writes and EINTR.
         private static func writeAll(
