@@ -84,7 +84,7 @@ import File_System
 
         @Test("In-flight jobs complete during shutdown")
         func inFlightCompletesDuringShutdown() async throws {
-            let executor = File.IO.Executor(.init(workers: 1))
+            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 1))
             let started = ManagedAtomic(false)
             let completed = ManagedAtomic(false)
 
@@ -272,9 +272,9 @@ import File_System
         @Test("Multiple dedicated executors don't oversubscribe")
         func multipleDedicatedExecutorsNoOversubscription() async throws {
             // Create 3 executors with 2 workers each
-            let executor1 = File.IO.Executor(.init(workers: 2, threadModel: .dedicated))
-            let executor2 = File.IO.Executor(.init(workers: 2, threadModel: .dedicated))
-            let executor3 = File.IO.Executor(.init(workers: 2, threadModel: .dedicated))
+            let executor1 = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
+            let executor2 = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
+            let executor3 = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
 
             // Track concurrent execution
             let concurrentCount = ManagedAtomic(0)
@@ -321,7 +321,7 @@ import File_System
 
         @Test("Dedicated pool handles blocking operations without affecting cooperative pool")
         func dedicatedPoolBlockingIsolation() async throws {
-            let dedicatedExecutor = File.IO.Executor(.init(workers: 2, threadModel: .dedicated))
+            let dedicatedExecutor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
 
             // Track that cooperative work completes while dedicated is blocked
             let dedicatedStarted = ManagedAtomic(false)
@@ -363,7 +363,7 @@ import File_System
 
         @Test("Dedicated pool shutdown is clean with no hanging threads")
         func dedicatedPoolCleanShutdown() async throws {
-            let executor = File.IO.Executor(.init(workers: 4, threadModel: .dedicated))
+            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 4))
 
             // Submit and complete some work
             try await withThrowingTaskGroup(of: Int.self) { group in
@@ -575,7 +575,7 @@ import File_System
 
         @Test("Dedicated pool handles exceptions without corrupting thread pool")
         func dedicatedPoolExceptionHandling() async throws {
-            let executor = File.IO.Executor(.init(workers: 2, threadModel: .dedicated))
+            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
 
             struct TestError: Error, Equatable {}
 
@@ -623,7 +623,7 @@ import File_System
 
         @Test("Dedicated pool stress test - many concurrent jobs")
         func dedicatedPoolStressTest() async throws {
-            let executor = File.IO.Executor(.init(workers: 4, threadModel: .dedicated))
+            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 4))
 
             let jobCount = 100
             let results = try await withThrowingTaskGroup(of: Int.self) { group in

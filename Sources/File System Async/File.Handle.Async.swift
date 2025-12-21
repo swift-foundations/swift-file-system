@@ -48,19 +48,6 @@ extension File.Handle {
         /// The mode this handle was opened with.
         public nonisolated let mode: File.Handle.Mode
 
-        /// Creates an async handle by registering a primitive handle with the executor.
-        ///
-        /// - Parameters:
-        ///   - handle: The primitive handle (ownership transferred to executor store).
-        ///   - io: The executor that will manage this handle.
-        /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
-        public init(_ handle: consuming File.Handle, io: File.IO.Executor) throws {
-            self.path = handle.path
-            self.mode = handle.mode
-            self.io = io
-            self.id = try io.registerHandle(handle)
-        }
-
         /// Internal initializer for when handle is already registered.
         internal init(
             id: File.IO.Handle.ID,
@@ -75,22 +62,15 @@ extension File.Handle {
         }
 
         deinit {
-            // Only warn and cleanup if:
-            // 1. We didn't explicitly call close()
-            // 2. The handle is still in the store (not already cleaned up by shutdown)
-            if !isClosed && io.isHandleValid(id) {
+            // Per plan: debug warning allowed, but no async cleanup
+            // The handle remains in the executor's registry until shutdown
+            if !isClosed {
                 #if DEBUG
-                    print(
-                        "Warning: File.Handle.Async deallocated without close() for path: \(path)"
-                    )
+                print(
+                    "Warning: File.Handle.Async deallocated without close() for path: \(path). " +
+                    "Handle will remain open until executor shutdown."
+                )
                 #endif
-                // Best-effort cleanup - fire and forget
-                // May be skipped during shutdown; errors discarded
-                let io = self.io
-                let id = self.id
-                Task.detached {
-                    try? await io.destroyHandle(id)
-                }
             }
         }
 
@@ -111,12 +91,8 @@ extension File.Handle {
             options: File.Handle.Options = [],
             io: File.IO.Executor
         ) async throws -> File.Handle.Async {
-            // Open synchronously on the I/O executor, register immediately
-            let id = try await io.run {
-                let handle = try File.Handle.open(path, mode: mode, options: options)
-                return try io.registerHandle(handle)
-            }
-            // Create the async wrapper with the registered ID
+            // Use executor's openFile which handles the slot pattern internally
+            let id = try await io.openFile(path, mode: mode, options: options)
             return File.Handle.Async(id: id, path: path, mode: mode, io: io)
         }
 
@@ -215,9 +191,12 @@ extension File.Handle {
             try await io.destroyHandle(id)
         }
 
-        /// Whether the handle is still open.
+        /// Whether the handle is still open (local view).
+        ///
+        /// - Note: This reflects whether `close()` was called on this wrapper.
+        ///   The underlying handle may have been closed by executor shutdown.
         public var isOpen: Bool {
-            !isClosed && io.isHandleValid(id)
+            !isClosed
         }
     }
 }

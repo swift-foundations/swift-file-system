@@ -884,12 +884,12 @@ import File_System_Primitives
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
 
-            let primHandle = try File.Handle.open(
+            let handle = try await File.Handle.Async.open(
                 path,
                 mode: .write,
-                options: [.create, .closeOnExec]
+                options: [.create, .closeOnExec],
+                io: io
             )
-            let handle = try File.Handle.Async(primHandle, io: io)
 
             try await handle.close()
             // Second close should be safe
@@ -907,8 +907,7 @@ import File_System_Primitives
             let data: [UInt8] = [1, 2, 3, 4, 5]
             try createFile(at: path, content: data)
 
-            let primHandle = try File.Handle.open(path, mode: .read)
-            let handle = try File.Handle.Async(primHandle, io: io)
+            let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
 
             try await handle.close()
 

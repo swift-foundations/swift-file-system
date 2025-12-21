@@ -10,9 +10,8 @@ import Synchronization
 extension File.IO.Atomic {
     /// Thread-safe counter for generating unique IDs.
     ///
-    /// ## Safety Invariant
-    /// All mutations of `value` occur inside `withLock`, ensuring exclusive access.
-    final class Counter: @unchecked Sendable {
+    /// Uses Synchronization.Mutex which is Sendable in Swift 6+.
+    final class Counter: Sendable {
         private let state: Mutex<UInt64>
 
         init() {

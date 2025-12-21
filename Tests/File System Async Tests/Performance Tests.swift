@@ -42,7 +42,7 @@ import TestingPerformance
 
             init() async throws {
                 // Create executor ONCE, reuse across iterations
-                self.executor = File.IO.Executor(.init(workers: 8))
+                self.executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 8))
 
                 // Create a file for fstat testing (instead of Thread.sleep)
                 #if canImport(Foundation)
@@ -173,20 +173,14 @@ import TestingPerformance
             func handleRegistrationDestruction() async throws {
                 // File and executor from fixture
                 for _ in 0..<20 {
-                    let handleId = try await executor.run { [path = self.filePath, executor = self.executor] in
-                        let handle = try File.Handle.open(path, mode: .read)
-                        return try executor.registerHandle(handle)
-                    }
+                    let handleId = try await executor.openFile(filePath, mode: .read)
                     try await executor.destroyHandle(handleId)
                 }
             }
 
             @Test("withHandle access pattern", .timed(iterations: 20, warmup: 3))
             func withHandleAccess() async throws {
-                let handleId = try await executor.run { [path = self.filePath, executor = self.executor] in
-                    let handle = try File.Handle.open(path, mode: .read)
-                    return try executor.registerHandle(handle)
-                }
+                let handleId = try await executor.openFile(filePath, mode: .read)
 
                 // 50 withHandle accesses
                 for _ in 0..<50 {
@@ -638,14 +632,11 @@ import TestingPerformance
                 #expect(totalBytes == 1_000_000)
             }
 
-            @Test("Handle store cleanup", .timed(iterations: 5))
-            func handleStoreCleanup() async throws {
+            @Test("Handle registry cleanup", .timed(iterations: 5))
+            func handleRegistryCleanup() async throws {
                 // Use pre-created file from fixture
                 for _ in 0..<50 {
-                    let handleId = try await executor.run { [testFile = self.testFile, executor = self.executor] in
-                        let handle = try File.Handle.open(testFile, mode: .read)
-                        return try executor.registerHandle(handle)
-                    }
+                    let handleId = try await executor.openFile(testFile, mode: .read)
                     try await executor.destroyHandle(handleId)
                 }
             }

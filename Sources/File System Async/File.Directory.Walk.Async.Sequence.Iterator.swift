@@ -14,6 +14,8 @@ extension File.Directory.Walk.Async.Sequence {
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
+        private typealias Box = File.IO.Blocking.Threads.Iterator.Box<File.Directory.Iterator>
+
         private let channel: AsyncThrowingChannel<Element, any Error>
         private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
         private var producerTask: Task<Void, Never>?
@@ -197,7 +199,7 @@ extension File.Directory.Walk.Async.Sequence {
 
             // Helper to close box - must be called before returning
             @Sendable func closeBox() async {
-                _ = try? await io.run { box.close() }
+                _ = try? await io.run { box.close { $0.close() } }
             }
 
             // Iterate directory with batching to reduce executor overhead
@@ -220,7 +222,9 @@ extension File.Directory.Walk.Async.Sequence {
                         var entries: [File.Directory.Entry] = []
                         entries.reserveCapacity(batchSize)
                         for _ in 0..<batchSize {
-                            guard let entry = try box.next() else { break }
+                            // withValue returns nil if box is closed, next() returns nil at EOF
+                            guard let maybeEntry = try box.withValue({ try $0.next() }),
+                                  let entry = maybeEntry else { break }
                             entries.append(entry)
                         }
                         return entries
