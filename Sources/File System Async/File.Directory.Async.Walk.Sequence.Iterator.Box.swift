@@ -21,11 +21,22 @@ extension File.Directory.Async.WalkSequence {
         }
 
         deinit {
-            if let ptr = storage {
-                let it = ptr.move()
-                ptr.deallocate()
-                it.close()
-            }
+            // INVARIANT: IteratorBox.deinit performs no cleanup.
+            // All cleanup must occur via close() inside io.run.
+            // This preserves the executor-confinement invariant.
+            //
+            // If storage != nil here, the handle will leak until process exit.
+            // This is programmer error - the walk was not completed or terminated.
+            #if DEBUG
+            precondition(
+                storage == nil,
+                """
+                IteratorBox deallocated without close().
+                This violates the io.run-only invariant.
+                The walk must complete or be terminated.
+                """
+            )
+            #endif
         }
 
         func next() throws -> File.Directory.Entry? {

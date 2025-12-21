@@ -52,7 +52,7 @@ extension File.Directory.Async {
         let io: File.IO.Executor
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(root: root, options: options, io: io)
+            AsyncIterator.make(root: root, options: options, io: io)
         }
     }
 }

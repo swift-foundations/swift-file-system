@@ -9,24 +9,50 @@ import AsyncAlgorithms
 
 extension File.Directory.Async.WalkSequence {
     /// The async iterator for directory walk.
-    public final class AsyncIterator: AsyncIteratorProtocol, @unchecked Sendable {
+    ///
+    /// ## Thread Safety
+    /// This iterator is task-confined. Do not share across Tasks.
+    /// The non-Sendable conformance enforces this at compile time.
+    public final class AsyncIterator: AsyncIteratorProtocol {
         private let channel: AsyncThrowingChannel<Element, any Error>
         private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
-        private let producerTask: Task<Void, Never>
+        private var producerTask: Task<Void, Never>?
         private var isFinished = false
 
-        init(root: File.Path, options: File.Directory.Async.WalkOptions, io: File.IO.Executor) {
-            let channel = AsyncThrowingChannel<Element, any Error>()
+        private init(
+            channel: AsyncThrowingChannel<Element, any Error>,
+            channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
+        ) {
             self.channel = channel
-            self.channelIterator = channel.makeAsyncIterator()
+            self.channelIterator = channelIterator
+        }
 
-            self.producerTask = Task {
+        /// Factory method to create iterator and start producer.
+        /// Uses factory pattern to avoid init-region isolation issues.
+        static func make(
+            root: File.Path,
+            options: File.Directory.Async.WalkOptions,
+            io: File.IO.Executor
+        ) -> AsyncIterator {
+            let channel = AsyncThrowingChannel<Element, any Error>()
+            let iterator = AsyncIterator(
+                channel: channel,
+                channelIterator: channel.makeAsyncIterator()
+            )
+
+            // Capture only Sendable values, not self
+            let root = root
+            let options = options
+            let io = io
+            iterator.producerTask = Task {
                 await Self.runWalk(root: root, options: options, io: io, channel: channel)
             }
+
+            return iterator
         }
 
         deinit {
-            producerTask.cancel()
+            producerTask?.cancel()
         }
 
         public func next() async throws -> Element? {
@@ -41,7 +67,7 @@ extension File.Directory.Async.WalkSequence {
                 return result
             } catch {
                 isFinished = true
-                producerTask.cancel()
+                producerTask?.cancel()
                 throw error
             }
         }
@@ -50,7 +76,7 @@ extension File.Directory.Async.WalkSequence {
         public func terminate() {
             guard !isFinished else { return }
             isFinished = true
-            producerTask.cancel()
+            producerTask?.cancel()
             channel.finish()  // Consumer's next() returns nil immediately
         }
 
@@ -157,10 +183,9 @@ extension File.Directory.Async.WalkSequence {
                 return
             }
 
-            defer {
-                Task {
-                    _ = try? await io.run { box.close() }
-                }
+            // Helper to close box - must be called before returning
+            @Sendable func closeBox() async {
+                _ = try? await io.run { box.close() }
             }
 
             // Iterate directory with batching to reduce executor overhead
@@ -225,6 +250,8 @@ extension File.Directory.Async.WalkSequence {
                 await authority.fail(with: error)
             }
 
+            // Close box synchronously before returning
+            await closeBox()
             await state.decrementActive()
         }
 

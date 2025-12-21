@@ -24,12 +24,27 @@ extension File.Directory.Async.Entries {
         }
 
         deinit {
-            // Best-effort cleanup if not explicitly closed
-            if let ptr = storage {
-                let it = ptr.move()
-                ptr.deallocate()
-                it.close()
-            }
+            // INVARIANT: IteratorBox.deinit performs no cleanup.
+            // All cleanup must occur via close() inside io.run.
+            // This preserves the executor-confinement invariant.
+            //
+            // If storage != nil here, it means:
+            // 1. The iterator was not exhausted, AND
+            // 2. terminate() was not called, AND
+            // 3. The best-effort Task.detached cleanup didn't run
+            //
+            // This is programmer error. The handle will leak until process exit.
+            // Use terminate() for deterministic cleanup.
+            #if DEBUG
+            precondition(
+                storage == nil,
+                """
+                IteratorBox deallocated without close().
+                This violates the io.run-only invariant.
+                The iterator must be exhausted or terminate() must be called.
+                """
+            )
+            #endif
         }
 
         func next() throws -> File.Directory.Entry? {

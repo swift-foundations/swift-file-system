@@ -9,18 +9,38 @@ import AsyncAlgorithms
 
 extension File.Stream.Async.ByteSequence {
     /// The async iterator for byte streaming.
-    public final class AsyncIterator: AsyncIteratorProtocol, @unchecked Sendable {
+    ///
+    /// ## Thread Safety
+    /// This iterator is task-confined. Do not share across Tasks.
+    /// The non-Sendable conformance enforces this at compile time.
+    public final class AsyncIterator: AsyncIteratorProtocol {
         private let channel: AsyncThrowingChannel<Element, any Error>
         private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
-        private let producerTask: Task<Void, Never>
+        private var producerTask: Task<Void, Never>?
         private var isFinished = false
 
-        init(path: File.Path, chunkSize: Int, io: File.IO.Executor) {
-            let channel = AsyncThrowingChannel<Element, any Error>()
+        private init(
+            channel: AsyncThrowingChannel<Element, any Error>,
+            channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
+        ) {
             self.channel = channel
-            self.channelIterator = channel.makeAsyncIterator()
+            self.channelIterator = channelIterator
+        }
 
-            self.producerTask = Task {
+        /// Factory method to create iterator and start producer.
+        /// Uses factory pattern to avoid init-region isolation issues.
+        static func make(path: File.Path, chunkSize: Int, io: File.IO.Executor) -> AsyncIterator {
+            let channel = AsyncThrowingChannel<Element, any Error>()
+            let iterator = AsyncIterator(
+                channel: channel,
+                channelIterator: channel.makeAsyncIterator()
+            )
+
+            // Capture only Sendable values, not self
+            let path = path
+            let chunkSize = chunkSize
+            let io = io
+            iterator.producerTask = Task {
                 await Self.runProducer(
                     path: path,
                     chunkSize: chunkSize,
@@ -28,10 +48,12 @@ extension File.Stream.Async.ByteSequence {
                     channel: channel
                 )
             }
+
+            return iterator
         }
 
         deinit {
-            producerTask.cancel()
+            producerTask?.cancel()
         }
 
         public func next() async throws -> Element? {
@@ -46,7 +68,7 @@ extension File.Stream.Async.ByteSequence {
                 return result
             } catch {
                 isFinished = true
-                producerTask.cancel()
+                producerTask?.cancel()
                 throw error
             }
         }
@@ -55,7 +77,7 @@ extension File.Stream.Async.ByteSequence {
         public func terminate() {
             guard !isFinished else { return }
             isFinished = true
-            producerTask.cancel()
+            producerTask?.cancel()
             channel.finish()  // Consumer's next() returns nil immediately
         }
 

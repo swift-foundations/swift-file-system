@@ -5,48 +5,165 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import AsyncAlgorithms
-
 extension File.Directory.Async.Entries {
-    /// The async iterator for directory entries.
+    /// Pull-based async iterator for directory entries.
+    ///
+    /// ## Design
+    /// Consumer-driven iteration with batched refills. One `io.run` call per batch,
+    /// eliminating the overhead of producer Task + AsyncThrowingChannel.
     ///
     /// ## Explicit Termination
     /// Call `terminate()` for deterministic cleanup instead of relying on deinit.
     /// This is especially important in contexts where deinit timing is uncertain.
-    public final class AsyncIterator: AsyncIteratorProtocol, @unchecked Sendable {
-        private let channel: AsyncThrowingChannel<Element, any Error>
-        private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
-        private let producerTask: Task<Void, Never>
-        private var isFinished = false
+    ///
+    /// ## Thread Safety
+    /// This iterator is task-confined. Do not share across Tasks.
+    /// The non-Sendable conformance enforces this at compile time.
+    ///
+    /// ## HARD INVARIANT
+    /// - All observable effects on IteratorBox (`next`, `close`) occur exclusively
+    ///   inside `io.run` closures.
+    /// - IteratorBox.deinit performs no cleanup.
+    /// - Deterministic cleanup requires exhausting the iterator or calling `terminate()`.
+    /// - AsyncIterator.deinit may schedule best-effort cleanup via `io.run`, but never
+    ///   touches IteratorBox directly.
+    public final class AsyncIterator: AsyncIteratorProtocol {
+        public typealias Element = File.Directory.Entry
 
-        init(path: File.Path, io: File.IO.Executor) {
-            let channel = AsyncThrowingChannel<Element, any Error>()
-            self.channel = channel
-            self.channelIterator = channel.makeAsyncIterator()
+        private enum State {
+            case unopened
+            case open(IteratorBox)
+            case finished
+        }
 
-            self.producerTask = Task {
-                await Self.runProducer(path: path, io: io, channel: channel)
-            }
+        private let path: File.Path
+        private let io: File.IO.Executor
+        private var state: State = .unopened
+        private var buffer: [Element] = []
+        private var cursor: Int = 0
+        internal let batchSize: Int
+
+        init(path: File.Path, io: File.IO.Executor, batchSize: Int = 64) {
+            self.path = path
+            self.io = io
+            self.batchSize = batchSize
         }
 
         deinit {
-            producerTask.cancel()
+            // INVARIANT: deinit never touches IteratorBox directly.
+            // Best-effort cleanup is mediated through io.run.
+            #if DEBUG
+            if case .open = state {
+                print("Warning: Entries.AsyncIterator deallocated without terminate() for path: \(path)")
+            }
+            #endif
+
+            if case .open(let box) = state {
+                let io = self.io
+                Task.detached {
+                    _ = try? await io.run {
+                        box.close()
+                    }
+                }
+            }
         }
 
         public func next() async throws -> Element? {
-            guard !isFinished else { return nil }
-
-            do {
+            // Loop instead of recursion to avoid stack growth
+            while true {
+                // Check cancellation before any work
                 try Task.checkCancellation()
-                let result = try await channelIterator.next()
-                if result == nil {
-                    isFinished = true
+
+                // Return buffered entry if available
+                if cursor < buffer.count {
+                    defer { cursor += 1 }
+                    return buffer[cursor]
                 }
-                return result
-            } catch {
-                isFinished = true
-                producerTask.cancel()
-                throw error
+
+                // Buffer exhausted - refill or finish
+                switch state {
+                case .unopened:
+                    try await open()
+                    continue  // Loop to read first batch
+
+                case .open(let box):
+                    try await refill(box)
+                    if buffer.isEmpty {
+                        return nil  // EOF
+                    }
+                    continue  // Loop to return first entry
+
+                case .finished:
+                    return nil
+                }
+            }
+        }
+
+        private func open() async throws {
+            // INVARIANT: IteratorBox only touched inside io.run
+            let box = try await io.run { [path] in
+                let iterator = try File.Directory.Iterator.open(at: path)
+                return IteratorBox(iterator)
+            }
+            state = .open(box)
+            buffer = []
+            cursor = 0
+        }
+
+        private func refill(_ box: IteratorBox) async throws {
+            let batchSize = self.batchSize
+
+            // Wrap in cancellation handler to ensure cleanup on cancellation
+            try await withTaskCancellationHandler {
+                do {
+                    // INVARIANT: IteratorBox only touched inside io.run
+                    let entries = try await io.run {
+                        var batch: [Element] = []
+                        batch.reserveCapacity(batchSize)
+                        for _ in 0..<batchSize {
+                            guard let entry = try box.next() else { break }
+                            batch.append(entry)
+                        }
+                        return batch
+                    }
+
+                    buffer = entries
+                    cursor = 0
+
+                    if entries.isEmpty {
+                        // EOF - close handle on executor
+                        // INVARIANT: IteratorBox only touched inside io.run
+                        await closeBox(box)
+                        state = .finished
+                    }
+                } catch is CancellationError {
+                    // Cancelled - cleanup already scheduled in onCancel handler
+                    state = .finished
+                    throw CancellationError()
+                } catch {
+                    // Other error - close handle and rethrow
+                    // INVARIANT: IteratorBox only touched inside io.run
+                    await closeBox(box)
+                    state = .finished
+                    throw error
+                }
+            } onCancel: { [io = self.io, box] in
+                // Cancellation during io.run: job completes but we schedule cleanup
+                // Note: This runs on arbitrary thread, but only schedules a Task
+                // Explicit captures: io (executor) and box (to close)
+                // INVARIANT: IteratorBox only touched inside io.run
+                Task.detached {
+                    _ = try? await io.run {
+                        box.close()
+                    }
+                }
+            }
+        }
+
+        private func closeBox(_ box: IteratorBox) async {
+            // INVARIANT: IteratorBox only touched inside io.run
+            _ = try? await io.run {
+                box.close()
             }
         }
 
@@ -54,91 +171,13 @@ extension File.Directory.Async.Entries {
         ///
         /// Use this for deterministic cleanup instead of relying on deinit.
         /// Safe to call multiple times (idempotent).
-        public func terminate() {
-            guard !isFinished else { return }
-            isFinished = true
-            producerTask.cancel()
-            channel.finish()  // Consumer's next() returns nil immediately
-        }
-
-        // MARK: - Producer
-
-        private static func runProducer(
-            path: File.Path,
-            io: File.IO.Executor,
-            channel: AsyncThrowingChannel<Element, any Error>
-        ) async {
-            // Open iterator via io.run (blocking operation)
-            let iteratorResult: Result<IteratorBox, any Error> = await {
-                do {
-                    let box = try await io.run {
-                        let iterator = try File.Directory.Iterator.open(at: path)
-                        return IteratorBox(iterator)
-                    }
-                    return .success(box)
-                } catch {
-                    return .failure(error)
-                }
-            }()
-
-            switch iteratorResult {
-            case .failure(let error):
-                channel.fail(error)
-                return
-
-            case .success(let box):
-                // Stream entries with batching to reduce executor overhead
-                do {
-                    let batchSize = 64
-
-                    while true {
-                        try Task.checkCancellation()
-
-                        // Read batch of entries via single io.run call
-                        let batch: [Element] = try await io.run {
-                            var entries: [Element] = []
-                            entries.reserveCapacity(batchSize)
-                            for _ in 0..<batchSize {
-                                guard let entry = try box.next() else { break }
-                                entries.append(entry)
-                            }
-                            return entries
-                        }
-
-                        if batch.isEmpty {
-                            // End of directory
-                            break
-                        }
-
-                        try Task.checkCancellation()
-
-                        // Send batch entries with backpressure
-                        for entry in batch {
-                            await channel.send(entry)
-                        }
-                    }
-
-                    // Clean close
-                    await closeIterator(box, io: io)
-                    channel.finish()
-
-                } catch is CancellationError {
-                    // Cancelled - clean up resources
-                    await closeIterator(box, io: io)
-                    channel.finish()
-
-                } catch {
-                    // Error during iteration
-                    await closeIterator(box, io: io)
-                    channel.fail(error)
-                }
+        public func terminate() async {
+            if case .open(let box) = state {
+                // INVARIANT: IteratorBox only touched inside io.run
+                await closeBox(box)
             }
-        }
-
-        private static func closeIterator(_ box: IteratorBox, io: File.IO.Executor) async {
-            _ = try? await io.run {
-                box.close()
-            }
+            state = .finished
+            buffer = []
         }
     }
 }

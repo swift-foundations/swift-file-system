@@ -58,7 +58,7 @@ extension File.Stream.Async {
         let io: File.IO.Executor
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(path: path, chunkSize: chunkSize, io: io)
+            AsyncIterator.make(path: path, chunkSize: chunkSize, io: io)
         }
     }
 }

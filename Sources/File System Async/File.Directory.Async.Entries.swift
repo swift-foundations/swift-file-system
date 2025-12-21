@@ -5,15 +5,14 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import AsyncAlgorithms
-
 // MARK: - Entries API
 
 extension File.Directory.Async {
     /// Returns an async sequence of directory entries.
     ///
-    /// This provides streaming iteration with proper backpressure and
-    /// cancellation support.
+    /// This provides streaming iteration with proper cancellation support.
+    /// Uses a pull-based design: consumer drives iteration, one `io.run` call
+    /// per batch of entries.
     ///
     /// ## Example
     /// ```swift
@@ -24,11 +23,16 @@ extension File.Directory.Async {
     /// ```
     ///
     /// ## Termination
-    /// - Breaking from the loop cancels the producer
+    /// - Breaking from the loop triggers cleanup via deinit (best-effort)
     /// - Use `iterator.terminate()` for explicit cleanup if needed
     /// - Resources are always cleaned up regardless of exit path
     public func entries(at path: File.Path) -> Entries {
-        Entries(path: path, io: io)
+        Entries(path: path, io: io, batchSize: 128)
+    }
+
+    /// Internal: Returns an async sequence with configurable batch size for benchmarking.
+    internal func entries(at path: File.Path, batchSize: Int) -> Entries {
+        Entries(path: path, io: io, batchSize: batchSize)
     }
 }
 
@@ -37,14 +41,20 @@ extension File.Directory.Async {
 extension File.Directory.Async {
     /// An AsyncSequence of directory entries with explicit lifecycle control.
     ///
-    /// ## Backpressure
-    /// Uses 1-element buffering: producer waits for consumer to pull before reading next.
-    /// This ensures memory-bounded operation even for large directories.
+    /// ## Design
+    /// Pull-based iteration: consumer calls `next()`, which refills an internal
+    /// buffer via a single `io.run` call when exhausted. No producer Task,
+    /// no channel overhead.
+    ///
+    /// ## Batch Size
+    /// Entries are read in batches (default 64) to amortize executor overhead.
+    /// Tune via internal `entries(at:batchSize:)` for benchmarking.
     ///
     /// ## Termination
-    /// The producer is cancelled when:
-    /// - The iterator is deallocated (for-in loop completes or breaks)
-    /// - `next()` is called after cancellation
+    /// The iterator transitions to `.finished` when:
+    /// - All entries have been read
+    /// - An error occurs
+    /// - Task is cancelled
     /// - `terminate()` is called explicitly
     ///
     /// ## Resource Cleanup
@@ -55,9 +65,10 @@ extension File.Directory.Async {
 
         let path: File.Path
         let io: File.IO.Executor
+        let batchSize: Int
 
         public func makeAsyncIterator() -> AsyncIterator {
-            AsyncIterator(path: path, io: io)
+            AsyncIterator(path: path, io: io, batchSize: batchSize)
         }
     }
 }
