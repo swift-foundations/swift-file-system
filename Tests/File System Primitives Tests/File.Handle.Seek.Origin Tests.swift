@@ -1,5 +1,5 @@
 //
-//  File.Handle.SeekOrigin Tests.swift
+//  File.Handle.Seek.Origin Tests.swift
 //  swift-file-system
 //
 
@@ -8,19 +8,19 @@ import Testing
 
 @testable import File_System_Primitives
 
-extension File.Handle.SeekOrigin {
+extension File.Handle.Seek.Origin {
     #TestSuites
 }
 
 // MARK: - Unit Tests
 
-extension File.Handle.SeekOrigin.Test.Unit {
+extension File.Handle.Seek.Origin.Test.Unit {
 
     // MARK: - Case Existence
 
     @Test("all cases are distinct")
     func allCasesDistinct() {
-        let allCases: [File.Handle.SeekOrigin] = [.start, .current, .end]
+        let allCases: [File.Handle.Seek.Origin] = [.start, .current, .end]
         let rawValues = allCases.map(\.rawValue)
         #expect(Set(rawValues).count == allCases.count)
     }
@@ -29,37 +29,37 @@ extension File.Handle.SeekOrigin.Test.Unit {
 
     @Test("rawValue for .start")
     func rawValueStart() {
-        #expect(File.Handle.SeekOrigin.start.rawValue == 0)
+        #expect(File.Handle.Seek.Origin.start.rawValue == 0)
     }
 
     @Test("rawValue for .current")
     func rawValueCurrent() {
-        #expect(File.Handle.SeekOrigin.current.rawValue == 1)
+        #expect(File.Handle.Seek.Origin.current.rawValue == 1)
     }
 
     @Test("rawValue for .end")
     func rawValueEnd() {
-        #expect(File.Handle.SeekOrigin.end.rawValue == 2)
+        #expect(File.Handle.Seek.Origin.end.rawValue == 2)
     }
 
     @Test("rawValue round-trip for .start")
     func rawValueRoundTripStart() {
-        let origin = File.Handle.SeekOrigin.start
-        let restored = File.Handle.SeekOrigin(rawValue: origin.rawValue)
+        let origin = File.Handle.Seek.Origin.start
+        let restored = File.Handle.Seek.Origin(rawValue: origin.rawValue)
         #expect(restored == origin)
     }
 
     @Test("rawValue round-trip for .current")
     func rawValueRoundTripCurrent() {
-        let origin = File.Handle.SeekOrigin.current
-        let restored = File.Handle.SeekOrigin(rawValue: origin.rawValue)
+        let origin = File.Handle.Seek.Origin.current
+        let restored = File.Handle.Seek.Origin(rawValue: origin.rawValue)
         #expect(restored == origin)
     }
 
     @Test("rawValue round-trip for .end")
     func rawValueRoundTripEnd() {
-        let origin = File.Handle.SeekOrigin.end
-        let restored = File.Handle.SeekOrigin(rawValue: origin.rawValue)
+        let origin = File.Handle.Seek.Origin.end
+        let restored = File.Handle.Seek.Origin(rawValue: origin.rawValue)
         #expect(restored == origin)
     }
 
@@ -68,23 +68,23 @@ extension File.Handle.SeekOrigin.Test.Unit {
     @Test("Binary.Serializable - serialize produces correct byte")
     func binarySerialize() {
         var buffer: [UInt8] = []
-        File.Handle.SeekOrigin.serialize(.start, into: &buffer)
+        File.Handle.Seek.Origin.serialize(.start, into: &buffer)
         #expect(buffer == [0])
 
         buffer = []
-        File.Handle.SeekOrigin.serialize(.current, into: &buffer)
+        File.Handle.Seek.Origin.serialize(.current, into: &buffer)
         #expect(buffer == [1])
 
         buffer = []
-        File.Handle.SeekOrigin.serialize(.end, into: &buffer)
+        File.Handle.Seek.Origin.serialize(.end, into: &buffer)
         #expect(buffer == [2])
     }
 
     // MARK: - Sendable
 
-    @Test("SeekOrigin is Sendable")
+    @Test("Seek.Origin is Sendable")
     func sendable() async {
-        let origin: File.Handle.SeekOrigin = .current
+        let origin: File.Handle.Seek.Origin = .current
 
         let result = await Task {
             origin
@@ -97,7 +97,7 @@ extension File.Handle.SeekOrigin.Test.Unit {
 
     @Test("exhaustive switch covers all cases")
     func exhaustiveSwitch() {
-        let origins: [File.Handle.SeekOrigin] = [.start, .current, .end]
+        let origins: [File.Handle.Seek.Origin] = [.start, .current, .end]
 
         for origin in origins {
             switch origin {
@@ -114,37 +114,37 @@ extension File.Handle.SeekOrigin.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.Handle.SeekOrigin.Test.EdgeCase {
+extension File.Handle.Seek.Origin.Test.EdgeCase {
 
     @Test("invalid rawValue returns nil")
     func invalidRawValue() {
-        #expect(File.Handle.SeekOrigin(rawValue: 255) == nil)
+        #expect(File.Handle.Seek.Origin(rawValue: 255) == nil)
     }
 
     @Test("boundary rawValue (just past valid)")
     func boundaryRawValue() {
-        #expect(File.Handle.SeekOrigin(rawValue: 3) == nil)
+        #expect(File.Handle.Seek.Origin(rawValue: 3) == nil)
     }
 
     @Test("all invalid rawValues from 3 to 255 return nil")
     func allInvalidRawValues() {
         for rawValue in UInt8(3)...UInt8(255) {
-            #expect(File.Handle.SeekOrigin(rawValue: rawValue) == nil)
+            #expect(File.Handle.Seek.Origin(rawValue: rawValue) == nil)
         }
     }
 
-    @Test("SeekOrigin used in collection")
+    @Test("Seek.Origin used in collection")
     func inCollection() {
-        let origins: [File.Handle.SeekOrigin] = [.start, .current, .end]
+        let origins: [File.Handle.Seek.Origin] = [.start, .current, .end]
         #expect(origins.count == 3)
         #expect(origins[0] == .start)
         #expect(origins[1] == .current)
         #expect(origins[2] == .end)
     }
 
-    @Test("SeekOrigin as dictionary key")
+    @Test("Seek.Origin as dictionary key")
     func asDictionaryKey() {
-        let descriptions: [File.Handle.SeekOrigin: String] = [
+        let descriptions: [File.Handle.Seek.Origin: String] = [
             .start: "beginning",
             .current: "current position",
             .end: "end of file",

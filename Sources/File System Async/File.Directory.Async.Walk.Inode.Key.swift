@@ -6,7 +6,9 @@
 //
 
 /// Unique identifier for a file (device + inode).
-struct _InodeKey: Hashable, Sendable {
-    let device: UInt64
-    let inode: UInt64
+extension File.Directory.Async.Walk.Inode {
+    struct Key: Hashable, Sendable {
+        let device: UInt64
+        let inode: UInt64
+    }
 }

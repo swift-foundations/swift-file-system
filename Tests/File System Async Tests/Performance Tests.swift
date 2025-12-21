@@ -207,11 +207,14 @@ import TestingPerformance
         /// Creates test directories once, reused across iterations.
         @Suite(.serialized)
         final class `Directory Operations` {
+            let executor: File.IO.Executor
             let testDir100Files: File.Path
             let testDirShallowTree: File.Path
             let testDirDeepTree: File.Path
 
             init() async throws {
+                self.executor = File.IO.Executor()
+
                 #if canImport(Foundation)
                     let tempDir = try File.Path(NSTemporaryDirectory())
                 #else
@@ -223,40 +226,52 @@ import TestingPerformance
 
                 // Setup: 100 files directory
                 self.testDir100Files = File.Path(tempDir, appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))")
-                try await File.System.Create.Directory.create(at: testDir100Files)
+                try File.System.Create.Directory.create(at: testDir100Files)
                 for i in 0..<100 {
                     let filePath = File.Path(testDir100Files, appending: "file_\(i).txt")
-                    try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
+                    try fileData.withUnsafeBufferPointer { buffer in
+                        let span = Span<UInt8>(_unsafeElements: buffer)
+                        try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                    }
                 }
 
                 // Setup: shallow tree (10 dirs × 10 files)
                 self.testDirShallowTree = File.Path(tempDir, appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))")
-                try await File.System.Create.Directory.create(at: testDirShallowTree)
+                try File.System.Create.Directory.create(at: testDirShallowTree)
                 for i in 0..<10 {
                     let subDir = File.Path(testDirShallowTree, appending: "dir_\(i)")
-                    try await File.System.Create.Directory.create(at: subDir)
+                    try File.System.Create.Directory.create(at: subDir)
                     for j in 0..<10 {
                         let filePath = File.Path(subDir, appending: "file_\(j).txt")
-                        try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
+                        try fileData.withUnsafeBufferPointer { buffer in
+                            let span = Span<UInt8>(_unsafeElements: buffer)
+                            try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                        }
                     }
                 }
 
                 // Setup: deep tree (5 levels, 3 files per level)
                 self.testDirDeepTree = File.Path(tempDir, appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))")
-                try await File.System.Create.Directory.create(at: testDirDeepTree)
+                try File.System.Create.Directory.create(at: testDirDeepTree)
                 var currentDir = testDirDeepTree
                 for level in 0..<5 {
                     for j in 0..<3 {
                         let filePath = File.Path(currentDir, appending: "file_\(j).txt")
-                        try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
+                        try fileData.withUnsafeBufferPointer { buffer in
+                            let span = Span<UInt8>(_unsafeElements: buffer)
+                            try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                        }
                     }
                     let subDir = File.Path(currentDir, appending: "level_\(level)")
-                    try await File.System.Create.Directory.create(at: subDir)
+                    try File.System.Create.Directory.create(at: subDir)
                     currentDir = subDir
                 }
                 for j in 0..<3 {
                     let filePath = File.Path(currentDir, appending: "file_\(j).txt")
-                    try await File.System.Write.Atomic.write(fileData, to: filePath, options: writeOptions)
+                    try fileData.withUnsafeBufferPointer { buffer in
+                        let span = Span<UInt8>(_unsafeElements: buffer)
+                        try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
+                    }
                 }
             }
 
@@ -268,14 +283,14 @@ import TestingPerformance
 
             @Test("Async directory contents (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
             func asyncDirectoryContents() async throws {
-                let entries = try await File.Directory.contents(at: testDir100Files)
+                let entries = try await File.Directory.Async(io: executor).contents(at: testDir100Files)
                 #expect(entries.count == 100)
             }
 
             @Test("Directory entries streaming (100 files)", .timed(iterations: 50, warmup: 5, trackAllocations: false))
             func directoryEntriesStreaming() async throws {
                 var count = 0
-                for try await _ in File.Directory.entries(at: testDir100Files) {
+                for try await _ in File.Directory.Async(io: executor).entries(at: testDir100Files) {
                     count += 1
                 }
                 #expect(count == 100)
@@ -287,7 +302,7 @@ import TestingPerformance
             )
             func directoryWalkShallow() async throws {
                 var count = 0
-                for try await _ in File.Directory.walk(at: testDirShallowTree) {
+                for try await _ in File.Directory.Async(io: executor).walk(at: testDirShallowTree) {
                     count += 1
                 }
                 #expect(count == 110)
@@ -296,7 +311,7 @@ import TestingPerformance
             @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 20, warmup: 3, trackAllocations: false))
             func directoryWalkDeep() async throws {
                 var count = 0
-                for try await _ in File.Directory.walk(at: testDirDeepTree) {
+                for try await _ in File.Directory.Async(io: executor).walk(at: testDirDeepTree) {
                     count += 1
                 }
                 #expect(count == 23)
@@ -359,7 +374,7 @@ import TestingPerformance
             @Test("Stream 1MB file (4KB chunks)", .timed(iterations: 5, warmup: 1, trackAllocations: false))
             func stream1MBSmallChunks() async throws {
                 let stream = File.Stream.Async(io: executor)
-                let options = File.Stream.Async.BytesOptions(chunkSize: 4096)
+                let options = File.Stream.Async.Bytes.Options(chunkSize: 4096)
                 var totalBytes = 0
                 var chunkCount = 0
                 for try await chunk in stream.bytes(from: file1MB, options: options) {
@@ -426,7 +441,7 @@ import TestingPerformance
                     try File.System.Write.Atomic.write(span, to: pathCopySource)
                 }
 
-                try await File.System.Create.Directory.create(at: pathCopyDestDir)
+                try File.System.Create.Directory.create(at: pathCopyDestDir)
             }
 
             deinit {
@@ -437,21 +452,23 @@ import TestingPerformance
 
             @Test("Async stat operations", .timed(iterations: 20, warmup: 3))
             func asyncStatOperations() async throws {
+                let path = statFile
                 // 50 stat operations on pre-created file
                 for _ in 0..<50 {
-                    let exists = await File.System.Stat.exists(at: statFile, io: executor)
+                    let exists = try await executor.run { File.System.Stat.exists(at: path) }
                     #expect(exists)
                 }
             }
 
             @Test("Async file copy (1MB)", .timed(iterations: 5, warmup: 1))
             func asyncFileCopy() async throws {
+                let source = copySource
                 let destPath = File.Path(copyDestDir, appending: "copy_\(Int.random(in: 0..<Int.max)).bin")
                 defer { try? File.System.Delete.delete(at: destPath) }
 
-                try await File.System.Copy.copy(from: copySource, to: destPath, io: executor)
+                try await executor.run { try File.System.Copy.copy(from: source, to: destPath) }
 
-                let destExists = await File.System.Stat.exists(at: destPath, io: executor)
+                let destExists = try await executor.run { File.System.Stat.exists(at: destPath) }
                 #expect(destExists)
             }
         }
@@ -476,7 +493,7 @@ import TestingPerformance
 
                 // Create test directory with 10 files, 100KB each
                 self.testDir = File.Path(tempDir, appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))")
-                try await File.System.Create.Directory.create(at: testDir)
+                try File.System.Create.Directory.create(at: testDir)
 
                 let fileData = [UInt8](repeating: 0x55, count: 100_000)
                 let writeOptions = File.System.Write.Atomic.Options(durability: .none)

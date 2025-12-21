@@ -550,17 +550,17 @@ extension File {
     /// Reads the target of this symbolic link.
     ///
     /// - Returns: The target path that this symlink points to.
-    /// - Throws: `File.System.Link.ReadTarget.Error` on failure.
+    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
     public func readLinkTarget() throws -> File.Path {
-        try File.System.Link.ReadTarget.target(of: path)
+        try File.System.Link.Read.Target.target(of: path)
     }
 
     /// Reads the target of this symbolic link as a file.
     ///
     /// - Returns: The target file that this symlink points to.
-    /// - Throws: `File.System.Link.ReadTarget.Error` on failure.
+    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
     public func readLinkTargetFile() throws -> File {
-        File(try File.System.Link.ReadTarget.target(of: path))
+        File(try File.System.Link.Read.Target.target(of: path))
     }
 }
 

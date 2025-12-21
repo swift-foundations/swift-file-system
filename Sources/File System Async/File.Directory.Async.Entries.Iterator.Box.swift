@@ -9,7 +9,7 @@ extension File.Directory.Async.Entries {
     /// Heap-allocated box for the non-copyable iterator.
     ///
     /// Uses UnsafeMutablePointer for stable address with ~Copyable type,
-    /// similar to HandleBox pattern.
+    /// similar to Handle.Box pattern.
     ///
     /// ## Safety Invariant (for @unchecked Sendable)
     /// - Only accessed from within `io.run` closures (single-threaded access)

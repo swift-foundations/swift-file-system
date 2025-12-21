@@ -5,8 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
-import Binary
-
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
@@ -38,7 +36,7 @@ extension File {
     public struct Descriptor: ~Copyable {
         #if os(Windows)
             @usableFromInline
-            internal var _handle: UnsafeSendable<HANDLE?>
+            internal var _handle: File.Unsafe.Sendable<HANDLE?>
         #else
             @usableFromInline
             internal var _fd: Int32
@@ -48,7 +46,7 @@ extension File {
             /// Creates a descriptor from a raw Windows HANDLE.
             @usableFromInline
             internal init(__unchecked handle: HANDLE) {
-                self._handle = UnsafeSendable(handle)
+                self._handle = File.Unsafe.Sendable(handle)
             }
         #else
             /// Creates a descriptor from a raw POSIX file descriptor.
@@ -69,69 +67,6 @@ extension File {
                 }
             #endif
         }
-    }
-}
-
-// MARK: - Error
-
-extension File.Descriptor {
-    /// Errors that can occur during descriptor operations.
-    public enum Error: Swift.Error, Equatable, Sendable {
-        case pathNotFound(File.Path)
-        case permissionDenied(File.Path)
-        case alreadyExists(File.Path)
-        case isDirectory(File.Path)
-        case tooManyOpenFiles
-        case invalidDescriptor
-        case openFailed(errno: Int32, message: String)
-        case closeFailed(errno: Int32, message: String)
-        case duplicateFailed(errno: Int32, message: String)
-        case alreadyClosed
-    }
-}
-
-// MARK: - Mode
-
-extension File.Descriptor {
-    /// The mode in which to open a file descriptor.
-    public enum Mode: Sendable {
-        /// Read-only access.
-        case read
-        /// Write-only access.
-        case write
-        /// Read and write access.
-        case readWrite
-    }
-}
-
-// MARK: - Options
-
-extension File.Descriptor {
-    /// Options for opening a file descriptor.
-    public struct Options: OptionSet, Sendable {
-        public let rawValue: UInt32
-
-        public init(rawValue: UInt32) {
-            self.rawValue = rawValue
-        }
-
-        /// Create the file if it doesn't exist.
-        public static let create = Options(rawValue: 1 << 0)
-
-        /// Truncate the file to zero length if it exists.
-        public static let truncate = Options(rawValue: 1 << 1)
-
-        /// Fail if the file already exists (used with `.create`).
-        public static let exclusive = Options(rawValue: 1 << 2)
-
-        /// Append to the file.
-        public static let append = Options(rawValue: 1 << 3)
-
-        /// Do not follow symbolic links.
-        public static let noFollow = Options(rawValue: 1 << 4)
-
-        /// Close the file descriptor on exec.
-        public static let closeOnExec = Options(rawValue: 1 << 5)
     }
 }
 
@@ -206,7 +141,7 @@ extension File.Descriptor {
             // Invalidate first - handle is consumed regardless of CloseHandle result
             // This prevents double-close via deinit if CloseHandle fails
             let handleToClose = handle
-            _handle = UnsafeSendable(INVALID_HANDLE_VALUE)
+            _handle = File.Unsafe.Sendable(INVALID_HANDLE_VALUE)
             guard CloseHandle(handleToClose) else {
                 let error = GetLastError()
                 throw .closeFailed(errno: Int32(error), message: Self._formatWindowsError(error))
@@ -315,66 +250,4 @@ extension File.Descriptor {
     }
 #endif
 
-// MARK: - UnsafeSendable Helper
 
-/// A wrapper to make non-Sendable types sendable when we know it's safe.
-///
-/// ## Safety Invariant (for @unchecked Sendable)
-/// The wrapped value must only be accessed from a single isolation context,
-/// or the type must be effectively immutable for the duration of concurrent access.
-///
-/// ### Usage Contract:
-/// - Caller is responsible for ensuring thread-safety
-/// - Typically used for file descriptors (Int32) which are value types
-/// - Do not use for mutable reference types without external synchronization
-@usableFromInline
-internal struct UnsafeSendable<T>: @unchecked Sendable {
-    @usableFromInline
-    var value: T
-
-    @usableFromInline
-    init(_ value: T) {
-        self.value = value
-    }
-}
-
-// MARK: - Binary.Serializable
-
-extension File.Descriptor.Options: Binary.Serializable {
-    @inlinable
-    public static func serialize<Buffer: RangeReplaceableCollection>(
-        _ value: Self,
-        into buffer: inout Buffer
-    ) where Buffer.Element == UInt8 {
-        buffer.append(contentsOf: value.rawValue.bytes())
-    }
-}
-
-extension File.Descriptor.Mode: RawRepresentable {
-    public var rawValue: UInt8 {
-        switch self {
-        case .read: return 0
-        case .write: return 1
-        case .readWrite: return 2
-        }
-    }
-
-    public init?(rawValue: UInt8) {
-        switch rawValue {
-        case 0: self = .read
-        case 1: self = .write
-        case 2: self = .readWrite
-        default: return nil
-        }
-    }
-}
-
-extension File.Descriptor.Mode: Binary.Serializable {
-    @inlinable
-    public static func serialize<Buffer: RangeReplaceableCollection>(
-        _ value: Self,
-        into buffer: inout Buffer
-    ) where Buffer.Element == UInt8 {
-        buffer.append(value.rawValue)
-    }
-}

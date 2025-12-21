@@ -5,9 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-extension File.Stream.Async {
+extension File.Stream.Async.Bytes {
     /// Options for byte streaming.
-    public struct BytesOptions: Sendable {
+    public struct Options: Sendable {
         /// Size of each chunk in bytes.
         public var chunkSize: Int
 

@@ -7,7 +7,7 @@
 
 import AsyncAlgorithms
 
-extension File.Stream.Async.ByteSequence {
+extension File.Stream.Async.Byte.Sequence {
     /// The async iterator for byte streaming.
     ///
     /// ## Thread Safety
@@ -73,12 +73,16 @@ extension File.Stream.Async.ByteSequence {
             }
         }
 
-        /// Explicitly terminate streaming.
-        public func terminate() {
+        /// Explicitly terminate streaming and wait for cleanup to complete.
+        ///
+        /// This is a barrier: after `await terminate()` returns, all resources
+        /// have been released. Safe to call `io.shutdown()` afterward.
+        public func terminate() async {
             guard !isFinished else { return }
             isFinished = true
             producerTask?.cancel()
             channel.finish()  // Consumer's next() returns nil immediately
+            _ = await producerTask?.value  // Barrier: wait for producer cleanup
         }
 
         // MARK: - Producer
@@ -90,7 +94,7 @@ extension File.Stream.Async.ByteSequence {
             channel: AsyncThrowingChannel<Element, any Error>
         ) async {
             // Open file
-            let handleResult: Result<File.IO.HandleID, any Error> = await {
+            let handleResult: Result<File.IO.Handle.ID, any Error> = await {
                 do {
                     let id = try await io.run {
                         let handle = try File.Handle.open(path, mode: .read)

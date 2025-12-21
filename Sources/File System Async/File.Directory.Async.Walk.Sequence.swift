@@ -27,15 +27,15 @@ extension File.Directory.Async {
     /// When `followSymlinks` is true, tracks visited inodes to prevent infinite loops.
     public func walk(
         at root: File.Path,
-        options: WalkOptions = WalkOptions()
-    ) -> WalkSequence {
-        WalkSequence(root: root, options: options, io: io)
+        options: Walk.Options = Walk.Options()
+    ) -> Walk.Sequence {
+        Walk.Sequence(root: root, options: options, io: io)
     }
 }
 
-// MARK: - WalkSequence
+// MARK: - Walk.Sequence
 
-extension File.Directory.Async {
+extension File.Directory.Async.Walk {
     /// An AsyncSequence that recursively yields all paths in a directory tree.
     ///
     /// ## State Machine
@@ -44,11 +44,11 @@ extension File.Directory.Async {
     ///
     /// ## Bounded Concurrency
     /// Concurrent directory reads are bounded by `maxConcurrency`.
-    public struct WalkSequence: AsyncSequence, Sendable {
+    public struct Sequence: AsyncSequence, Sendable {
         public typealias Element = File.Path
 
         let root: File.Path
-        let options: WalkOptions
+        let options: Options
         let io: File.IO.Executor
 
         public func makeAsyncIterator() -> AsyncIterator {

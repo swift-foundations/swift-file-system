@@ -1,5 +1,5 @@
 //
-//  File.IO.Executor.RingBuffer.swift
+//  File.IO.Executor.Ring.Buffer.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
@@ -14,18 +14,22 @@
 /// 1. All mutations occur within `Executor` actor methods
 /// 2. Actor isolation guarantees serial access
 /// 3. The struct itself has no internal synchronization needs
-struct _RingBuffer<T>: @unchecked Sendable {
-    private var storage: [T?]
-    private var head: Int = 0
-    private var tail: Int = 0
-    private var _count: Int = 0
+extension File.IO.Executor.Ring {
+    struct Buffer<T>: @unchecked Sendable {
+        private var storage: [T?]
+        private var head: Int = 0
+        private var tail: Int = 0
+        private var _count: Int = 0
 
+        init(capacity: Int) {
+            storage = [T?](repeating: nil, count: max(capacity, 16))
+        }
+    }
+}
+
+extension File.IO.Executor.Ring.Buffer {
     var count: Int { _count }
     var isEmpty: Bool { _count == 0 }
-
-    init(capacity: Int) {
-        storage = [T?](repeating: nil, count: max(capacity, 16))
-    }
 
     mutating func enqueue(_ element: T) {
         if _count == storage.count {

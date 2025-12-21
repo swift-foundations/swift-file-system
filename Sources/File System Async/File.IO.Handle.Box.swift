@@ -1,5 +1,5 @@
 //
-//  File.IO.HandleBox.swift
+//  File.IO.Handle.Box.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
@@ -7,7 +7,7 @@
 
 import Synchronization
 
-extension File.IO {
+extension File.IO.Handle {
     /// A heap-allocated box that owns a File.Handle with its own lock.
     ///
     /// This design enables:
@@ -20,7 +20,7 @@ extension File.IO {
     /// - The `UnsafeMutablePointer` provides a stable address for inout access
     ///   to the ~Copyable File.Handle.
     /// - No closure passed to withLock is async or escaping.
-    final class HandleBox: @unchecked Sendable {
+    final class Box: @unchecked Sendable {
         /// State protecting the handle storage.
         /// - `true`: handle is open (storage is valid)
         /// - `false`: handle is closed (storage is nil)
@@ -54,58 +54,60 @@ extension File.IO {
                 _ = try? handle.close()
             }
         }
+    }
+}
 
-        /// Whether the handle is still open.
-        var isOpen: Bool {
-            state.withLock { $0 }
+extension File.IO.Handle.Box {
+    /// Whether the handle is still open.
+    var isOpen: Bool {
+        state.withLock { $0 }
+    }
+
+    /// Execute a closure with exclusive access to the handle.
+    ///
+    /// - Parameter body: Closure receiving inout access to the handle.
+    ///   Must be synchronous and non-escaping.
+    /// - Returns: The result of the closure.
+    /// - Throws: `Handle.Error.handleClosed` if handle was already closed.
+    func withHandle<T>(_ body: (inout File.Handle) throws -> T) throws -> T {
+        try state.withLock { isOpen in
+            guard isOpen, let ptr = storage else {
+                throw File.IO.Handle.Error.handleClosed
+            }
+            // Access via pointer - stable address, no move required
+            return try body(&ptr.pointee)
+        }
+    }
+
+    /// Close the handle and return any error.
+    ///
+    /// - Returns: The close error, if any.
+    /// - Note: Idempotent - second call returns nil.
+    func close() -> (any Error)? {
+        // First, atomically mark as closed and get storage
+        let ptr: UnsafeMutablePointer<File.Handle>? = state.withLock { isOpen in
+            guard isOpen, let ptr = storage else {
+                return nil  // Already closed
+            }
+            isOpen = false
+            storage = nil
+            return ptr
         }
 
-        /// Execute a closure with exclusive access to the handle.
-        ///
-        /// - Parameter body: Closure receiving inout access to the handle.
-        ///   Must be synchronous and non-escaping.
-        /// - Returns: The result of the closure.
-        /// - Throws: `HandleError.handleClosed` if handle was already closed.
-        func withHandle<T>(_ body: (inout File.Handle) throws -> T) throws -> T {
-            try state.withLock { isOpen in
-                guard isOpen, let ptr = storage else {
-                    throw HandleError.handleClosed
-                }
-                // Access via pointer - stable address, no move required
-                return try body(&ptr.pointee)
-            }
+        // If already closed, return nil
+        guard let ptr else {
+            return nil
         }
 
-        /// Close the handle and return any error.
-        ///
-        /// - Returns: The close error, if any.
-        /// - Note: Idempotent - second call returns nil.
-        func close() -> (any Error)? {
-            // First, atomically mark as closed and get storage
-            let ptr: UnsafeMutablePointer<File.Handle>? = state.withLock { isOpen in
-                guard isOpen, let ptr = storage else {
-                    return nil  // Already closed
-                }
-                isOpen = false
-                storage = nil
-                return ptr
-            }
+        // Move out, deallocate, close (outside lock)
+        let handle = ptr.move()
+        ptr.deallocate()
 
-            // If already closed, return nil
-            guard let ptr else {
-                return nil
-            }
-
-            // Move out, deallocate, close (outside lock)
-            let handle = ptr.move()
-            ptr.deallocate()
-
-            do {
-                try handle.close()
-                return nil
-            } catch {
-                return error
-            }
+        do {
+            try handle.close()
+            return nil
+        } catch {
+            return error
         }
     }
 }

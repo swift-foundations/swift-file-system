@@ -1,5 +1,5 @@
 //
-//  File.System.Link.ReadTarget Tests.swift
+//  File.System.Link.Read.Target Tests.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
@@ -10,11 +10,11 @@ import Testing
 
 @testable import File_System_Primitives
 
-extension File.System.Link.ReadTarget {
+extension File.System.Link.Read.Target {
     #TestSuites
 }
 
-extension File.System.Link.ReadTarget.Test.Unit {
+extension File.System.Link.Read.Target.Test.Unit {
     // MARK: - Test Fixtures
 
     private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
@@ -60,7 +60,7 @@ extension File.System.Link.ReadTarget.Test.Unit {
         )
 
         let link = try File.Path(linkPath)
-        let target = try File.System.Link.ReadTarget.target(of: link)
+        let target = try File.System.Link.Read.Target.target(of: link)
 
         #expect(target.string == targetPath)
     }
@@ -80,7 +80,7 @@ extension File.System.Link.ReadTarget.Test.Unit {
         )
 
         let link = try File.Path(linkPath)
-        let target = try File.System.Link.ReadTarget.target(of: link)
+        let target = try File.System.Link.Read.Target.target(of: link)
 
         #expect(target.string == targetPath)
     }
@@ -99,7 +99,7 @@ extension File.System.Link.ReadTarget.Test.Unit {
         )
 
         let link = try File.Path(linkPath)
-        let target = try File.System.Link.ReadTarget.target(of: link)
+        let target = try File.System.Link.Read.Target.target(of: link)
 
         #expect(target.string == targetPath)
     }
@@ -123,7 +123,7 @@ extension File.System.Link.ReadTarget.Test.Unit {
         )
 
         let link = try File.Path(linkPath)
-        let target = try File.System.Link.ReadTarget.target(of: link)
+        let target = try File.System.Link.Read.Target.target(of: link)
 
         #expect(target.string == "target.txt")
     }
@@ -137,8 +137,8 @@ extension File.System.Link.ReadTarget.Test.Unit {
 
         let path = try File.Path(filePath)
 
-        #expect(throws: File.System.Link.ReadTarget.Error.notASymlink(path)) {
-            _ = try File.System.Link.ReadTarget.target(of: path)
+        #expect(throws: File.System.Link.Read.Target.Error.notASymlink(path)) {
+            _ = try File.System.Link.Read.Target.target(of: path)
         }
     }
 
@@ -149,8 +149,8 @@ extension File.System.Link.ReadTarget.Test.Unit {
 
         let path = try File.Path(dirPath)
 
-        #expect(throws: File.System.Link.ReadTarget.Error.notASymlink(path)) {
-            _ = try File.System.Link.ReadTarget.target(of: path)
+        #expect(throws: File.System.Link.Read.Target.Error.notASymlink(path)) {
+            _ = try File.System.Link.Read.Target.target(of: path)
         }
     }
 
@@ -159,8 +159,8 @@ extension File.System.Link.ReadTarget.Test.Unit {
         let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
         let path = try File.Path(nonExistent)
 
-        #expect(throws: File.System.Link.ReadTarget.Error.pathNotFound(path)) {
-            _ = try File.System.Link.ReadTarget.target(of: path)
+        #expect(throws: File.System.Link.Read.Target.Error.pathNotFound(path)) {
+            _ = try File.System.Link.Read.Target.target(of: path)
         }
     }
 
@@ -169,27 +169,27 @@ extension File.System.Link.ReadTarget.Test.Unit {
     @Test("notASymlink error description")
     func notASymlinkErrorDescription() throws {
         let path = try File.Path("/tmp/regular")
-        let error = File.System.Link.ReadTarget.Error.notASymlink(path)
+        let error = File.System.Link.Read.Target.Error.notASymlink(path)
         #expect(error.description.contains("Not a symbolic link"))
     }
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
         let path = try File.Path("/tmp/missing")
-        let error = File.System.Link.ReadTarget.Error.pathNotFound(path)
+        let error = File.System.Link.Read.Target.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
         let path = try File.Path("/root/secret")
-        let error = File.System.Link.ReadTarget.Error.permissionDenied(path)
+        let error = File.System.Link.Read.Target.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("readFailed error description")
     func readFailedErrorDescription() {
-        let error = File.System.Link.ReadTarget.Error.readFailed(errno: 5, message: "I/O error")
+        let error = File.System.Link.Read.Target.Error.readFailed(errno: 5, message: "I/O error")
         #expect(error.description.contains("Read link target failed"))
         #expect(error.description.contains("I/O error"))
     }
@@ -202,12 +202,12 @@ extension File.System.Link.ReadTarget.Test.Unit {
         let path2 = try File.Path("/tmp/a")
 
         #expect(
-            File.System.Link.ReadTarget.Error.notASymlink(path1)
-                == File.System.Link.ReadTarget.Error.notASymlink(path2)
+            File.System.Link.Read.Target.Error.notASymlink(path1)
+                == File.System.Link.Read.Target.Error.notASymlink(path2)
         )
         #expect(
-            File.System.Link.ReadTarget.Error.pathNotFound(path1)
-                == File.System.Link.ReadTarget.Error.pathNotFound(path2)
+            File.System.Link.Read.Target.Error.pathNotFound(path1)
+                == File.System.Link.Read.Target.Error.pathNotFound(path2)
         )
     }
 

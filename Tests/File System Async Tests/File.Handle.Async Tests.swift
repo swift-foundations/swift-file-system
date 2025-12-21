@@ -9,6 +9,7 @@ import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
+import File_System
 
 extension File.Handle.Async {
     #TestSuites

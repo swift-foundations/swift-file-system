@@ -5,9 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-extension File.Directory.Async {
+extension File.Directory.Async.Walk {
     /// Options for recursive directory walking.
-    public struct WalkOptions: Sendable {
+    public struct Options: Sendable {
         /// Maximum concurrent directory reads.
         public var maxConcurrency: Int
 

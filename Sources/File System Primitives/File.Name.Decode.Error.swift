@@ -1,5 +1,5 @@
 //
-//  File.Name.DecodeError.swift
+//  File.Name.Decode.Error.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 20/12/2025.
@@ -7,14 +7,14 @@
 
 import RFC_4648
 
-extension File.Name {
+extension File.Name.Decode {
     /// Error thrown when decoding a `File.Name` to `String` fails.
     ///
     /// This error preserves the undecodable name so callers can:
     /// - Report diagnostics with raw byte information
     /// - Retry with lossy decoding if appropriate
     /// - Handle the entry using raw filesystem operations
-    public struct DecodeError: Swift.Error, Sendable, Equatable {
+    public struct Error: Swift.Error, Sendable, Equatable {
         /// The undecodable name (raw bytes/code units preserved).
         public let name: File.Name
 
@@ -27,15 +27,15 @@ extension File.Name {
 
 // MARK: - CustomStringConvertible
 
-extension File.Name.DecodeError: CustomStringConvertible {
+extension File.Name.Decode.Error: CustomStringConvertible {
     public var description: String {
-        "File.Name.DecodeError: \(name.debugDescription)"
+        "File.Name.Decode.Error: \(name.debugDescription)"
     }
 }
 
 // MARK: - Debug Representation
 
-extension File.Name.DecodeError {
+extension File.Name.Decode.Error {
     /// Debug description of the raw bytes (hex encoded).
     ///
     /// Useful for logging and diagnostics when a filename cannot be decoded.

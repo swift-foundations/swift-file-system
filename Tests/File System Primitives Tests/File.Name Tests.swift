@@ -114,11 +114,11 @@ extension File.Name.Test.Unit {
         #expect(str == "valid.txt")
     }
 
-    @Test("String(validating:) throws DecodeError for invalid UTF-8")
+    @Test("String(validating:) throws Decode.Error for invalid UTF-8")
     func stringValidatingThrows() throws {
         let name = File.Name(rawBytes: [0x80, 0x81])
 
-        #expect(throws: File.Name.DecodeError.self) {
+        #expect(throws: File.Name.Decode.Error.self) {
             _ = try String(validating: name)
         }
     }
@@ -129,8 +129,8 @@ extension File.Name.Test.Unit {
 
         do {
             _ = try String(validating: name)
-            Issue.record("Expected DecodeError to be thrown")
-        } catch let error as File.Name.DecodeError {
+            Issue.record("Expected Decode.Error to be thrown")
+        } catch let error as File.Name.Decode.Error {
             #expect(error.name == name)
         } catch {
             Issue.record("Unexpected error type: \(error)")

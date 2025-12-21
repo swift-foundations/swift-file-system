@@ -5,7 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-extension File.Directory.Async.WalkSequence {
+extension File.Directory.Async.Walk.Sequence {
     /// Heap-allocated box for the non-copyable iterator.
     ///
     /// ## Safety Invariant (for @unchecked Sendable)

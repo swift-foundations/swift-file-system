@@ -28,7 +28,7 @@ extension File.IO {
         ///
         /// - `.cooperative`: Uses `Task.detached` (default, backward compatible)
         /// - `.dedicated`: Uses dedicated `DispatchQueue` instances
-        public var threadModel: ThreadModel
+        public var threadModel: Thread.Model
 
         /// Default number of workers based on system resources.
         public static var defaultWorkerCount: Int {
@@ -52,7 +52,7 @@ extension File.IO {
         public init(
             workers: Int? = nil,
             queueLimit: Int = 10_000,
-            threadModel: ThreadModel = .cooperative
+            threadModel: Thread.Model = .cooperative
         ) {
             self.workers = max(1, workers ?? Self.defaultWorkerCount)
             self.queueLimit = max(1, queueLimit)

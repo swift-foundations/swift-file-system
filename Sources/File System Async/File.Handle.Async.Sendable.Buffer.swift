@@ -1,5 +1,5 @@
 //
-//  File.Handle.Async.SendableBuffer.swift
+//  File.Handle.Async.Sendable.Buffer.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
@@ -11,6 +11,8 @@
 /// for the entire duration of the async call. This wrapper exists because
 /// Swift's Sendable checking is more conservative than necessary for our
 /// specific use case where the buffer is used synchronously within io.run.
-struct _SendableBuffer: @unchecked Sendable {
-    let pointer: UnsafeMutableRawBufferPointer
+extension File.Handle.Async.Sendable {
+    struct Buffer: @unchecked Swift.Sendable {
+        let pointer: UnsafeMutableRawBufferPointer
+    }
 }

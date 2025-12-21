@@ -29,15 +29,15 @@ extension File.Stream.Async {
     /// Producer suspends when consumer is slow (via AsyncChannel).
     public func bytes(
         from path: File.Path,
-        options: BytesOptions = BytesOptions()
-    ) -> ByteSequence {
-        ByteSequence(path: path, chunkSize: options.chunkSize, io: io)
+        options: Bytes.Options = Bytes.Options()
+    ) -> Byte.Sequence {
+        Byte.Sequence(path: path, chunkSize: options.chunkSize, io: io)
     }
 }
 
-// MARK: - ByteSequence
+// MARK: - Byte.Sequence
 
-extension File.Stream.Async {
+extension File.Stream.Async.Byte {
     /// An AsyncSequence of byte chunks from a file.
     ///
     /// ## Memory Contract
@@ -50,7 +50,7 @@ extension File.Stream.Async {
     /// - The iterator is deallocated
     /// - `next()` is called after cancellation
     /// - `terminate()` is called explicitly
-    public struct ByteSequence: AsyncSequence, Sendable {
+    public struct Sequence: AsyncSequence, Sendable {
         public typealias Element = [UInt8]
 
         let path: File.Path

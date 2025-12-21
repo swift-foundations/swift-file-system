@@ -7,7 +7,7 @@
 
 import AsyncAlgorithms
 
-extension File.Directory.Async.WalkSequence {
+extension File.Directory.Async.Walk.Sequence {
     /// The async iterator for directory walk.
     ///
     /// ## Thread Safety
@@ -31,7 +31,7 @@ extension File.Directory.Async.WalkSequence {
         /// Uses factory pattern to avoid init-region isolation issues.
         static func make(
             root: File.Path,
-            options: File.Directory.Async.WalkOptions,
+            options: File.Directory.Async.Walk.Options,
             io: File.IO.Executor
         ) -> AsyncIterator {
             let channel = AsyncThrowingChannel<Element, any Error>()
@@ -72,24 +72,28 @@ extension File.Directory.Async.WalkSequence {
             }
         }
 
-        /// Explicitly terminate the walk.
-        public func terminate() {
+        /// Explicitly terminate the walk and wait for cleanup to complete.
+        ///
+        /// This is a barrier: after `await terminate()` returns, all resources
+        /// have been released. Safe to call `io.shutdown()` afterward.
+        public func terminate() async {
             guard !isFinished else { return }
             isFinished = true
             producerTask?.cancel()
             channel.finish()  // Consumer's next() returns nil immediately
+            _ = await producerTask?.value  // Barrier: wait for producer cleanup
         }
 
         // MARK: - Walk Implementation
 
         private static func runWalk(
             root: File.Path,
-            options: File.Directory.Async.WalkOptions,
+            options: File.Directory.Async.Walk.Options,
             io: File.IO.Executor,
             channel: AsyncThrowingChannel<Element, any Error>
         ) async {
-            let state = _WalkState(maxConcurrency: options.maxConcurrency)
-            let authority = _CompletionAuthority()
+            let state = File.Directory.Async.Walk.State(maxConcurrency: options.maxConcurrency)
+            let authority = File.Directory.Async.Walk.Completion.Authority()
 
             // Enqueue root
             await state.enqueue(root)
@@ -150,10 +154,10 @@ extension File.Directory.Async.WalkSequence {
 
         private static func processDirectory(
             _ dir: File.Path,
-            options: File.Directory.Async.WalkOptions,
+            options: File.Directory.Async.Walk.Options,
             io: File.IO.Executor,
-            state: _WalkState,
-            authority: _CompletionAuthority,
+            state: File.Directory.Async.Walk.State,
+            authority: File.Directory.Async.Walk.Completion.Authority,
             channel: AsyncThrowingChannel<Element, any Error>
         ) async {
             // Check if already done
@@ -255,12 +259,12 @@ extension File.Directory.Async.WalkSequence {
             await state.decrementActive()
         }
 
-        private static func getInode(_ path: File.Path, io: File.IO.Executor) async -> _InodeKey? {
+        private static func getInode(_ path: File.Path, io: File.IO.Executor) async -> File.Directory.Async.Walk.Inode.Key? {
             do {
                 return try await io.run {
                     // Use lstat to get the symlink's own inode, not its target's
                     let info = try File.System.Stat.lstatInfo(at: path)
-                    return _InodeKey(device: info.deviceId, inode: info.inode)
+                    return File.Directory.Async.Walk.Inode.Key(device: info.deviceId, inode: info.inode)
                 }
             } catch {
                 return nil

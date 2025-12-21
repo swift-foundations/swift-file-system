@@ -1,13 +1,13 @@
 //
-//  File.IO.Configuration.ThreadModel.swift
+//  File.IO.Configuration.Thread.Model.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-extension File.IO.Configuration {
+extension File.IO.Configuration.Thread {
     /// Thread model for executing I/O operations.
-    public enum ThreadModel: Sendable {
+    public enum Model: Sendable {
         /// Cooperative thread pool using `Task.detached`.
         ///
         /// Uses Swift's default cooperative thread pool. Under sustained blocking I/O,

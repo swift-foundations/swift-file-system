@@ -1,5 +1,5 @@
 //
-//  File.Name.DecodeError Tests.swift
+//  File.Name.Decode.Error Tests.swift
 //  swift-file-system
 //
 
@@ -8,39 +8,39 @@ import Testing
 
 @testable import File_System_Primitives
 
-extension File.Name.DecodeError {
+extension File.Name.Decode.Error {
     #TestSuites
 }
 
 // MARK: - Unit Tests
 
-extension File.Name.DecodeError.Test.Unit {
+extension File.Name.Decode.Error.Test.Unit {
 
     // MARK: - Initialization
 
     @Test("init stores the undecodable name")
     func initStoresName() {
         let name = File.Name(rawBytes: [0x80, 0x81, 0x82])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
         #expect(error.name == name)
     }
 
     // MARK: - Error Conformance
 
-    @Test("DecodeError conforms to Swift.Error")
+    @Test("Decode.Error conforms to Swift.Error")
     func conformsToError() {
         let name = File.Name(rawBytes: [0x80])
-        let error: any Swift.Error = File.Name.DecodeError(name: name)
-        #expect(error is File.Name.DecodeError)
+        let error: any Swift.Error = File.Name.Decode.Error(name: name)
+        #expect(error is File.Name.Decode.Error)
     }
 
-    @Test("DecodeError can be thrown and caught")
+    @Test("Decode.Error can be thrown and caught")
     func canBeThrownAndCaught() {
         let name = File.Name(rawBytes: [0x80])
 
         do {
-            throw File.Name.DecodeError(name: name)
-        } catch let error as File.Name.DecodeError {
+            throw File.Name.Decode.Error(name: name)
+        } catch let error as File.Name.Decode.Error {
             #expect(error.name == name)
         } catch {
             Issue.record("Unexpected error type: \(error)")
@@ -49,29 +49,29 @@ extension File.Name.DecodeError.Test.Unit {
 
     // MARK: - Equatable
 
-    @Test("DecodeError is Equatable - same name")
+    @Test("Decode.Error is Equatable - same name")
     func equatableSameName() {
         let name = File.Name(rawBytes: [0x80, 0x81])
-        let error1 = File.Name.DecodeError(name: name)
-        let error2 = File.Name.DecodeError(name: name)
+        let error1 = File.Name.Decode.Error(name: name)
+        let error2 = File.Name.Decode.Error(name: name)
         #expect(error1 == error2)
     }
 
-    @Test("DecodeError is Equatable - different names")
+    @Test("Decode.Error is Equatable - different names")
     func equatableDifferentNames() {
         let name1 = File.Name(rawBytes: [0x80])
         let name2 = File.Name(rawBytes: [0x81])
-        let error1 = File.Name.DecodeError(name: name1)
-        let error2 = File.Name.DecodeError(name: name2)
+        let error1 = File.Name.Decode.Error(name: name1)
+        let error2 = File.Name.Decode.Error(name: name2)
         #expect(error1 != error2)
     }
 
     // MARK: - Sendable
 
-    @Test("DecodeError is Sendable")
+    @Test("Decode.Error is Sendable")
     func sendable() async {
         let name = File.Name(rawBytes: [0x80])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         let result = await Task {
             error.name
@@ -85,9 +85,9 @@ extension File.Name.DecodeError.Test.Unit {
     @Test("description includes debug description of name")
     func descriptionIncludesNameDebug() {
         let name = File.Name(rawBytes: [0x80, 0x81])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
-        #expect(error.description.contains("File.Name.DecodeError"))
+        #expect(error.description.contains("File.Name.Decode.Error"))
         #expect(error.description.contains("invalidUTF8"))
     }
 
@@ -96,9 +96,9 @@ extension File.Name.DecodeError.Test.Unit {
         // This case shouldn't happen in practice (why throw for valid UTF-8?)
         // but the error should still work correctly
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("valid"))
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
-        #expect(error.description.contains("File.Name.DecodeError"))
+        #expect(error.description.contains("File.Name.Decode.Error"))
         #expect(error.description.contains("valid"))
     }
 
@@ -107,7 +107,7 @@ extension File.Name.DecodeError.Test.Unit {
     @Test("debugRawBytes returns hex-encoded bytes")
     func debugRawBytesHexEncoded() {
         let name = File.Name(rawBytes: [0x80, 0x81, 0x82])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         let hex = error.debugRawBytes
         // Hex encoding of [0x80, 0x81, 0x82]
@@ -119,7 +119,7 @@ extension File.Name.DecodeError.Test.Unit {
     @Test("debugRawBytes is uppercase")
     func debugRawBytesUppercase() {
         let name = File.Name(rawBytes: [0xAB, 0xCD])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         let hex = error.debugRawBytes
         #expect(hex.contains("AB"))
@@ -129,7 +129,7 @@ extension File.Name.DecodeError.Test.Unit {
     @Test("debugRawBytes for valid ASCII shows hex")
     func debugRawBytesValidASCII() {
         let name = File.Name(rawBytes: [0x41, 0x42])  // "AB"
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         let hex = error.debugRawBytes
         #expect(hex.contains("41"))
@@ -139,7 +139,7 @@ extension File.Name.DecodeError.Test.Unit {
     @Test("debugRawBytes for empty name returns empty string")
     func debugRawBytesEmpty() {
         let name = File.Name(rawBytes: [])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         let hex = error.debugRawBytes
         #expect(hex.isEmpty)
@@ -148,12 +148,12 @@ extension File.Name.DecodeError.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.Name.DecodeError.Test.EdgeCase {
+extension File.Name.Decode.Error.Test.EdgeCase {
 
     @Test("error with single invalid byte")
     func singleInvalidByte() {
         let name = File.Name(rawBytes: [0xFF])
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         #expect(error.debugRawBytes == "FF")
     }
@@ -162,7 +162,7 @@ extension File.Name.DecodeError.Test.EdgeCase {
     func longInvalidSequence() {
         let bytes: [UInt8] = Array(repeating: 0x80, count: 100)
         let name = File.Name(rawBytes: bytes)
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         let hex = error.debugRawBytes
         // 100 bytes * 2 hex chars = 200 characters
@@ -173,7 +173,7 @@ extension File.Name.DecodeError.Test.EdgeCase {
     func preservesExactBytes() {
         let bytes: [UInt8] = [0x00, 0x7F, 0x80, 0xFF]
         let name = File.Name(rawBytes: bytes)
-        let error = File.Name.DecodeError(name: name)
+        let error = File.Name.Decode.Error(name: name)
 
         #expect(error.name == name)
         #expect(error.debugRawBytes.contains("00"))
@@ -185,7 +185,7 @@ extension File.Name.DecodeError.Test.EdgeCase {
     @Test("error can be used in Result type")
     func usableInResult() {
         let name = File.Name(rawBytes: [0x80])
-        let result: Result<String, File.Name.DecodeError> = .failure(File.Name.DecodeError(name: name))
+        let result: Result<String, File.Name.Decode.Error> = .failure(File.Name.Decode.Error(name: name))
 
         switch result {
         case .success:
@@ -198,12 +198,12 @@ extension File.Name.DecodeError.Test.EdgeCase {
     @Test("error can be boxed in existential")
     func boxedInExistential() {
         let name = File.Name(rawBytes: [0x80])
-        let error: any Error = File.Name.DecodeError(name: name)
+        let error: any Error = File.Name.Decode.Error(name: name)
 
-        if let decodeError = error as? File.Name.DecodeError {
+        if let decodeError = error as? File.Name.Decode.Error {
             #expect(decodeError.name == name)
         } else {
-            Issue.record("Failed to cast to DecodeError")
+            Issue.record("Failed to cast to Decode.Error")
         }
     }
 }

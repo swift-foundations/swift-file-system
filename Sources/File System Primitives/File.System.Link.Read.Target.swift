@@ -1,5 +1,5 @@
 //
-//  File.System.Link.ReadTarget.swift
+//  File.System.Link.Read.Target.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
@@ -15,14 +15,14 @@
     public import WinSDK
 #endif
 
-extension File.System.Link {
+extension File.System.Link.Read {
     /// Read symbolic link target.
-    public enum ReadTarget {}
+    public enum Target {}
 }
 
 // MARK: - Error
 
-extension File.System.Link.ReadTarget {
+extension File.System.Link.Read.Target {
     /// Errors that can occur during reading link target operations.
     public enum Error: Swift.Error, Equatable, Sendable {
         case notASymlink(File.Path)
@@ -34,12 +34,12 @@ extension File.System.Link.ReadTarget {
 
 // MARK: - Core API
 
-extension File.System.Link.ReadTarget {
+extension File.System.Link.Read.Target {
     /// Reads the target of a symbolic link.
     ///
     /// - Parameter path: The path to the symbolic link.
     /// - Returns: The target path that the symlink points to.
-    /// - Throws: `File.System.Link.ReadTarget.Error` on failure.
+    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
     public static func target(of path: File.Path) throws(Error) -> File.Path {
         #if os(Windows)
             return try _targetWindows(of: path)
@@ -53,7 +53,7 @@ extension File.System.Link.ReadTarget {
 // MARK: - POSIX Implementation
 
 #if !os(Windows)
-    extension File.System.Link.ReadTarget {
+    extension File.System.Link.Read.Target {
         internal static func _targetPOSIX(of path: File.Path) throws(Error) -> File.Path {
             // First check if it's a symlink
             var statBuf = stat()
@@ -109,7 +109,7 @@ extension File.System.Link.ReadTarget {
 // MARK: - Windows Implementation
 
 #if os(Windows)
-    extension File.System.Link.ReadTarget {
+    extension File.System.Link.Read.Target {
         internal static func _targetWindows(of path: File.Path) throws(Error) -> File.Path {
             // Check if it's a reparse point (symlink)
             let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
@@ -190,7 +190,7 @@ extension File.System.Link.ReadTarget {
 
 // MARK: - CustomStringConvertible for Error
 
-extension File.System.Link.ReadTarget.Error: CustomStringConvertible {
+extension File.System.Link.Read.Target.Error: CustomStringConvertible {
     public var description: String {
         switch self {
         case .notASymlink(let path):
