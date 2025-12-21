@@ -158,7 +158,7 @@ extension File.IO {
             // Resume all waiters so they can observe shutdown
             for (_, entry) in handles {
                 entry.waiters.resumeAll()
-                entry.isDestroyed = true
+                entry.state = .destroyed
             }
 
             // Close all remaining handles using slot pattern
@@ -218,13 +218,14 @@ extension File.IO {
                 throw File.IO.Handle.Error.invalidID
             }
 
-            if entry.isDestroyed {
+            if entry.state == .destroyed {
                 throw File.IO.Handle.Error.invalidID
             }
 
             // If handle is available, take it
             var checkedOutHandle: File.Handle
-            if let h = entry.handle.take() {
+            if entry.state == .present, let h = entry.handle.take() {
+                entry.state = .checkedOut
                 checkedOutHandle = h
             } else {
                 // Step 3: Handle is checked out - wait for it
@@ -242,14 +243,15 @@ extension File.IO {
                 try Task.checkCancellation()
 
                 // Re-validate after waiting
-                guard let entry = handles[id], !entry.isDestroyed else {
+                guard let entry = handles[id], entry.state != .destroyed else {
                     throw File.IO.Handle.Error.invalidID
                 }
 
-                guard let h = entry.handle.take() else {
+                guard entry.state == .present, let h = entry.handle.take() else {
                     throw File.IO.Handle.Error.invalidID
                 }
 
+                entry.state = .checkedOut
                 checkedOutHandle = h
             }
 
@@ -281,13 +283,14 @@ extension File.IO {
 
             // Step 5: Check-in handle
             if let entry = handles[id] {
-                if entry.isDestroyed {
+                if entry.state == .destroyed {
                     // Entry marked for destruction - close handle via slot
                     handles.removeValue(forKey: id)
                     try? await _closeHandle(checkedInHandle)
                 } else {
                     // Store handle back
                     entry.handle = consume checkedInHandle
+                    entry.state = .present
                     // Step 6: Resume next waiter
                     entry.waiters.resumeNext()
                 }
@@ -417,16 +420,19 @@ extension File.IO {
                 return
             }
 
-            if entry.isDestroyed {
+            if entry.state == .destroyed {
                 // Already marked for destruction
                 return
             }
 
-            // Mark as destroyed
-            entry.isDestroyed = true
+            // If handle is checked out, mark for destruction on check-in
+            if entry.state == .checkedOut {
+                entry.state = .destroyed
+                return
+            }
 
-            // If handle is checked out, it will be closed on check-in
-            // If handle is available, close it now using slot pattern
+            // Handle is present - close it now using slot pattern
+            entry.state = .destroyed
             if let h = entry.handle.take() {
                 handles.removeValue(forKey: id)
                 try await _closeHandle(h)
@@ -439,7 +445,22 @@ extension File.IO {
         /// - Returns: `true` if the handle exists and is not destroyed.
         public func isHandleValid(_ id: File.IO.Handle.ID) -> Bool {
             guard let entry = handles[id] else { return false }
-            return !entry.isDestroyed
+            return entry.state != .destroyed
+        }
+
+        /// Check if a handle ID refers to an open handle.
+        ///
+        /// This is the source of truth for handle liveness. Returns true if:
+        /// - The ID belongs to this executor (scope match)
+        /// - An entry exists in the registry
+        /// - The entry is present or checked out (not destroyed)
+        ///
+        /// - Parameter id: The handle ID to check.
+        /// - Returns: `true` if the handle is logically open.
+        public func isHandleOpen(_ id: File.IO.Handle.ID) -> Bool {
+            guard id.scope == scope else { return false }
+            guard let entry = handles[id] else { return false }
+            return entry.isOpen
         }
 
         // MARK: - Streaming Write Operations

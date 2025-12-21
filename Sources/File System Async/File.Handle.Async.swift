@@ -191,12 +191,20 @@ extension File.Handle {
             try await io.destroyHandle(id)
         }
 
-        /// Whether the handle is still open (local view).
+        /// Whether the handle is still open.
         ///
-        /// - Note: This reflects whether `close()` was called on this wrapper.
-        ///   The underlying handle may have been closed by executor shutdown.
+        /// This queries the executor (source of truth) to determine if the
+        /// handle ID refers to a live handle. Returns false if:
+        /// - `close()` was called on this wrapper
+        /// - The executor shut down and closed the handle
+        /// - The handle was destroyed through any other means
+        ///
+        /// - Note: This is an async property because it queries the executor actor.
         public var isOpen: Bool {
-            !isClosed
+            get async {
+                guard !isClosed else { return false }
+                return await io.isHandleOpen(id)
+            }
         }
     }
 }
