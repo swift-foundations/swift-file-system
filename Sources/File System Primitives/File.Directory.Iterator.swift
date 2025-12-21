@@ -476,7 +476,7 @@ extension File.Directory.Iterator {
                         _hasMore = false
                     } else {
                         // Actual error occurred during iteration
-                        throw _mapWindowsError(err, path: _basePath)
+                        throw Self._mapWindowsError(err, path: _basePath)
                     }
                 }
 
