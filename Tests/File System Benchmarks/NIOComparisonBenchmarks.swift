@@ -201,11 +201,16 @@ extension NIOComparison.Test.Performance {
             // Measures: kernel → user copy from page cache + API overhead
             let bytes = try await File.System.Read.Full.read(from: Self.fixture.filePath)
             // Consume buffer to prevent optimization (symmetric with NIO test)
+            #if DEBUG
+            // Cheap consumption for debug-mode sanity testing
+            let sample = bytes.first ?? 0
+            withExtendedLifetime((bytes.count, sample)) {}
+            #else
+            // Full traversal in release - measures actual consumption cost
             var checksum: UInt8 = 0
-            for byte in bytes {
-                checksum &+= byte
-            }
-            withExtendedLifetime(checksum) {}
+            for byte in bytes { checksum &+= byte }
+            withExtendedLifetime((bytes.count, checksum)) {}
+            #endif
         }
 
         @Test("NIOFileSystem: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
@@ -215,11 +220,16 @@ extension NIOComparison.Test.Performance {
             let handle = try await FileSystem.shared.openFile(forReadingAt: Self.fixture.nioPath, options: .init())
             let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(Int64(Self.fileSize)))
             // Consume buffer to prevent optimization (symmetric with swift test)
+            #if DEBUG
+            // Cheap consumption for debug-mode sanity testing - use ByteBuffer API for O(1) access
+            let sample: UInt8 = buffer.getInteger(at: buffer.readerIndex) ?? 0
+            withExtendedLifetime((buffer.readableBytes, sample)) {}
+            #else
+            // Full traversal in release - measures actual consumption cost
             var checksum: UInt8 = 0
-            for byte in buffer.readableBytesView {
-                checksum &+= byte
-            }
-            withExtendedLifetime(checksum) {}
+            for byte in buffer.readableBytesView { checksum &+= byte }
+            withExtendedLifetime((buffer.readableBytes, checksum)) {}
+            #endif
             try await handle.close()
         }
     }
@@ -623,11 +633,14 @@ extension NIOComparison.Test.Performance {
                     group.addTask {
                         let bytes = try await File.System.Read.Full.read(from: path)
                         // Consume buffer (symmetric with NIO test)
+                        #if DEBUG
+                        let sample = bytes.first ?? 0
+                        withExtendedLifetime((bytes.count, sample)) {}
+                        #else
                         var checksum: UInt8 = 0
-                        for byte in bytes {
-                            checksum &+= byte
-                        }
-                        withExtendedLifetime(checksum) {}
+                        for byte in bytes { checksum &+= byte }
+                        withExtendedLifetime((bytes.count, checksum)) {}
+                        #endif
                     }
                 }
                 try await group.waitForAll()
@@ -645,11 +658,14 @@ extension NIOComparison.Test.Performance {
                         let handle = try await FileSystem.shared.openFile(forReadingAt: nioPath, options: .init())
                         let buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(maxSize))
                         // Consume buffer without extra copy (symmetric with swift test)
+                        #if DEBUG
+                        let sample: UInt8 = buffer.getInteger(at: buffer.readerIndex) ?? 0
+                        withExtendedLifetime((buffer.readableBytes, sample)) {}
+                        #else
                         var checksum: UInt8 = 0
-                        for byte in buffer.readableBytesView {
-                            checksum &+= byte
-                        }
-                        withExtendedLifetime(checksum) {}
+                        for byte in buffer.readableBytesView { checksum &+= byte }
+                        withExtendedLifetime((buffer.readableBytes, checksum)) {}
+                        #endif
                         try await handle.close()
                     }
                 }
