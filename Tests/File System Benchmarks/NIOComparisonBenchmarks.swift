@@ -29,8 +29,8 @@ import NIOCore
 import StandardsTestSupport
 import Testing
 
-@testable import File_System
-@testable import File_System_Async
+import File_System
+import File_System_Async
 import _NIOFileSystem
 
 // MARK: - Benchmark Type
@@ -414,7 +414,7 @@ extension NIOComparison.Test.Performance {
             let dir = try Self.dir100.path()
 
             var count = 0
-            for try await _ in File.Directory.Async().entries(at: dir) {
+            for try await _ in File.Directory.entries(at: dir) {
                 count += 1
             }
             #expect(count == 100)
@@ -440,7 +440,7 @@ extension NIOComparison.Test.Performance {
             let dir = try Self.dir1000.path()
 
             var count = 0
-            for try await _ in File.Directory.Async().entries(at: dir) {
+            for try await _ in File.Directory.entries(at: dir) {
                 count += 1
             }
             #expect(count == 1000)
