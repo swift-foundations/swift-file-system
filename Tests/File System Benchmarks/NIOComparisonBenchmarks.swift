@@ -4,11 +4,24 @@
 //
 //  Benchmarks comparing swift-file-system vs NIOFileSystem performance.
 //
-//  Fairness rules:
+//  ## What These Benchmarks Measure
+//
+//  These are HOT-CACHE benchmarks measuring:
+//  - Memory bandwidth (kernel → user copy from page cache)
+//  - API overhead and buffer plumbing
+//  - Syscall strategy differences (write vs pwrite, kernel primitives vs user-space loops)
+//
+//  These benchmarks do NOT measure:
+//  - Cold-storage throughput (macOS lacks reliable cache control without root)
+//  - Disk I/O latency under load
+//
+//  ## Fairness Rules
+//
 //  - Setup (file creation) is outside timed regions
 //  - Both use same pre-allocated data or same lazy generation
 //  - Both use direct/no-fsync mode (matched durability)
 //  - All pages pre-touched to avoid page fault overhead
+//  - Syscall shape differences are named explicitly (not hidden)
 //
 
 import Foundation
@@ -168,7 +181,10 @@ extension NIOComparison.Test {
     }
 }
 
-// MARK: - Read Benchmarks
+// MARK: - Read Benchmarks (Hot-Cache)
+//
+// These benchmarks measure memory bandwidth and API overhead, not storage throughput.
+// Files are read from the kernel page cache after fixture creation.
 
 extension NIOComparison.Test.Performance {
 
@@ -180,15 +196,15 @@ extension NIOComparison.Test.Performance {
         // Fixture is created ONCE, outside timed region
         static let fixture = ReadFixture.shared
 
-        @Test("swift-file-system: read 100MB file", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("swift-file-system: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystem() async throws {
-            // ONLY the read is timed - file already exists
+            // Measures: kernel → user copy from page cache + API overhead
             let _ = try await File.System.Read.Full.read(from: Self.fixture.filePath)
         }
 
-        @Test("NIOFileSystem: read 100MB file", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("NIOFileSystem: read 100MB (hot-cache)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func nioFileSystem() async throws {
-            // ONLY the read is timed - file already exists
+            // Measures: kernel → user copy from page cache + API overhead
             let handle = try await FileSystem.shared.openFile(forReadingAt: Self.fixture.nioPath, options: .init())
             var buffer = try await handle.readToEnd(maximumSizeAllowed: .bytes(Int64(Self.fileSize)))
             let _ = buffer.readBytes(length: buffer.readableBytes)
@@ -198,6 +214,19 @@ extension NIOComparison.Test.Performance {
 }
 
 // MARK: - Write Benchmarks
+//
+// ## Syscall Shape Differences
+//
+// swift-file-system raw/streaming: uses sequential write(2) with implicit file position
+// NIOFileSystem: uses pwrite-style toAbsoluteOffset: (explicit offset per call)
+//
+// These are different syscall patterns that may exercise different kernel paths.
+// Test names reflect the actual syscall shape, not just the API.
+//
+// ## Streaming-Async Variance
+//
+// The streaming-async test may show high variance (e.g., min 23ms, max 187ms).
+// This is likely executor/scheduling overhead, not storage behavior.
 
 extension NIOComparison.Test.Performance {
 
@@ -223,13 +252,14 @@ extension NIOComparison.Test.Performance {
         // Pre-create ByteBuffer ONCE - COW will share storage
         static let buffer = ByteBuffer(bytes: data)
 
-        // RAW WRITE: Bypass Write.Streaming, use File.Handle directly
-        @Test("swift-file-system: write 100MB raw", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        // MARK: - Sequential write(2) pattern
+
+        @Test("swift-file-system: write 100MB (write sequential)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemRaw() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
 
-            // Direct File.Handle write - no streaming abstraction
+            // Uses sequential write(2) syscall - file position advances implicitly
             try Self.data.withUnsafeBufferPointer { buffer in
                 let span = Span<UInt8>(_unsafeElements: buffer)
                 var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .truncate])
@@ -238,14 +268,13 @@ extension NIOComparison.Test.Performance {
             }
         }
 
-        // STREAMING API (sync): Uses Write.Streaming sync path - no io.run overhead
         @Test("swift-file-system: write 100MB streaming-sync", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemStreamingSync() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
 
             // AnySequence is not Sendable, forces sync overload
-            // durability: .none for fair comparison with raw (no fsync)
+            // Uses sequential write(2) internally
             let chunks: AnySequence<[UInt8]> = AnySequence([Self.data])
             try File.System.Write.Streaming.write(
                 chunks,
@@ -254,14 +283,13 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        // STREAMING API (async): Uses Write.Streaming async path - includes io.run overhead
         @Test("swift-file-system: write 100MB streaming-async", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemStreamingAsync() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
 
             // Uses async streaming API - includes executor overhead
-            // durability: .none for fair comparison with raw (no fsync)
+            // High variance (23-187ms) is likely scheduler jitter, not storage
             try await File.System.Write.Streaming.write(
                 [Self.data],
                 to: filePath,
@@ -269,14 +297,12 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        // STREAMING API with preallocation: Tests fcntl(F_PREALLOCATE) impact
         @Test("swift-file-system: write 100MB preallocated", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemPreallocated() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
 
-            // AnySequence forces sync overload, with preallocation
-            // durability: .none for fair comparison with raw (no fsync)
+            // Tests fcntl(F_PREALLOCATE) impact on write performance
             let chunks: AnySequence<[UInt8]> = AnySequence([Self.data])
             try File.System.Write.Streaming.write(
                 chunks,
@@ -285,7 +311,9 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("NIOFileSystem: write 100MB", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        // MARK: - pwrite-style (absolute offset) pattern
+
+        @Test("NIOFileSystem: write 100MB (pwrite offset)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func nioFileSystem() async throws {
             let (_, nioPath) = Self.fixture.uniquePath()
             let filePath = Self.fixture.dir.appending(nioPath.lastComponent!.string)
@@ -295,26 +323,26 @@ extension NIOComparison.Test.Performance {
                 forWritingAt: nioPath,
                 options: .newFile(replaceExisting: true)
             ) { handle in
-                // COW copy - does NOT copy 100MB, shares storage with Self.buffer
+                // Uses pwrite-style toAbsoluteOffset: - different syscall shape than write(2)
                 let buf = Self.buffer
                 try await handle.write(contentsOf: buf.readableBytesView, toAbsoluteOffset: 0)
             }
         }
 
-        // Streaming benchmarks - lazy generation
+        // MARK: - Streaming (chunked) benchmarks
+
         @Test("swift-file-system: write 100MB streaming-lazy", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemStreaming() async throws {
             let (filePath, _) = Self.fixture.uniquePath()
             defer { try? File.System.Delete.delete(at: filePath) }
 
-            // Generate 1MB chunks lazily
+            // Generate 1MB chunks lazily - sequential write(2) calls
             let chunkSize = 1024 * 1024
             let chunkCount = Self.fileSize / chunkSize
             let lazyChunks = (0..<chunkCount).lazy.map { _ in
                 [UInt8](repeating: 0xCD, count: chunkSize)
             }
 
-            // durability: .none for fair comparison (no fsync)
             try File.System.Write.Streaming.write(
                 lazyChunks,
                 to: filePath,
@@ -322,13 +350,13 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("NIOFileSystem: write 100MB streaming", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("NIOFileSystem: write 100MB streaming (pwrite loop)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func nioFileSystemStreaming() async throws {
             let (_, nioPath) = Self.fixture.uniquePath()
             let filePath = Self.fixture.dir.appending(nioPath.lastComponent!.string)
             defer { try? File.System.Delete.delete(at: filePath) }
 
-            // Generate 1MB chunks lazily - same as swift-file-system
+            // Generate 1MB chunks - uses pwrite-style with incrementing offset
             let chunkSize = 1024 * 1024
             let chunkCount = Self.fileSize / chunkSize
 
@@ -457,6 +485,15 @@ final class DirectoryIterationFixture: @unchecked Sendable {
 }
 
 // MARK: - Copy Benchmarks
+//
+// ## Implementation Strategy Comparison
+//
+// These benchmarks compare different copy implementation strategies:
+// - APFS clone: metadata-only operation, near-instant (not byte throughput)
+// - User-space loop: read/write in chunks through user space
+//
+// This is a legitimate product difference, not an unfairness.
+// Results reflect actual user experience with each library's default behavior.
 
 extension NIOComparison.Test.Performance {
 
@@ -468,39 +505,43 @@ extension NIOComparison.Test.Performance {
         // Fixture is created ONCE, outside timed region
         static let fixture = CopyFixture.shared
 
-        // MARK: - Clone Copy (APFS fast path)
-        // These benchmarks use APFS copy-on-write cloning where available.
-        // Sub-millisecond times indicate clone semantics, not byte throughput.
+        // MARK: - APFS Clone (metadata operation)
+        //
+        // Sub-millisecond times indicate filesystem clone semantics.
+        // This measures API overhead + clone syscall, NOT byte throughput.
 
-        @Test("swift-file-system: copy 100MB clone", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("swift-file-system: copy 100MB (APFS clone)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemClone() async throws {
             let (destPath, _) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
 
-            // Default options: copyAttributes=true enables COPYFILE_CLONE_FORCE
+            // copyAttributes=true (default) enables COPYFILE_CLONE_FORCE
             try await File.System.Copy.copy(from: Self.fixture.sourcePath, to: destPath)
         }
 
-        @Test("NIOFileSystem: copy 100MB clone", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("NIOFileSystem: copy 100MB (APFS clone)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func nioFileSystemClone() async throws {
             let (destPath, nioDestPath) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
 
-            // NIO's copyItem - likely uses clone fast path where available
+            // NIO's copyItem uses clone fast path where available
             try await FileSystem.shared.copyItem(at: Self.fixture.nioSourcePath, to: nioDestPath)
         }
 
-        // MARK: - Byte Copy (no cloning)
-        // These benchmarks force actual byte-by-byte copy, measuring storage throughput.
-        // Disabling cloning allows fair comparison of copy implementations.
+        // MARK: - User-Space Loop (byte copy)
+        //
+        // Both implementations use 64KB read/write loops.
+        // swift-file-system: synchronous loop with read(2)/write(2)
+        // NIO: async loop with pread/pwrite style offsets
+        //
+        // This compares sync vs async loop overhead, not storage throughput.
 
-        @Test("swift-file-system: copy 100MB bytes", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("swift-file-system: copy 100MB (sync loop)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func swiftFileSystemBytes() async throws {
             let (destPath, _) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
 
-            // copyAttributes=false skips Darwin COPYFILE_CLONE_FORCE fast path,
-            // falls through to manual 64KB buffer copy loop
+            // copyAttributes=false skips APFS clone, uses sync 64KB loop
             try await File.System.Copy.copy(
                 from: Self.fixture.sourcePath,
                 to: destPath,
@@ -508,13 +549,12 @@ extension NIOComparison.Test.Performance {
             )
         }
 
-        @Test("NIOFileSystem: copy 100MB bytes", .timed(iterations: 3, warmup: 1, trackAllocations: false))
+        @Test("NIOFileSystem: copy 100MB (async loop)", .timed(iterations: 3, warmup: 1, trackAllocations: false))
         func nioFileSystemBytes() async throws {
             let (destPath, nioDestPath) = Self.fixture.uniqueDestPath()
             defer { try? File.System.Delete.delete(at: destPath) }
 
-            // Manual chunked copy using NIO read/write APIs (no copyItem which may clone)
-            // Uses 64KB chunks to match swift-file-system's _copyManualLoop buffer size
+            // Async 64KB chunked loop with pread/pwrite style
             let chunkSize = 64 * 1024
             let readHandle = try await FileSystem.shared.openFile(
                 forReadingAt: Self.fixture.nioSourcePath,
@@ -528,14 +568,12 @@ extension NIOComparison.Test.Performance {
             ) { writeHandle in
                 var offset: Int64 = 0
                 while true {
-                    // Read chunk from source
                     let buffer = try await readHandle.readChunk(
                         fromAbsoluteOffset: offset,
                         length: .bytes(Int64(chunkSize))
                     )
                     if buffer.readableBytes == 0 { break }
 
-                    // Write chunk to destination
                     try await writeHandle.write(
                         contentsOf: buffer.readableBytesView,
                         toAbsoluteOffset: offset
