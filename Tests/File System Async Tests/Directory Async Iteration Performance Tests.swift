@@ -58,7 +58,7 @@ final class DirectoryAsyncIterationPerformanceTests {
     func batchSize64() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let start = CFAbsoluteTimeGetCurrent()
+        let start = Date().timeIntervalSinceReferenceDate
 
         for _ in 0..<loopCount {
             var count = 0
@@ -68,7 +68,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
+        let elapsed = Date().timeIntervalSinceReferenceDate - start
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -82,7 +82,7 @@ final class DirectoryAsyncIterationPerformanceTests {
     func batchSize128() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let start = CFAbsoluteTimeGetCurrent()
+        let start = Date().timeIntervalSinceReferenceDate
 
         for _ in 0..<loopCount {
             var count = 0
@@ -92,7 +92,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
+        let elapsed = Date().timeIntervalSinceReferenceDate - start
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -106,7 +106,7 @@ final class DirectoryAsyncIterationPerformanceTests {
     func batchSize256() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let start = CFAbsoluteTimeGetCurrent()
+        let start = Date().timeIntervalSinceReferenceDate
 
         for _ in 0..<loopCount {
             var count = 0
@@ -116,7 +116,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
+        let elapsed = Date().timeIntervalSinceReferenceDate - start
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -132,7 +132,7 @@ final class DirectoryAsyncIterationPerformanceTests {
     func pullBasedAsyncDefaultBatch() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let start = CFAbsoluteTimeGetCurrent()
+        let start = Date().timeIntervalSinceReferenceDate
 
         for _ in 0..<loopCount {
             var count = 0
@@ -142,7 +142,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = CFAbsoluteTimeGetCurrent() - start
+        let elapsed = Date().timeIntervalSinceReferenceDate - start
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -161,7 +161,7 @@ final class DirectoryAsyncIterationPerformanceTests {
         let totalFiles = loopCount * 1000
 
         // Sync baseline
-        let syncStart = CFAbsoluteTimeGetCurrent()
+        let syncStart = Date().timeIntervalSinceReferenceDate
         for _ in 0..<loopCount {
             let (iterator, handle) = try File.Directory.Contents.makeIterator(at: testDir1000Files)
             defer { File.Directory.Contents.closeIterator(handle) }
@@ -173,12 +173,12 @@ final class DirectoryAsyncIterationPerformanceTests {
             }
             #expect(count == 1000)
         }
-        let syncElapsed = CFAbsoluteTimeGetCurrent() - syncStart
+        let syncElapsed = Date().timeIntervalSinceReferenceDate - syncStart
         let syncPerFileNs = (syncElapsed / Double(totalFiles)) * 1_000_000_000
 
         // Async
         let dir = File.Directory.Async(io: io)
-        let asyncStart = CFAbsoluteTimeGetCurrent()
+        let asyncStart = Date().timeIntervalSinceReferenceDate
         for _ in 0..<loopCount {
             var count = 0
             for try await _ in dir.entries(at: testDir1000Files) {
@@ -186,7 +186,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             }
             #expect(count == 1000)
         }
-        let asyncElapsed = CFAbsoluteTimeGetCurrent() - asyncStart
+        let asyncElapsed = Date().timeIntervalSinceReferenceDate - asyncStart
         let asyncPerFileNs = (asyncElapsed / Double(totalFiles)) * 1_000_000_000
 
         let overhead = asyncPerFileNs / syncPerFileNs

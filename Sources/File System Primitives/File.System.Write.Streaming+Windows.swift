@@ -469,14 +469,15 @@
         /// @unchecked Sendable because all fields are immutable value types.
         /// HANDLE is a pointer but Windows file handles are thread-safe for sequential operations.
         /// Safe to pass to io.run closures within a single async function.
-        public struct Context: @unchecked Sendable {
-            public let handle: HANDLE
-            public let tempPath: String?  // nil for direct mode
-            public let resolvedPath: String
-            public let parent: String
-            public let durability: File.System.Write.Streaming.Durability
-            public let isAtomic: Bool
-            public let strategy: File.System.Write.Streaming.Atomic.Strategy?
+        package struct Context: @unchecked Sendable {
+            // HANDLE is internal in WinSDK, so this property must be internal
+            internal let handle: HANDLE
+            package let tempPath: String?  // nil for direct mode
+            package let resolvedPath: String
+            package let parent: String
+            package let durability: File.System.Write.Streaming.Durability
+            package let isAtomic: Bool
+            package let strategy: File.System.Write.Streaming.Atomic.Strategy?
         }
     }
 
@@ -484,7 +485,7 @@
         /// Opens a file for multi-phase streaming write.
         ///
         /// Returns a context that can be used for subsequent writeChunk and commit calls.
-        public static func openForStreaming(
+        package static func openForStreaming(
             path: String,
             options: File.System.Write.Streaming.Options
         ) throws(File.System.Write.Streaming.Error) -> Write.Context {
@@ -524,7 +525,7 @@
         /// Writes a chunk to an open streaming context.
         ///
         /// The Span must not escape - callee uses it immediately and synchronously.
-        public static func writeChunk(
+        package static func writeChunk(
             _ span: borrowing Span<UInt8>,
             to context: borrowing Write.Context
         ) throws(File.System.Write.Streaming.Error) {
@@ -536,7 +537,7 @@
         /// This function owns post-publish error semantics:
         /// - Pre-publish failures throw normal errors
         /// - Post-publish I/O failures throw `.directorySyncFailedAfterCommit`
-        public static func commit(
+        package static func commit(
             _ context: borrowing Write.Context
         ) throws(File.System.Write.Streaming.Error) {
 
@@ -581,7 +582,7 @@
         /// Cleans up a failed streaming write.
         ///
         /// Best-effort cleanup - closes handle and removes temp file if atomic mode.
-        public static func cleanup(_ context: borrowing Write.Context) {
+        package static func cleanup(_ context: borrowing Write.Context) {
             // Close handle if still open (ignore errors)
             _ = CloseHandle(context.handle)
 
