@@ -197,7 +197,12 @@ extension File.Directory.Walk.Async.Sequence {
 
             // Helper to close box - must be called before returning
             @Sendable func closeBox() async {
-                _ = try? await io.run { box.close() }
+                do {
+                    try await io.run { box.close() }
+                } catch {
+                    // Executor failed (e.g., shutdown) - safe to close directly
+                    box.close()
+                }
             }
 
             // Iterate directory with batching to reduce executor overhead

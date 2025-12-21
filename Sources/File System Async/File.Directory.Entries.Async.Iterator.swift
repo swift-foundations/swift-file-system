@@ -50,10 +50,9 @@ extension File.Directory.Entries.Async {
         }
 
         deinit {
-            // INVARIANT: deinit never touches Iterator.Box directly during normal operation.
-            // Best-effort cleanup is mediated through io.run.
-            // If io.run fails (e.g., executor shut down), we fall back to direct cleanup
-            // which is safe at deinit time since no other code can access the box.
+            // At deinit time, no other code can access the box, so direct cleanup is safe.
+            // This breaks the io.run-only invariant, but deinit is a special case where
+            // we know there's no concurrent access.
             #if DEBUG
             if case .open = state {
                 print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
@@ -61,18 +60,7 @@ extension File.Directory.Entries.Async {
             #endif
 
             if case .open(let box) = state {
-                let io = self.io
-                Task.detached {
-                    do {
-                        try await io.run {
-                            box.close()
-                        }
-                    } catch {
-                        // Executor failed (e.g., shutdown) - safe to close directly
-                        // at deinit time since iterator is being deallocated
-                        box.close()
-                    }
-                }
+                box.close()
             }
         }
 
@@ -161,7 +149,12 @@ extension File.Directory.Entries.Async {
                 // Explicit captures: io (executor) and box (to close)
                 // INVARIANT: Iterator.Box only touched inside io.run
                 Task.detached {
-                    _ = try? await io.run {
+                    do {
+                        try await io.run {
+                            box.close()
+                        }
+                    } catch {
+                        // Executor failed - safe to close directly
                         box.close()
                     }
                 }
@@ -170,7 +163,12 @@ extension File.Directory.Entries.Async {
 
         private func closeBox(_ box: Box) async {
             // INVARIANT: Iterator.Box only touched inside io.run
-            _ = try? await io.run {
+            do {
+                try await io.run {
+                    box.close()
+                }
+            } catch {
+                // Executor failed (e.g., shutdown) - safe to close directly
                 box.close()
             }
         }
