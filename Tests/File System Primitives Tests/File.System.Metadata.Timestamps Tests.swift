@@ -193,15 +193,15 @@ extension File.System.Metadata.Timestamps.Test.Unit {
     // MARK: - Error Descriptions
 
     @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+    func pathNotFoundErrorDescription() {
+        let path: File.Path = "/tmp/missing"
         let error = File.System.Metadata.Timestamps.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+    func permissionDeniedErrorDescription() {
+        let path: File.Path = "/root/secret"
         let error = File.System.Metadata.Timestamps.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }

@@ -65,7 +65,7 @@ import Testing
             let path = try File.Path(createTempPath())
             defer { cleanupPath(path) }
             _ = try await io.run {
-                var handle = try File.Handle.open(
+                let handle = try File.Handle.open(
                     path,
                     mode: .write,
                     options: [.create, .closeOnExec]
