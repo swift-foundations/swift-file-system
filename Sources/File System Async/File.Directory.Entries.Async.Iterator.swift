@@ -29,7 +29,7 @@ extension File.Directory.Entries.Async {
     ///   touches IteratorBox directly.
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = File.Directory.Entry
-        private typealias Box = File.IO.Blocking.Threads.Iterator.Box<File.Directory.Iterator>
+        private typealias Box = File.IO.Iterator.Box<File.Directory.Iterator>
 
         private enum State {
             case unopened

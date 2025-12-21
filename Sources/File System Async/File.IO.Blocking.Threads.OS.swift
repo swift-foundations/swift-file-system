@@ -491,58 +491,6 @@ extension File.IO.Blocking.Threads {
     }
 }
 
-// MARK: - Iterator.Box
-
-extension File.IO.Blocking.Threads {
-    /// Namespace for iterator-related types.
-    enum Iterator {}
-}
-
-extension File.IO.Blocking.Threads.Iterator {
-    /// A heap-allocated box for non-copyable iterators.
-    ///
-    /// ## Safety Invariant (for @unchecked Sendable)
-    /// - Only accessed from within `io.run` closures (single-threaded access)
-    /// - Never accessed concurrently
-    /// - Caller ensures sequential access pattern via executor serialization
-    final class Box<T: ~Copyable>: @unchecked Sendable {
-        private var storage: UnsafeMutablePointer<T>?
-
-        init(_ value: consuming T) {
-            self.storage = .allocate(capacity: 1)
-            self.storage!.initialize(to: consume value)
-        }
-
-        deinit {
-            #if DEBUG
-            precondition(
-                storage == nil,
-                """
-                Iterator.Box deallocated without close().
-                This violates the io.run-only invariant.
-                Use terminate() for deterministic cleanup.
-                """
-            )
-            #endif
-        }
-
-        var hasValue: Bool { storage != nil }
-
-        func withValue<R>(_ body: (inout T) throws -> R) rethrows -> R? {
-            guard let ptr = storage else { return nil }
-            return try body(&ptr.pointee)
-        }
-
-        func close(_ cleanup: (consuming T) -> Void) {
-            guard let ptr = storage else { return }
-            let value = ptr.move()
-            ptr.deallocate()
-            storage = nil
-            cleanup(consume value)
-        }
-    }
-}
-
 // MARK: - Atomic Counter
 
 extension File.IO.Blocking.Threads {

@@ -57,11 +57,13 @@ extension File.Directory.Async.Test.Unit {
             defer { File.Directory.Async.Test.Unit.cleanup(dir) }
 
             let walk = File.Directory.Async(io: io).walk(at: dir)
+            let iterator = walk.makeAsyncIterator()
             var count = 0
 
-            for try await _ in walk {
+            while let _ = try await iterator.next() {
                 count += 1
             }
+            await iterator.terminate()
 
             #expect(count == 0)
             await io.shutdown()
@@ -79,11 +81,13 @@ extension File.Directory.Async.Test.Unit {
             try File.Directory.Async.Test.Unit.createFile(in: dir, name: "file3.txt")
 
             let walk = File.Directory.Async(io: io).walk(at: dir)
+            let iterator = walk.makeAsyncIterator()
             var paths: [String] = []
 
-            for try await path in walk {
+            while let path = try await iterator.next() {
                 paths.append(path.string)
             }
+            await iterator.terminate()
 
             #expect(paths.count == 3)
             await io.shutdown()
@@ -121,11 +125,13 @@ extension File.Directory.Async.Test.Unit {
             try File.Directory.Async.Test.Unit.createFile(in: sub2, name: "file4.txt")
 
             let walk = File.Directory.Async(io: io).walk(at: dir)
+            let iterator = walk.makeAsyncIterator()
             var paths: Set<String> = []
 
-            for try await path in walk {
+            while let path = try await iterator.next() {
                 paths.insert(path.string)
             }
+            await iterator.terminate()
 
             // Should find: subdir1, file2.txt, subsubdir, file3.txt, subdir2, file4.txt, file1.txt
             // (7 entries total)
@@ -177,11 +183,13 @@ extension File.Directory.Async.Test.Unit {
             }
 
             let walk = File.Directory.Async(io: io).walk(at: dir)
+            let iterator = walk.makeAsyncIterator()
             var count = 0
 
-            for try await _ in walk {
+            while let _ = try await iterator.next() {
                 count += 1
             }
+            await iterator.terminate()
 
             // 10 subdirs + 100 files = 110 entries
             #expect(count == 110)
@@ -202,11 +210,13 @@ extension File.Directory.Async.Test.Unit {
 
             let options = File.Directory.Walk.Async.Options(maxConcurrency: 2)
             let walk = File.Directory.Async(io: io).walk(at: dir, options: options)
+            let iterator = walk.makeAsyncIterator()
             var count = 0
 
-            for try await _ in walk {
+            while let _ = try await iterator.next() {
                 count += 1
             }
+            await iterator.terminate()
 
             // 5 subdirs + 5 files = 10 entries
             #expect(count == 10)

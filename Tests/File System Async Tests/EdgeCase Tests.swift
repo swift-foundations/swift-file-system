@@ -155,6 +155,7 @@ import File_System_Primitives
                     }
                     _ = entry
                 }
+                await iterator.terminate()
             } catch {
                 await iterator.terminate()
                 throw error
@@ -232,6 +233,7 @@ import File_System_Primitives
                         let iterator = entries.makeAsyncIterator()
                         do {
                             while let _ = try await iterator.next() { c += 1 }
+                            await iterator.terminate()
                         } catch {
                             await iterator.terminate()
                             throw error
@@ -278,9 +280,11 @@ import File_System_Primitives
 
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root)
-            for try await _ in walk {
+            let iterator = walk.makeAsyncIterator()
+            while let _ = try await iterator.next() {
                 count += 1
             }
+            await iterator.terminate()
 
             // 10 directories + 10 files = 20 entries
             #expect(count == 20)
@@ -308,9 +312,11 @@ import File_System_Primitives
                 at: root,
                 options: .init(followSymlinks: false)
             )
-            for try await _ in walk {
+            let iterator = walk.makeAsyncIterator()
+            while let _ = try await iterator.next() {
                 count += 1
             }
+            await iterator.terminate()
 
             // Should see: subdir + parent-link = 2
             #expect(count == 2)
@@ -340,19 +346,15 @@ import File_System_Primitives
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root, options: .init(followSymlinks: true))
             let iterator = walk.makeAsyncIterator()
-            var didBreak = false
             while let _ = try await iterator.next() {
                 count += 1
                 // Safety valve - if cycle detection fails, abort
                 if count > 100 {
                     Issue.record("Cycle detection failed - infinite loop detected")
-                    didBreak = true
                     break
                 }
             }
-            if didBreak {
-                await iterator.terminate()
-            }
+            await iterator.terminate()
 
             // Should complete without infinite loop
             #expect(count <= 10)  // Reasonable upper bound
@@ -406,11 +408,13 @@ import File_System_Primitives
 
             var paths: [String] = []
             let walk = File.Directory.Async(io: io).walk(at: root)
-            for try await path in walk {
+            let iterator = walk.makeAsyncIterator()
+            while let path = try await iterator.next() {
                 if let component = path.lastComponent {
                     paths.append(component.string)
                 }
             }
+            await iterator.terminate()
 
             #expect(paths.count == 4)
             #expect(paths.contains("file.txt"))
@@ -560,6 +564,7 @@ import File_System_Primitives
                         count += 1
                         try Task.checkCancellation()
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -610,6 +615,7 @@ import File_System_Primitives
                         count += 1
                         try Task.checkCancellation()
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -656,6 +662,7 @@ import File_System_Primitives
                             try Task.checkCancellation()
                         }
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -711,6 +718,7 @@ import File_System_Primitives
                             try Task.checkCancellation()
                         }
                     }
+                    await iterator.terminate()
                 } catch {
                     await iterator.terminate()
                     throw error
@@ -758,6 +766,7 @@ import File_System_Primitives
                     // Add delay to simulate slow consumer
                     try await Task.sleep(for: .milliseconds(1))
                 }
+                await iterator.terminate()
             } catch {
                 await iterator.terminate()
                 throw error
@@ -819,9 +828,11 @@ import File_System_Primitives
 
             var count = 0
             let walk = File.Directory.Async(io: io).walk(at: root)
-            for try await _ in walk {
+            let iterator = walk.makeAsyncIterator()
+            while let _ = try await iterator.next() {
                 count += 1
             }
+            await iterator.terminate()
 
             #expect(count == 1025)
             await io.shutdown()
@@ -850,6 +861,7 @@ import File_System_Primitives
                         // Small delay to allow deletion to happen
                         try await Task.sleep(for: .milliseconds(1))
                     }
+                    await iterator.terminate()
                 } catch {
                     // May throw error if directory structure changes during iteration
                     // This is acceptable behavior

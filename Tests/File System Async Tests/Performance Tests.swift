@@ -296,18 +296,24 @@ import TestingPerformance
             )
             func directoryWalkShallow() async throws {
                 var count = 0
-                for try await _ in File.Directory.Async(io: executor).walk(at: testDirShallowTree) {
+                let walk = File.Directory.Async(io: executor).walk(at: testDirShallowTree)
+                let iterator = walk.makeAsyncIterator()
+                while let _ = try await iterator.next() {
                     count += 1
                 }
+                await iterator.terminate()
                 #expect(count == 110)
             }
 
             @Test("Directory walk (deep tree: 5 levels)", .timed(iterations: 20, warmup: 3, trackAllocations: false))
             func directoryWalkDeep() async throws {
                 var count = 0
-                for try await _ in File.Directory.Async(io: executor).walk(at: testDirDeepTree) {
+                let walk = File.Directory.Async(io: executor).walk(at: testDirDeepTree)
+                let iterator = walk.makeAsyncIterator()
+                while let _ = try await iterator.next() {
                     count += 1
                 }
+                await iterator.terminate()
                 #expect(count == 23)
             }
         }

@@ -14,7 +14,7 @@ extension File.Directory.Walk.Async.Sequence {
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
-        private typealias Box = File.IO.Blocking.Threads.Iterator.Box<File.Directory.Iterator>
+        private typealias Box = File.IO.Iterator.Box<File.Directory.Iterator>
 
         private let channel: AsyncThrowingChannel<Element, any Error>
         private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
