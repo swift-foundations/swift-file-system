@@ -20,13 +20,14 @@ extension File.Directory.Entries.Async {
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
     ///
-    /// ## HARD INVARIANT
-    /// - All observable effects on Iterator.Box (`next`, `close`) occur exclusively
-    ///   inside `io.run` closures.
-    /// - Iterator.Box.deinit performs no cleanup.
-    /// - Deterministic cleanup requires exhausting the iterator or calling `terminate()`.
-    /// - Iterator.deinit may schedule best-effort cleanup via `io.run`, but never
-    ///   touches Iterator.Box directly.
+    /// ## Two-Tier Invariant
+    /// 1. **Primary rule**: While executor is operational, all Box operations (`next`, `close`)
+    ///    occur exclusively inside `io.run` closures for thread-safety.
+    /// 2. **Shutdown rule**: If `io.run` fails (executor shutdown), direct close is permitted
+    ///    as last-resort cleanup to prevent OS resource leaks.
+    /// 3. **Unique ownership**: At `deinit`, we have unique ownership with no concurrent access,
+    ///    so direct close is safe and prevents leaks.
+    /// 4. Deterministic cleanup requires exhausting the iterator or calling `terminate()`.
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = File.Directory.Entry
 
@@ -50,16 +51,12 @@ extension File.Directory.Entries.Async {
         }
 
         deinit {
-            // At deinit time, no other code can access the box, so direct cleanup is safe.
-            // This breaks the io.run-only invariant, but deinit is a special case where
-            // we know there's no concurrent access.
-            #if DEBUG
-            if case .open = state {
-                print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
-            }
-            #endif
-
+            // At deinit, we have unique ownership - no concurrent access is possible.
+            // Direct close is safe here and prevents resource leaks.
             if case .open(let box) = state {
+                #if DEBUG
+                print("Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)")
+                #endif
                 box.close()
             }
         }
@@ -133,7 +130,11 @@ extension File.Directory.Entries.Async {
                         state = .finished
                     }
                 } catch is CancellationError {
-                    // Cancelled - cleanup already scheduled in onCancel handler
+                    // Cancellation - close via io.run
+                    // INVARIANT: Iterator.Box only touched inside io.run
+                    // Note: onCancel may also schedule close, but close() is idempotent
+                    // and io.run serializes the calls
+                    await closeBox(box)
                     state = .finished
                     throw CancellationError()
                 } catch {
@@ -144,17 +145,17 @@ extension File.Directory.Entries.Async {
                     throw error
                 }
             } onCancel: { [io = self.io, box] in
-                // Cancellation during io.run: job completes but we schedule cleanup
+                // Cancellation during io.run: schedule cleanup via io.run
                 // Note: This runs on arbitrary thread, but only schedules a Task
-                // Explicit captures: io (executor) and box (to close)
-                // INVARIANT: Iterator.Box only touched inside io.run
+                // Two-tier invariant: io.run while operational, direct close on shutdown
+                // close() is thread-safe via atomic exchange, so concurrent close is safe
                 Task.detached {
                     do {
                         try await io.run {
                             box.close()
                         }
                     } catch {
-                        // Executor failed - safe to close directly
+                        // Executor failed (shutdown) - close directly to prevent leaks
                         box.close()
                     }
                 }
@@ -162,13 +163,16 @@ extension File.Directory.Entries.Async {
         }
 
         private func closeBox(_ box: Box) async {
-            // INVARIANT: Iterator.Box only touched inside io.run
+            // Two-tier invariant:
+            // 1. Primary: Box operations via io.run while executor is operational
+            // 2. Shutdown: Direct close is permitted to prevent resource leaks
             do {
                 try await io.run {
                     box.close()
                 }
             } catch {
-                // Executor failed (e.g., shutdown) - safe to close directly
+                // Executor failed (shutdown or other) - close directly to prevent leaks.
+                // Box.close() is idempotent, so this is safe even if another path also closes.
                 box.close()
             }
         }

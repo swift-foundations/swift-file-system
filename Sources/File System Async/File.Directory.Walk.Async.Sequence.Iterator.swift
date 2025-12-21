@@ -196,11 +196,12 @@ extension File.Directory.Walk.Async.Sequence {
             }
 
             // Helper to close box - must be called before returning
+            // Two-tier invariant: io.run while operational, direct close on shutdown
             @Sendable func closeBox() async {
                 do {
                     try await io.run { box.close() }
                 } catch {
-                    // Executor failed (e.g., shutdown) - safe to close directly
+                    // Executor failed (shutdown) - close directly to prevent leaks
                     box.close()
                 }
             }
