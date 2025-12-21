@@ -470,7 +470,8 @@
         /// HANDLE is a pointer but Windows file handles are thread-safe for sequential operations.
         /// Safe to pass to io.run closures within a single async function.
         package struct Context: @unchecked Sendable {
-            package let handle: HANDLE
+            // HANDLE is internal in WinSDK, so this property must be internal
+            internal let handle: HANDLE
             package let tempPath: String?  // nil for direct mode
             package let resolvedPath: String
             package let parent: String
