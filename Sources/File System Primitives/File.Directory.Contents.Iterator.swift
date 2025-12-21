@@ -153,7 +153,7 @@ extension File.Directory.Contents {
             throw Self._mapErrno(errno, path: path)
         }
 
-        return (Iterator(dir: OpaquePointer(dir)), OpaquePointer(dir))
+        return (Iterator(dir: dir), dir)
     }
 
     /// Closes an iterator handle.
@@ -241,7 +241,7 @@ extension File.Directory.Contents {
             throw Self._mapErrno(errno, path: path)
         }
 
-        return (Iterator(dir: OpaquePointer(dir)), OpaquePointer(dir))
+        return (Iterator(dir: dir), dir)
     }
 
     /// Closes an iterator handle.
