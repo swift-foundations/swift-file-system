@@ -5,60 +5,57 @@
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
+import Synchronization
+
 extension File.Directory.Entries.Async.Iterator {
     /// Heap-allocated box for the non-copyable iterator.
     ///
     /// Uses UnsafeMutablePointer for stable address with ~Copyable type,
     /// similar to Handle.Box pattern.
     ///
-    /// ## Safety Invariant (for @unchecked Sendable)
-    /// - Only accessed from within `io.run` closures (single-threaded access)
-    /// - Never accessed concurrently
-    /// - Caller ensures sequential access pattern
+    /// ## Ownership Model
+    /// - `close()` is thread-safe and idempotent via atomic exchange
+    /// - `deinit` calls `close()` as a last-resort safety net to prevent leaks
+    /// - Prefer explicit `terminate()` on Iterator for deterministic cleanup
+    ///
+    /// ## Thread Safety
+    /// - `close()` is safe to call from any thread (atomic)
+    /// - `next()` is NOT thread-safe - iterator is single-consumer
+    /// - The iterator enforces single-consumer semantics at a higher level
     final class Box: @unchecked Sendable {
-        private var storage: UnsafeMutablePointer<File.Directory.Iterator>?
+        // Atomic storage for thread-safe close()
+        // UnsafeMutableRawPointer because Atomic requires Sendable
+        private let storage: Atomic<UnsafeMutableRawPointer?>
 
         init(_ iterator: consuming File.Directory.Iterator) {
-            self.storage = .allocate(capacity: 1)
-            self.storage!.initialize(to: consume iterator)
+            let ptr: UnsafeMutablePointer<File.Directory.Iterator> = .allocate(capacity: 1)
+            ptr.initialize(to: consume iterator)
+            self.storage = Atomic(UnsafeMutableRawPointer(ptr))
         }
 
         deinit {
-            // INVARIANT: Iterator.Box.deinit performs no cleanup.
-            // All cleanup must occur via close() inside io.run.
-            // This preserves the executor-confinement invariant.
-            //
-            // If storage != nil here, it means:
-            // 1. The iterator was not exhausted, AND
-            // 2. terminate() was not called, AND
-            // 3. The best-effort Task.detached cleanup didn't run
-            //
-            // This is programmer error. The handle will leak until process exit.
-            // Use terminate() for deterministic cleanup.
-            #if DEBUG
-            precondition(
-                storage == nil,
-                """
-                Iterator.Box deallocated without close().
-                This violates the io.run-only invariant.
-                The iterator must be exhausted or terminate() must be called.
-                """
-            )
-            #endif
+            // Last-resort safety net: never leak OS resources.
+            // close() is idempotent via atomic exchange, so this is always safe.
+            close()
         }
 
         func next() throws -> File.Directory.Entry? {
-            guard let ptr = storage else {
+            // Load current pointer (non-destructive read for iteration)
+            guard let raw = storage.load(ordering: .acquiring) else {
                 return nil
             }
+            let ptr = raw.assumingMemoryBound(to: File.Directory.Iterator.self)
             return try ptr.pointee.next()
         }
 
         func close() {
-            guard let ptr = storage else { return }
+            // Atomically exchange storage to nil - only one thread wins
+            guard let raw = storage.exchange(nil, ordering: .acquiringAndReleasing) else {
+                return  // Already closed by another thread
+            }
+            let ptr = raw.assumingMemoryBound(to: File.Directory.Iterator.self)
             let it = ptr.move()
             ptr.deallocate()
-            storage = nil
             it.close()
         }
     }

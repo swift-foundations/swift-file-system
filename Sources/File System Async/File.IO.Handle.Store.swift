@@ -96,7 +96,8 @@ extension File.IO.Handle.Store {
     /// - Throws: `Handle.Error.scopeMismatch` if ID belongs to different store.
     /// - Throws: `Handle.Error.invalidID` if ID not found.
     /// - Throws: `Handle.Error.handleClosed` if handle was closed.
-    func withHandle<T>(_ id: File.IO.Handle.ID, _ body: (inout File.Handle) throws -> T) throws -> T {
+    func withHandle<T>(_ id: File.IO.Handle.ID, _ body: (inout File.Handle) throws -> T) throws -> T
+    {
         // Validate scope first
         guard id.scope == scope else {
             throw File.IO.Handle.Error.scopeMismatch

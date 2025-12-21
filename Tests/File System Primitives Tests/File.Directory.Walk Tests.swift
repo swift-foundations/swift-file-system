@@ -68,7 +68,7 @@ extension File.Directory.Walk.Test.Unit {
         try h.close()
 
         let entries = try File.Directory.Walk.walk(at: dir)
-        #expect(entries.count == 2) // subdir + nested.txt
+        #expect(entries.count == 2)  // subdir + nested.txt
 
         let names = entries.compactMap { String($0.name) }.sorted()
         #expect(names.contains("subdir"))
@@ -114,11 +114,17 @@ extension File.Directory.Walk.Test.Unit {
         try h2.close()
 
         // includeHidden: true (default)
-        let entriesWithHidden = try File.Directory.Walk.walk(at: dir, options: .init(includeHidden: true))
+        let entriesWithHidden = try File.Directory.Walk.walk(
+            at: dir,
+            options: .init(includeHidden: true)
+        )
         #expect(entriesWithHidden.count == 2)
 
         // includeHidden: false
-        let entriesWithoutHidden = try File.Directory.Walk.walk(at: dir, options: .init(includeHidden: false))
+        let entriesWithoutHidden = try File.Directory.Walk.walk(
+            at: dir,
+            options: .init(includeHidden: false)
+        )
         #expect(entriesWithoutHidden.count == 1)
         #expect(String(entriesWithoutHidden[0].name) == "visible.txt")
     }

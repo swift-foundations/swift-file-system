@@ -196,8 +196,14 @@ extension File.Directory.Walk.Async.Sequence {
             }
 
             // Helper to close box - must be called before returning
+            // Two-tier invariant: io.run while operational, direct close on shutdown
             @Sendable func closeBox() async {
-                _ = try? await io.run { box.close() }
+                do {
+                    try await io.run { box.close() }
+                } catch {
+                    // Executor failed (shutdown) - close directly to prevent leaks
+                    box.close()
+                }
             }
 
             // Iterate directory with batching to reduce executor overhead
@@ -251,11 +257,12 @@ extension File.Directory.Walk.Async.Sequence {
                                 // Can't emit - no valid path
                                 continue
                             case .stopAndThrow:
-                                await authority.fail(with: File.Directory.Walk.Error.undecodableEntry(
-                                    parent: entry.parent,
-                                    name: entry.name
-                                ))
-                                break
+                                await authority.fail(
+                                    with: File.Directory.Walk.Error.undecodableEntry(
+                                        parent: entry.parent,
+                                        name: entry.name
+                                    )
+                                )
                             }
                             continue
                         }
@@ -292,12 +299,18 @@ extension File.Directory.Walk.Async.Sequence {
             await state.decrementActive()
         }
 
-        private static func getInode(_ path: File.Path, io: File.IO.Executor) async -> File.Directory.Walk.Async.Inode.Key? {
+        private static func getInode(
+            _ path: File.Path,
+            io: File.IO.Executor
+        ) async -> File.Directory.Walk.Async.Inode.Key? {
             do {
                 return try await io.run {
                     // Use lstat to get the symlink's own inode, not its target's
                     let info = try File.System.Stat.lstatInfo(at: path)
-                    return File.Directory.Walk.Async.Inode.Key(device: info.deviceId, inode: info.inode)
+                    return File.Directory.Walk.Async.Inode.Key(
+                        device: info.deviceId,
+                        inode: info.inode
+                    )
                 }
             } catch {
                 return nil

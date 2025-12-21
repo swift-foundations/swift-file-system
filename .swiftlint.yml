@@ -1,7 +1,8 @@
-# SwiftLint configuration for swift-rfc-1035
+# SwiftLint configuration for swift-file-system
 # Inherits from the shared parent configuration in swift-standards
 
 parent_config: https://raw.githubusercontent.com/swift-standards/swift-standards/main/.swiftlint.yml
 
-# Package-specific overrides (if needed)
-# Add any swift-rfc-1035 specific rules here
+# Package-specific overrides
+disabled_rules:
+  - function_parameter_count

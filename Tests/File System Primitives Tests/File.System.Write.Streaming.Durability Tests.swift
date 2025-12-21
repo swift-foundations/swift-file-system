@@ -18,7 +18,7 @@ extension File.System.Write.Streaming.Durability.Test.Unit {
     @Test("all cases are distinct")
     func allCasesDistinct() {
         let allCases: [File.System.Write.Streaming.Durability] = [
-            .full, .dataOnly, .none
+            .full, .dataOnly, .none,
         ]
         #expect(allCases.count == 3)
         #expect(Set([allCases[0], allCases[1], allCases[2]]).count == 3)

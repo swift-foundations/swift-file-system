@@ -76,6 +76,7 @@ let package = Package(
             name: "File System Async Tests",
             dependencies: [
                 "File System Async",
+                "File System",
                 .product(name: "StandardsTestSupport", package: "swift-standards"),
             ],
             path: "Tests/File System Async Tests"

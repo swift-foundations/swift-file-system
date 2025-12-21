@@ -429,7 +429,10 @@ extension File.Handle.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_read_1mb_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_read_1mb_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         // Setup: create 1MB file
         let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
@@ -453,7 +456,10 @@ extension File.Handle.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_write_1mb_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_write_1mb_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -478,7 +484,10 @@ extension File.Handle.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_buffer_read_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_buffer_read_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         // Setup: create 64KB file
         let size = 64 * 1024
@@ -508,7 +517,10 @@ extension File.Handle.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_small_writes_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_small_writes_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

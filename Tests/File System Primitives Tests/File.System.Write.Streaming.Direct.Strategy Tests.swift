@@ -18,7 +18,7 @@ extension File.System.Write.Streaming.Direct.Strategy.Test.Unit {
     @Test("all cases are distinct")
     func allCasesDistinct() {
         let allCases: [File.System.Write.Streaming.Direct.Strategy] = [
-            .create, .truncate
+            .create, .truncate,
         ]
         #expect(allCases.count == 2)
         #expect(allCases[0] != allCases[1])

@@ -136,7 +136,7 @@ extension File.System.Create.File.Test.EdgeCase {
         )
 
         if case .createFailed(_, let message) = error {
-            #expect(message == "")
+            #expect(message.isEmpty)
         } else {
             Issue.record("Expected createFailed error")
         }

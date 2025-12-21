@@ -9,8 +9,10 @@
     import Darwin
 #elseif canImport(Glibc)
     import Glibc
+    import CFileSystemShims
 #elseif canImport(Musl)
     import Musl
+    import CFileSystemShims
 #elseif os(Windows)
     public import WinSDK
 #endif
@@ -474,7 +476,7 @@ extension File.Directory.Iterator {
                         _hasMore = false
                     } else {
                         // Actual error occurred during iteration
-                        throw _mapWindowsError(err, path: _basePath)
+                        throw Self._mapWindowsError(err, path: _basePath)
                     }
                 }
 

@@ -129,7 +129,7 @@ extension File.System.Metadata.Attributes.Test.EdgeCase {
         )
 
         if case .attributeNotFound(let name, _) = error {
-            #expect(name == "")
+            #expect(name.isEmpty)
         } else {
             Issue.record("Expected attributeNotFound error")
         }

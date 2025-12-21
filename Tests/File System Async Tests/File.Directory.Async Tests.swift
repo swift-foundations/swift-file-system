@@ -5,11 +5,11 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System
 import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
-import File_System
 
 extension File.Directory.Async {
     #TestSuites
@@ -150,7 +150,7 @@ extension File.Directory.Async.Test.Unit {
             var iterator = walk.makeAsyncIterator()
 
             do {
-                while let _ = try await iterator.next() {
+                while try await iterator.next() != nil {
                     Issue.record("Should throw before yielding")
                 }
             } catch {
@@ -319,7 +319,7 @@ extension File.Directory.Async.Test.Unit {
             var iterator = entries.makeAsyncIterator()
 
             do {
-                while let _ = try await iterator.next() {
+                while try await iterator.next() != nil {
                     Issue.record("Should throw before yielding")
                 }
             } catch {
@@ -435,7 +435,7 @@ extension File.Directory.Async.Test.Unit {
             var iterator = walk.makeAsyncIterator()
             var count = 0
 
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
                 if count >= 5 {
                     break
@@ -514,7 +514,7 @@ extension File.Directory.Async.Test.Unit {
             var iterator = entries.makeAsyncIterator()
             var count = 0
 
-            while let _ = try await iterator.next() {
+            while try await iterator.next() != nil {
                 count += 1
                 if count >= 3 {
                     break
@@ -545,7 +545,7 @@ extension File.Directory.Async.Test.Unit {
                 var count = 0
                 var iterator = entries.makeAsyncIterator()
                 do {
-                    while let _ = try await iterator.next() {
+                    while try await iterator.next() != nil {
                         count += 1
                         // Yield to allow cancellation to be processed
                         await Task.yield()

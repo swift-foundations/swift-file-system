@@ -37,7 +37,7 @@ extension File.System.Write.Streaming.Test.Unit {
 
         let chunks: [[UInt8]] = [
             [72, 101, 108, 108, 111],  // "Hello"
-            [32],                       // " "
+            [32],  // " "
             [87, 111, 114, 108, 100],  // "World"
         ]
 
@@ -83,7 +83,7 @@ extension File.System.Write.Streaming.Test.Unit {
 
         let chunks: [[UInt8]] = [
             [1, 2, 3],
-            [],         // Empty chunk
+            [],  // Empty chunk
             [4, 5, 6],
         ]
 
@@ -377,7 +377,10 @@ extension File.System.Write.Streaming.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_streaming_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_streaming_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -397,7 +400,10 @@ extension File.System.Write.Streaming.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -417,7 +423,10 @@ extension File.System.Write.Streaming.Test.Performance {
         #else
             let tempDir = try File.Path("/tmp")
         #endif
-        let filePath = File.Path(tempDir, appending: "perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin")
+        let filePath = File.Path(
+            tempDir,
+            appending: "perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin"
+        )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

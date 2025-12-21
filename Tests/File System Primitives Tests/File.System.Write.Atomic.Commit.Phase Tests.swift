@@ -19,7 +19,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
     func allCasesDistinct() {
         let allCases: [File.System.Write.Atomic.Commit.Phase] = [
             .pending, .writing, .syncedFile, .closed,
-            .renamedPublished, .directorySyncAttempted, .syncedDirectory
+            .renamedPublished, .directorySyncAttempted, .syncedDirectory,
         ]
         let rawValues = allCases.map(\.rawValue)
         #expect(Set(rawValues).count == allCases.count)
@@ -86,7 +86,9 @@ extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
 
     @Test("durabilityAttempted property - true at and after directorySyncAttempted")
     func durabilityAttemptedTrue() {
-        #expect(File.System.Write.Atomic.Commit.Phase.directorySyncAttempted.durabilityAttempted == true)
+        #expect(
+            File.System.Write.Atomic.Commit.Phase.directorySyncAttempted.durabilityAttempted == true
+        )
         #expect(File.System.Write.Atomic.Commit.Phase.syncedDirectory.durabilityAttempted == true)
     }
 
@@ -94,7 +96,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
     func comparableOrdered() {
         let phases: [File.System.Write.Atomic.Commit.Phase] = [
             .pending, .writing, .syncedFile, .closed,
-            .renamedPublished, .directorySyncAttempted, .syncedDirectory
+            .renamedPublished, .directorySyncAttempted, .syncedDirectory,
         ]
 
         for i in 0..<phases.count - 1 {
@@ -124,7 +126,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.EdgeCase {
     func rawValueProgression() {
         let phases: [File.System.Write.Atomic.Commit.Phase] = [
             .pending, .writing, .syncedFile, .closed,
-            .renamedPublished, .directorySyncAttempted, .syncedDirectory
+            .renamedPublished, .directorySyncAttempted, .syncedDirectory,
         ]
 
         for (index, phase) in phases.enumerated() {
@@ -136,7 +138,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.EdgeCase {
     func firstPublishedPhase() {
         let allPhases: [File.System.Write.Atomic.Commit.Phase] = [
             .pending, .writing, .syncedFile, .closed,
-            .renamedPublished, .directorySyncAttempted, .syncedDirectory
+            .renamedPublished, .directorySyncAttempted, .syncedDirectory,
         ]
 
         let firstPublished = allPhases.first { $0.published }
@@ -147,7 +149,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.EdgeCase {
     func firstDurabilityAttemptedPhase() {
         let allPhases: [File.System.Write.Atomic.Commit.Phase] = [
             .pending, .writing, .syncedFile, .closed,
-            .renamedPublished, .directorySyncAttempted, .syncedDirectory
+            .renamedPublished, .directorySyncAttempted, .syncedDirectory,
         ]
 
         let firstDurability = allPhases.first { $0.durabilityAttempted }

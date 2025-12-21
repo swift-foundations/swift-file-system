@@ -24,7 +24,10 @@
             // 1. Resolve and validate parent directory
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(parent, createIntermediates: options.createIntermediates)
+            try verifyOrCreateParentDirectory(
+                parent,
+                createIntermediates: options.createIntermediates
+            )
 
             // 2. Generate unique temp file path
             let tempPath = generateTempPath(in: parent, for: resolvedPath)
@@ -395,7 +398,9 @@
                 // - ERROR_FILE_EXISTS (80)
                 // Note: ERROR_ACCESS_DENIED can occur for various reasons,
                 // so we don't map it to destinationExists to avoid masking real permission errors
-                if !replace && (err == _dword(ERROR_ALREADY_EXISTS) || err == _dword(ERROR_FILE_EXISTS)) {
+                if !replace
+                    && (err == _dword(ERROR_ALREADY_EXISTS) || err == _dword(ERROR_FILE_EXISTS))
+                {
                     throw .destinationExists(path: File.Path(__unchecked: (), destPath))
                 }
 

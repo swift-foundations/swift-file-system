@@ -245,7 +245,7 @@ extension File.Name.Test.EdgeCase {
     @Test("empty name")
     func emptyName() {
         let name = File.Name(rawBytes: [])
-        #expect(String(name) == "")
+        #expect(String(name).isEmpty)
         #expect(!name.isHiddenByDotPrefix)
     }
 

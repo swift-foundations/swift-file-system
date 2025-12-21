@@ -10,12 +10,30 @@ extension File.System.Write.Atomic {
         /// Parent directory verification or creation failed.
         case parent(File.System.Parent.Check.Error)
         case destinationStatFailed(path: File.Path, code: File.System.Error.Code, message: String)
-        case tempFileCreationFailed(directory: File.Path, code: File.System.Error.Code, message: String)
-        case writeFailed(bytesWritten: Int, bytesExpected: Int, code: File.System.Error.Code, message: String)
+        case tempFileCreationFailed(
+            directory: File.Path,
+            code: File.System.Error.Code,
+            message: String
+        )
+        case writeFailed(
+            bytesWritten: Int,
+            bytesExpected: Int,
+            code: File.System.Error.Code,
+            message: String
+        )
         case syncFailed(code: File.System.Error.Code, message: String)
         case closeFailed(code: File.System.Error.Code, message: String)
-        case metadataPreservationFailed(operation: String, code: File.System.Error.Code, message: String)
-        case renameFailed(from: File.Path, to: File.Path, code: File.System.Error.Code, message: String)
+        case metadataPreservationFailed(
+            operation: String,
+            code: File.System.Error.Code,
+            message: String
+        )
+        case renameFailed(
+            from: File.Path,
+            to: File.Path,
+            code: File.System.Error.Code,
+            message: String
+        )
         case destinationExists(path: File.Path)
         case directorySyncFailed(path: File.Path, code: File.System.Error.Code, message: String)
 
@@ -24,13 +42,21 @@ extension File.System.Write.Atomic {
         /// File exists with complete content, but durability is compromised.
         /// This is an I/O error, not cancellation. The caller should NOT attempt
         /// to "finish durability" - this is not reliably possible.
-        case directorySyncFailedAfterCommit(path: File.Path, code: File.System.Error.Code, message: String)
+        case directorySyncFailedAfterCommit(
+            path: File.Path,
+            code: File.System.Error.Code,
+            message: String
+        )
 
         /// CSPRNG failed - cannot generate secure temp file names.
         ///
         /// This indicates a fundamental system failure (e.g., getrandom syscall failure).
         /// The operation cannot proceed safely without secure random bytes.
-        case randomGenerationFailed(code: File.System.Error.Code, operation: String, message: String)
+        case randomGenerationFailed(
+            code: File.System.Error.Code,
+            operation: String,
+            message: String
+        )
 
         /// Platform layout incompatibility at runtime.
         ///

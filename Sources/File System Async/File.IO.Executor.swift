@@ -247,7 +247,8 @@ extension File.IO {
         /// - Parameter handle: The handle to register (ownership transferred).
         /// - Returns: A unique handle ID for future operations.
         /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
-        public nonisolated func registerHandle(_ handle: consuming File.Handle) throws -> Handle.ID {
+        public nonisolated func registerHandle(_ handle: consuming File.Handle) throws -> Handle.ID
+        {
             try handleStore.register(handle)
         }
 

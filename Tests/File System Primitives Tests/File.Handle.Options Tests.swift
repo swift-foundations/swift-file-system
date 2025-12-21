@@ -68,7 +68,7 @@ extension File.Handle.Options.Test.Unit {
     @Test("all options are distinct")
     func allOptionsDistinct() {
         let allOptions: [File.Handle.Options] = [
-            .create, .truncate, .exclusive, .noFollow, .closeOnExec
+            .create, .truncate, .exclusive, .noFollow, .closeOnExec,
         ]
         let rawValues = allOptions.map(\.rawValue)
         #expect(Set(rawValues).count == allOptions.count)
@@ -77,14 +77,14 @@ extension File.Handle.Options.Test.Unit {
     @Test("combining all options")
     func combiningAllOptions() {
         let options: File.Handle.Options = [
-            .create, .truncate, .exclusive, .noFollow, .closeOnExec
+            .create, .truncate, .exclusive, .noFollow, .closeOnExec,
         ]
         #expect(options.contains(.create))
         #expect(options.contains(.truncate))
         #expect(options.contains(.exclusive))
         #expect(options.contains(.noFollow))
         #expect(options.contains(.closeOnExec))
-        #expect(options.rawValue == 31) // 1 + 2 + 4 + 8 + 16
+        #expect(options.rawValue == 31)  // 1 + 2 + 4 + 8 + 16
     }
 
     @Test("Binary.Serializable - serialize produces correct bytes")

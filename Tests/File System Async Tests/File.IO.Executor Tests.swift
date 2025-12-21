@@ -5,11 +5,11 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System
 import StandardsTestSupport
 import Testing
 
 @testable import File_System_Async
-import File_System
 
 #if canImport(Foundation)
     import Foundation
@@ -287,21 +287,27 @@ import File_System
                     for _ in 0..<4 {
                         group.addTask {
                             try await executor.run {
-                                let current = concurrentCount.load(ordering: .acquiring)
-                                concurrentCount.store(current + 1, ordering: .releasing)
+                                // Atomically increment and get new value
+                                let newCurrent = concurrentCount.wrappingIncrementThenLoad(
+                                    ordering: .acquiring
+                                )
 
-                                // Update max
-                                let newCurrent = concurrentCount.load(ordering: .acquiring)
-                                let currentMax = maxConcurrent.load(ordering: .acquiring)
-                                if newCurrent > currentMax {
-                                    maxConcurrent.store(newCurrent, ordering: .releasing)
+                                // Update max using compare-exchange loop
+                                var currentMax = maxConcurrent.load(ordering: .acquiring)
+                                while newCurrent > currentMax {
+                                    let (exchanged, actual) = maxConcurrent.compareExchange(
+                                        expected: currentMax,
+                                        desired: newCurrent,
+                                        ordering: .acquiringAndReleasing
+                                    )
+                                    if exchanged { break }
+                                    currentMax = actual
                                 }
 
                                 // Simulate work
                                 Thread.sleep(forTimeInterval: 0.05)
 
-                                let afterWork = concurrentCount.load(ordering: .acquiring)
-                                concurrentCount.store(afterWork - 1, ordering: .releasing)
+                                _ = concurrentCount.wrappingDecrementThenLoad(ordering: .releasing)
                             }
                         }
                     }
