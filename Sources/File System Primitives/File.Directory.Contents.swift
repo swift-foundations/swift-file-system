@@ -171,7 +171,7 @@ extension File.Directory.Contents {
 
 #if os(Windows)
     extension File.Directory.Contents {
-        internal static func _listWindows(
+        package static func _listWindows(
             at path: File.Path
         ) throws(Error) -> [File.Directory.Entry] {
             // Verify it's a directory
