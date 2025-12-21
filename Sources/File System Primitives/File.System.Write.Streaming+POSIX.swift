@@ -540,21 +540,16 @@
 
             #elseif os(Linux)
                 // Linux: Try renameat2 with RENAME_NOREPLACE, fallback to link+unlink
+                var outErrno: Int32 = 0
                 let rc = tempPath.withCString { fromPtr in
                     destPath.withCString { toPtr in
-                        atomicfilewrite_renameat2(
-                            AT_FDCWD,
-                            fromPtr,
-                            AT_FDCWD,
-                            toPtr,
-                            UInt32(ATOMICFILEWRITE_RENAME_NOREPLACE)
-                        )
+                        atomicfilewrite_renameat2_noreplace(fromPtr, toPtr, &outErrno)
                     }
                 }
 
                 if rc == 0 { return }
 
-                let e = errno
+                let e = outErrno
                 switch e {
                 case EEXIST:
                     throw .destinationExists(path: File.Path(__unchecked: (), destPath))
