@@ -18,14 +18,6 @@ extension File.Directory.Contents {
 extension File.Directory.Contents.Test.Unit {
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempDir() throws -> String {
         let path = "/tmp/contents-test-\(Int.random(in: 0..<Int.max))"
         try File.System.Create.Directory.create(at: try File.Path(path))
@@ -279,10 +271,7 @@ extension File.Directory.Contents.Test.Performance {
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
             for i in 0..<100 {
                 let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                try fileData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
-                }
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
             }
         }
 

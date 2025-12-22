@@ -60,7 +60,7 @@ extension File.System.Move {
         from source: File.Path,
         to destination: File.Path,
         options: Options = .init()
-    ) throws(Error) {
+    ) throws(File.System.Move.Error) {
         #if os(Windows)
             try _moveWindows(from: source, to: destination, options: options)
         #else

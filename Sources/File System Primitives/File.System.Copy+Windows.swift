@@ -15,7 +15,7 @@
             from source: File.Path,
             to destination: File.Path,
             options: Options
-        ) throws(Error) {
+        ) throws(File.System.Copy.Error) {
             // Check if source exists and is not a directory
             let srcAttrs = source.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)

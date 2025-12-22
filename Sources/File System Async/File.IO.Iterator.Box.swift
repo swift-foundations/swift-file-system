@@ -52,7 +52,9 @@ extension File.IO.Iterator {
 
         package var hasValue: Bool { storage != nil }
 
-        package func withValue<R>(_ body: (inout T) throws -> R) rethrows -> R? {
+        package func withValue<R, E: Error>(
+            _ body: (inout T) throws(E) -> R
+        ) throws(E) -> R? {
             guard let ptr = storage else { return nil }
             return try body(&ptr.pointee)
         }

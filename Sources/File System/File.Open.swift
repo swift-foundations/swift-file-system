@@ -50,11 +50,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on open failure, or any error from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
         @inlinable
         public func callAsFunction<Result>(
             _ body: (inout File.Handle) throws -> Result
-        ) throws -> Result {
+        ) throws(File.Error) -> Result {
             try read(body)
         }
 
@@ -64,11 +64,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on open failure, or any error from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
         @inlinable
         public func read<Result>(
             _ body: (inout File.Handle) throws -> Result
-        ) throws -> Result {
+        ) throws(File.Error) -> Result {
             try File.Handle.withOpen(path, mode: .read, options: options, body: body)
         }
 
@@ -78,11 +78,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on open failure, or any error from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
         @inlinable
         public func write<Result>(
             _ body: (inout File.Handle) throws -> Result
-        ) throws -> Result {
+        ) throws(File.Error) -> Result {
             try File.Handle.withOpen(path, mode: .write, options: options, body: body)
         }
 
@@ -92,11 +92,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on open failure, or any error from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
         @inlinable
         public func appending<Result>(
             _ body: (inout File.Handle) throws -> Result
-        ) throws -> Result {
+        ) throws(File.Error) -> Result {
             try File.Handle.withOpen(path, mode: .append, options: options, body: body)
         }
 
@@ -106,12 +106,76 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on open failure, or any error from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
         @inlinable
         public func readWrite<Result>(
             _ body: (inout File.Handle) throws -> Result
-        ) throws -> Result {
+        ) throws(File.Error) -> Result {
             try File.Handle.withOpen(path, mode: .readWrite, options: options, body: body)
+        }
+
+        // MARK: - Async Variants
+
+        /// Opens the file for reading and runs an async closure.
+        ///
+        /// This is the async variant of `callAsFunction` for use in async contexts.
+        ///
+        /// - Parameter body: An async closure that receives the file handle.
+        /// - Returns: The result from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        @inlinable
+        public func callAsFunction<Result>(
+            _ body: (inout File.Handle) async throws -> Result
+        ) async throws(File.Error) -> Result {
+            try await read(body)
+        }
+
+        /// Opens the file for reading and runs an async closure.
+        ///
+        /// - Parameter body: An async closure that receives the file handle.
+        /// - Returns: The result from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        @inlinable
+        public func read<Result>(
+            _ body: (inout File.Handle) async throws -> Result
+        ) async throws(File.Error) -> Result {
+            try await File.Handle.withOpen(path, mode: .read, options: options, body: body)
+        }
+
+        /// Opens the file for writing and runs an async closure.
+        ///
+        /// - Parameter body: An async closure that receives the file handle.
+        /// - Returns: The result from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        @inlinable
+        public func write<Result>(
+            _ body: (inout File.Handle) async throws -> Result
+        ) async throws(File.Error) -> Result {
+            try await File.Handle.withOpen(path, mode: .write, options: options, body: body)
+        }
+
+        /// Opens the file for appending and runs an async closure.
+        ///
+        /// - Parameter body: An async closure that receives the file handle.
+        /// - Returns: The result from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        @inlinable
+        public func appending<Result>(
+            _ body: (inout File.Handle) async throws -> Result
+        ) async throws(File.Error) -> Result {
+            try await File.Handle.withOpen(path, mode: .append, options: options, body: body)
+        }
+
+        /// Opens the file for reading and writing and runs an async closure.
+        ///
+        /// - Parameter body: An async closure that receives the file handle.
+        /// - Returns: The result from the closure.
+        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        @inlinable
+        public func readWrite<Result>(
+            _ body: (inout File.Handle) async throws -> Result
+        ) async throws(File.Error) -> Result {
+            try await File.Handle.withOpen(path, mode: .readWrite, options: options, body: body)
         }
     }
 }

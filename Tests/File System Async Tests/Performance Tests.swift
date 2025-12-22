@@ -56,10 +56,7 @@ import TestingPerformance
                 )
 
                 let data = [UInt8](repeating: 0x00, count: 100)
-                try data.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: statFilePath)
-                }
+                try File.System.Write.Atomic.write(data.span, to: statFilePath)
 
                 // Open FD for fstat testing
                 self.statFd = open(statFilePath.string, O_RDONLY)
@@ -165,10 +162,7 @@ import TestingPerformance
 
                 // Create test file with 1KB of data
                 let data = [UInt8](repeating: 0x42, count: 1000)
-                try data.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: filePath)
-                }
+                try File.System.Write.Atomic.write(data.span, to: filePath)
             }
 
             deinit {
@@ -232,14 +226,11 @@ import TestingPerformance
                 try File.System.Create.Directory.create(at: testDir100Files)
                 for i in 0..<100 {
                     let filePath = File.Path(testDir100Files, appending: "file_\(i).txt")
-                    try fileData.withUnsafeBufferPointer { buffer in
-                        let span = Span<UInt8>(_unsafeElements: buffer)
-                        try File.System.Write.Atomic.write(
-                            span,
-                            to: filePath,
-                            options: writeOptions
-                        )
-                    }
+                    try File.System.Write.Atomic.write(
+                        fileData.span,
+                        to: filePath,
+                        options: writeOptions
+                    )
                 }
 
                 // Setup: shallow tree (10 dirs × 10 files)
@@ -253,14 +244,11 @@ import TestingPerformance
                     try File.System.Create.Directory.create(at: subDir)
                     for j in 0..<10 {
                         let filePath = File.Path(subDir, appending: "file_\(j).txt")
-                        try fileData.withUnsafeBufferPointer { buffer in
-                            let span = Span<UInt8>(_unsafeElements: buffer)
-                            try File.System.Write.Atomic.write(
-                                span,
-                                to: filePath,
-                                options: writeOptions
-                            )
-                        }
+                        try File.System.Write.Atomic.write(
+                            fileData.span,
+                            to: filePath,
+                            options: writeOptions
+                        )
                     }
                 }
 
@@ -274,14 +262,11 @@ import TestingPerformance
                 for level in 0..<5 {
                     for j in 0..<3 {
                         let filePath = File.Path(currentDir, appending: "file_\(j).txt")
-                        try fileData.withUnsafeBufferPointer { buffer in
-                            let span = Span<UInt8>(_unsafeElements: buffer)
-                            try File.System.Write.Atomic.write(
-                                span,
-                                to: filePath,
-                                options: writeOptions
-                            )
-                        }
+                        try File.System.Write.Atomic.write(
+                            fileData.span,
+                            to: filePath,
+                            options: writeOptions
+                        )
                     }
                     let subDir = File.Path(currentDir, appending: "level_\(level)")
                     try File.System.Create.Directory.create(at: subDir)
@@ -289,14 +274,11 @@ import TestingPerformance
                 }
                 for j in 0..<3 {
                     let filePath = File.Path(currentDir, appending: "file_\(j).txt")
-                    try fileData.withUnsafeBufferPointer { buffer in
-                        let span = Span<UInt8>(_unsafeElements: buffer)
-                        try File.System.Write.Atomic.write(
-                            span,
-                            to: filePath,
-                            options: writeOptions
-                        )
-                    }
+                    try File.System.Write.Atomic.write(
+                        fileData.span,
+                        to: filePath,
+                        options: writeOptions
+                    )
                 }
             }
 
@@ -395,16 +377,10 @@ import TestingPerformance
 
                 // Now create files using local variables (not self)
                 let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
-                try oneMB.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: path1MB)
-                }
+                try File.System.Write.Atomic.write(oneMB.span, to: path1MB)
 
                 let fiveMB = [UInt8](repeating: 0xEF, count: 5_000_000)
-                try fiveMB.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: path5MB)
-                }
+                try File.System.Write.Atomic.write(fiveMB.span, to: path5MB)
             }
 
             deinit {
@@ -496,16 +472,10 @@ import TestingPerformance
 
                 // Now create files using local variables (not self)
                 let statData = [UInt8](repeating: 0x00, count: 1000)
-                try statData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: pathStatFile)
-                }
+                try File.System.Write.Atomic.write(statData.span, to: pathStatFile)
 
                 let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)
-                try oneMB.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: pathCopySource)
-                }
+                try File.System.Write.Atomic.write(oneMB.span, to: pathCopySource)
 
                 try File.System.Create.Directory.create(at: pathCopyDestDir)
             }
@@ -573,14 +543,11 @@ import TestingPerformance
                 var paths: [File.Path] = []
                 for i in 0..<10 {
                     let filePath = File.Path(testDir, appending: "file_\(i).bin")
-                    try fileData.withUnsafeBufferPointer { buffer in
-                        let span = Span<UInt8>(_unsafeElements: buffer)
-                        try File.System.Write.Atomic.write(
-                            span,
-                            to: filePath,
-                            options: writeOptions
-                        )
-                    }
+                    try File.System.Write.Atomic.write(
+                        fileData.span,
+                        to: filePath,
+                        options: writeOptions
+                    )
                     paths.append(filePath)
                 }
                 self.filePaths = paths
@@ -629,10 +596,7 @@ import TestingPerformance
                                 let data = [UInt8](repeating: UInt8(i % 256), count: 10_000)
                                 let filePath = File.Path(self.testDir, appending: "write_\(i).bin")
                                 try await self.executor.run {
-                                    try data.withUnsafeBufferPointer { buffer in
-                                        let span = Span<UInt8>(_unsafeElements: buffer)
-                                        try File.System.Write.Atomic.write(span, to: filePath)
-                                    }
+                                    try File.System.Write.Atomic.write(data.span, to: filePath)
                                 }
                                 return true
                             } catch {
@@ -682,16 +646,10 @@ import TestingPerformance
 
                 // Now create files using local variables (not self)
                 let smallData = [UInt8](repeating: 0x00, count: 100)
-                try smallData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: pathTestFile)
-                }
+                try File.System.Write.Atomic.write(smallData.span, to: pathTestFile)
 
                 let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
-                try oneMB.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: pathStreamFile)
-                }
+                try File.System.Write.Atomic.write(oneMB.span, to: pathStreamFile)
             }
 
             deinit {

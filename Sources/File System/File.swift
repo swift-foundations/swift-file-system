@@ -12,14 +12,15 @@ extension File {
     ///
     /// - Returns: The file contents as an array of bytes.
     /// - Throws: `File.System.Read.Full.Error` on failure.
-    public func read() throws -> [UInt8] {
+    public func read() throws(File.System.Read.Full.Error) -> [UInt8] {
         try File.System.Read.Full.read(from: path)
     }
 
     /// Reads the entire file contents into memory.
     ///
     /// Async variant.
-    public func read() async throws -> [UInt8] {
+    /// - Throws: `File.IO.Error<File.System.Read.Full.Error>` on failure.
+    public func read() async throws(File.IO.Error<File.System.Read.Full.Error>) -> [UInt8] {
         try await File.System.Read.Full.read(from: path)
     }
 
@@ -29,7 +30,7 @@ extension File {
     ///   - type: The string type to decode as (e.g., `String.self`).
     /// - Returns: The file contents decoded as UTF-8.
     /// - Throws: `File.System.Read.Full.Error` on failure.
-    public func read<S: StringProtocol>(as type: S.Type) throws -> S {
+    public func read<S: StringProtocol>(as type: S.Type) throws(File.System.Read.Full.Error) -> S {
         let bytes = try File.System.Read.Full.read(from: path)
         return S(decoding: bytes, as: UTF8.self)
     }
@@ -37,7 +38,8 @@ extension File {
     /// Reads the file contents as a UTF-8 string.
     ///
     /// Async variant.
-    public func read<S: StringProtocol>(as type: S.Type) async throws -> S {
+    /// - Throws: `File.IO.Error<File.System.Read.Full.Error>` on failure.
+    public func read<S: StringProtocol>(as type: S.Type) async throws(File.IO.Error<File.System.Read.Full.Error>) -> S {
         let bytes = try await File.System.Read.Full.read(from: path)
         return S(decoding: bytes, as: UTF8.self)
     }
@@ -55,20 +57,18 @@ extension File {
     public func write(
         _ bytes: [UInt8],
         options: File.System.Write.Atomic.Options = .init()
-    ) throws {
-        try bytes.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path, options: options)
-        }
+    ) throws(File.System.Write.Atomic.Error) {
+        try File.System.Write.Atomic.write(bytes, to: path, options: options)
     }
 
     /// Writes bytes to the file atomically.
     ///
     /// Async variant.
+    /// - Throws: `File.IO.Error<File.System.Write.Atomic.Error>` on failure.
     public func write(
         _ bytes: [UInt8],
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws {
+    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) {
         try await File.System.Write.Atomic.write(bytes, to: path, options: options)
     }
 
@@ -81,17 +81,18 @@ extension File {
     public func write(
         _ string: String,
         options: File.System.Write.Atomic.Options = .init()
-    ) throws {
+    ) throws(File.System.Write.Atomic.Error) {
         try write(Array(string.utf8), options: options)
     }
 
     /// Writes a string to the file atomically (UTF-8 encoded).
     ///
     /// Async variant.
+    /// - Throws: `File.IO.Error<File.System.Write.Atomic.Error>` on failure.
     public func write(
         _ string: String,
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws {
+    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) {
         try await write(Array(string.utf8), options: options)
     }
 
@@ -104,52 +105,50 @@ extension File {
     public func write<S: Sequence>(
         contentsOf bytes: S,
         options: File.System.Write.Atomic.Options = .init()
-    ) throws where S.Element == UInt8 {
+    ) throws(File.System.Write.Atomic.Error) where S.Element == UInt8 {
         try write(Array(bytes), options: options)
     }
 
     /// Writes bytes from a sequence to the file atomically.
     ///
     /// Async variant.
+    /// - Throws: `File.IO.Error<File.System.Write.Atomic.Error>` on failure.
     public func write<S: Sequence>(
         contentsOf bytes: S,
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws where S.Element == UInt8 {
+    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) where S.Element == UInt8 {
         try await write(Array(bytes), options: options)
     }
 
     /// Appends bytes to the file.
     ///
     /// - Parameter bytes: The bytes to append.
-    /// - Throws: `File.Handle.Error` on failure.
-    public func append(_ bytes: [UInt8]) throws {
-        try File.Handle.open(path, options: [.create]).appending { handle in
-            try bytes.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
-        }
+    /// - Throws: `File.System.Write.Append.Error` on failure.
+    public func append(_ bytes: [UInt8]) throws(File.System.Write.Append.Error) {
+        try File.System.Write.Append.append(bytes.span, to: path)
     }
 
     /// Appends bytes to the file.
     ///
     /// Async variant.
-    public func append(_ bytes: [UInt8]) async throws {
+    /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
+    public func append(_ bytes: [UInt8]) async throws(File.IO.Error<File.System.Write.Append.Error>) {
         try await File.System.Write.Append.append(bytes, to: path)
     }
 
     /// Appends a string to the file (UTF-8 encoded).
     ///
     /// - Parameter string: The string to append.
-    /// - Throws: `File.Handle.Error` on failure.
-    public func append(_ string: String) throws {
+    /// - Throws: `File.System.Write.Append.Error` on failure.
+    public func append(_ string: String) throws(File.System.Write.Append.Error) {
         try append(Array(string.utf8))
     }
 
     /// Appends a string to the file (UTF-8 encoded).
     ///
     /// Async variant.
-    public func append(_ string: String) async throws {
+    /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
+    public func append(_ string: String) async throws(File.IO.Error<File.System.Write.Append.Error>) {
         try await append(Array(string.utf8))
     }
 }
@@ -171,7 +170,7 @@ extension File {
     public func write<Chunks: Sequence>(
         streaming chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
-    ) throws where Chunks.Element == [UInt8] {
+    ) throws(File.System.Write.Streaming.Error) where Chunks.Element == [UInt8] {
         try File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
 
@@ -182,22 +181,22 @@ extension File {
     /// - Parameters:
     ///   - chunks: Sequence of owned byte arrays to write.
     ///   - options: Streaming write options.
-    /// - Throws: `File.System.Write.Streaming.Error` on failure.
+    /// - Throws: `File.IO.Error<File.System.Write.Streaming.Error>` on failure.
     public func write<Chunks: Sequence & Sendable>(
         streaming chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
-    ) async throws where Chunks.Element == [UInt8] {
+    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) where Chunks.Element == [UInt8] {
         try await File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
 
     /// Writes chunks from an async sequence to the file.
     ///
-    /// Collects all chunks before writing to maintain atomicity.
+    /// True streaming implementation - processes chunks as they arrive.
     ///
     /// - Parameters:
     ///   - chunks: Async sequence of owned byte arrays to write.
     ///   - options: Streaming write options.
-    /// - Throws: `File.System.Write.Streaming.Error` on failure.
+    /// - Throws: On failure (untyped due to async sequence complexity).
     public func write<Chunks: AsyncSequence & Sendable>(
         streaming chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
@@ -212,29 +211,22 @@ extension File {
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// - Returns: Self for chaining.
-    /// - Throws: `File.Handle.Error` on failure.
+    /// - Throws: `File.Error` on failure.
     @discardableResult
-    public func touch() throws -> Self {
-        if exists {
-            // Update modification time by opening for write and closing
-            try File.Handle.open(path, options: []).readWrite { _ in }
-        } else {
-            // Create empty file
-            try write([UInt8]())
-        }
+    public func touch() throws(File.Error) -> Self {
+        // Opening with .create and readWrite mode will create the file if it doesn't exist,
+        // or update its access/modification times if it does.
+        try File.Handle.open(path, options: [.create]).readWrite { _ in }
         return self
     }
 
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// Async variant.
+    /// - Throws: `File.Error` on failure.
     @discardableResult
-    public func touch() async throws -> Self {
-        if exists {
-            try File.Handle.open(path, options: []).readWrite { _ in }
-        } else {
-            try await write([UInt8]())
-        }
+    public func touch() async throws(File.Error) -> Self {
+        try File.Handle.open(path, options: [.create]).readWrite { _ in }
         return self
     }
 }
@@ -270,7 +262,7 @@ extension File {
     ///
     /// - Throws: `File.System.Stat.Error` on failure.
     public var info: File.System.Metadata.Info {
-        get throws {
+        get throws(File.System.Stat.Error) {
             try File.System.Stat.info(at: path)
         }
     }
@@ -279,7 +271,7 @@ extension File {
     ///
     /// - Throws: `File.System.Stat.Error` on failure.
     public var size: Int64 {
-        get throws {
+        get throws(File.System.Stat.Error) {
             try info.size
         }
     }
@@ -288,7 +280,7 @@ extension File {
     ///
     /// - Throws: `File.System.Stat.Error` on failure.
     public var permissions: File.System.Metadata.Permissions {
-        get throws {
+        get throws(File.System.Stat.Error) {
             try info.permissions
         }
     }
@@ -297,7 +289,7 @@ extension File {
     ///
     /// - Throws: `File.System.Stat.Error` on failure.
     public var isEmpty: Bool {
-        get throws {
+        get throws(File.System.Stat.Error) {
             try size == 0
         }
     }
@@ -310,14 +302,15 @@ extension File {
     ///
     /// - Parameter options: Delete options (e.g., recursive for directories).
     /// - Throws: `File.System.Delete.Error` on failure.
-    public func delete(options: File.System.Delete.Options = .init()) throws {
+    public func delete(options: File.System.Delete.Options = .init()) throws(File.System.Delete.Error) {
         try File.System.Delete.delete(at: path, options: options)
     }
 
     /// Deletes the file.
     ///
     /// Async variant.
-    public func delete(options: File.System.Delete.Options = .init()) async throws {
+    /// - Throws: `File.IO.Error<File.System.Delete.Error>` on failure.
+    public func delete(options: File.System.Delete.Options = .init()) async throws(File.IO.Error<File.System.Delete.Error>) {
         try await File.System.Delete.delete(at: path, options: options)
     }
 
@@ -326,12 +319,15 @@ extension File {
     /// - Parameters:
     ///   - destination: The destination path.
     ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
+    /// - Returns: A `File` representing the copy at the destination.
     /// - Throws: `File.System.Copy.Error` on failure.
+    @discardableResult
     public func copy(
         to destination: File.Path,
         options: File.System.Copy.Options = .init()
-    ) throws {
+    ) throws(File.System.Copy.Error) -> File {
         try File.System.Copy.copy(from: path, to: destination, options: options)
+        return File(destination)
     }
 
     /// Copies the file to a destination.
@@ -339,32 +335,43 @@ extension File {
     /// - Parameters:
     ///   - destination: The destination file.
     ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
+    /// - Returns: The destination `File`.
     /// - Throws: `File.System.Copy.Error` on failure.
+    @discardableResult
     public func copy(
         to destination: File,
         options: File.System.Copy.Options = .init()
-    ) throws {
+    ) throws(File.System.Copy.Error) -> File {
         try File.System.Copy.copy(from: path, to: destination.path, options: options)
+        return destination
     }
 
     /// Copies the file to a destination path.
     ///
     /// Async variant.
+    /// - Returns: A `File` representing the copy at the destination.
+    /// - Throws: `File.IO.Error<File.System.Copy.Error>` on failure.
+    @discardableResult
     public func copy(
         to destination: File.Path,
         options: File.System.Copy.Options = .init()
-    ) async throws {
+    ) async throws(File.IO.Error<File.System.Copy.Error>) -> File {
         try await File.System.Copy.copy(from: path, to: destination, options: options)
+        return File(destination)
     }
 
     /// Copies the file to a destination.
     ///
     /// Async variant.
+    /// - Returns: The destination `File`.
+    /// - Throws: `File.IO.Error<File.System.Copy.Error>` on failure.
+    @discardableResult
     public func copy(
         to destination: File,
         options: File.System.Copy.Options = .init()
-    ) async throws {
+    ) async throws(File.IO.Error<File.System.Copy.Error>) -> File {
         try await File.System.Copy.copy(from: path, to: destination.path, options: options)
+        return destination
     }
 
     /// Moves the file to a destination path.
@@ -372,12 +379,15 @@ extension File {
     /// - Parameters:
     ///   - destination: The destination path.
     ///   - options: Move options (overwrite).
+    /// - Returns: The destination `File`.
     /// - Throws: `File.System.Move.Error` on failure.
+    @discardableResult
     public func move(
         to destination: File.Path,
         options: File.System.Move.Options = .init()
-    ) throws {
+    ) throws(File.System.Move.Error) -> File {
         try File.System.Move.move(from: path, to: destination, options: options)
+        return File(destination)
     }
 
     /// Moves the file to a destination.
@@ -385,32 +395,43 @@ extension File {
     /// - Parameters:
     ///   - destination: The destination file.
     ///   - options: Move options (overwrite).
+    /// - Returns: The destination `File`.
     /// - Throws: `File.System.Move.Error` on failure.
+    @discardableResult
     public func move(
         to destination: File,
         options: File.System.Move.Options = .init()
-    ) throws {
+    ) throws(File.System.Move.Error) -> File {
         try File.System.Move.move(from: path, to: destination.path, options: options)
+        return destination
     }
 
     /// Moves the file to a destination path.
     ///
     /// Async variant.
+    /// - Returns: The destination `File`.
+    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    @discardableResult
     public func move(
         to destination: File.Path,
         options: File.System.Move.Options = .init()
-    ) async throws {
+    ) async throws(File.IO.Error<File.System.Move.Error>) -> File {
         try await File.System.Move.move(from: path, to: destination, options: options)
+        return File(destination)
     }
 
     /// Moves the file to a destination.
     ///
     /// Async variant.
+    /// - Returns: The destination `File`.
+    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    @discardableResult
     public func move(
         to destination: File,
         options: File.System.Move.Options = .init()
-    ) async throws {
+    ) async throws(File.IO.Error<File.System.Move.Error>) -> File {
         try await File.System.Move.move(from: path, to: destination.path, options: options)
+        return destination
     }
 
     /// Renames the file within the same directory.
@@ -424,11 +445,9 @@ extension File {
     public func rename(
         to newName: String,
         options: File.System.Move.Options = .init()
-    ) throws -> File {
+    ) throws(File.System.Move.Error) -> File {
         guard let parent = path.parent else {
-            let destination = try File.Path(newName)
-            try File.System.Move.move(from: path, to: destination, options: options)
-            return File(destination)
+            throw .sourceNotFound(path)
         }
         let destination = parent.appending(newName)
         try File.System.Move.move(from: path, to: destination, options: options)
@@ -438,15 +457,14 @@ extension File {
     /// Renames the file within the same directory.
     ///
     /// Async variant.
+    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func rename(
         to newName: String,
         options: File.System.Move.Options = .init()
-    ) async throws -> File {
+    ) async throws(File.IO.Error<File.System.Move.Error>) -> File {
         guard let parent = path.parent else {
-            let destination = try File.Path(newName)
-            try await File.System.Move.move(from: path, to: destination, options: options)
-            return File(destination)
+            throw .operation(.sourceNotFound(path))
         }
         let destination = parent.appending(newName)
         try await File.System.Move.move(from: path, to: destination, options: options)
@@ -515,51 +533,88 @@ extension File: CustomDebugStringConvertible {
 // MARK: - Link Operations
 
 extension File {
-    /// Creates a symbolic link at this path pointing to the target.
+    /// Access to link operations.
     ///
-    /// - Parameter target: The path the symlink will point to.
-    /// - Throws: `File.System.Link.Symbolic.Error` on failure.
-    public func createSymlink(to target: File.Path) throws {
-        try File.System.Link.Symbolic.create(at: path, pointingTo: target)
+    /// Use this property to create symbolic links, hard links, or read link targets:
+    /// ```swift
+    /// // Create a symbolic link
+    /// try file.link.symbolic(to: targetPath)
+    ///
+    /// // Create a hard link
+    /// try file.link.hard(to: existingPath)
+    ///
+    /// // Read the target of a symlink
+    /// let target = try file.link.readTarget()
+    /// ```
+    public var link: Link {
+        Link(path: path)
     }
 
-    /// Creates a symbolic link at this path pointing to the target.
-    ///
-    /// - Parameter target: The target file.
-    /// - Throws: `File.System.Link.Symbolic.Error` on failure.
-    public func createSymlink(to target: File) throws {
-        try File.System.Link.Symbolic.create(at: path, pointingTo: target.path)
-    }
+    /// Namespace for link operations on a file.
+    public struct Link: Sendable {
+        /// The path to operate on.
+        public let path: File.Path
 
-    /// Creates a hard link at this path to an existing file.
-    ///
-    /// - Parameter existing: The path to the existing file.
-    /// - Throws: `File.System.Link.Hard.Error` on failure.
-    public func createHardLink(to existing: File.Path) throws {
-        try File.System.Link.Hard.create(at: path, to: existing)
-    }
+        /// Creates a Link instance.
+        @usableFromInline
+        internal init(path: File.Path) {
+            self.path = path
+        }
 
-    /// Creates a hard link at this path to an existing file.
-    ///
-    /// - Parameter existing: The existing file.
-    /// - Throws: `File.System.Link.Hard.Error` on failure.
-    public func createHardLink(to existing: File) throws {
-        try File.System.Link.Hard.create(at: path, to: existing.path)
-    }
+        // MARK: - Symbolic Links
 
-    /// Reads the target of this symbolic link.
-    ///
-    /// - Returns: The target path that this symlink points to.
-    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-    public func readLinkTarget() throws -> File.Path {
-        try File.System.Link.Read.Target.target(of: path)
-    }
+        /// Creates a symbolic link at this path pointing to the target.
+        ///
+        /// - Parameter target: The path the symlink will point to.
+        /// - Throws: `File.System.Link.Symbolic.Error` on failure.
+        public func symbolic(to target: File.Path) throws(File.System.Link.Symbolic.Error) {
+            try File.System.Link.Symbolic.create(at: path, pointingTo: target)
+        }
 
-    /// Reads the target of this symbolic link as a file.
-    ///
-    /// - Returns: The target file that this symlink points to.
-    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-    public func readLinkTargetFile() throws -> File {
-        File(try File.System.Link.Read.Target.target(of: path))
+        /// Creates a symbolic link at this path pointing to the target.
+        ///
+        /// - Parameter target: The target file.
+        /// - Throws: `File.System.Link.Symbolic.Error` on failure.
+        public func symbolic(to target: File) throws(File.System.Link.Symbolic.Error) {
+            try File.System.Link.Symbolic.create(at: path, pointingTo: target.path)
+        }
+
+        // MARK: - Hard Links
+
+        /// Creates a hard link at this path to an existing file.
+        ///
+        /// Hard links share the same inode as the original file.
+        ///
+        /// - Parameter existing: The path to the existing file.
+        /// - Throws: `File.System.Link.Hard.Error` on failure.
+        public func hard(to existing: File.Path) throws(File.System.Link.Hard.Error) {
+            try File.System.Link.Hard.create(at: path, to: existing)
+        }
+
+        /// Creates a hard link at this path to an existing file.
+        ///
+        /// - Parameter existing: The existing file.
+        /// - Throws: `File.System.Link.Hard.Error` on failure.
+        public func hard(to existing: File) throws(File.System.Link.Hard.Error) {
+            try File.System.Link.Hard.create(at: path, to: existing.path)
+        }
+
+        // MARK: - Read Target
+
+        /// Reads the target of this symbolic link.
+        ///
+        /// - Returns: The target path that this symlink points to.
+        /// - Throws: `File.System.Link.Read.Target.Error` on failure.
+        public func readTarget() throws(File.System.Link.Read.Target.Error) -> File.Path {
+            try File.System.Link.Read.Target.target(of: path)
+        }
+
+        /// Reads the target of this symbolic link as a file.
+        ///
+        /// - Returns: The target file that this symlink points to.
+        /// - Throws: `File.System.Link.Read.Target.Error` on failure.
+        public func readTarget() throws(File.System.Link.Read.Target.Error) -> File {
+            File(try File.System.Link.Read.Target.target(of: path))
+        }
     }
 }

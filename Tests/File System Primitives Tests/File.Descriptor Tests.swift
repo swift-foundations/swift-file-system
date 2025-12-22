@@ -17,17 +17,9 @@ extension File.Descriptor {
 extension File.Descriptor.Test.Unit {
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/descriptor-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 

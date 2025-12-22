@@ -15,7 +15,7 @@
         @usableFromInline
         internal static func _infoWindows(
             at path: File.Path
-        ) throws(Error) -> File.System.Metadata.Info {
+        ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
             var findData = WIN32_FIND_DATAW()
 
             let findHandle = path.string.withCString(encodedAs: UTF16.self) { wpath in

@@ -67,7 +67,6 @@ extension File.System.Write.Streaming {
                     if chunk.count >= maxSize {
                         // Large chunk: flush buffer first, then write-through
                         if !coalescingBuffer.isEmpty {
-                            // Transfer ownership to avoid allocation (consume + reinit)
                             let bufferToWrite = consume coalescingBuffer
                             coalescingBuffer = []
                             coalescingBuffer.reserveCapacity(targetSize)
@@ -78,7 +77,6 @@ extension File.System.Write.Streaming {
                                 }
                             }
                         }
-                        // chunk is already a let constant from for-await, safe to capture
                         let chunkToWrite = chunk
                         try await io.run {
                             try chunkToWrite.withUnsafeBufferPointer { buffer in
@@ -117,7 +115,7 @@ extension File.System.Write.Streaming {
                 try await io.run { try POSIXStreaming.commit(context) }
 
             } catch {
-                // Primary cleanup path - AWAITED
+                // Cleanup on any error
                 try? await io.run { POSIXStreaming.cleanup(context) }
                 throw error
             }
@@ -150,7 +148,6 @@ extension File.System.Write.Streaming {
                     if chunk.count >= maxSize {
                         // Large chunk: flush buffer first, then write-through
                         if !coalescingBuffer.isEmpty {
-                            // Transfer ownership to avoid allocation (consume + reinit)
                             let bufferToWrite = consume coalescingBuffer
                             coalescingBuffer = []
                             coalescingBuffer.reserveCapacity(targetSize)
@@ -199,7 +196,7 @@ extension File.System.Write.Streaming {
                 try await io.run { try WindowsStreaming.commit(context) }
 
             } catch {
-                // Primary cleanup path - AWAITED
+                // Cleanup on any error
                 try? await io.run { WindowsStreaming.cleanup(context) }
                 throw error
             }

@@ -46,7 +46,7 @@ extension File.System.Write.Append {
     public static func append(
         _ bytes: borrowing Span<UInt8>,
         to path: File.Path
-    ) throws(Error) {
+    ) throws(File.System.Write.Append.Error) {
         #if os(Windows)
             try _appendWindows(bytes, to: path)
         #else
@@ -68,8 +68,8 @@ extension File.System.Write.Append {
     public static func append<S: Binary.Serializable>(
         _ value: S,
         to path: File.Path
-    ) throws(Error) {
-        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(Error) in
+    ) throws(File.System.Write.Append.Error) {
+        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(File.System.Write.Append.Error) in
             try append(span, to: path)
         }
     }
@@ -83,7 +83,7 @@ extension File.System.Write.Append {
         internal static func _appendPOSIX(
             _ bytes: borrowing Span<UInt8>,
             to path: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Write.Append.Error) {
             let fd = open(path.string, O_WRONLY | O_CREAT | O_APPEND, 0o644)
             guard fd >= 0 else {
                 throw _mapErrno(errno, path: path)
@@ -93,7 +93,7 @@ extension File.System.Write.Append {
             let count = bytes.count
             if count == 0 { return }
 
-            try bytes.withUnsafeBufferPointer { buffer throws(Error) in
+            try bytes.withUnsafeBufferPointer { buffer throws(File.System.Write.Append.Error) in
                 guard let base = buffer.baseAddress else { return }
 
                 var written = 0
@@ -145,7 +145,7 @@ extension File.System.Write.Append {
         internal static func _appendWindows(
             _ bytes: borrowing Span<UInt8>,
             to path: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Write.Append.Error) {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
@@ -166,7 +166,7 @@ extension File.System.Write.Append {
             let count = bytes.count
             if count == 0 { return }
 
-            try bytes.withUnsafeBufferPointer { buffer throws(Error) in
+            try bytes.withUnsafeBufferPointer { buffer throws(File.System.Write.Append.Error) in
                 guard let base = buffer.baseAddress else { return }
 
                 var written: DWORD = 0

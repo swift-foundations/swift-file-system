@@ -90,7 +90,7 @@ extension File.Handle {
             mode: File.Handle.Mode,
             options: File.Handle.Options = [],
             io: File.IO.Executor
-        ) async throws -> File.Handle.Async {
+        ) async throws(File.IO.Error<File.Handle.Error>) -> File.Handle.Async {
             // Use executor's openFile which handles the slot pattern internally
             let id = try await io.openFile(path, mode: mode, options: options)
             return File.Handle.Async(id: id, path: path, mode: mode, io: io)
@@ -103,28 +103,30 @@ extension File.Handle {
         /// - Parameter destination: The buffer to read into.
         /// - Returns: Number of bytes read (0 at EOF).
         /// - Important: The buffer must remain valid until this call returns.
-        public func read(into destination: UnsafeMutableRawBufferPointer) async throws -> Int {
+        public func read(into destination: UnsafeMutableRawBufferPointer) async throws(File.IO.Error<File.Handle.Error>) -> Int {
             guard !isClosed else {
-                throw File.Handle.Error.invalidHandle
+                throw .operation(.invalidHandle)
             }
             // Wrap for Sendable - safe because buffer used synchronously in io.run
             let buffer = File.Handle.Sendable.Async.Buffer(pointer: destination)
-            return try await io.withHandle(id) { handle in
+            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Int = { handle in
                 try handle.read(into: buffer.pointer)
             }
+            return try await io.withHandle(id, body)
         }
 
         /// Convenience: read into a new array (allocates).
         ///
         /// - Parameter count: Maximum bytes to read.
         /// - Returns: The bytes read.
-        public func read(count: Int) async throws -> [UInt8] {
+        public func read(count: Int) async throws(File.IO.Error<File.Handle.Error>) -> [UInt8] {
             guard !isClosed else {
-                throw File.Handle.Error.invalidHandle
+                throw .operation(.invalidHandle)
             }
-            return try await io.withHandle(id) { handle in
+            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> [UInt8] = { handle in
                 try handle.read(count: count)
             }
+            return try await io.withHandle(id, body)
         }
 
         // MARK: - Writing
@@ -132,16 +134,14 @@ extension File.Handle {
         /// Write bytes from an array.
         ///
         /// - Parameter bytes: The bytes to write.
-        public func write(_ bytes: [UInt8]) async throws {
+        public func write(_ bytes: [UInt8]) async throws(File.IO.Error<File.Handle.Error>) {
             guard !isClosed else {
-                throw File.Handle.Error.invalidHandle
+                throw .operation(.invalidHandle)
             }
-            try await io.withHandle(id) { handle in
-                try bytes.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try handle.write(span)
-                }
+            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Void = { handle in
+                try handle.write(bytes.span)
             }
+            try await io.withHandle(id, body)
         }
 
         // MARK: - Seeking
@@ -156,25 +156,27 @@ extension File.Handle {
         public func seek(
             to offset: Int64,
             from origin: File.Handle.Seek.Origin = .start
-        ) async throws -> Int64 {
+        ) async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
             guard !isClosed else {
-                throw File.Handle.Error.invalidHandle
+                throw .operation(.invalidHandle)
             }
-            return try await io.withHandle(id) { handle in
+            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Int64 = { handle in
                 try handle.seek(to: offset, from: origin)
             }
+            return try await io.withHandle(id, body)
         }
 
         // MARK: - Sync
 
         /// Sync the file to disk.
-        public func sync() async throws {
+        public func sync() async throws(File.IO.Error<File.Handle.Error>) {
             guard !isClosed else {
-                throw File.Handle.Error.invalidHandle
+                throw .operation(.invalidHandle)
             }
-            try await io.withHandle(id) { handle in
+            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Void = { handle in
                 try handle.sync()
             }
+            try await io.withHandle(id, body)
         }
 
         // MARK: - Close
@@ -183,7 +185,7 @@ extension File.Handle {
         ///
         /// - Important: Must be called for deterministic release.
         /// - Note: Safe to call multiple times (idempotent).
-        public func close() async throws {
+        public func close() async throws(File.IO.Error<File.Handle.Error>) {
             guard !isClosed else {
                 return  // Already closed - idempotent
             }

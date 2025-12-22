@@ -18,17 +18,9 @@ extension File.System.Stat.Test.Unit {
 
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: String = "test") throws -> String {
         let path = "/tmp/stat-test-\(Int.random(in: 0..<Int.max)).txt"
-        try writeBytes(Array(content.utf8), to: try File.Path(path))
+        try File.System.Write.Atomic.write(Array(content.utf8).span, to: File.Path(path))
         return path
     }
 
@@ -247,9 +239,7 @@ extension File.System.Stat.Test.Unit {
             mode: .write,
             options: [.create, .closeOnExec]
         )
-        try Array("test".utf8).withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(Array("test".utf8).span)
         try handle.close()
 
         // Create symlink using our API
@@ -279,9 +269,7 @@ extension File.System.Stat.Test.Unit {
             mode: .write,
             options: [.create, .closeOnExec]
         )
-        try Array("test".utf8).withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(Array("test".utf8).span)
         try handle.close()
 
         // Create symlink using our API
@@ -312,9 +300,7 @@ extension File.System.Stat.Test.Unit {
             mode: .write,
             options: [.create, .closeOnExec]
         )
-        try Array("test content".utf8).withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(Array("test content".utf8).span)
         try handle.close()
 
         let lstatInfo = try File.System.Stat.lstatInfo(at: filePath)
@@ -346,10 +332,7 @@ extension File.System.Stat.Test.Performance {
 
         // Create file
         let data = [UInt8](repeating: 0x00, count: 1000)
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -370,10 +353,7 @@ extension File.System.Stat.Test.Performance {
 
         // Create file
         let data = [UInt8](repeating: 0x00, count: 100)
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

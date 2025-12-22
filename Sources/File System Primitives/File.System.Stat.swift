@@ -39,7 +39,7 @@ extension File.System.Stat {
     /// - Parameter path: The path to stat.
     /// - Returns: File metadata information.
     /// - Throws: `File.System.Stat.Error` on failure.
-    public static func info(at path: File.Path) throws(Error) -> File.System.Metadata.Info {
+    public static func info(at path: File.Path) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
         #if os(Windows)
             return try _infoWindows(at: path)
         #else
@@ -55,7 +55,7 @@ extension File.System.Stat {
     /// - Parameter path: The path to stat.
     /// - Returns: File metadata information for the link itself.
     /// - Throws: `File.System.Stat.Error` on failure.
-    public static func lstatInfo(at path: File.Path) throws(Error) -> File.System.Metadata.Info {
+    public static func lstatInfo(at path: File.Path) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
         #if os(Windows)
             // Windows: GetFileAttributesEx doesn't follow symlinks by default
             return try _infoWindows(at: path)

@@ -27,7 +27,7 @@
         static func verify(
             _ dir: String,
             createIntermediates: Bool
-        ) throws(Error) {
+        ) throws(File.System.Parent.Check.Error) {
             var st = stat()
             let rc = dir.withCString { stat($0, &st) }
 
@@ -61,7 +61,7 @@
             }
         }
 
-        private static func createParent(at path: File.Path) throws(Error) {
+        private static func createParent(at path: File.Path) throws(File.System.Parent.Check.Error) {
             do {
                 try File.System.Create.Directory.create(
                     at: path,

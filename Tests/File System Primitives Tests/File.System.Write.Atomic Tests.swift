@@ -33,12 +33,7 @@ extension File.System.Write.Atomic.Test.Unit {
         to pathString: String,
         options: File.System.Write.Atomic.Options = .init()
     ) throws {
-        let filePath = try File.Path(pathString)
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath, options: options)
-        }
+        try File.System.Write.Atomic.write(bytes.span, to: File.Path(pathString), options: options)
     }
 
     // MARK: - Basic write
@@ -234,10 +229,7 @@ extension File.System.Write.Atomic.Test.Unit {
 
         let filePath = try File.Path(path)
         var bytes = testData
-        try await bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(bytes.span, to: filePath)
 
         let readData = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(readData == testData)
@@ -252,11 +244,7 @@ extension File.System.Write.Atomic.Test.Unit {
         let data: [UInt8] = [1, 2, 3]
 
         let filePath = try File.Path(path)
-        var bytes = data
-        try await bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath, options: options)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath, options: options)
 
         let readData = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(readData == data)
@@ -396,9 +384,6 @@ extension File.System.Write.Atomic.Test.Performance {
         defer { try? File.System.Delete.delete(at: filePath) }
 
         let oneMB = [UInt8](repeating: 0xEF, count: 1_000_000)
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(oneMB.span, to: filePath)
     }
 }

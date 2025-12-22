@@ -18,23 +18,15 @@ extension File.System.Read.Full.Test.Unit {
 
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8]) throws -> String {
         let path = "/tmp/read-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
     private func createTempFile(string: String) throws -> String {
         let path = "/tmp/read-test-\(Int.random(in: 0..<Int.max)).txt"
-        try writeBytes(Array(string.utf8), to: try File.Path(path))
+        try File.System.Write.Atomic.write(Array(string.utf8).span, to: File.Path(path))
         return path
     }
 
@@ -265,10 +257,7 @@ extension File.System.Read.Full.Test.Performance {
 
         // Setup
         let oneMB = [UInt8](repeating: 0xBE, count: 1_000_000)
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(oneMB.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

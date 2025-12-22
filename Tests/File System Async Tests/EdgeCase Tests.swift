@@ -32,9 +32,7 @@ import Testing
         private func createFile(at path: File.Path, content: [UInt8] = []) throws {
             var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             if !content.isEmpty {
-                try content.withUnsafeBufferPointer { buffer in
-                    try handle.write(Span<UInt8>(_unsafeElements: buffer))
-                }
+                try handle.write(content.span)
             }
             try handle.close()
         }
@@ -992,9 +990,7 @@ import Testing
                             options: [.create, .closeOnExec]
                         )
                         let data: [UInt8] = Array(repeating: UInt8(i & 0xFF), count: 100)
-                        try data.withUnsafeBufferPointer { buffer in
-                            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-                        }
+                        try handle.write(data.span)
                         try handle.close()
 
                         let info = try File.System.Stat.info(at: path)

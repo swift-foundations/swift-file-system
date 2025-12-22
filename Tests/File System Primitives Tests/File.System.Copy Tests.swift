@@ -21,17 +21,9 @@ extension File.System.Copy {
 extension File.System.Copy.Test.Unit {
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
         let path = "/tmp/copy-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
@@ -1012,10 +1004,7 @@ extension File.System.Copy.Test.Performance {
 
         // Setup
         let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: sourcePath)
-        }
+        try File.System.Write.Atomic.write(oneMB.span, to: sourcePath)
 
         defer {
             try? File.System.Delete.delete(at: sourcePath)

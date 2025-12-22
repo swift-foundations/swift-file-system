@@ -51,8 +51,8 @@ extension File.IO.Blocking.Threads.Worker {
             // Admit one pending job if any (queue now has capacity)
             if let pending = state.pendingQueue.popFirst() {
                 state.queue.enqueue(pending.job)
-                // Resume the pending caller (they are now enqueued)
-                pending.continuation.resume()
+                // Resume the pending caller with success (they are now enqueued)
+                pending.continuation.resume(returning: .success(()))
                 // Signal that another job is available for workers
                 state.lock.signal()
             }

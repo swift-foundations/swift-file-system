@@ -51,7 +51,7 @@ extension File.System.Metadata.Ownership {
     ///
     /// - Parameter path: The path to the file.
     /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
-    public init(at path: File.Path) throws(Error) {
+    public init(at path: File.Path) throws(File.System.Metadata.Ownership.Error) {
         #if os(Windows)
             // Windows doesn't expose uid/gid
             self.init(uid: 0, gid: 0)
@@ -76,7 +76,7 @@ extension File.System.Metadata.Ownership {
     ///   - ownership: The ownership to set.
     ///   - path: The path to the file.
     /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
-    public static func set(_ ownership: Self, at path: File.Path) throws(Error) {
+    public static func set(_ ownership: Self, at path: File.Path) throws(File.System.Metadata.Ownership.Error) {
         #if os(Windows)
             // Windows doesn't support chown - this is a no-op
             return

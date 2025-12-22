@@ -28,10 +28,7 @@ extension File.Directory.Async.Test.Unit {
     static func createFile(in dir: File.Path, name: String, content: String = "") throws {
         let filePath = try File.Path(dir.string + "/" + name)
         let bytes = Array(content.utf8)
-        try bytes.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(bytes.span, to: filePath)
     }
 
     static func createSubdir(in dir: File.Path, name: String) throws -> File.Path {

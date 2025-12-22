@@ -18,17 +18,9 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile() throws -> String {
         let path = "/tmp/perms-test-\(Int.random(in: 0..<Int.max)).txt"
-        try writeBytes([], to: try File.Path(path))
+        try File.System.Write.Atomic.write([].span, to: File.Path(path))
         return path
     }
 

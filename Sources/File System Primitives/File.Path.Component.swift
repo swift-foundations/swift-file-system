@@ -28,7 +28,7 @@ extension File.Path {
         /// - Parameter string: The component string.
         /// - Throws: `File.Path.Component.Error` if the string is invalid.
         @inlinable
-        public init(_ string: String) throws(Error) {
+        public init(_ string: String) throws(File.Path.Component.Error) {
             guard !string.isEmpty else {
                 throw .empty
             }
@@ -106,7 +106,7 @@ extension File.Path.Component: ExpressibleByStringLiteral {
         /// - Throws: `Error` if the bytes are empty, contain forbidden characters,
         ///           or cannot be decoded as valid UTF-8.
         @inlinable
-        public init<Bytes: Sequence>(utf8 bytes: Bytes) throws(Error)
+        public init<Bytes: Sequence>(utf8 bytes: Bytes) throws(File.Path.Component.Error)
         where Bytes.Element == UInt8 {
             // Collect bytes while checking for forbidden chars
             var collected: [UInt8] = []
@@ -138,7 +138,7 @@ extension File.Path.Component: ExpressibleByStringLiteral {
         /// - Throws: `Error` if the buffer is empty, contains forbidden characters,
         ///           or cannot be decoded as valid UTF-8.
         @inlinable
-        public init(utf8 buffer: UnsafeBufferPointer<UInt8>) throws(Error) {
+        public init(utf8 buffer: UnsafeBufferPointer<UInt8>) throws(File.Path.Component.Error) {
             guard !buffer.isEmpty else { throw .empty }
 
             // POSIX: only / (0x2F) and NUL (0x00) are forbidden

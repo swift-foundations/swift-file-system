@@ -30,10 +30,7 @@ extension File.System.Metadata.Ownership.Test.Unit {
         #else
             let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
             let filePath = try File.Path(path)
-            try [].withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try File.System.Write.Atomic.write(span, to: filePath)
-            }
+            try File.System.Write.Atomic.write([].span, to: filePath)
             return path
         #endif
     }

@@ -65,7 +65,7 @@ extension File.Handle {
         _ path: File.Path,
         mode: Mode,
         options: Options = [.closeOnExec]
-    ) throws(Error) -> File.Handle {
+    ) throws(File.Handle.Error) -> File.Handle {
         let descriptorMode: File.Descriptor.Mode
         var descriptorOptions: File.Descriptor.Options = []
 
@@ -133,7 +133,7 @@ extension File.Handle {
     /// - Parameter count: Maximum number of bytes to read.
     /// - Returns: The bytes read (may be fewer than requested at EOF or partial read).
     /// - Throws: `File.Handle.Error` on failure.
-    public mutating func read(count: Int) throws(Error) -> [UInt8] {
+    public mutating func read(count: Int) throws(File.Handle.Error) -> [UInt8] {
         guard _descriptor.isValid else {
             throw .invalidHandle
         }
@@ -220,7 +220,7 @@ extension File.Handle {
     /// - Parameter buffer: Destination buffer. Must remain valid for duration of call.
     /// - Returns: Number of bytes read (0 at EOF).
     /// - Note: May return fewer bytes than buffer size (partial read).
-    public mutating func read(into buffer: UnsafeMutableRawBufferPointer) throws(Error) -> Int {
+    public mutating func read(into buffer: UnsafeMutableRawBufferPointer) throws(File.Handle.Error) -> Int {
         guard _descriptor.isValid else { throw .invalidHandle }
         guard !buffer.isEmpty else { return 0 }
 
@@ -265,7 +265,7 @@ extension File.Handle {
     ///
     /// - Parameter bytes: The bytes to write.
     /// - Throws: `File.Handle.Error` on failure.
-    public mutating func write(_ bytes: borrowing Span<UInt8>) throws(Error) {
+    public mutating func write(_ bytes: borrowing Span<UInt8>) throws(File.Handle.Error) {
         guard _descriptor.isValid else {
             throw .invalidHandle
         }
@@ -273,7 +273,7 @@ extension File.Handle {
         let count = bytes.count
         if count == 0 { return }
 
-        try bytes.withUnsafeBufferPointer { buffer throws(Error) in
+        try bytes.withUnsafeBufferPointer { buffer throws(File.Handle.Error) in
             guard let base = buffer.baseAddress else { return }
 
             #if os(Windows)
@@ -363,7 +363,7 @@ extension File.Handle {
     public mutating func seek(
         to offset: Int64,
         from origin: Seek.Origin = .start
-    ) throws(Error) -> Int64 {
+    ) throws(File.Handle.Error) -> Int64 {
         guard _descriptor.isValid else {
             throw .invalidHandle
         }
@@ -404,7 +404,7 @@ extension File.Handle {
     /// Syncs the file to disk.
     ///
     /// - Throws: `File.Handle.Error` on failure.
-    public mutating func sync() throws(Error) {
+    public mutating func sync() throws(File.Handle.Error) {
         guard _descriptor.isValid else {
             throw .invalidHandle
         }
@@ -425,7 +425,7 @@ extension File.Handle {
     /// - Postcondition: `isValid == false`
     /// - Idempotent: second close throws `.alreadyClosed`
     /// - Throws: `File.Handle.Error` on close failure
-    public consuming func close() throws(Error) {
+    public consuming func close() throws(File.Handle.Error) {
         guard _descriptor.isValid else {
             throw .alreadyClosed
         }

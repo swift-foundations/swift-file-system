@@ -18,32 +18,15 @@ extension File.System.Write.Append.Test.Unit {
 
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/append-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
     private func cleanup(_ path: String) {
         if let filePath = try? File.Path(path) {
             try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
-    private func appendBytes(_ bytes: [UInt8], to pathString: String) throws {
-        let filePath = try File.Path(pathString)
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Append.append(span, to: filePath)
         }
     }
 
@@ -54,7 +37,7 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [1, 2, 3])
         defer { cleanup(path) }
 
-        try appendBytes([4, 5, 6], to: path)
+        try File.System.Write.Append.append([4, 5, 6].span, to: File.Path(path))
 
         let data = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(data == [1, 2, 3, 4, 5, 6])
@@ -65,7 +48,7 @@ extension File.System.Write.Append.Test.Unit {
         let path = "/tmp/append-new-\(Int.random(in: 0..<Int.max)).bin"
         defer { cleanup(path) }
 
-        try appendBytes([10, 20, 30], to: path)
+        try File.System.Write.Append.append([10, 20, 30].span, to: File.Path(path))
 
         #expect(File.System.Stat.exists(at: try File.Path(path)))
 
@@ -78,7 +61,7 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [1, 2, 3])
         defer { cleanup(path) }
 
-        try appendBytes([], to: path)
+        try File.System.Write.Append.append([].span, to: File.Path(path))
 
         let data = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(data == [1, 2, 3])
@@ -89,9 +72,9 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [])
         defer { cleanup(path) }
 
-        try appendBytes([1, 2], to: path)
-        try appendBytes([3, 4], to: path)
-        try appendBytes([5, 6], to: path)
+        try File.System.Write.Append.append([1, 2].span, to: File.Path(path))
+        try File.System.Write.Append.append([3, 4].span, to: File.Path(path))
+        try File.System.Write.Append.append([5, 6].span, to: File.Path(path))
 
         let data = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(data == [1, 2, 3, 4, 5, 6])
@@ -102,7 +85,7 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [])
         defer { cleanup(path) }
 
-        try appendBytes([1, 2, 3], to: path)
+        try File.System.Write.Append.append([1, 2, 3].span, to: File.Path(path))
 
         let data = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(data == [1, 2, 3])
@@ -114,7 +97,7 @@ extension File.System.Write.Append.Test.Unit {
         defer { cleanup(path) }
 
         let largeData = [UInt8](repeating: 42, count: 100_000)
-        try appendBytes(largeData, to: path)
+        try File.System.Write.Append.append(largeData.span, to: File.Path(path))
 
         let data = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(data.count == 100_000)
@@ -132,10 +115,7 @@ extension File.System.Write.Append.Test.Unit {
 
         #expect(throws: File.System.Write.Append.Error.isDirectory(path)) {
             var bytes: [UInt8] = [1, 2, 3]
-            try bytes.withUnsafeMutableBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try File.System.Write.Append.append(span, to: path)
-            }
+            try File.System.Write.Append.append(bytes.span, to: path)
         }
     }
 

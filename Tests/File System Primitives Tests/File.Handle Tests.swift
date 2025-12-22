@@ -17,17 +17,9 @@ extension File.Handle {
 extension File.Handle.Test.Unit {
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/handle-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
@@ -192,10 +184,7 @@ extension File.Handle.Test.Unit {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.truncate])
 
         let data: [UInt8] = [100, 101, 102, 103, 104]
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(data.span)
         try handle.close()
 
         let readBack = try File.System.Read.Full.read(from: try File.Path(path))
@@ -211,10 +200,7 @@ extension File.Handle.Test.Unit {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.truncate])
 
         let data: [UInt8] = []
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(data.span)
         try handle.close()
 
         let readBack = try File.System.Read.Full.read(from: try File.Path(path))
@@ -303,10 +289,7 @@ extension File.Handle.Test.Unit {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.create])
 
         let data: [UInt8] = [1, 2, 3]
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(data.span)
         try handle.sync()
         try handle.close()
 
@@ -436,10 +419,7 @@ extension File.Handle.Test.Performance {
 
         // Setup: create 1MB file
         let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(oneMB.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -470,10 +450,7 @@ extension File.Handle.Test.Performance {
             mode: .write,
             options: [.create, .truncate, .closeOnExec]
         )
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(oneMB.span)
         try handle.close()
     }
 
@@ -492,10 +469,7 @@ extension File.Handle.Test.Performance {
         // Setup: create 64KB file
         let size = 64 * 1024
         let data = [UInt8](repeating: 0x42, count: size)
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -535,10 +509,7 @@ extension File.Handle.Test.Performance {
         )
 
         for _ in 0..<blocks {
-            try block.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(block.span)
         }
 
         try handle.close()
@@ -556,10 +527,7 @@ extension File.Handle.Test.Performance {
         // Create a 1MB file for seeking
         let size = 1_000_000
         let data = [UInt8](repeating: 0x00, count: size)
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

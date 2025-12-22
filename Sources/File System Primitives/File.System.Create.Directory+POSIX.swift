@@ -17,7 +17,7 @@
 
     extension File.System.Create.Directory {
         /// Creates a directory using POSIX APIs.
-        internal static func _createPOSIX(at path: File.Path, options: Options) throws(Error) {
+        internal static func _createPOSIX(at path: File.Path, options: Options) throws(File.System.Create.Directory.Error) {
             let mode =
                 options.permissions?.rawValue
                 ?? File.System.Metadata.Permissions.defaultDirectory.rawValue
@@ -32,7 +32,7 @@
         }
 
         /// Creates a directory and all intermediate directories.
-        private static func _createIntermediates(at path: File.Path, mode: mode_t) throws(Error) {
+        private static func _createIntermediates(at path: File.Path, mode: mode_t) throws(File.System.Create.Directory.Error) {
             // Check if directory already exists
             var statBuf = stat()
             if stat(path.string, &statBuf) == 0 {

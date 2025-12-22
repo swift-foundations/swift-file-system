@@ -301,26 +301,30 @@ extension File.IO.Blocking.Threads {
 }
 
 extension File.IO.Blocking.Threads.Job {
-    /// A type-erased job that encapsulates work and completion.
+    /// A job that executes a non-throwing operation and calls onComplete with the result pointer.
     ///
     /// ## Safety Invariant (for @unchecked Sendable)
     /// Jobs are created and consumed under the Worker.State lock.
     /// The work closure is marked @Sendable and captures only Sendable state.
+    ///
+    /// ## Boxing Ownership
+    /// The operation returns a boxed Result (UnsafeMutableRawPointer).
+    /// Allocation happens inside job execution, not before enqueue.
     struct Instance: @unchecked Sendable {
         private let work: @Sendable () -> Void
 
-        /// Creates a job that executes an operation and resumes a continuation.
-        init<T: Sendable>(
-            operation: @Sendable @escaping () throws -> T,
-            continuation: CheckedContinuation<T, any Swift.Error>
+        /// Creates a job that executes a non-throwing operation and calls onComplete.
+        /// The operation returns a boxed Result (already containing any error).
+        ///
+        /// The `sending` annotation on `onComplete` parameter indicates ownership
+        /// of the pointer is transferred to the callback, satisfying concurrency safety.
+        init(
+            operation: @Sendable @escaping () -> UnsafeMutableRawPointer,
+            onComplete: @Sendable @escaping (sending UnsafeMutableRawPointer) -> Void
         ) {
             self.work = {
-                do {
-                    let result = try operation()
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
+                let ptr = operation()
+                onComplete(ptr)
             }
         }
 
@@ -334,14 +338,6 @@ extension File.IO.Blocking.Threads.Job {
         /// Execute the job.
         func run() {
             work()
-        }
-
-        /// Fail a continuation with an error.
-        static func fail<T: Sendable>(
-            continuation: CheckedContinuation<T, any Swift.Error>,
-            with error: any Swift.Error
-        ) {
-            continuation.resume(throwing: error)
         }
     }
 }
@@ -359,16 +355,18 @@ extension File.IO.Blocking.Threads.Pending {
     /// ## Safety Invariant (for @unchecked Sendable)
     /// Only accessed under Worker.State lock. Contains a continuation
     /// that will be resumed exactly once (either on admission or cancellation).
+    ///
+    /// Uses non-throwing continuation with Result for Lane.Failure - no existentials.
     struct Job: @unchecked Sendable {
         let token: UInt64
         let job: File.IO.Blocking.Threads.Job.Instance
-        let continuation: CheckedContinuation<Void, any Swift.Error>
+        let continuation: CheckedContinuation<Result<Void, File.IO.Blocking.Lane.Failure>, Never>
         var isCancelled: Bool = false
 
         init(
             token: UInt64,
             job: File.IO.Blocking.Threads.Job.Instance,
-            continuation: CheckedContinuation<Void, any Swift.Error>
+            continuation: CheckedContinuation<Result<Void, File.IO.Blocking.Lane.Failure>, Never>
         ) {
             self.token = token
             self.job = job

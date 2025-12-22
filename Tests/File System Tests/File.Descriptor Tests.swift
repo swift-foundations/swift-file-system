@@ -21,10 +21,7 @@ extension File.Descriptor.Test.Unit {
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/descriptor-convenience-test-\(Int.random(in: 0..<Int.max)).bin"
         let filePath = try File.Path(path)
-        try content.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(content.span, to: filePath)
         return path
     }
 

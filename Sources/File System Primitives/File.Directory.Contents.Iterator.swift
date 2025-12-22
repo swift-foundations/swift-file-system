@@ -52,7 +52,7 @@
         /// - Throws: `Error` if the directory cannot be opened.
         public static func makeIterator(
             at path: File.Path
-        ) throws(Error) -> (iterator: Iterator, handle: OpaquePointer) {
+        ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: OpaquePointer) {
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
                 throw Self._mapErrno(errno, path: path)
@@ -140,7 +140,7 @@
         /// - Throws: `Error` if the directory cannot be opened.
         public static func makeIterator(
             at path: File.Path
-        ) throws(Error) -> (iterator: Iterator, handle: OpaquePointer) {
+        ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: OpaquePointer) {
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
                 throw Self._mapErrno(errno, path: path)
@@ -228,7 +228,7 @@
         /// - Throws: `Error` if the directory cannot be opened.
         public static func makeIterator(
             at path: File.Path
-        ) throws(Error) -> (iterator: Iterator, handle: OpaquePointer) {
+        ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: OpaquePointer) {
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
                 throw Self._mapErrno(errno, path: path)

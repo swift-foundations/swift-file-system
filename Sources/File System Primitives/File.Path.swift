@@ -32,7 +32,7 @@ extension File {
         /// - Parameter string: The path string to validate and wrap.
         /// - Throws: `File.Path.Error` if the path is empty or contains control characters.
         @inlinable
-        public init(_ string: String) throws(Error) {
+        public init(_ string: String) throws(File.Path.Error) {
             guard !string.isEmpty else {
                 throw .empty
             }
@@ -51,7 +51,7 @@ extension File {
         /// - Parameter filePath: The FilePath to wrap.
         /// - Throws: `File.Path.Error.empty` if the path is empty.
         @inlinable
-        public init(_ filePath: FilePath) throws(Error) {
+        public init(_ filePath: FilePath) throws(File.Path.Error) {
             guard !filePath.isEmpty else {
                 throw .empty
             }

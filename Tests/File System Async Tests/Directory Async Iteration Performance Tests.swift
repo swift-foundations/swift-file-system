@@ -41,10 +41,7 @@ import Testing
             try File.System.Create.Directory.create(at: testDir1000Files)
             for i in 0..<1000 {
                 let filePath = File.Path(testDir1000Files, appending: "file_\(i).txt")
-                try fileData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
-                }
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
             }
 
             self.io = File.IO.Executor()

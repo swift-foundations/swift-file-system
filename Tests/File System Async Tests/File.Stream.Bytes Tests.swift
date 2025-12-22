@@ -21,10 +21,7 @@ extension File.Stream.Async.Test.Unit {
 
     private func createTempFile(content: [UInt8]) throws -> File.Path {
         let path = try File.Path("/tmp/async-stream-test-\(Int.random(in: 0..<Int.max)).bin")
-        try content.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
+        try File.System.Write.Atomic.write(content.span, to: path)
         return path
     }
 

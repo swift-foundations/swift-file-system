@@ -16,7 +16,7 @@
             _ path: File.Path,
             mode: Mode,
             options: Options
-        ) throws(Error) -> File.Descriptor {
+        ) throws(File.Descriptor.Error) -> File.Descriptor {
             var desiredAccess: DWORD = 0
             // Include FILE_SHARE_DELETE for POSIX-like rename/unlink semantics
             var shareMode: DWORD =

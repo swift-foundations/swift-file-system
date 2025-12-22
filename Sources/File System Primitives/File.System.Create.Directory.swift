@@ -60,7 +60,7 @@ extension File.System.Create.Directory {
     ///
     /// - Parameter path: The path where the directory should be created.
     /// - Throws: `File.System.Create.Directory.Error` on failure.
-    public static func create(at path: File.Path) throws(Error) {
+    public static func create(at path: File.Path) throws(File.System.Create.Directory.Error) {
         #if os(Windows)
             try _createWindows(at: path, options: Options())
         #else
@@ -74,7 +74,7 @@ extension File.System.Create.Directory {
     ///   - path: The path where the directory should be created.
     ///   - options: Creation options (e.g., create intermediates).
     /// - Throws: `File.System.Create.Directory.Error` on failure.
-    public static func create(at path: File.Path, options: Options) throws(Error) {
+    public static func create(at path: File.Path, options: Options) throws(File.System.Create.Directory.Error) {
         #if os(Windows)
             try _createWindows(at: path, options: options)
         #else

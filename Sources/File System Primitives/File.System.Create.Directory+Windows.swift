@@ -11,7 +11,7 @@
 
     extension File.System.Create.Directory {
         /// Creates a directory using Windows APIs.
-        internal static func _createWindows(at path: File.Path, options: Options) throws(Error) {
+        internal static func _createWindows(at path: File.Path, options: Options) throws(File.System.Create.Directory.Error) {
             if options.createIntermediates {
                 try _createIntermediates(at: path)
             } else {
@@ -25,7 +25,7 @@
         }
 
         /// Creates a directory and all intermediate directories.
-        private static func _createIntermediates(at path: File.Path) throws(Error) {
+        private static func _createIntermediates(at path: File.Path) throws(File.System.Create.Directory.Error) {
             // Check if directory already exists
             let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
