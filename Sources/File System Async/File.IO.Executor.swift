@@ -461,7 +461,7 @@ extension File.IO {
                     let handle = try File.Handle.open(path, mode: mode, options: options)
                     Slot.initializeMemory(at: raw, with: handle)
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
+            } catch let laneFailure {
                 switch laneFailure {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)

@@ -45,7 +45,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         var readHandle = try File.Handle.open(filePath, mode: .read)
@@ -113,7 +113,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(File.System.Stat.exists(at: filePath))
@@ -140,7 +140,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(File.System.Stat.exists(at: filePath))
@@ -154,7 +154,7 @@ extension File.System.Test.EdgeCase {
         let filePath = try File.Path(path)
 
         #expect(throws: (any Error).self) {
-            var handle = try File.Handle.open(
+            let handle = try File.Handle.open(
                 filePath,
                 mode: .write,
                 options: [.create, .closeOnExec]
@@ -171,7 +171,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
 
         // Handle should be valid immediately after open
         let isValidBeforeClose = handle.isValid
@@ -188,7 +188,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
 
         // Close should succeed without error
         try handle.close()
@@ -235,7 +235,7 @@ extension File.System.Test.EdgeCase {
 
         // Create the file first
         let filePath = try File.Path(path)
-        var createHandle = try File.Handle.open(
+        let createHandle = try File.Handle.open(
             filePath,
             mode: .write,
             options: [.create, .closeOnExec]
@@ -414,7 +414,7 @@ extension File.System.Test.EdgeCase {
 
         // Create file inside
         let filePath = try File.Path(dir.string + "/file.txt")
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(throws: (any Error).self) {
@@ -554,7 +554,7 @@ extension File.System.Test.EdgeCase {
             let filePath = try File.Path(path)
 
             // Create file with no permissions
-            var handle = try File.Handle.open(
+            let handle = try File.Handle.open(
                 filePath,
                 mode: .write,
                 options: [.create, .closeOnExec]
@@ -599,7 +599,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(throws: (any Error).self) {
@@ -684,7 +684,7 @@ extension File.System.Test.EdgeCase {
 
         for i in 0..<50 {
             let path: File.Path = try .init("\(basePath)-\(i)")
-            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
             try File.System.Delete.delete(at: path)
         }

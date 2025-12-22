@@ -42,9 +42,9 @@ extension File.Directory.Walk.Test.Unit {
         // Create files
         let file1 = File.Path(dir, appending: "file1.txt")
         let file2 = File.Path(dir, appending: "file2.txt")
-        var h1 = try File.Handle.open(file1, mode: .write, options: [.create, .closeOnExec])
+        let h1 = try File.Handle.open(file1, mode: .write, options: [.create, .closeOnExec])
         try h1.close()
-        var h2 = try File.Handle.open(file2, mode: .write, options: [.create, .closeOnExec])
+        let h2 = try File.Handle.open(file2, mode: .write, options: [.create, .closeOnExec])
         try h2.close()
 
         let entries = try File.Directory.Walk.walk(at: dir)
@@ -64,7 +64,7 @@ extension File.Directory.Walk.Test.Unit {
         try File.System.Create.Directory.create(at: subdir)
 
         let file = File.Path(subdir, appending: "nested.txt")
-        var h = try File.Handle.open(file, mode: .write, options: [.create, .closeOnExec])
+        let h = try File.Handle.open(file, mode: .write, options: [.create, .closeOnExec])
         try h.close()
 
         let entries = try File.Directory.Walk.walk(at: dir)
@@ -87,7 +87,7 @@ extension File.Directory.Walk.Test.Unit {
         try File.System.Create.Directory.create(at: b)
 
         let c = File.Path(b, appending: "c.txt")
-        var h = try File.Handle.open(c, mode: .write, options: [.create, .closeOnExec])
+        let h = try File.Handle.open(c, mode: .write, options: [.create, .closeOnExec])
         try h.close()
 
         // maxDepth: 0 should only return immediate children
@@ -108,9 +108,9 @@ extension File.Directory.Walk.Test.Unit {
         // Create visible and hidden files
         let visible = File.Path(dir, appending: "visible.txt")
         let hidden = File.Path(dir, appending: ".hidden")
-        var h1 = try File.Handle.open(visible, mode: .write, options: [.create, .closeOnExec])
+        let h1 = try File.Handle.open(visible, mode: .write, options: [.create, .closeOnExec])
         try h1.close()
-        var h2 = try File.Handle.open(hidden, mode: .write, options: [.create, .closeOnExec])
+        let h2 = try File.Handle.open(hidden, mode: .write, options: [.create, .closeOnExec])
         try h2.close()
 
         // includeHidden: true (default)
@@ -345,7 +345,7 @@ extension File.Directory.Walk.Test.EdgeCase {
         let filePath = try File.Path("/tmp/walk-file-test-\(Int.random(in: 0..<Int.max))")
         defer { try? File.System.Delete.delete(at: filePath) }
 
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(throws: File.Directory.Walk.Error.self) {

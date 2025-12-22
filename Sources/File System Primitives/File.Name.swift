@@ -294,9 +294,9 @@ extension File.Name {
         /// Use this for performance-critical iteration paths.
         /// The bytes remain valid only for the duration of the closure.
         @inlinable
-        public func withUnsafeUTF8Bytes<R>(
-            _ body: (UnsafeBufferPointer<UInt8>) throws -> R
-        ) rethrows -> R {
+        public func withUnsafeUTF8Bytes<R, E: Error>(
+            _ body: (UnsafeBufferPointer<UInt8>) throws(E) -> R
+        ) throws(E) -> R {
             try _rawBytes.withUnsafeBufferPointer(body)
         }
     #endif
@@ -307,9 +307,9 @@ extension File.Name {
         /// Use this for performance-critical iteration paths.
         /// The code units remain valid only for the duration of the closure.
         @inlinable
-        public func withUnsafeCodeUnits<R>(
-            _ body: (UnsafeBufferPointer<UInt16>) throws -> R
-        ) rethrows -> R {
+        public func withUnsafeCodeUnits<R, E: Error>(
+            _ body: (UnsafeBufferPointer<UInt16>) throws(E) -> R
+        ) throws(E) -> R {
             try _rawCodeUnits.withUnsafeBufferPointer(body)
         }
 
@@ -318,9 +318,9 @@ extension File.Name {
         /// For zero-copy access on Windows, use `withUnsafeCodeUnits` instead.
         /// This method is provided for cross-platform code that needs UTF-8.
         @inlinable
-        public func withUTF8Bytes<R>(
-            _ body: ([UInt8]) throws -> R
-        ) rethrows -> R {
+        public func withUTF8Bytes<R, E: Error>(
+            _ body: ([UInt8]) throws(E) -> R
+        ) throws(E) -> R {
             var utf8Bytes: [UInt8] = []
             utf8Bytes.reserveCapacity(_rawCodeUnits.count * 3)  // worst case UTF-8 expansion
             for scalar in String(decoding: _rawCodeUnits, as: UTF16.self).unicodeScalars {

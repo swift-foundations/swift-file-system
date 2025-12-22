@@ -38,7 +38,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .read)
+        let handle = try File.Handle.open(filePath, mode: .read)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -52,7 +52,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write)
+        let handle = try File.Handle.open(filePath, mode: .write)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -66,7 +66,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .readWrite)
+        let handle = try File.Handle.open(filePath, mode: .readWrite)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -80,7 +80,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .append)
+        let handle = try File.Handle.open(filePath, mode: .append)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -94,7 +94,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create])
         let isValid = handle.isValid
         #expect(isValid)
         #expect(File.System.Stat.exists(at: try File.Path(path)))

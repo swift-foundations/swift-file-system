@@ -38,7 +38,7 @@ extension File {
         ///
         /// - Parameter string: The path string.
         /// - Throws: `File.Path.Error` if the path is invalid.
-        public init(_ string: String) throws {
+        public init(_ string: String) throws(File.Path.Error) {
             self.path = try File.Path(string)
         }
     }

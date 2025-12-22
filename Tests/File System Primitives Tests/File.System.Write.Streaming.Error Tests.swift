@@ -56,7 +56,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("fileCreationFailed case")
     func fileCreationFailedCase() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error = File.System.Write.Streaming.Error.fileCreationFailed(
             path: path,
             errno: 13,
@@ -74,7 +74,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("writeFailed case")
     func writeFailedCase() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error = File.System.Write.Streaming.Error.writeFailed(
             path: path,
             bytesWritten: 1024,
@@ -175,7 +175,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("durabilityNotGuaranteed case")
     func durabilityNotGuaranteedCase() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error = File.System.Write.Streaming.Error.durabilityNotGuaranteed(
             path: path,
             reason: "Cancelled during sync"
@@ -191,7 +191,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("directorySyncFailedAfterCommit case")
     func directorySyncFailedAfterCommitCase() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error = File.System.Write.Streaming.Error.directorySyncFailedAfterCommit(
             path: path,
             errno: 5,
@@ -209,7 +209,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("Error is Sendable")
     func errorIsSendable() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error = File.System.Write.Streaming.Error.destinationExists(path: path)
         Task {
             _ = error
@@ -218,7 +218,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("Error conforms to Swift.Error")
     func errorConformsToSwiftError() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error: Swift.Error = File.System.Write.Streaming.Error.destinationExists(path: path)
         #expect(error is File.System.Write.Streaming.Error)
     }
@@ -229,7 +229,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 extension File.System.Write.Streaming.Error.Test.EdgeCase {
     @Test("Equatable conformance")
     func equatableConformance() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error1 = File.System.Write.Streaming.Error.destinationExists(path: path)
         let error2 = File.System.Write.Streaming.Error.destinationExists(path: path)
         let parentError = File.System.Parent.Check.Error.missing(path: path)
@@ -249,7 +249,7 @@ extension File.System.Write.Streaming.Error.Test.EdgeCase {
 
     @Test("description for destinationExists")
     func descriptionDestinationExists() throws {
-        let path = try File.Path("/tmp/existing.txt")
+        let path = File.Path("/tmp/existing.txt")
         let error = File.System.Write.Streaming.Error.destinationExists(path: path)
         #expect(error.description.contains("Destination already exists"))
         #expect(error.description.contains("noClobber"))
@@ -257,7 +257,7 @@ extension File.System.Write.Streaming.Error.Test.EdgeCase {
 
     @Test("description for writeFailed includes bytesWritten")
     func descriptionWriteFailedIncludesBytes() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let error = File.System.Write.Streaming.Error.writeFailed(
             path: path,
             bytesWritten: 1024,

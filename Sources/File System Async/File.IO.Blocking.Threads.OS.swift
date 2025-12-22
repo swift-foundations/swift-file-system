@@ -56,7 +56,7 @@ extension File.IO.Blocking.Threads {
 
         // MARK: - Lock Operations
 
-        func withLock<T>(_ body: () throws -> T) rethrows -> T {
+        func withLock<T, E: Error>(_ body: () throws(E) -> T) throws(E) -> T {
             #if os(Windows)
                 AcquireSRWLockExclusive(&srwlock)
                 defer { ReleaseSRWLockExclusive(&srwlock) }

@@ -150,7 +150,7 @@ extension File.Directory.Async.Test.Unit {
             let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max))")
 
             let walk = File.Directory.Async(io: io).walk(at: path)
-            var iterator = walk.makeAsyncIterator()
+            let iterator = walk.makeAsyncIterator()
 
             do {
                 while try await iterator.next() != nil {
@@ -323,7 +323,7 @@ extension File.Directory.Async.Test.Unit {
             let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max))")
 
             let entries = File.Directory.Async(io: io).entries(at: path)
-            var iterator = entries.makeAsyncIterator()
+            let iterator = entries.makeAsyncIterator()
 
             do {
                 while try await iterator.next() != nil {
@@ -439,7 +439,7 @@ extension File.Directory.Async.Test.Unit {
             }
 
             let walk = File.Directory.Async(io: io).walk(at: dir)
-            var iterator = walk.makeAsyncIterator()
+            let iterator = walk.makeAsyncIterator()
             var count = 0
 
             while try await iterator.next() != nil {
@@ -518,7 +518,7 @@ extension File.Directory.Async.Test.Unit {
             }
 
             let entries = File.Directory.Async(io: io).entries(at: dir)
-            var iterator = entries.makeAsyncIterator()
+            let iterator = entries.makeAsyncIterator()
             var count = 0
 
             while try await iterator.next() != nil {
@@ -550,7 +550,7 @@ extension File.Directory.Async.Test.Unit {
             // Start iteration in a task we can cancel
             let task = Task {
                 var count = 0
-                var iterator = entries.makeAsyncIterator()
+                let iterator = entries.makeAsyncIterator()
                 do {
                     while try await iterator.next() != nil {
                         count += 1
