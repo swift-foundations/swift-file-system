@@ -5,14 +5,19 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 @_spi(Internal) import StandardTime
 import StandardsTestSupport
 import Testing
 
 @testable import File_System_Primitives
 
-#if canImport(Foundation)
-    import Foundation
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
 #endif
 
 extension File.System.Metadata.Timestamps {
@@ -24,16 +29,11 @@ extension File.System.Metadata.Timestamps.Test.Unit {
     // MARK: - Test Fixtures
 
     private func createTempFile() throws -> String {
-        #if canImport(Foundation)
-            let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
-            FileManager.default.createFile(atPath: path, contents: nil)
-            return path
-        #else
-            let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
-            let filePath = try File.Path(path)
-            try File.System.Write.Atomic.write([].span, to: filePath)
-            return path
-        #endif
+        let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
+        let filePath = try File.Path(path)
+        let empty: [UInt8] = []
+        try File.System.Write.Atomic.write(empty.span, to: filePath)
+        return path
     }
 
     private func cleanup(_ path: String) {
@@ -89,26 +89,22 @@ extension File.System.Metadata.Timestamps.Test.Unit {
 
     @Test("Modification time updates on file write")
     func modificationTimeUpdatesOnWrite() throws {
-        #if canImport(Foundation)
-            let path = try createTempFile()
-            defer { cleanup(path) }
+        let path = try createTempFile()
+        defer { cleanup(path) }
 
-            let filePath = try File.Path(path)
-            let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
+        let filePath = try File.Path(path)
+        let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
 
-            // Wait a small amount and write to the file
-            Thread.sleep(forTimeInterval: 0.1)
-            try Data([1, 2, 3]).write(to: URL(fileURLWithPath: path))
+        // Wait a small amount and write to the file
+        usleep(100_000)  // 100ms
+        try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
 
-            let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
+        let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
 
-            #expect(
-                afterWrite.modificationTime.secondsSinceEpoch
-                    >= beforeWrite.modificationTime.secondsSinceEpoch
-            )
-        #else
-            // Skip test on non-Foundation platforms - requires Data and URL
-        #endif
+        #expect(
+            afterWrite.modificationTime.secondsSinceEpoch
+                >= beforeWrite.modificationTime.secondsSinceEpoch
+        )
     }
 
     // MARK: - Set Timestamps

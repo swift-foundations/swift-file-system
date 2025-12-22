@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -315,20 +316,12 @@ extension File.System.Stat.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.System.Stat.Test.Performance {
 
     @Test("File.System.Stat.info", .timed(iterations: 100, warmup: 10))
     func statInfo() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
-        let filePath = File.Path(tempDir, appending: "perf_stat_\(Int.random(in: 0..<Int.max)).txt")
+        let td = try tempDir()
+        let filePath = File.Path(td, appending: "perf_stat_\(Int.random(in: 0..<Int.max)).txt")
 
         // Create file
         let data = [UInt8](repeating: 0x00, count: 1000)
@@ -341,13 +334,9 @@ extension File.System.Stat.Test.Performance {
 
     @Test("File.System.Stat.exists check", .timed(iterations: 100, warmup: 10))
     func existsCheck() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_exists_\(Int.random(in: 0..<Int.max)).txt"
         )
 

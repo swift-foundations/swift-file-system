@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 20/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -364,21 +365,13 @@ extension File.System.Write.Streaming.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.System.Write.Streaming.Test.Performance {
 
     @Test("Streaming write 1MB in 64KB chunks", .timed(iterations: 10, warmup: 2))
     func streamingWrite1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_streaming_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -395,13 +388,9 @@ extension File.System.Write.Streaming.Test.Performance {
 
     @Test("Streaming write 1MB with lazy sequence", .timed(iterations: 10, warmup: 2))
     func streamingWriteLazy1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -418,13 +407,9 @@ extension File.System.Write.Streaming.Test.Performance {
 
     @Test("Direct streaming write 1MB (no atomicity)", .timed(iterations: 10, warmup: 2))
     func directStreamingWrite1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin"
         )
 

@@ -5,14 +5,19 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
-@testable import File_System_Primitives
-
-#if canImport(Foundation)
-    import Foundation
+#if canImport(Darwin)
+    import Darwin
+#elseif canImport(Glibc)
+    import Glibc
+#elseif canImport(Musl)
+    import Musl
 #endif
+
+@testable import File_System_Primitives
 
 extension File.System.Metadata.Ownership {
     #TestSuites
@@ -23,16 +28,11 @@ extension File.System.Metadata.Ownership.Test.Unit {
     // MARK: - Test Fixtures
 
     private func createTempFile() throws -> String {
-        #if canImport(Foundation)
-            let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
-            FileManager.default.createFile(atPath: path, contents: nil)
-            return path
-        #else
-            let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
-            let filePath = try File.Path(path)
-            try File.System.Write.Atomic.write([].span, to: filePath)
-            return path
-        #endif
+        let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
+        let filePath = try File.Path(path)
+        let empty: [UInt8] = []
+        try File.System.Write.Atomic.write(empty.span, to: filePath)
+        return path
     }
 
     private func cleanup(_ path: String) {

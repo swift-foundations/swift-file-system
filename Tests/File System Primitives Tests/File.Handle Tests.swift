@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -399,21 +400,13 @@ extension File.Handle.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.Handle.Test.Performance {
 
     @Test(.timed(iterations: 10, warmup: 2))
     func sequentialRead1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_read_1mb_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -431,13 +424,9 @@ extension File.Handle.Test.Performance {
 
     @Test("Sequential write 1MB file", .timed(iterations: 10, warmup: 2))
     func sequentialWrite1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_write_1mb_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -456,13 +445,9 @@ extension File.Handle.Test.Performance {
 
     @Test("Buffer-based read into preallocated buffer", .timed(iterations: 50, warmup: 5))
     func bufferBasedRead() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_buffer_read_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -486,13 +471,9 @@ extension File.Handle.Test.Performance {
 
     @Test("Small write throughput (4KB blocks)", .timed(iterations: 20, warmup: 3))
     func smallWriteThroughput() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_small_writes_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -517,12 +498,8 @@ extension File.Handle.Test.Performance {
 
     @Test("Seek operations (random access pattern)", .timed(iterations: 50, warmup: 5))
     func seekPerformance() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
-        let filePath = File.Path(tempDir, appending: "perf_seek_\(Int.random(in: 0..<Int.max)).bin")
+        let td = try tempDir()
+        let filePath = File.Path(td, appending: "perf_seek_\(Int.random(in: 0..<Int.max)).bin")
 
         // Create a 1MB file for seeking
         let size = 1_000_000

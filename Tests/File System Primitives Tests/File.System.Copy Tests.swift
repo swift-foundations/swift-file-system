@@ -5,14 +5,15 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
-
-@testable import File_System_Primitives
 
 #if canImport(Foundation)
     import Foundation
 #endif
+
+@testable import File_System_Primitives
 
 extension File.System.Copy {
     #TestSuites
@@ -988,17 +989,13 @@ extension File.System.Copy.Test.Performance {
 
     @Test("File.System.Copy.copy (1MB)", .timed(iterations: 10, warmup: 2))
     func copyFile1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let sourcePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_copy_src_\(Int.random(in: 0..<Int.max)).bin"
         )
         let destPath = File.Path(
-            tempDir,
+            td,
             appending: "perf_copy_dst_\(Int.random(in: 0..<Int.max)).bin"
         )
 

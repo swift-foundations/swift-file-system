@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 import TestingPerformance
@@ -244,10 +245,6 @@ extension File.Directory.Contents.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.Directory.Contents.Test.Performance {
 
     /// Performance tests using .timed() harness with class fixture for setup isolation.
@@ -257,12 +254,8 @@ extension File.Directory.Contents.Test.Performance {
         let testDir: File.Path
 
         init() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
-            self.testDir = File.Path(tempDir, appending: "bench_\(Int.random(in: 0..<Int.max))")
+            let td = try tempDir()
+            self.testDir = File.Path(td, appending: "bench_\(Int.random(in: 0..<Int.max))")
 
             // Setup: create directory with 100 files
             // Use durability: .none to avoid F_FULLFSYNC overhead

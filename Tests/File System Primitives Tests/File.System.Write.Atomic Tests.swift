@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -357,21 +358,13 @@ extension File.System.Write.Atomic.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.System.Write.Atomic.Test.Performance {
 
     @Test("File.System.Write.Atomic.write (1MB)", .timed(iterations: 10, warmup: 2))
     func systemWrite1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try tempDir()
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin"
         )
 
