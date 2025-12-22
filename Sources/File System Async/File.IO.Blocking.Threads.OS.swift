@@ -173,40 +173,42 @@ extension File.IO.Blocking.Threads {
             return ThreadHandle(handle: threadHandle!)
         #elseif canImport(Darwin)
             var thread: pthread_t?
-            let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
-            context.initialize(to: body)
+            let contextPtr = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
+            contextPtr.initialize(to: body)
 
             pthread_create(
                 &thread,
                 nil,
-                { context in
-                    let body = context!.assumingMemoryBound(to: (@Sendable () -> Void).self)
-                    let work = body.move()
-                    body.deallocate()
+                { (ctx: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? in
+                    guard let ctx else { return nil }
+                    let bodyPtr = ctx.assumingMemoryBound(to: (@Sendable () -> Void).self)
+                    let work = bodyPtr.move()
+                    bodyPtr.deallocate()
                     work()
                     return nil
                 },
-                context
+                contextPtr
             )
 
             return ThreadHandle(thread: thread!)
         #else
             // Linux: pthread_t is non-optional
             var thread: pthread_t = 0
-            let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
-            context.initialize(to: body)
+            let contextPtr = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
+            contextPtr.initialize(to: body)
 
             pthread_create(
                 &thread,
                 nil,
-                { context in
-                    let body = context!.assumingMemoryBound(to: (@Sendable () -> Void).self)
-                    let work = body.move()
-                    body.deallocate()
+                { (ctx: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? in
+                    guard let ctx else { return nil }
+                    let bodyPtr = ctx.assumingMemoryBound(to: (@Sendable () -> Void).self)
+                    let work = bodyPtr.move()
+                    bodyPtr.deallocate()
                     work()
                     return nil
                 },
-                context
+                contextPtr
             )
 
             return ThreadHandle(thread: thread)
