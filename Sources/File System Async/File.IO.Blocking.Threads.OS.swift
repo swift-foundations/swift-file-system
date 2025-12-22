@@ -107,7 +107,7 @@ extension File.IO.Blocking.Threads {
                     DWORD(min(milliseconds, UInt64(DWORD.max))),
                     0
                 )
-                return result != 0
+                return result
             #else
                 var ts = timespec()
                 clock_gettime(CLOCK_REALTIME, &ts)
@@ -179,8 +179,7 @@ extension File.IO.Blocking.Threads {
             pthread_create(
                 &thread,
                 nil,
-                { (ctx: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? in
-                    guard let ctx else { return nil }
+                { ctx in
                     let bodyPtr = ctx.assumingMemoryBound(to: (@Sendable () -> Void).self)
                     let work = bodyPtr.move()
                     bodyPtr.deallocate()
@@ -200,7 +199,7 @@ extension File.IO.Blocking.Threads {
             pthread_create(
                 &thread,
                 nil,
-                { (ctx: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? in
+                { ctx in
                     guard let ctx else { return nil }
                     let bodyPtr = ctx.assumingMemoryBound(to: (@Sendable () -> Void).self)
                     let work = bodyPtr.move()
