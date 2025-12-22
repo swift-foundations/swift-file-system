@@ -12,7 +12,7 @@ extension File.IO.Handle {
     /// - Scoped to a specific executor/store instance (prevents cross-executor misuse)
     /// - Never reused within an executor's lifetime
     /// - Sendable and Hashable for use as dictionary keys
-    public struct ID: Hashable, Sendable {
+    package struct ID: Hashable, Sendable {
         /// The unique identifier within the store.
         let raw: UInt64
         /// The scope identifier (unique per store instance).

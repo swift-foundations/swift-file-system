@@ -15,7 +15,7 @@ extension File.IO.Write.Handle {
     ///
     /// Use this ID to reference an open streaming write across async boundaries.
     /// The actual write context lives in the executor's registry.
-    public struct ID: Hashable, Sendable {
+    package struct ID: Hashable, Sendable {
         /// The unique identifier within the executor.
         let raw: UInt64
         /// The scope identifier (unique per executor instance).

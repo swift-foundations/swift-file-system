@@ -7,7 +7,7 @@
 
 extension File.IO {
     /// Namespace for iterator-related types.
-    public enum Iterator {}
+    package enum Iterator {}
 }
 
 extension File.IO.Iterator {
@@ -26,10 +26,10 @@ extension File.IO.Iterator {
     /// Callers MUST call `close(_:)` before the box is deallocated.
     /// Use `terminate()` on the owning iterator for deterministic cleanup.
     /// A DEBUG warning is printed if close() is not called.
-    public final class Box<T: ~Copyable>: @unchecked Sendable {
+    package final class Box<T: ~Copyable>: @unchecked Sendable {
         private var storage: UnsafeMutablePointer<T>?
 
-        public init(_ value: consuming T) {
+        package init(_ value: consuming T) {
             self.storage = .allocate(capacity: 1)
             self.storage!.initialize(to: consume value)
         }
@@ -50,14 +50,14 @@ extension File.IO.Iterator {
             #endif
         }
 
-        public var hasValue: Bool { storage != nil }
+        package var hasValue: Bool { storage != nil }
 
-        public func withValue<R>(_ body: (inout T) throws -> R) rethrows -> R? {
+        package func withValue<R>(_ body: (inout T) throws -> R) rethrows -> R? {
             guard let ptr = storage else { return nil }
             return try body(&ptr.pointee)
         }
 
-        public func close(_ cleanup: (consuming T) -> Void) {
+        package func close(_ cleanup: (consuming T) -> Void) {
             guard let ptr = storage else { return }
             let value = ptr.move()
             ptr.deallocate()

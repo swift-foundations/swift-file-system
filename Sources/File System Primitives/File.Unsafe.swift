@@ -7,5 +7,5 @@
 
 extension File {
     /// Namespace for unsafe utility types.
-    public enum Unsafe {}
+    package enum Unsafe {}
 }

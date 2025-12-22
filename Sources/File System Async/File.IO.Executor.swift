@@ -204,7 +204,7 @@ extension File.IO {
         /// - Cancellation while waiting: waiter marked cancelled, resumes, throws CancellationError
         /// - Cancellation after checkout: lane operation completes (if guaranteed),
         ///   handle is checked in, then CancellationError is thrown
-        public func transaction<T: Sendable>(
+        package func transaction<T: Sendable>(
             _ id: File.IO.Handle.ID,
             _ body: @Sendable @escaping (inout File.Handle) throws -> T
         ) async throws -> T {
@@ -338,7 +338,7 @@ extension File.IO {
         /// - Parameter handle: The handle to register (ownership transferred).
         /// - Returns: A unique handle ID for future operations.
         /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
-        public func registerHandle(_ handle: consuming File.Handle) throws -> File.IO.Handle.ID {
+        package func registerHandle(_ handle: consuming File.Handle) throws -> File.IO.Handle.ID {
             guard !isShutdown else {
                 throw Executor.Error.shutdownInProgress
             }
@@ -359,7 +359,7 @@ extension File.IO {
         /// - Returns: A handle ID for future operations.
         /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
         /// - Throws: File open errors.
-        public func openFile(
+        package func openFile(
             _ path: File.Path,
             mode: File.Handle.Mode,
             options: File.Handle.Options = [.closeOnExec]
@@ -398,7 +398,7 @@ extension File.IO {
         /// - Throws: `Handle.Error.scopeMismatch` if ID belongs to different executor.
         /// - Throws: `Handle.Error.invalidID` if handle was already destroyed.
         /// - Throws: Any error from the closure.
-        public func withHandle<T: Sendable>(
+        package func withHandle<T: Sendable>(
             _ id: File.IO.Handle.ID,
             _ body: @Sendable @escaping (inout File.Handle) throws -> T
         ) async throws -> T {
@@ -411,7 +411,7 @@ extension File.IO {
         /// - Throws: `Handle.Error.scopeMismatch` if ID belongs to different executor.
         /// - Throws: Close errors from the underlying handle.
         /// - Note: Idempotent for handles that were already destroyed.
-        public func destroyHandle(_ id: File.IO.Handle.ID) async throws {
+        package func destroyHandle(_ id: File.IO.Handle.ID) async throws {
             guard id.scope == scope else {
                 throw File.IO.Handle.Error.scopeMismatch
             }
@@ -444,7 +444,7 @@ extension File.IO {
         ///
         /// - Parameter id: The handle ID to check.
         /// - Returns: `true` if the handle exists and is not destroyed.
-        public func isHandleValid(_ id: File.IO.Handle.ID) -> Bool {
+        package func isHandleValid(_ id: File.IO.Handle.ID) -> Bool {
             guard let entry = handles[id] else { return false }
             return entry.state != .destroyed
         }
@@ -458,7 +458,7 @@ extension File.IO {
         ///
         /// - Parameter id: The handle ID to check.
         /// - Returns: `true` if the handle is logically open.
-        public func isHandleOpen(_ id: File.IO.Handle.ID) -> Bool {
+        package func isHandleOpen(_ id: File.IO.Handle.ID) -> Bool {
             guard id.scope == scope else { return false }
             guard let entry = handles[id] else { return false }
             return entry.isOpen
@@ -479,7 +479,7 @@ extension File.IO {
         ///   - path: The destination path.
         ///   - options: Streaming write options (commit strategy, durability).
         /// - Returns: A write handle ID for subsequent operations.
-        public func openWriteStreaming(
+        package func openWriteStreaming(
             to path: File.Path,
             options: File.System.Write.Streaming.Options = .init()
         ) async throws -> File.IO.Write.Handle.ID {
@@ -515,7 +515,7 @@ extension File.IO {
         /// - Parameters:
         ///   - bytes: The bytes to write.
         ///   - id: The write handle ID from `openWriteStreaming`.
-        public func writeChunk(
+        package func writeChunk(
             _ bytes: [UInt8],
             to id: File.IO.Write.Handle.ID
         ) async throws {
@@ -575,7 +575,7 @@ extension File.IO {
         ///
         /// - Parameter id: The write handle ID from `openWriteStreaming`.
         /// - Throws: `File.System.Write.Streaming.Error` on failure.
-        public func commitWrite(_ id: File.IO.Write.Handle.ID) async throws {
+        package func commitWrite(_ id: File.IO.Write.Handle.ID) async throws {
             guard id.scope == scope else {
                 throw File.IO.Executor.Error.scopeMismatch
             }
@@ -633,7 +633,7 @@ extension File.IO {
         /// After this call, the write ID is no longer valid.
         ///
         /// - Parameter id: The write handle ID from `openWriteStreaming`.
-        public func abortWrite(_ id: File.IO.Write.Handle.ID) async {
+        package func abortWrite(_ id: File.IO.Write.Handle.ID) async {
             guard id.scope == scope else { return }
             guard let entry = writes[id] else { return }
             guard entry.state == .open || entry.state == .aborting else { return }
