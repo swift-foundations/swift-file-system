@@ -582,7 +582,13 @@ import Testing
                 _ = try await task.value
                 // May complete before cancellation
             } catch is CancellationError {
-                // Expected
+                // Expected - raw cancellation from Task.checkCancellation
+            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+                // Expected - wrapped cancellation from iterator
+                guard case .cancelled = error else {
+                    Issue.record("Expected .cancelled, got \(error)")
+                    return
+                }
             }
 
             await io.shutdown()
@@ -632,7 +638,13 @@ import Testing
             do {
                 _ = try await task.value
             } catch is CancellationError {
-                // Expected
+                // Expected - raw cancellation from Task.checkCancellation
+            } catch let error as File.IO.Error<File.Directory.Walk.Error> {
+                // Expected - wrapped cancellation from walk iterator
+                guard case .cancelled = error else {
+                    Issue.record("Expected .cancelled, got \(error)")
+                    return
+                }
             }
 
             await io.shutdown()
@@ -681,7 +693,13 @@ import Testing
                 // If it completes, it processed everything before cancellation
                 #expect(count <= 200)
             } catch is CancellationError {
-                // Expected - cancellation was checked and honored
+                // Expected - raw cancellation from Task.checkCancellation
+            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+                // Expected - wrapped cancellation from iterator
+                guard case .cancelled = error else {
+                    Issue.record("Expected .cancelled, got \(error)")
+                    return
+                }
             }
 
             await io.shutdown()
@@ -736,7 +754,13 @@ import Testing
                 let count = try await task.value
                 #expect(count <= 210)
             } catch is CancellationError {
-                // Expected
+                // Expected - raw cancellation from Task.checkCancellation
+            } catch let error as File.IO.Error<File.Directory.Walk.Error> {
+                // Expected - wrapped cancellation from walk iterator
+                guard case .cancelled = error else {
+                    Issue.record("Expected .cancelled, got \(error)")
+                    return
+                }
             }
 
             await io.shutdown()

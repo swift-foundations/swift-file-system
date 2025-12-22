@@ -574,7 +574,13 @@ extension File.Directory.Async.Test.Unit {
                 // If it didn't throw, it completed before cancellation
                 #expect(count <= 100)
             } catch is CancellationError {
-                // Expected - cancellation worked
+                // Expected - raw cancellation
+            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+                // Expected - wrapped cancellation from iterator
+                guard case .cancelled = error else {
+                    Issue.record("Expected .cancelled, got \(error)")
+                    return
+                }
             }
 
             await io.shutdown()

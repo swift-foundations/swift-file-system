@@ -106,7 +106,7 @@ extension File.System.Link.Read.Target.Test.Unit {
         }
 
         // Create target file
-        try writeBytes([], to: try File.Path(targetPath))
+        try File.System.Write.Atomic.write([], to: File.Path(targetPath))
 
         // Create relative symlink
         try File.System.Link.Symbolic.create(

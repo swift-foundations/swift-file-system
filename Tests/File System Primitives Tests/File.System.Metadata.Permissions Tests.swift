@@ -20,7 +20,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
     private func createTempFile() throws -> String {
         let path = "/tmp/perms-test-\(Int.random(in: 0..<Int.max)).txt"
-        try File.System.Write.Atomic.write([].span, to: File.Path(path))
+        try File.System.Write.Atomic.write([], to: File.Path(path))
         return path
     }
 

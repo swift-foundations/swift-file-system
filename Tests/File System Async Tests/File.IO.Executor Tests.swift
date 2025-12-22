@@ -34,10 +34,18 @@ import Testing
         func executeThrowing() async throws {
             let executor = File.IO.Executor()
 
-            struct TestError: Error {}
+            struct TestError: Error, Equatable {}
 
-            await #expect(throws: TestError.self) {
-                try await executor.run { throw TestError() }
+            do {
+                try await executor.run { () throws(TestError) -> Void in throw TestError() }
+                Issue.record("Expected error to be thrown")
+            } catch {
+                // error is File.IO.Error<TestError>
+                guard case .operation(let inner) = error else {
+                    Issue.record("Expected .operation case, got \(error)")
+                    return
+                }
+                #expect(inner == TestError())
             }
             await executor.shutdown()
         }
@@ -70,8 +78,16 @@ import Testing
             let executor = File.IO.Executor()
             await executor.shutdown()
 
-            await #expect(throws: File.IO.Executor.Error.self) {
-                try await executor.run { 42 }
+            do {
+                _ = try await executor.run { 42 }
+                Issue.record("Expected error to be thrown")
+            } catch {
+                // error is File.IO.Error<Never>
+                guard case .executor(.shutdownInProgress) = error else {
+                    Issue.record("Expected .executor(.shutdownInProgress), got \(error)")
+                    return
+                }
+                // Success - got expected error
             }
         }
 

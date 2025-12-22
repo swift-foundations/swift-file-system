@@ -48,9 +48,9 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create some files
-        try writeBytes([], to: try File.Path("\(dirPath)/file1.txt"))
-        try writeBytes([], to: try File.Path("\(dirPath)/file2.txt"))
-        try writeBytes([], to: try File.Path("\(dirPath)/file3.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file1.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file2.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file3.txt"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -84,7 +84,7 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create file
-        try writeBytes([], to: try File.Path("\(dirPath)/file.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file.txt"))
 
         // Create subdirectory
         try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir"))
@@ -105,7 +105,7 @@ extension File.Directory.Contents.Test.Unit {
         let dirPath = try createTempDir()
         defer { cleanup(dirPath) }
 
-        try writeBytes([], to: try File.Path("\(dirPath)/regular.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/regular.txt"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -121,7 +121,7 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create a regular file
-        try writeBytes([], to: try File.Path("\(dirPath)/target.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/target.txt"))
 
         // Create a symlink
         try File.System.Link.Symbolic.create(
@@ -144,7 +144,7 @@ extension File.Directory.Contents.Test.Unit {
         let dirPath = try createTempDir()
         defer { cleanup(dirPath) }
 
-        try writeBytes([], to: try File.Path("\(dirPath)/test.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/test.txt"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -176,7 +176,7 @@ extension File.Directory.Contents.Test.Unit {
             }
         }
 
-        try writeBytes([], to: try File.Path(filePath))
+        try File.System.Write.Atomic.write([], to: File.Path(filePath))
 
         let path = try File.Path(filePath)
 

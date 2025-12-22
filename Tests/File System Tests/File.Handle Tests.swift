@@ -99,8 +99,13 @@ extension File.Handle.Test.Unit {
                 throw TestError()
             }
             Issue.record("Expected error to be thrown")
-        } catch is TestError {
-            // Expected
+        } catch {
+            // Closure errors are wrapped in .operation with description (error is File.Error)
+            guard case .operation(let description) = error else {
+                Issue.record("Expected .operation case, got \(error)")
+                return
+            }
+            #expect(description.contains("TestError"))
         }
 
         // Verify handle was closed by opening successfully again
@@ -147,10 +152,19 @@ extension File.Handle.Test.Unit {
         let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).txt"
         let filePath = try File.Path(nonExistent)
 
-        #expect(throws: File.Handle.Error.self) {
+        do {
             try File.Handle.withOpen(filePath, mode: .read) { _ in
                 // Should never reach here
             }
+            Issue.record("Expected error to be thrown")
+        } catch {
+            // Open errors are wrapped in .handle (error is File.Error)
+            guard case .handle(let handleError) = error else {
+                Issue.record("Expected .handle case, got \(error)")
+                return
+            }
+            // Verify it's a pathNotFound error
+            #expect(handleError == .pathNotFound(filePath))
         }
     }
 

@@ -20,7 +20,7 @@ extension File.System.Write.Append.Test.Unit {
 
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/append-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
+        try File.System.Write.Atomic.write(content, to: File.Path(path))
         return path
     }
 
@@ -37,9 +37,10 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [1, 2, 3])
         defer { cleanup(path) }
 
-        try File.System.Write.Append.append([4, 5, 6].span, to: File.Path(path))
+        let appendData: [UInt8] = [4, 5, 6]
+        try File.System.Write.Append.append(appendData.span, to: File.Path(path))
 
-        let data = try File.System.Read.Full.read(from: try File.Path(path))
+        let data = try File.System.Read.Full.read(from: File.Path(path))
         #expect(data == [1, 2, 3, 4, 5, 6])
     }
 
@@ -48,11 +49,12 @@ extension File.System.Write.Append.Test.Unit {
         let path = "/tmp/append-new-\(Int.random(in: 0..<Int.max)).bin"
         defer { cleanup(path) }
 
-        try File.System.Write.Append.append([10, 20, 30].span, to: File.Path(path))
+        let appendData: [UInt8] = [10, 20, 30]
+        try File.System.Write.Append.append(appendData.span, to: File.Path(path))
 
         #expect(File.System.Stat.exists(at: try File.Path(path)))
 
-        let data = try File.System.Read.Full.read(from: try File.Path(path))
+        let data = try File.System.Read.Full.read(from: File.Path(path))
         #expect(data == [10, 20, 30])
     }
 
@@ -61,9 +63,10 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [1, 2, 3])
         defer { cleanup(path) }
 
-        try File.System.Write.Append.append([].span, to: File.Path(path))
+        let emptyData: [UInt8] = []
+        try File.System.Write.Append.append(emptyData.span, to: File.Path(path))
 
-        let data = try File.System.Read.Full.read(from: try File.Path(path))
+        let data = try File.System.Read.Full.read(from: File.Path(path))
         #expect(data == [1, 2, 3])
     }
 
@@ -72,11 +75,14 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [])
         defer { cleanup(path) }
 
-        try File.System.Write.Append.append([1, 2].span, to: File.Path(path))
-        try File.System.Write.Append.append([3, 4].span, to: File.Path(path))
-        try File.System.Write.Append.append([5, 6].span, to: File.Path(path))
+        let data1: [UInt8] = [1, 2]
+        let data2: [UInt8] = [3, 4]
+        let data3: [UInt8] = [5, 6]
+        try File.System.Write.Append.append(data1.span, to: File.Path(path))
+        try File.System.Write.Append.append(data2.span, to: File.Path(path))
+        try File.System.Write.Append.append(data3.span, to: File.Path(path))
 
-        let data = try File.System.Read.Full.read(from: try File.Path(path))
+        let data = try File.System.Read.Full.read(from: File.Path(path))
         #expect(data == [1, 2, 3, 4, 5, 6])
     }
 
@@ -85,9 +91,10 @@ extension File.System.Write.Append.Test.Unit {
         let path = try createTempFile(content: [])
         defer { cleanup(path) }
 
-        try File.System.Write.Append.append([1, 2, 3].span, to: File.Path(path))
+        let appendData: [UInt8] = [1, 2, 3]
+        try File.System.Write.Append.append(appendData.span, to: File.Path(path))
 
-        let data = try File.System.Read.Full.read(from: try File.Path(path))
+        let data = try File.System.Read.Full.read(from: File.Path(path))
         #expect(data == [1, 2, 3])
     }
 
