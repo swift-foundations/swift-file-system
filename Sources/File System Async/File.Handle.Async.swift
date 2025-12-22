@@ -107,8 +107,13 @@ extension File.Handle {
             guard !isClosed else {
                 throw .operation(.invalidHandle)
             }
+            
+            struct Buffer: @unchecked Swift.Sendable {
+                let pointer: UnsafeMutableRawBufferPointer
+            }
+            
             // Wrap for Sendable - safe because buffer used synchronously in io.run
-            let buffer = File.Handle.Sendable.Async.Buffer(pointer: destination)
+            let buffer = Buffer(pointer: destination)
             let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Int = { handle in
                 try handle.read(into: buffer.pointer)
             }

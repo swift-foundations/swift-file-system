@@ -303,16 +303,11 @@ extension File.IO {
                         try body(&handle)
                     }
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
+            } catch let laneFailure{
                 // laneFailure is statically Lane.Failure
                 await _checkInHandle(slot.take(), for: id, entry: entry)
                 slot.deallocateRawOnly()
                 throw .lane(laneFailure)
-            } catch {
-                // Should be unreachable if typed throws is working
-                await _checkInHandle(slot.take(), for: id, entry: entry)
-                slot.deallocateRawOnly()
-                throw .lane(.shutdown)
             }
 
             // Check if task was cancelled during execution
@@ -399,11 +394,10 @@ extension File.IO {
                     let raw = UnsafeMutableRawPointer(bitPattern: address)!
                     try Slot.closeHandle(at: raw)
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
+            } catch let laneFailure {
                 throw .lane(laneFailure)
-            } catch {
-                throw .lane(.shutdown)
             }
+            
             switch result {
             case .success:
                 break
@@ -505,7 +499,7 @@ extension File.IO {
         ) async throws(File.IO.Error<E>) -> T {
             do {
                 return try await transaction(id, body)
-            } catch let error as Transaction.Error<E> {
+            } catch let error {
                 switch error {
                 case .lane(let laneFailure):
                     switch laneFailure {
@@ -523,8 +517,6 @@ extension File.IO {
                 case .body(let bodyError):
                     throw .operation(bodyError)
                 }
-            } catch {
-                throw .executor(.shutdownInProgress)
             }
         }
 
@@ -704,7 +696,7 @@ extension File.IO {
             if entry.isOperationInFlight {
                 do {
                     try await _waitForWrite(id: id, entry: entry)
-                } catch is CancellationError {
+                } catch {
                     throw .cancelled
                 }
             }
@@ -731,7 +723,7 @@ extension File.IO {
                         try POSIXStreaming.writeChunk(bytes.span, to: ctx)
                     #endif
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
+            } catch let laneFailure {
                 entry.isOperationInFlight = false
                 entry.waiters.resumeNext()
                 switch laneFailure {
@@ -782,7 +774,7 @@ extension File.IO {
             if entry.isOperationInFlight {
                 do {
                     try await _waitForWrite(id: id, entry: entry)
-                } catch is CancellationError {
+                } catch {
                     throw .cancelled
                 }
             }
@@ -805,7 +797,7 @@ extension File.IO {
                         try POSIXStreaming.commit(ctx)
                     #endif
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
+            } catch let laneFailure {
                 // Commit failed - state is now uncertain
                 entry.state = .closed
                 entry.isOperationInFlight = false

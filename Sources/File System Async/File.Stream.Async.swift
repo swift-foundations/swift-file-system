@@ -5,11 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-extension File {
-    /// Namespace for streaming file APIs.
-    public enum Stream {}
-}
-
 extension File.Stream {
     /// Internal async streaming implementation.
     ///

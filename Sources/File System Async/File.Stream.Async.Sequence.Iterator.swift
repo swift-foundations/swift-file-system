@@ -1,5 +1,5 @@
 //
-//  File.Stream.Byte.Async.Sequence.Iterator.swift
+//  File.Stream.Async.Sequence.Iterator.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
@@ -7,7 +7,7 @@
 
 import AsyncAlgorithms
 
-extension File.Stream.Byte.Async.Sequence {
+extension File.Stream.Async.Sequence {
     /// The async iterator for byte streaming.
     ///
     /// ## Thread Safety
