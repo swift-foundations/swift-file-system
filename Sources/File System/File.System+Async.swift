@@ -11,6 +11,30 @@
 
 // MARK: - Read
 
+extension File.System.Read {
+    /// Stream file bytes asynchronously.
+    ///
+    /// ## Example
+    /// ```swift
+    /// for try await chunk in File.System.Read.bytes(from: path) {
+    ///     process(chunk)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - path: The file path.
+    ///   - options: Byte streaming options.
+    ///   - io: The I/O executor (defaults to `.default`).
+    /// - Returns: An async sequence of byte chunks.
+    public static func bytes(
+        from path: File.Path,
+        options: File.System.Read.Async.Options = .init(),
+        io: File.IO.Executor = .default
+    ) -> File.System.Read.Async.Sequence {
+        Async(io: io).bytes(from: path, options: options)
+    }
+}
+
 extension File.System.Read.Full {
     /// Reads entire file contents asynchronously.
     ///

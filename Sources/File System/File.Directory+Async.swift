@@ -22,7 +22,7 @@ extension File.Directory {
     public static func entries(
         at path: File.Path,
         io: File.IO.Executor = .default
-    ) -> File.Directory.Entries.Async {
+    ) -> File.Directory.Contents.Async {
         Async(io: io).entries(at: path)
     }
 

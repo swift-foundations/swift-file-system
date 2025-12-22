@@ -196,7 +196,7 @@ try await File.System.Write.Atomic.write(data, to: path, options: .init(durabili
 
 ```swift
 // Async byte streaming with backpressure
-for try await chunk in File.Stream.bytes(from: path) {
+for try await chunk in File.System.Read.bytes(from: path) {
     process(chunk)
 }
 ```

@@ -1,11 +1,11 @@
 //
-//  File.Directory.Entries.Async.Iterator.swift
+//  File.Directory.Contents.Async.Iterator.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-extension File.Directory.Entries.Async {
+extension File.Directory.Contents.Async {
     /// Pull-based async iterator for directory entries.
     ///
     /// ## Design
@@ -56,7 +56,7 @@ extension File.Directory.Entries.Async {
             #if DEBUG
                 if case .open = state {
                     print(
-                        "Warning: Entries.Async.Iterator deallocated without terminate() for path: \(path)"
+                        "Warning: Contents.Async.Iterator deallocated without terminate() for path: \(path)"
                     )
                 }
             #endif

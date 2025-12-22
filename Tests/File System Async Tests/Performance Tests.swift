@@ -383,7 +383,7 @@ extension File.IO.Test.Performance {
             .timed(iterations: 5, warmup: 1, trackAllocations: false)
         )
         func stream1MBFile() async throws {
-            let stream = File.Stream.Async(io: executor)
+            let stream = File.System.Read.Async(io: executor)
             var totalBytes = 0
             for try await chunk in stream.bytes(from: file1MB) {
                 totalBytes += chunk.count
@@ -396,8 +396,8 @@ extension File.IO.Test.Performance {
             .timed(iterations: 5, warmup: 1, trackAllocations: false)
         )
         func stream1MBSmallChunks() async throws {
-            let stream = File.Stream.Async(io: executor)
-            let options = File.Stream.Async.Options(chunkSize: 4096)
+            let stream = File.System.Read.Async(io: executor)
+            let options = File.System.Read.Async.Options(chunkSize: 4096)
             var totalBytes = 0
             var chunkCount = 0
             for try await chunk in stream.bytes(from: file1MB, options: options) {
@@ -410,7 +410,7 @@ extension File.IO.Test.Performance {
 
         @Test("Early termination streaming", .timed(iterations: 20, warmup: 3))
         func earlyTermination() async throws {
-            let stream = File.Stream.Async(io: executor)
+            let stream = File.System.Read.Async(io: executor)
             var bytesRead = 0
 
             for try await chunk in stream.bytes(from: file5MB) {
@@ -649,7 +649,7 @@ extension File.IO.Test.Performance {
             .timed(iterations: 3, maxAllocations: 5_000_000)
         )
         func streamingMemoryBounded() async throws {
-            let stream = File.Stream.Async(io: executor)
+            let stream = File.System.Read.Async(io: executor)
 
             // Stream from pre-created file
             var totalBytes = 0

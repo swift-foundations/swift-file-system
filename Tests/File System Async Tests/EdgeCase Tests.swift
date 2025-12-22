@@ -433,7 +433,7 @@ extension File.IO.Test.EdgeCase {
         try createFile(at: path)
 
         var chunks: [[UInt8]] = []
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         for try await chunk in stream {
             chunks.append(chunk)
         }
@@ -453,7 +453,7 @@ extension File.IO.Test.EdgeCase {
         try createFile(at: path, content: data)
 
         var allBytes: [UInt8] = []
-        let stream = File.Stream.Async(io: io).bytes(
+        let stream = File.System.Read.Async(io: io).bytes(
             from: path,
             options: .init(chunkSize: 1024)
         )
@@ -477,7 +477,7 @@ extension File.IO.Test.EdgeCase {
 
         var chunkCount = 0
         var allBytes: [UInt8] = []
-        let stream = File.Stream.Async(io: io).bytes(from: path, options: .init(chunkSize: 1))
+        let stream = File.System.Read.Async(io: io).bytes(from: path, options: .init(chunkSize: 1))
         for try await chunk in stream {
             chunkCount += 1
             allBytes.append(contentsOf: chunk)
@@ -494,7 +494,7 @@ extension File.IO.Test.EdgeCase {
 
         let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         let iterator = stream.makeAsyncIterator()
 
         do {
@@ -522,7 +522,7 @@ extension File.IO.Test.EdgeCase {
         try createFile(at: path, content: data)
 
         var bytesRead = 0
-        let stream = File.Stream.Async(io: io).bytes(from: path, options: .init(chunkSize: 100))
+        let stream = File.System.Read.Async(io: io).bytes(from: path, options: .init(chunkSize: 100))
         let iterator = stream.makeAsyncIterator()
         while let chunk = try await iterator.next() {
             bytesRead += chunk.count
@@ -1029,7 +1029,7 @@ extension File.IO.Test.EdgeCase {
             for _ in 0..<10 {
                 group.addTask {
                     var allBytes: [UInt8] = []
-                    let stream = File.Stream.Async(io: io).bytes(from: path)
+                    let stream = File.System.Read.Async(io: io).bytes(from: path)
                     for try await chunk in stream {
                         allBytes.append(contentsOf: chunk)
                     }

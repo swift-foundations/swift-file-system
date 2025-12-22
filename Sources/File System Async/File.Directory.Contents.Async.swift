@@ -1,11 +1,11 @@
 //
-//  File.Directory.Entries.Async.swift
+//  File.Directory.Contents.Async.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-// MARK: - Entries API
+// MARK: - Contents API
 
 extension File.Directory.Async {
     /// Returns an async sequence of directory entries.
@@ -26,19 +26,19 @@ extension File.Directory.Async {
     /// - Breaking from the loop triggers cleanup via deinit (best-effort)
     /// - Use `iterator.terminate()` for explicit cleanup if needed
     /// - Resources are always cleaned up regardless of exit path
-    public func entries(at path: File.Path) -> File.Directory.Entries.Async {
-        File.Directory.Entries.Async(path: path, io: io, batchSize: 128)
+    public func entries(at path: File.Path) -> File.Directory.Contents.Async {
+        File.Directory.Contents.Async(path: path, io: io, batchSize: 128)
     }
 
     /// Internal: Returns an async sequence with configurable batch size for benchmarking.
-    internal func entries(at path: File.Path, batchSize: Int) -> File.Directory.Entries.Async {
-        File.Directory.Entries.Async(path: path, io: io, batchSize: batchSize)
+    internal func entries(at path: File.Path, batchSize: Int) -> File.Directory.Contents.Async {
+        File.Directory.Contents.Async(path: path, io: io, batchSize: batchSize)
     }
 }
 
-// MARK: - Entries AsyncSequence
+// MARK: - Contents AsyncSequence
 
-extension File.Directory.Entries {
+extension File.Directory.Contents {
     /// An AsyncSequence of directory entries with explicit lifecycle control.
     ///
     /// ## Design
