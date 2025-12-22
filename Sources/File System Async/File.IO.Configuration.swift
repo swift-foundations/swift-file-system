@@ -5,8 +5,6 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
-import Dispatch
-
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
@@ -23,12 +21,6 @@ extension File.IO {
 
         /// Maximum number of jobs in the queue.
         public var queueLimit: Int
-
-        /// Thread model for worker execution.
-        ///
-        /// - `.cooperative`: Uses `Task.detached` (default, backward compatible)
-        /// - `.dedicated`: Uses dedicated `DispatchQueue` instances
-        public var threadModel: Thread.Model
 
         /// Default number of workers based on system resources.
         public static var defaultWorkerCount: Int {
@@ -48,15 +40,12 @@ extension File.IO {
         /// - Parameters:
         ///   - workers: Number of concurrent workers (default: active processor count).
         ///   - queueLimit: Maximum queue size (default: 10,000).
-        ///   - threadModel: Thread model for execution (default: `.cooperative`).
         public init(
             workers: Int? = nil,
-            queueLimit: Int = 10_000,
-            threadModel: Thread.Model = .cooperative
+            queueLimit: Int = 10_000
         ) {
             self.workers = max(1, workers ?? Self.defaultWorkerCount)
             self.queueLimit = max(1, queueLimit)
-            self.threadModel = threadModel
         }
 
         /// Default configuration for the shared executor.
@@ -64,11 +53,9 @@ extension File.IO {
         /// Conservative settings designed for the common case:
         /// - Workers: half of available cores (minimum 2)
         /// - Queue limit: 256 (bounded but reasonable)
-        /// - Thread model: cooperative (non-blocking for most I/O)
         public static let `default` = Self(
             workers: max(2, defaultWorkerCount / 2),
-            queueLimit: 256,
-            threadModel: .cooperative
+            queueLimit: 256
         )
     }
 }
