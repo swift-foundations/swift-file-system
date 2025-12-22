@@ -171,7 +171,7 @@ extension File.IO.Blocking.Threads {
                 nil
             )
             return ThreadHandle(handle: threadHandle!)
-        #else
+        #elseif canImport(Darwin)
             var thread: pthread_t?
             let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
             context.initialize(to: body)
@@ -180,7 +180,7 @@ extension File.IO.Blocking.Threads {
                 &thread,
                 nil,
                 { context in
-                    let body = context.assumingMemoryBound(to: (@Sendable () -> Void).self)
+                    let body = context!.assumingMemoryBound(to: (@Sendable () -> Void).self)
                     let work = body.move()
                     body.deallocate()
                     work()
@@ -190,6 +190,26 @@ extension File.IO.Blocking.Threads {
             )
 
             return ThreadHandle(thread: thread!)
+        #else
+            // Linux: pthread_t is non-optional
+            var thread: pthread_t = 0
+            let context = UnsafeMutablePointer<(@Sendable () -> Void)>.allocate(capacity: 1)
+            context.initialize(to: body)
+
+            pthread_create(
+                &thread,
+                nil,
+                { context in
+                    let body = context!.assumingMemoryBound(to: (@Sendable () -> Void).self)
+                    let work = body.move()
+                    body.deallocate()
+                    work()
+                    return nil
+                },
+                context
+            )
+
+            return ThreadHandle(thread: thread)
         #endif
     }
 }
