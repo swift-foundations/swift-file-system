@@ -265,7 +265,10 @@ extension File.IO.Test.EdgeCase {
         var currentPath = root
         for i in 0..<10 {
             let subPath = try File.Path("\(currentPath.string)/level-\(i)")
-            try File.System.Create.Directory.create(at: subPath, options: .init(createIntermediates: true))
+            try File.System.Create.Directory.create(
+                at: subPath,
+                options: .init(createIntermediates: true)
+            )
             // Add a file at each level
             let filePath = try File.Path("\(subPath.string)/file.txt")
             try createFile(at: filePath)
@@ -522,7 +525,10 @@ extension File.IO.Test.EdgeCase {
         try createFile(at: path, content: data)
 
         var bytesRead = 0
-        let stream = File.System.Read.Async(io: io).bytes(from: path, options: .init(chunkSize: 100))
+        let stream = File.System.Read.Async(io: io).bytes(
+            from: path,
+            options: .init(chunkSize: 100)
+        )
         let iterator = stream.makeAsyncIterator()
         while let chunk = try await iterator.next() {
             bytesRead += chunk.count
@@ -599,7 +605,10 @@ extension File.IO.Test.EdgeCase {
         // Create some structure
         for i in 0..<5 {
             let subPath = try File.Path("\(root.string)/dir-\(i)")
-            try File.System.Create.Directory.create(at: subPath, options: .init(createIntermediates: true))
+            try File.System.Create.Directory.create(
+                at: subPath,
+                options: .init(createIntermediates: true)
+            )
             for j in 0..<10 {
                 let filePath = try File.Path("\(subPath.string)/file-\(j).txt")
                 try createFile(at: filePath)
@@ -707,7 +716,10 @@ extension File.IO.Test.EdgeCase {
         // Create structure with enough entries to span multiple batches
         for i in 0..<10 {
             let subPath = try File.Path("\(root.string)/dir-\(i)")
-            try File.System.Create.Directory.create(at: subPath, options: .init(createIntermediates: true))
+            try File.System.Create.Directory.create(
+                at: subPath,
+                options: .init(createIntermediates: true)
+            )
             // 20 files per directory = 200 files + 10 dirs = 210 entries total
             for j in 0..<20 {
                 let filePath = try File.Path("\(subPath.string)/file-\(j).txt")
@@ -829,7 +841,10 @@ extension File.IO.Test.EdgeCase {
         // 25 directories with 40 files each = 1000 files + 25 dirs = 1025 entries
         for i in 0..<25 {
             let subPath = try File.Path("\(root.string)/dir-\(padded(i, width: 2))")
-            try File.System.Create.Directory.create(at: subPath, options: .init(createIntermediates: true))
+            try File.System.Create.Directory.create(
+                at: subPath,
+                options: .init(createIntermediates: true)
+            )
             for j in 0..<40 {
                 let filePath = try File.Path(
                     "\(subPath.string)/file-\(padded(j, width: 2)).txt"

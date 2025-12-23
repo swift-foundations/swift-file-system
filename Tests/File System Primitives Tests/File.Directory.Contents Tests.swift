@@ -264,7 +264,11 @@ extension File.Directory.Contents.Test.Performance {
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
             for i in 0..<100 {
                 let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+                try File.System.Write.Atomic.write(
+                    fileData.span,
+                    to: filePath,
+                    options: writeOptions
+                )
             }
         }
 

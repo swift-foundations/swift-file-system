@@ -16,7 +16,9 @@ extension File.Directory.Contents {
     /// - Parameter path: The path to the directory.
     /// - Returns: An array of file names.
     /// - Throws: `Error` if the directory cannot be opened.
-    public static func names(at path: File.Path) throws(File.Directory.Contents.Error) -> [File.Name] {
+    public static func names(
+        at path: File.Path
+    ) throws(File.Directory.Contents.Error) -> [File.Name] {
         #if os(Windows)
             // Windows uses the existing _listWindows and extracts names
             return try _listWindows(at: path).map(\.name)

@@ -30,7 +30,9 @@ extension File.Directory.Contents {
     /// - Parameter path: The path to the directory.
     /// - Returns: An array of directory entries.
     /// - Throws: `File.Directory.Contents.Error` on failure.
-    public static func list(at path: File.Path) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
+    public static func list(
+        at path: File.Path
+    ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
         #if os(Windows)
             return try _listWindows(at: path)
         #else
@@ -43,8 +45,9 @@ extension File.Directory.Contents {
 
 #if !os(Windows)
     extension File.Directory.Contents {
-        internal static func _listPOSIX(at path: File.Path) throws(File.Directory.Contents.Error) -> [File.Directory.Entry]
-        {
+        internal static func _listPOSIX(
+            at path: File.Path
+        ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
             // Verify it's a directory
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {

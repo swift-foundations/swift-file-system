@@ -180,7 +180,9 @@ final class DirectoryIterationPerformanceTests {
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print("SYNC LIST: \(totalFiles) files in \((elapsed * 1000).formatted(.number.precision(3)))ms")
+        print(
+            "SYNC LIST: \(totalFiles) files in \((elapsed * 1000).formatted(.number.precision(3)))ms"
+        )
         print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     }

@@ -138,7 +138,8 @@
             // FILETIME is 100-nanosecond intervals since January 1, 1601
             // Unix epoch is January 1, 1970
             let intervals = Int64(ft.dwHighDateTime) << 32 | Int64(ft.dwLowDateTime)
-            let unixIntervals = intervals - 116_444_736_000_000_000  // Difference between 1601 and 1970 in 100ns
+            // Difference between 1601 and 1970 in 100ns
+            let unixIntervals = intervals - 116_444_736_000_000_000
             let seconds = Int(unixIntervals / 10_000_000)
             let nanoseconds = Int((unixIntervals % 10_000_000) * 100)
             return Time(__unchecked: (), secondsSinceEpoch: seconds, nanoseconds: nanoseconds)

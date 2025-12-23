@@ -45,7 +45,7 @@ extension File.IO.Executor.Test.Unit {
         struct TestError: Error, Equatable {}
 
         do {
-            try await executor.run { () throws(TestError) -> Void in throw TestError() }
+            try await executor.run { () throws(TestError) in throw TestError() }
             Issue.record("Expected error to be thrown")
         } catch {
             // error is File.IO.Error<TestError>

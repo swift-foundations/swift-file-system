@@ -18,8 +18,8 @@
   },
   "rules": {
     "AllPublicDeclarationsHaveDocumentation": false,
-    "AlwaysUseLowerCamelCase": true,
-    "AmbiguousTrailingClosureOverload": true,
+    "AlwaysUseLowerCamelCase": false,
+    "AmbiguousTrailingClosureOverload": false,
     "BeginDocumentationCommentWithOneLineSummary": false,
     "DoNotUseSemicolons": true,
     "DontRepeatTypeInStaticProperties": true,

@@ -15,13 +15,15 @@ extension File.System.Read.Async.Sequence {
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
         private let channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
-        private var channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
+        private var channelIterator:
+            AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
         private var producerTask: Task<Void, Never>?
         private var isFinished = false
 
         private init(
             channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>,
-            channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
+            channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
+                .AsyncIterator
         ) {
             self.channel = channel
             self.channelIterator = channelIterator
@@ -111,7 +113,9 @@ extension File.System.Read.Async.Sequence {
                 } catch is CancellationError {
                     return .failure(.cancelled)
                 } catch {
-                    return .failure(.operation(.openFailed(errno: 0, message: "Open failed: \(error)")))
+                    return .failure(
+                        .operation(.openFailed(errno: 0, message: "Open failed: \(error)"))
+                    )
                 }
             }()
 

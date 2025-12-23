@@ -138,8 +138,10 @@ extension File.System.Metadata.Timestamps.Test.Unit {
 
         let filePath = try File.Path(path)
 
-        let accessTime = Time(__unchecked: (), secondsSinceEpoch: 1_577_836_800, nanoseconds: 0)  // Jan 1, 2020
-        let modTime = Time(__unchecked: (), secondsSinceEpoch: 1_609_459_200, nanoseconds: 0)  // Jan 1, 2021
+        // Jan 1, 2020
+        let accessTime = Time(__unchecked: (), secondsSinceEpoch: 1_577_836_800, nanoseconds: 0)
+        // Jan 1, 2021
+        let modTime = Time(__unchecked: (), secondsSinceEpoch: 1_609_459_200, nanoseconds: 0)
 
         let timestamps = File.System.Metadata.Timestamps(
             accessTime: accessTime,

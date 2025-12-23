@@ -56,7 +56,10 @@ extension File.System.Delete {
     ///   - path: The path to delete.
     ///   - options: Delete options (e.g., recursive).
     /// - Throws: `File.System.Delete.Error` on failure.
-    public static func delete(at path: File.Path, options: Options = .init()) throws(File.System.Delete.Error) {
+    public static func delete(
+        at path: File.Path,
+        options: Options = .init()
+    ) throws(File.System.Delete.Error) {
         #if os(Windows)
             try _deleteWindows(at: path, options: options)
         #else

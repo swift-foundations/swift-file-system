@@ -36,19 +36,21 @@ extension File.IO.Blocking {
         /// The run implementation.
         /// - Operation closure returns boxed value (never throws)
         /// - Lane throws only Lane.Failure for infrastructure failures
-        private let _run: @Sendable (
-            Deadline?,
-            @Sendable @escaping () -> UnsafeMutableRawPointer  // Returns boxed value
-        ) async throws(Lane.Failure) -> UnsafeMutableRawPointer
+        private let _run:
+            @Sendable (
+                Deadline?,
+                @Sendable @escaping () -> UnsafeMutableRawPointer  // Returns boxed value
+            ) async throws(Lane.Failure) -> UnsafeMutableRawPointer
 
         private let _shutdown: @Sendable () async -> Void
 
         public init(
             capabilities: Capabilities,
-            run: @escaping @Sendable (
-                Deadline?,
-                @Sendable @escaping () -> UnsafeMutableRawPointer
-            ) async throws(Lane.Failure) -> UnsafeMutableRawPointer,
+            run:
+                @escaping @Sendable (
+                    Deadline?,
+                    @Sendable @escaping () -> UnsafeMutableRawPointer
+                ) async throws(Lane.Failure) -> UnsafeMutableRawPointer,
             shutdown: @escaping @Sendable () async -> Void
         ) {
             self.capabilities = capabilities
@@ -100,7 +102,9 @@ extension File.IO.Blocking {
                     guard let e = error as? E else {
                         // Unreachable if typed-throws is respected by the compiler.
                         // Trap to surface invariant violations during development.
-                        fatalError("Lane.run: typed-throws invariant violated. Expected \(E.self), got \(type(of: error))")
+                        fatalError(
+                            "Lane.run: typed-throws invariant violated. Expected \(E.self), got \(type(of: error))"
+                        )
                     }
                     return .failure(e)
                 }
@@ -142,13 +146,16 @@ extension File.IO.Blocking {
         ///
         /// **Never allocate before enqueue.** Allocation happens inside the job body.
 
-        private static func box<T, E: Swift.Error>(_ result: Result<T, E>) -> UnsafeMutableRawPointer {
+        private static func box<T, E: Swift.Error>(
+            _ result: Result<T, E>
+        ) -> UnsafeMutableRawPointer {
             let ptr = UnsafeMutablePointer<Result<T, E>>.allocate(capacity: 1)
             ptr.initialize(to: result)
             return UnsafeMutableRawPointer(ptr)
         }
 
-        private static func unbox<T, E: Swift.Error>(_ ptr: UnsafeMutableRawPointer) -> Result<T, E> {
+        private static func unbox<T, E: Swift.Error>(_ ptr: UnsafeMutableRawPointer) -> Result<T, E>
+        {
             let typed = ptr.assumingMemoryBound(to: Result<T, E>.self)
             let result = typed.move()
             typed.deallocate()
@@ -322,7 +329,11 @@ extension File.IO.Blocking.Lane {
         let impl = File.IO.Blocking.Threads(options)
         return Self(
             capabilities: impl.capabilities,
-            run: { (deadline: File.IO.Blocking.Deadline?, operation: @Sendable @escaping () -> UnsafeMutableRawPointer) async throws(File.IO.Blocking.Lane.Failure) -> UnsafeMutableRawPointer in
+            run: {
+                (
+                    deadline: File.IO.Blocking.Deadline?,
+                    operation: @Sendable @escaping () -> UnsafeMutableRawPointer
+                ) async throws(File.IO.Blocking.Lane.Failure) -> UnsafeMutableRawPointer in
                 try await impl.runBoxed(deadline: deadline, operation)
             },
             shutdown: { await impl.shutdown() }

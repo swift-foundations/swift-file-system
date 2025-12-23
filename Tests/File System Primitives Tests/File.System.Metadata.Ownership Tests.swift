@@ -9,6 +9,8 @@ import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
+@testable import File_System_Primitives
+
 #if canImport(Darwin)
     import Darwin
 #elseif canImport(Glibc)
@@ -16,8 +18,6 @@ import Testing
 #elseif canImport(Musl)
     import Musl
 #endif
-
-@testable import File_System_Primitives
 
 extension File.System.Metadata.Ownership {
     #TestSuites

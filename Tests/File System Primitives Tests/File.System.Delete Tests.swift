@@ -38,9 +38,18 @@ extension File.System.Delete.Test.Unit {
             options: .init(createIntermediates: true)
         )
         // Add some files
-        try File.System.Write.Atomic.write(Array("file1".utf8), to: File.Path("\(basePath)/file1.txt"))
-        try File.System.Write.Atomic.write(Array("file2".utf8), to: File.Path("\(basePath)/a/file2.txt"))
-        try File.System.Write.Atomic.write(Array("file3".utf8), to: File.Path("\(basePath)/a/b/file3.txt"))
+        try File.System.Write.Atomic.write(
+            Array("file1".utf8),
+            to: File.Path("\(basePath)/file1.txt")
+        )
+        try File.System.Write.Atomic.write(
+            Array("file2".utf8),
+            to: File.Path("\(basePath)/a/file2.txt")
+        )
+        try File.System.Write.Atomic.write(
+            Array("file3".utf8),
+            to: File.Path("\(basePath)/a/b/file3.txt")
+        )
         return basePath
     }
 

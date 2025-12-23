@@ -21,7 +21,9 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Create.Directory.Error>` on failure.
-    public func create(recursive: Bool = false) async throws(File.IO.Error<File.System.Create.Directory.Error>) {
+    public func create(
+        recursive: Bool = false
+    ) async throws(File.IO.Error<File.System.Create.Directory.Error>) {
         let options = File.System.Create.Directory.Options(createIntermediates: recursive)
         try await File.System.Create.Directory.create(at: path, options: options)
     }
@@ -39,7 +41,9 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Delete.Error>` on failure.
-    public func delete(recursive: Bool = false) async throws(File.IO.Error<File.System.Delete.Error>) {
+    public func delete(
+        recursive: Bool = false
+    ) async throws(File.IO.Error<File.System.Delete.Error>) {
         let options = File.System.Delete.Options(recursive: recursive)
         try await File.System.Delete.delete(at: path, options: options)
     }
@@ -258,7 +262,9 @@ extension File.Directory {
     ///
     /// Async variant. Use `entries()` for true streaming iteration.
     /// - Throws: `File.IO.Error<File.Directory.Contents.Error>` on failure.
-    public func contents() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
+    public func contents() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File
+        .Directory.Entry]
+    {
         try await File.Directory.Contents.list(at: path)
     }
 
@@ -296,7 +302,9 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.Directory.Contents.Error>` on failure.
-    public func subdirectories() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory] {
+    public func subdirectories() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File
+        .Directory]
+    {
         try await contents()
             .filter { $0.type == .directory }
             .compactMap { $0.pathIfValid.map { File.Directory($0) } }

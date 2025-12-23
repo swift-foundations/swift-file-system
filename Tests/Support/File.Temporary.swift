@@ -5,8 +5,8 @@
 //  Test support for temporary files with automatic cleanup.
 //
 
-public import File_System_Primitives
 import File_System
+public import File_System_Primitives
 
 extension File {
     /// Wrapper for scoped temporary file operations.

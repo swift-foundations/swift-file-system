@@ -84,105 +84,115 @@ extension File.IO.Blocking.Threads {
         // Use non-throwing continuation - result comes through return value
         let result: Result<UnsafeMutableRawPointer, File.IO.Blocking.Lane.Failure> =
             await withCheckedContinuation {
-                (continuation: CheckedContinuation<Result<UnsafeMutableRawPointer, File.IO.Blocking.Lane.Failure>, Never>) in
+                (
+                    continuation: CheckedContinuation<
+                        Result<UnsafeMutableRawPointer, File.IO.Blocking.Lane.Failure>, Never
+                    >
+                ) in
 
-            let job = Job.Instance(operation: operation) { ptr in
-                continuation.resume(returning: .success(ptr))
-            }
+                let job = Job.Instance(operation: operation) { ptr in
+                    continuation.resume(returning: .success(ptr))
+                }
 
-            state.lock.lock()
+                state.lock.lock()
 
-            // Double-check shutdown
-            if state.isShutdown {
-                state.lock.unlock()
-                continuation.resume(returning: .failure(.shutdown))
-                return
-            }
+                // Double-check shutdown
+                if state.isShutdown {
+                    state.lock.unlock()
+                    continuation.resume(returning: .failure(.shutdown))
+                    return
+                }
 
-            // Try to enqueue directly
-            if !state.queue.isFull {
-                state.queue.enqueue(job)
-                state.lock.signal()
-                state.lock.unlock()
-                return
-            }
+                // Try to enqueue directly
+                if !state.queue.isFull {
+                    state.queue.enqueue(job)
+                    state.lock.signal()
+                    state.lock.unlock()
+                    return
+                }
 
-            // Queue is full - handle based on backpressure policy
-            switch options.backpressure {
-            case .throw:
-                state.lock.unlock()
-                continuation.resume(returning: .failure(.queueFull))
+                // Queue is full - handle based on backpressure policy
+                switch options.backpressure {
+                case .throw:
+                    state.lock.unlock()
+                    continuation.resume(returning: .failure(.queueFull))
 
-            case .suspend:
-                // Create pending job and wait for capacity
-                let token = state.generateToken()
-                state.lock.unlock()
+                case .suspend:
+                    // Create pending job and wait for capacity
+                    let token = state.generateToken()
+                    state.lock.unlock()
 
-                // Use Task to handle the async wait
-                Task { [state, deadline] in
-                    // Non-throwing continuation for pending wait
-                    let waitResult: Result<Void, File.IO.Blocking.Lane.Failure> =
-                        await withCheckedContinuation {
-                            (pendingCont: CheckedContinuation<Result<Void, File.IO.Blocking.Lane.Failure>, Never>) in
+                    // Use Task to handle the async wait
+                    Task { [state, deadline] in
+                        // Non-throwing continuation for pending wait
+                        let waitResult: Result<Void, File.IO.Blocking.Lane.Failure> =
+                            await withCheckedContinuation {
+                                (
+                                    pendingCont: CheckedContinuation<
+                                        Result<Void, File.IO.Blocking.Lane.Failure>, Never
+                                    >
+                                ) in
 
-                        state.lock.lock()
-
-                        // Check if shutdown happened while we were setting up
-                        if state.isShutdown {
-                            state.lock.unlock()
-                            pendingCont.resume(returning: .failure(.shutdown))
-                            return
-                        }
-
-                        // Check if capacity became available
-                        if !state.queue.isFull {
-                            state.queue.enqueue(job)
-                            state.lock.signal()
-                            state.lock.unlock()
-                            pendingCont.resume(returning: .success(()))
-                            return
-                        }
-
-                        // Still full - add to pending queue
-                        let pending = Pending.Job(
-                            token: token,
-                            job: job,
-                            continuation: pendingCont
-                        )
-                        state.pendingQueue.append(pending)
-                        state.lock.unlock()
-
-                        // Handle deadline in a separate task if needed
-                        if let deadline = deadline {
-                            Task {
-                                let remaining = deadline.remainingNanoseconds
-                                if remaining > 0 {
-                                    try? await Task.sleep(nanoseconds: remaining)
-                                }
-                                // Check if still pending
                                 state.lock.lock()
-                                if let cancelled = state.pendingQueue.cancel(token: token) {
+
+                                // Check if shutdown happened while we were setting up
+                                if state.isShutdown {
                                     state.lock.unlock()
-                                    cancelled.continuation.resume(returning: .failure(.deadlineExceeded))
-                                } else {
+                                    pendingCont.resume(returning: .failure(.shutdown))
+                                    return
+                                }
+
+                                // Check if capacity became available
+                                if !state.queue.isFull {
+                                    state.queue.enqueue(job)
+                                    state.lock.signal()
                                     state.lock.unlock()
+                                    pendingCont.resume(returning: .success(()))
+                                    return
+                                }
+
+                                // Still full - add to pending queue
+                                let pending = Pending.Job(
+                                    token: token,
+                                    job: job,
+                                    continuation: pendingCont
+                                )
+                                state.pendingQueue.append(pending)
+                                state.lock.unlock()
+
+                                // Handle deadline in a separate task if needed
+                                if let deadline = deadline {
+                                    Task {
+                                        let remaining = deadline.remainingNanoseconds
+                                        if remaining > 0 {
+                                            try? await Task.sleep(nanoseconds: remaining)
+                                        }
+                                        // Check if still pending
+                                        state.lock.lock()
+                                        if let cancelled = state.pendingQueue.cancel(token: token) {
+                                            state.lock.unlock()
+                                            cancelled.continuation.resume(
+                                                returning: .failure(.deadlineExceeded)
+                                            )
+                                        } else {
+                                            state.lock.unlock()
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
 
-                    // Check for failure in waiting
-                    switch waitResult {
-                    case .success:
-                        // Job was enqueued - the job itself will resume the outer continuation
-                        break
-                    case .failure(let failure):
-                        // Waiting failed - resume outer continuation with failure
-                        continuation.resume(returning: .failure(failure))
+                        // Check for failure in waiting
+                        switch waitResult {
+                        case .success:
+                            // Job was enqueued - the job itself will resume the outer continuation
+                            break
+                        case .failure(let failure):
+                            // Waiting failed - resume outer continuation with failure
+                            continuation.resume(returning: .failure(failure))
+                        }
                     }
                 }
             }
-        }
 
         return try result.get()
     }
@@ -285,4 +295,3 @@ extension File.IO.Blocking.Threads {
         case `throw`
     }
 }
-

@@ -9,11 +9,11 @@ import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
+@testable import File_System_Primitives
+
 #if canImport(Foundation)
     import Foundation
 #endif
-
-@testable import File_System_Primitives
 
 extension File.System.Copy {
     #TestSuites

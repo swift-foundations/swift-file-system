@@ -220,7 +220,9 @@ extension File.Handle {
     /// - Parameter buffer: Destination buffer. Must remain valid for duration of call.
     /// - Returns: Number of bytes read (0 at EOF).
     /// - Note: May return fewer bytes than buffer size (partial read).
-    public mutating func read(into buffer: UnsafeMutableRawBufferPointer) throws(File.Handle.Error) -> Int {
+    public mutating func read(
+        into buffer: UnsafeMutableRawBufferPointer
+    ) throws(File.Handle.Error) -> Int {
         guard _descriptor.isValid else { throw .invalidHandle }
         guard !buffer.isEmpty else { return 0 }
 

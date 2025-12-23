@@ -106,7 +106,8 @@ extension File.System.Write.Streaming {
         to path: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) where Chunks.Element == [UInt8] {
+    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>)
+    where Chunks.Element == [UInt8] {
         try await io.run { () throws(File.System.Write.Streaming.Error) in
             try write(chunks, to: path, options: options)
         }
@@ -259,7 +260,9 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.info(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run {
+                try File.System.Stat.info(at: path)
+            }
             return metadata.type == .regular
         } catch {
             return false
@@ -272,7 +275,9 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.info(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run {
+                try File.System.Stat.info(at: path)
+            }
             return metadata.type == .directory
         } catch {
             return false
@@ -285,7 +290,9 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.lstatInfo(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run {
+                try File.System.Stat.lstatInfo(at: path)
+            }
             return metadata.type == .symbolicLink
         } catch {
             return false

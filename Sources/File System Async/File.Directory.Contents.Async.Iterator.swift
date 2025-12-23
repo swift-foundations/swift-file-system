@@ -98,7 +98,8 @@ extension File.Directory.Contents.Async {
         private func open() async throws(File.IO.Error<File.Directory.Iterator.Error>) {
             // INVARIANT: IteratorBox only touched inside io.run
             // Explicit typed throws in closure signature for proper inference
-            let openOperation: @Sendable () throws(File.Directory.Iterator.Error) -> Box = { [path] () throws(File.Directory.Iterator.Error) -> Box in
+            let openOperation: @Sendable () throws(File.Directory.Iterator.Error) -> Box = {
+                [path] () throws(File.Directory.Iterator.Error) -> Box in
                 try Box(File.Directory.Iterator.open(at: path))
             }
             let box = try await io.run(openOperation)
@@ -116,9 +117,13 @@ extension File.Directory.Contents.Async {
                 batch.reserveCapacity(batchSize)
                 for _ in 0..<batchSize {
                     // withValue returns nil if box is closed, next() returns nil at EOF
-                    guard let maybeEntry = try box.withValue({ (iter: inout File.Directory.Iterator) throws(File.Directory.Iterator.Error) in
-                        try iter.next()
-                    }),
+                    guard
+                        let maybeEntry = try box.withValue({
+                            (
+                                iter: inout File.Directory.Iterator
+                            ) throws(File.Directory.Iterator.Error) in
+                            try iter.next()
+                        }),
                         let entry = maybeEntry
                     else { break }
                     batch.append(entry)

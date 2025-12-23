@@ -195,18 +195,23 @@ extension File.Directory.Walk.Async.Sequence {
                     return .success(box)
                 } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
                     // Map iterator error to walk error
-                    return .failure(error.mapOperation { iteratorError in
-                        switch iteratorError {
-                        case .pathNotFound(let p): return .pathNotFound(p)
-                        case .permissionDenied(let p): return .permissionDenied(p)
-                        case .notADirectory(let p): return .notADirectory(p)
-                        case .readFailed(let errno, let msg): return .walkFailed(errno: errno, message: msg)
+                    return .failure(
+                        error.mapOperation { iteratorError in
+                            switch iteratorError {
+                            case .pathNotFound(let p): return .pathNotFound(p)
+                            case .permissionDenied(let p): return .permissionDenied(p)
+                            case .notADirectory(let p): return .notADirectory(p)
+                            case .readFailed(let errno, let msg):
+                                return .walkFailed(errno: errno, message: msg)
+                            }
                         }
-                    })
+                    )
                 } catch is CancellationError {
                     return .failure(.cancelled)
                 } catch {
-                    return .failure(.operation(.walkFailed(errno: 0, message: "Open failed: \(error)")))
+                    return .failure(
+                        .operation(.walkFailed(errno: 0, message: "Open failed: \(error)"))
+                    )
                 }
             }()
 
@@ -239,14 +244,19 @@ extension File.Directory.Walk.Async.Sequence {
                     }
 
                     // Read batch of entries via single io.run call
-                    let batch: [File.Directory.Entry] = try await io.run { () throws(File.Directory.Iterator.Error) in
+                    let batch: [File.Directory.Entry] = try await io.run {
+                        () throws(File.Directory.Iterator.Error) in
                         var entries: [File.Directory.Entry] = []
                         entries.reserveCapacity(batchSize)
                         for _ in 0..<batchSize {
                             // withValue returns nil if box is closed, next() returns nil at EOF
-                            guard let maybeEntry = try box.withValue({ (iter: inout File.Directory.Iterator) throws(File.Directory.Iterator.Error) in
-                                try iter.next()
-                            }),
+                            guard
+                                let maybeEntry = try box.withValue({
+                                    (
+                                        iter: inout File.Directory.Iterator
+                                    ) throws(File.Directory.Iterator.Error) in
+                                    try iter.next()
+                                }),
                                 let entry = maybeEntry
                             else { break }
                             entries.append(entry)
@@ -280,10 +290,12 @@ extension File.Directory.Walk.Async.Sequence {
                                 continue
                             case .stopAndThrow:
                                 await authority.fail(
-                                    with: .operation(.undecodableEntry(
-                                        parent: entry.parent,
-                                        name: entry.name
-                                    ))
+                                    with: .operation(
+                                        .undecodableEntry(
+                                            parent: entry.parent,
+                                            name: entry.name
+                                        )
+                                    )
                                 )
                             }
                             continue
@@ -313,12 +325,14 @@ extension File.Directory.Walk.Async.Sequence {
                     }
                 }
             } catch {
-                let walkError: File.IO.Error<File.Directory.Walk.Error> = error.mapOperation { iteratorError in
+                let walkError: File.IO.Error<File.Directory.Walk.Error> = error.mapOperation {
+                    iteratorError in
                     switch iteratorError {
                     case .pathNotFound(let p): return .pathNotFound(p)
                     case .permissionDenied(let p): return .permissionDenied(p)
                     case .notADirectory(let p): return .notADirectory(p)
-                    case .readFailed(let errno, let msg): return .walkFailed(errno: errno, message: msg)
+                    case .readFailed(let errno, let msg):
+                        return .walkFailed(errno: errno, message: msg)
                     }
                 }
                 await authority.fail(with: walkError)

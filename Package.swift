@@ -12,7 +12,7 @@ let package = Package(
     ],
     products: [
         // Only File System is public; Primitives and Async are internal
-        .library(name: "File System", targets: ["File System"]),
+        .library(name: "File System", targets: ["File System"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-system", from: "1.4.0"),
@@ -98,9 +98,10 @@ let package = Package(
 
 for target in package.targets where ![.system, .binary, .plugin].contains(target.type) {
     let existing = target.swiftSettings ?? []
-    target.swiftSettings = existing + [
-        .enableUpcomingFeature("ExistentialAny"),
-        .enableUpcomingFeature("InternalImportsByDefault"),
-        .enableUpcomingFeature("MemberImportVisibility"),
-    ]
+    target.swiftSettings =
+        existing + [
+            .enableUpcomingFeature("ExistentialAny"),
+            .enableUpcomingFeature("InternalImportsByDefault"),
+            .enableUpcomingFeature("MemberImportVisibility"),
+        ]
 }

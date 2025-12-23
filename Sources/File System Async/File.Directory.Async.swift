@@ -23,10 +23,13 @@ extension File.Directory {
         }
 
         /// Lists directory contents (non-streaming).
-        public func contents(at path: File.Path) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
-            let operation: @Sendable () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] = {
-                try File.Directory.Contents.list(at: path)
-            }
+        public func contents(
+            at path: File.Path
+        ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
+            let operation:
+                @Sendable () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] = {
+                    try File.Directory.Contents.list(at: path)
+                }
             return try await io.run(operation)
         }
     }

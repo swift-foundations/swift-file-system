@@ -90,7 +90,10 @@ extension File.System.Metadata.Timestamps {
     ///   - timestamps: The timestamps to set.
     ///   - path: The path to the file.
     /// - Throws: `File.System.Metadata.Timestamps.Error` on failure.
-    public static func set(_ timestamps: Self, at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
+    public static func set(
+        _ timestamps: Self,
+        at path: File.Path
+    ) throws(File.System.Metadata.Timestamps.Error) {
         #if os(Windows)
             try _setWindows(timestamps, at: path)
         #else
@@ -104,7 +107,9 @@ extension File.System.Metadata.Timestamps {
 
 #if !os(Windows)
     extension File.System.Metadata.Timestamps {
-        internal static func _getPOSIX(_ path: File.Path) throws(File.System.Metadata.Timestamps.Error) -> Self {
+        internal static func _getPOSIX(
+            _ path: File.Path
+        ) throws(File.System.Metadata.Timestamps.Error) -> Self {
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
@@ -163,7 +168,10 @@ extension File.System.Metadata.Timestamps {
             #endif
         }
 
-        internal static func _setPOSIX(_ timestamps: Self, at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
+        internal static func _setPOSIX(
+            _ timestamps: Self,
+            at path: File.Path
+        ) throws(File.System.Metadata.Timestamps.Error) {
             var times = [timespec](repeating: timespec(), count: 2)
 
             // Access time
@@ -202,7 +210,9 @@ extension File.System.Metadata.Timestamps {
 
 #if os(Windows)
     extension File.System.Metadata.Timestamps {
-        internal static func _getWindows(_ path: File.Path) throws(File.System.Metadata.Timestamps.Error) -> Self {
+        internal static func _getWindows(
+            _ path: File.Path
+        ) throws(File.System.Metadata.Timestamps.Error) -> Self {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
@@ -240,7 +250,10 @@ extension File.System.Metadata.Timestamps {
             )
         }
 
-        internal static func _setWindows(_ timestamps: Self, at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
+        internal static func _setWindows(
+            _ timestamps: Self,
+            at path: File.Path
+        ) throws(File.System.Metadata.Timestamps.Error) {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
@@ -274,7 +287,8 @@ extension File.System.Metadata.Timestamps {
             // FILETIME is 100-nanosecond intervals since January 1, 1601
             // Unix epoch is January 1, 1970
             let intervals = Int64(ft.dwHighDateTime) << 32 | Int64(ft.dwLowDateTime)
-            let unixIntervals = intervals - 116_444_736_000_000_000  // Difference between 1601 and 1970 in 100ns
+            // Difference between 1601 and 1970 in 100ns
+            let unixIntervals = intervals - 116_444_736_000_000_000
             let seconds = Int(unixIntervals / 10_000_000)
             let nanoseconds = Int((unixIntervals % 10_000_000) * 100)
             return Time(__unchecked: (), secondsSinceEpoch: seconds, nanoseconds: nanoseconds)
