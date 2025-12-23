@@ -21,7 +21,7 @@ import Testing
 /// Measures pull-based async iterator performance vs sync baseline.
 @Suite(.serialized)
 final class DirectoryAsyncIterationPerformanceTests2 {
-    let testDir1000Files: File.Path
+    let testDir1000Files: File.Directory
     let io: File.IO.Executor
 
     init() throws {
@@ -31,13 +31,15 @@ final class DirectoryAsyncIterationPerformanceTests2 {
         let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
         // Setup: 1000 files directory
-        self.testDir1000Files = File.Path(
-            td,
-            appending: "perf_async_iter2_1000_\(Int.random(in: 0..<Int.max))"
+        self.testDir1000Files = File.Directory(
+            File.Path(
+                td.path,
+                appending: "perf_async_iter2_1000_\(Int.random(in: 0..<Int.max))"
+            )
         )
-        try File.System.Create.Directory.create(at: testDir1000Files)
+        try File.System.Create.Directory.create(at: testDir1000Files.path)
         for i in 0..<1000 {
-            let filePath = File.Path(testDir1000Files, appending: "file_\(i).txt")
+            let filePath = File.Path(testDir1000Files.path, appending: "file_\(i).txt")
             try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
         }
 
@@ -46,7 +48,7 @@ final class DirectoryAsyncIterationPerformanceTests2 {
 
     deinit {
         Task { [io] in await io.shutdown() }
-        try? File.System.Delete.delete(at: testDir1000Files, options: .init(recursive: true))
+        try? File.System.Delete.delete(at: testDir1000Files.path, options: .init(recursive: true))
     }
 
     // MARK: - Batch Size Comparison

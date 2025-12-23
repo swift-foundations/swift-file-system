@@ -17,240 +17,216 @@ extension File.System.Write.Streaming {
 
 extension File.System.Write.Streaming.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func uniquePath(extension ext: String = "txt") -> String {
-        "/tmp/streaming-test-\(Int.random(in: 0..<Int.max)).\(ext)"
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath)
-        }
-    }
-
     // MARK: - Basic Streaming Write
 
     @Test("Write multiple chunks and read back")
     func writeMultipleChunks() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = [
+                [72, 101, 108, 108, 111],  // "Hello"
+                [32],  // " "
+                [87, 111, 114, 108, 100],  // "World"
+            ]
 
-        let chunks: [[UInt8]] = [
-            [72, 101, 108, 108, 111],  // "Hello"
-            [32],  // " "
-            [87, 111, 114, 108, 100],  // "World"
-        ]
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            try File.System.Write.Streaming.write(chunks, to: filePath)
 
-        let filePath = try File.Path(path)
-        try File.System.Write.Streaming.write(chunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100])
+        }
     }
 
     @Test("Write empty chunks array")
     func writeEmptyChunks() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = []
 
-        let chunks: [[UInt8]] = []
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            try File.System.Write.Streaming.write(chunks, to: filePath)
 
-        let filePath = try File.Path(path)
-        try File.System.Write.Streaming.write(chunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData.isEmpty)
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData.isEmpty)
+        }
     }
 
     @Test("Write single chunk")
     func writeSingleChunk() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = [[1, 2, 3, 4, 5]]
 
-        let chunks: [[UInt8]] = [[1, 2, 3, 4, 5]]
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            try File.System.Write.Streaming.write(chunks, to: filePath)
 
-        let filePath = try File.Path(path)
-        try File.System.Write.Streaming.write(chunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [1, 2, 3, 4, 5])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [1, 2, 3, 4, 5])
+        }
     }
 
     @Test("Write chunks with empty chunk in middle")
     func writeChunksWithEmptyMiddle() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = [
+                [1, 2, 3],
+                [],  // Empty chunk
+                [4, 5, 6],
+            ]
 
-        let chunks: [[UInt8]] = [
-            [1, 2, 3],
-            [],  // Empty chunk
-            [4, 5, 6],
-        ]
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            try File.System.Write.Streaming.write(chunks, to: filePath)
 
-        let filePath = try File.Path(path)
-        try File.System.Write.Streaming.write(chunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [1, 2, 3, 4, 5, 6])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [1, 2, 3, 4, 5, 6])
+        }
     }
 
     @Test("Write large file in chunks")
     func writeLargeFileInChunks() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            // 256KB total in 64KB chunks
+            let chunkSize = 64 * 1024
+            let chunks: [[UInt8]] = (0..<4).map { i in
+                [UInt8](repeating: UInt8(truncatingIfNeeded: i), count: chunkSize)
+            }
 
-        // 256KB total in 64KB chunks
-        let chunkSize = 64 * 1024
-        let chunks: [[UInt8]] = (0..<4).map { i in
-            [UInt8](repeating: UInt8(truncatingIfNeeded: i), count: chunkSize)
+            let filePath = File.Path(dir.path, appending: "test.bin")
+            try File.System.Write.Streaming.write(chunks, to: filePath)
+
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData.count == 4 * chunkSize)
         }
-
-        let filePath = try File.Path(path)
-        try File.System.Write.Streaming.write(chunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData.count == 4 * chunkSize)
     }
 
     // MARK: - Lazy Sequence Support
 
     @Test("Write from lazy sequence")
     func writeLazySequence() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            // Lazy sequence that generates chunks on demand
+            let lazyChunks = (0..<3).lazy.map { i -> [UInt8] in
+                [UInt8](repeating: UInt8(i), count: 10)
+            }
 
-        // Lazy sequence that generates chunks on demand
-        let lazyChunks = (0..<3).lazy.map { i -> [UInt8] in
-            [UInt8](repeating: UInt8(i), count: 10)
+            let filePath = File.Path(dir.path, appending: "test.bin")
+            try File.System.Write.Streaming.write(lazyChunks, to: filePath)
+
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData.count == 30)
+            #expect(readData[0..<10] == ArraySlice([UInt8](repeating: 0, count: 10)))
+            #expect(readData[10..<20] == ArraySlice([UInt8](repeating: 1, count: 10)))
+            #expect(readData[20..<30] == ArraySlice([UInt8](repeating: 2, count: 10)))
         }
-
-        let filePath = try File.Path(path)
-        try File.System.Write.Streaming.write(lazyChunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData.count == 30)
-        #expect(readData[0..<10] == ArraySlice([UInt8](repeating: 0, count: 10)))
-        #expect(readData[10..<20] == ArraySlice([UInt8](repeating: 1, count: 10)))
-        #expect(readData[20..<30] == ArraySlice([UInt8](repeating: 2, count: 10)))
     }
 
     // MARK: - CommitPolicy Tests
 
     @Test("Atomic write (default) creates file")
     func atomicWriteDefault() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = [[1, 2, 3]]
+            let filePath = File.Path(dir.path, appending: "test.txt")
 
-        let chunks: [[UInt8]] = [[1, 2, 3]]
-        let filePath = try File.Path(path)
+            // Default is atomic
+            try File.System.Write.Streaming.write(chunks, to: filePath)
 
-        // Default is atomic
-        try File.System.Write.Streaming.write(chunks, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [1, 2, 3])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [1, 2, 3])
+        }
     }
 
     @Test("Atomic write with explicit options")
     func atomicWriteExplicit() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = [[4, 5, 6]]
+            let filePath = File.Path(dir.path, appending: "test.txt")
 
-        let chunks: [[UInt8]] = [[4, 5, 6]]
-        let filePath = try File.Path(path)
+            let options = File.System.Write.Streaming.Options(
+                commit: .atomic(.init(durability: .full))
+            )
+            try File.System.Write.Streaming.write(chunks, to: filePath, options: options)
 
-        let options = File.System.Write.Streaming.Options(
-            commit: .atomic(.init(durability: .full))
-        )
-        try File.System.Write.Streaming.write(chunks, to: filePath, options: options)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [4, 5, 6])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [4, 5, 6])
+        }
     }
 
     @Test("Direct write creates file")
     func directWrite() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let chunks: [[UInt8]] = [[7, 8, 9]]
+            let filePath = File.Path(dir.path, appending: "test.txt")
 
-        let chunks: [[UInt8]] = [[7, 8, 9]]
-        let filePath = try File.Path(path)
+            let options = File.System.Write.Streaming.Options(
+                commit: .direct(.init(strategy: .truncate))
+            )
+            try File.System.Write.Streaming.write(chunks, to: filePath, options: options)
 
-        let options = File.System.Write.Streaming.Options(
-            commit: .direct(.init(strategy: .truncate))
-        )
-        try File.System.Write.Streaming.write(chunks, to: filePath, options: options)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [7, 8, 9])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [7, 8, 9])
+        }
     }
 
     // MARK: - Strategy Tests
 
     @Test("Atomic noClobber prevents overwrite")
     func atomicNoClobberPreventsOverwrite() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
 
-        let filePath = try File.Path(path)
+            // First write
+            try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath)
 
-        // First write
-        try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath)
+            // Second write with noClobber should fail
+            let options = File.System.Write.Streaming.Options(
+                commit: .atomic(.init(strategy: .noClobber))
+            )
+            #expect(throws: File.System.Write.Streaming.Error.self) {
+                try File.System.Write.Streaming.write([[4, 5, 6]], to: filePath, options: options)
+            }
 
-        // Second write with noClobber should fail
-        let options = File.System.Write.Streaming.Options(
-            commit: .atomic(.init(strategy: .noClobber))
-        )
-        #expect(throws: File.System.Write.Streaming.Error.self) {
-            try File.System.Write.Streaming.write([[4, 5, 6]], to: filePath, options: options)
+            // Original content preserved
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [1, 2, 3])
         }
-
-        // Original content preserved
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [1, 2, 3])
     }
 
     @Test("Direct create strategy prevents overwrite")
     func directCreatePreventsOverwrite() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
 
-        let filePath = try File.Path(path)
+            // First write
+            let createOptions = File.System.Write.Streaming.Options(
+                commit: .direct(.init(strategy: .truncate))
+            )
+            try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath, options: createOptions)
 
-        // First write
-        let createOptions = File.System.Write.Streaming.Options(
-            commit: .direct(.init(strategy: .truncate))
-        )
-        try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath, options: createOptions)
-
-        // Second write with create strategy should fail
-        let options = File.System.Write.Streaming.Options(
-            commit: .direct(.init(strategy: .create))
-        )
-        #expect(throws: File.System.Write.Streaming.Error.self) {
-            try File.System.Write.Streaming.write([[4, 5, 6]], to: filePath, options: options)
+            // Second write with create strategy should fail
+            let options = File.System.Write.Streaming.Options(
+                commit: .direct(.init(strategy: .create))
+            )
+            #expect(throws: File.System.Write.Streaming.Error.self) {
+                try File.System.Write.Streaming.write([[4, 5, 6]], to: filePath, options: options)
+            }
         }
     }
 
     @Test("Direct truncate replaces existing")
     func directTruncateReplacesExisting() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
 
-        let filePath = try File.Path(path)
+            // First write
+            try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath)
 
-        // First write
-        try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath)
+            // Second write with truncate should succeed
+            let options = File.System.Write.Streaming.Options(
+                commit: .direct(.init(strategy: .truncate))
+            )
+            try File.System.Write.Streaming.write([[4, 5, 6, 7]], to: filePath, options: options)
 
-        // Second write with truncate should succeed
-        let options = File.System.Write.Streaming.Options(
-            commit: .direct(.init(strategy: .truncate))
-        )
-        try File.System.Write.Streaming.write([[4, 5, 6, 7]], to: filePath, options: options)
-
-        let readData = try File.System.Read.Full.read(from: filePath)
-        #expect(readData == [4, 5, 6, 7])
+            let readData = try File.System.Read.Full.read(from: filePath)
+            #expect(readData == [4, 5, 6, 7])
+        }
     }
 
     // MARK: - Error Tests
@@ -371,7 +347,7 @@ extension File.System.Write.Streaming.Test.Performance {
     func streamingWrite1MB() throws {
         let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            td,
+            td.path,
             appending: "perf_streaming_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -390,7 +366,7 @@ extension File.System.Write.Streaming.Test.Performance {
     func streamingWriteLazy1MB() throws {
         let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            td,
+            td.path,
             appending: "perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -409,7 +385,7 @@ extension File.System.Write.Streaming.Test.Performance {
     func directStreamingWrite1MB() throws {
         let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            td,
+            td.path,
             appending: "perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin"
         )
 

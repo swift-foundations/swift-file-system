@@ -17,13 +17,13 @@ extension File.Directory.Contents {
     /// - Returns: An array of file names.
     /// - Throws: `Error` if the directory cannot be opened.
     public static func names(
-        at path: File.Path
+        at directory: File.Directory
     ) throws(File.Directory.Contents.Error) -> [File.Name] {
         #if os(Windows)
             // Windows uses the existing _listWindows and extracts names
             return try _listWindows(at: path).map(\.name)
         #else
-            let (iterator, handle) = try makeIterator(at: path)
+            let (iterator, handle) = try makeIterator(at: directory)
             defer { closeIterator(handle) }
 
             var names: [File.Name] = []
@@ -33,7 +33,7 @@ extension File.Directory.Contents {
             }
 
             // Check for errors that occurred during iteration
-            if let error = iteratorError(for: path) {
+            if let error = iteratorError(for: directory) {
                 throw error
             }
 

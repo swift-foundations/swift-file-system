@@ -7,6 +7,7 @@
 
 import StandardsTestSupport
 import Testing
+import File_System_Test_Support
 
 @testable import File_System
 
@@ -16,155 +17,138 @@ extension File.Handle {
 
 extension File.Handle.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: [UInt8] = []) throws -> String {
-        let path = "/tmp/handle-convenience-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath)
-        }
-    }
-
     // MARK: - withOpen
 
     @Test("withOpen reads file content")
     func withOpenReadsContent() throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readData = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.read(count: 10)
+            let readData = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.read(count: 10)
+            }
+
+            #expect(readData == content)
         }
-
-        #expect(readData == content)
     }
 
     @Test("withOpen writes file content")
     func withOpenWritesContent() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let dataToWrite: [UInt8] = [10, 20, 30, 40, 50]
+            let dataToWrite: [UInt8] = [10, 20, 30, 40, 50]
 
-        try File.Handle.withOpen(filePath, mode: .write, options: [.truncate]) { handle in
-            try handle.write(dataToWrite.span)
+            try File.Handle.withOpen(filePath, mode: .write, options: [.truncate]) { handle throws(File.Handle.Error) in
+                try handle.write(dataToWrite.span)
+            }
+
+            let readBack = try File.System.Read.Full.read(from: filePath)
+            #expect(readBack == dataToWrite)
         }
-
-        let readBack = try File.System.Read.Full.read(from: filePath)
-        #expect(readBack == dataToWrite)
     }
 
     @Test("withOpen closes handle after normal completion")
     func withOpenClosesHandleNormally() throws {
-        let content: [UInt8] = [1, 2, 3]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
+            // After withOpen completes, the handle should be closed
+            // We verify this by being able to open it again
+            _ = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.read(count: 3)
+            }
 
-        // After withOpen completes, the handle should be closed
-        // We verify this by being able to open it again
-        _ = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.read(count: 3)
+            // If handle wasn't closed, this might fail or behave unexpectedly
+            let secondRead = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.read(count: 3)
+            }
+
+            #expect(secondRead == content)
         }
-
-        // If handle wasn't closed, this might fail or behave unexpectedly
-        let secondRead = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.read(count: 3)
-        }
-
-        #expect(secondRead == content)
     }
 
     @Test("withOpen closes handle after error")
     func withOpenClosesHandleAfterError() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-        let filePath = try File.Path(path)
-
-        struct TestError: Error {}
-
-        // The handle should be closed even if the closure throws
-        do {
-            try File.Handle.withOpen(filePath, mode: .read) { _ in
-                throw TestError()
+            // The handle should be closed even if the closure throws
+            do throws(File.Handle.Error) {
+                try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                    // Trigger a handle error by seeking beyond valid range
+                    _ = try handle.seek(to: -1, from: .start)
+                }
+                Issue.record("Expected error to be thrown")
+            } catch {
+                // Error is File.Handle.Error (typed throws)
+                guard case .seekFailed(let offset, let origin, _, _) = error else {
+                    Issue.record("Expected .seekFailed, got \(error)")
+                    return
+                }
+                #expect(offset == -1)
+                #expect(origin == .start)
             }
-            Issue.record("Expected error to be thrown")
-        } catch {
-            // Closure errors are wrapped in .operation with description (error is File.Error)
-            guard case .operation(let description) = error else {
-                Issue.record("Expected .operation case, got \(error)")
-                return
-            }
-            #expect(description.contains("TestError"))
-        }
 
-        // Verify handle was closed by opening successfully again
-        let result = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.read(count: 10)
+            // Verify handle was closed by opening successfully again
+            let result = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.read(count: 10)
+            }
+            #expect(result.isEmpty)
         }
-        #expect(result.isEmpty)
     }
 
     @Test("withOpen returns closure result")
     func withOpenReturnsResult() throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
+            let sum = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                let bytes = try handle.read(count: 10)
+                return bytes.reduce(0, +)
+            }
 
-        let sum = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            let bytes = try handle.read(count: 10)
-            return bytes.reduce(0, +)
+            #expect(sum == 55)  // 1+2+3+4+5+6+7+8+9+10
         }
-
-        #expect(sum == 55)  // 1+2+3+4+5+6+7+8+9+10
     }
 
     @Test("withOpen with create option creates file")
     func withOpenCreatesFile() throws {
-        let path = "/tmp/handle-convenience-create-\(Int.random(in: 0..<Int.max)).txt"
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = try File.Path(dir.path.string + "/create.txt")
+            #expect(!File.System.Stat.exists(at: filePath))
 
-        let filePath = try File.Path(path)
-        #expect(!File.System.Stat.exists(at: filePath))
+            try File.Handle.withOpen(filePath, mode: .write, options: [.create]) { handle throws(File.Handle.Error) in
+                let bytes: [UInt8] = [72, 105]  // "Hi"
+                try handle.write(bytes.span)
+            }
 
-        try File.Handle.withOpen(filePath, mode: .write, options: [.create]) { handle in
-            let bytes: [UInt8] = [72, 105]  // "Hi"
-            try handle.write(bytes.span)
+            #expect(File.System.Stat.exists(at: filePath))
         }
-
-        #expect(File.System.Stat.exists(at: filePath))
     }
 
     @Test("withOpen propagates open error")
     func withOpenPropagatesOpenError() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let filePath = try File.Path(dir.path.string + "/non-existent.txt")
 
-        do {
-            try File.Handle.withOpen(filePath, mode: .read) { _ in
-                // Should never reach here
+            do throws(File.Handle.Error) {
+                try File.Handle.withOpen(filePath, mode: .read) { _ throws(File.Handle.Error) in
+                    // Should never reach here
+                }
+                Issue.record("Expected error to be thrown")
+            } catch {
+                // Error is File.Handle.Error (typed throws)
+                #expect(error == .pathNotFound(filePath))
             }
-            Issue.record("Expected error to be thrown")
-        } catch {
-            // Open errors are wrapped in .handle (error is File.Error)
-            guard case .handle(let handleError) = error else {
-                Issue.record("Expected .handle case, got \(error)")
-                return
-            }
-            // Verify it's a pathNotFound error
-            #expect(handleError == .pathNotFound(filePath))
         }
     }
 
@@ -172,200 +156,208 @@ extension File.Handle.Test.Unit {
 
     @Test("rewind seeks to beginning")
     func rewindSeeksToBeginning() throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let result = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            // Read some data
-            _ = try handle.read(count: 3)
+            let result = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                // Read some data
+                _ = try handle.read(count: 3)
 
-            // Rewind to beginning
-            let position = try handle.rewind()
-            #expect(position == 0)
+                // Rewind to beginning
+                let position = try handle.rewind()
+                #expect(position == 0)
 
-            // Read from beginning again
-            return try handle.read(count: 5)
+                // Read from beginning again
+                return try handle.read(count: 5)
+            }
+
+            #expect(result == content)
         }
-
-        #expect(result == content)
     }
 
     @Test("rewind returns zero position")
     func rewindReturnsZero() throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let position = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            // Seek to middle
-            _ = try handle.seek(to: 3, from: .start)
+            let position = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                // Seek to middle
+                _ = try handle.seek(to: 3, from: .start)
 
-            // Rewind and check position
-            return try handle.rewind()
+                // Rewind and check position
+                return try handle.rewind()
+            }
+
+            #expect(position == 0)
         }
-
-        #expect(position == 0)
     }
 
     // MARK: - seekToEnd
 
     @Test("seekToEnd returns file size")
     func seekToEndReturnsFileSize() throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let size = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.seekToEnd()
+            let size = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.seekToEnd()
+            }
+
+            #expect(size == 10)
         }
-
-        #expect(size == 10)
     }
 
     @Test("seekToEnd on empty file returns zero")
     func seekToEndOnEmptyFile() throws {
-        let path = try createTempFile(content: [])
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let size = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.seekToEnd()
+            let size = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.seekToEnd()
+            }
+
+            #expect(size == 0)
         }
-
-        #expect(size == 0)
     }
 
     @Test("seekToEnd then rewind allows re-read")
     func seekToEndThenRewindAllowsReRead() throws {
-        let content: [UInt8] = [10, 20, 30]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [10, 20, 30]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let result = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            // Seek to end
-            let size = try handle.seekToEnd()
-            #expect(size == 3)
+            let result = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                // Seek to end
+                let size = try handle.seekToEnd()
+                #expect(size == 3)
 
-            // Rewind
-            try handle.rewind()
+                // Rewind
+                try handle.rewind()
 
-            // Read all content
-            return try handle.read(count: Int(size))
+                // Read all content
+                return try handle.read(count: Int(size))
+            }
+
+            #expect(result == content)
         }
-
-        #expect(result == content)
     }
 
     // MARK: - Async withOpen
 
     @Test("async withOpen reads file content")
     func asyncWithOpenReadsContent() async throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readData = try File.Handle.withOpen(filePath, mode: .read) { handle in
-            try handle.read(count: 10)
+            let readData = try File.Handle.withOpen(filePath, mode: .read) { handle throws(File.Handle.Error) in
+                try handle.read(count: 10)
+            }
+
+            #expect(readData == content)
         }
-
-        #expect(readData == content)
     }
 
     @Test("async withOpen with async body")
     func asyncWithOpenAsyncBody() async throws {
-        let content: [UInt8] = [1, 2, 3]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try await File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
+            let result = try await File.Handle.withOpen(filePath, mode: .read) {
+                handle async throws(File.Handle.Error) in
+                // Read file content asynchronously
+                return try handle.read(count: 10)
+            }
 
-        let result = try await File.Handle.withOpen(filePath, mode: .read) {
-            handle async throws in
-            // Simulate async work
-            try await Task.sleep(for: .milliseconds(1))
-            return try handle.read(count: 10)
+            #expect(result == content)
         }
-
-        #expect(result == content)
     }
 
     // MARK: - .open namespace
 
     @Test("open.read reads file")
     func openReadReadsFile() throws {
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readData = try File.Handle.open(filePath).read { handle in
-            try handle.read(count: 10)
+            let readData = try File.Handle.open(filePath).read { handle throws(File.Handle.Error) in
+                try handle.read(count: 10)
+            }
+
+            #expect(readData == content)
         }
-
-        #expect(readData == content)
     }
 
     @Test("open.write writes to file")
     func openWriteWritesToFile() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let dataToWrite: [UInt8] = [100, 200]
+            let dataToWrite: [UInt8] = [100, 200]
 
-        try File.Handle.open(filePath, options: [.truncate]).write { handle in
-            try handle.write(dataToWrite.span)
+            try File.Handle.open(filePath, options: [.truncate]).write { handle throws(File.Handle.Error) in
+                try handle.write(dataToWrite.span)
+            }
+
+            let readBack = try File.System.Read.Full.read(from: filePath)
+            #expect(readBack == dataToWrite)
         }
-
-        let readBack = try File.System.Read.Full.read(from: filePath)
-        #expect(readBack == dataToWrite)
     }
 
     @Test("open.appending appends to file")
     func openAppendingAppendsToFile() throws {
-        let initialContent: [UInt8] = [1, 2, 3]
-        let path = try createTempFile(content: initialContent)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let initialContent: [UInt8] = [1, 2, 3]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(initialContent.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let dataToAppend: [UInt8] = [4, 5, 6]
+            let dataToAppend: [UInt8] = [4, 5, 6]
 
-        try File.Handle.open(filePath).appending { handle in
-            try handle.write(dataToAppend.span)
+            try File.Handle.open(filePath).appending { handle throws(File.Handle.Error) in
+                try handle.write(dataToAppend.span)
+            }
+
+            let readBack = try File.System.Read.Full.read(from: filePath)
+            #expect(readBack == [1, 2, 3, 4, 5, 6])
         }
-
-        let readBack = try File.System.Read.Full.read(from: filePath)
-        #expect(readBack == [1, 2, 3, 4, 5, 6])
     }
 
     @Test("open.readWrite allows read and write")
     func openReadWriteAllowsReadAndWrite() throws {
-        let initialContent: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: initialContent)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let initialContent: [UInt8] = [1, 2, 3, 4, 5]
+            let filePath = try File.Path(dir.path.string + "/test.bin")
+            try File.System.Write.Atomic.write(initialContent.span, to: filePath)
 
-        let filePath = try File.Path(path)
+            let result = try File.Handle.open(filePath).readWrite { handle throws(File.Handle.Error) in
+                // Read first
+                let data = try handle.read(count: 3)
+                // Seek back
+                try handle.rewind()
+                // Write
+                let newData: [UInt8] = [10, 20, 30]
+                try handle.write(newData.span)
+                return data
+            }
 
-        let result = try File.Handle.open(filePath).readWrite { handle in
-            // Read first
-            let data = try handle.read(count: 3)
-            // Seek back
-            try handle.rewind()
-            // Write
-            let newData: [UInt8] = [10, 20, 30]
-            try handle.write(newData.span)
-            return data
+            #expect(result == [1, 2, 3])
+
+            let readBack = try File.System.Read.Full.read(from: filePath)
+            #expect(readBack == [10, 20, 30, 4, 5])
         }
-
-        #expect(result == [1, 2, 3])
-
-        let readBack = try File.System.Read.Full.read(from: filePath)
-        #expect(readBack == [10, 20, 30, 4, 5])
     }
 }

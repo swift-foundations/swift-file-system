@@ -11,8 +11,8 @@ let package = Package(
         .watchOS(.v26),
     ],
     products: [
-        // Only File System is public; Primitives and Async are internal
-        .library(name: "File System", targets: ["File System"])
+        .library(name: "File System", targets: ["File System"]),
+        .library(name: "File System Test Support", targets: ["File System Test Support"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-system", from: "1.4.0"),

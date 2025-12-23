@@ -21,42 +21,6 @@ import TestingPerformance
 /// Compares different sync iteration strategies to isolate overhead sources.
 @Suite(.serialized)
 final class DirectoryIterationPerformanceTests {
-    let testDir100Files: File.Path
-    let testDir1000Files: File.Path
-
-    init() throws {
-        let td = try File.Directory.Temporary.system
-
-        let fileData = [UInt8](repeating: 0x00, count: 10)
-        let writeOptions = File.System.Write.Atomic.Options(durability: .none)
-
-        // Setup: 100 files directory
-        self.testDir100Files = File.Path(
-            td,
-            appending: "perf_iter_100_\(Int.random(in: 0..<Int.max))"
-        )
-        try File.System.Create.Directory.create(at: testDir100Files)
-        for i in 0..<100 {
-            let filePath = File.Path(testDir100Files, appending: "file_\(i).txt")
-            try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
-        }
-
-        // Setup: 1000 files directory
-        self.testDir1000Files = File.Path(
-            td,
-            appending: "perf_iter_1000_\(Int.random(in: 0..<Int.max))"
-        )
-        try File.System.Create.Directory.create(at: testDir1000Files)
-        for i in 0..<1000 {
-            let filePath = File.Path(testDir1000Files, appending: "file_\(i).txt")
-            try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
-        }
-    }
-
-    deinit {
-        try? File.System.Delete.delete(at: testDir100Files, options: .init(recursive: true))
-        try? File.System.Delete.delete(at: testDir1000Files, options: .init(recursive: true))
-    }
 
     // MARK: - 100 Files Benchmarks
 
@@ -65,8 +29,18 @@ final class DirectoryIterationPerformanceTests {
         .timed(iterations: 50, warmup: 5, trackAllocations: false)
     )
     func syncList100() throws {
-        let entries = try File.Directory.Contents.list(at: testDir100Files)
-        #expect(entries.count == 100)
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
+
+            for i in 0..<100 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 100)
+        }
     }
 
     @Test(
@@ -74,8 +48,18 @@ final class DirectoryIterationPerformanceTests {
         .timed(iterations: 50, warmup: 5, trackAllocations: false)
     )
     func syncNames100() throws {
-        let names = try File.Directory.Contents.names(at: testDir100Files)
-        #expect(names.count == 100)
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
+
+            for i in 0..<100 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let names = try File.Directory.Contents.names(at: dir)
+            #expect(names.count == 100)
+        }
     }
 
     @Test(
@@ -83,15 +67,25 @@ final class DirectoryIterationPerformanceTests {
         .timed(iterations: 50, warmup: 5, trackAllocations: false)
     )
     func syncIterator100() throws {
-        let (iterator, handle) = try File.Directory.Contents.makeIterator(at: testDir100Files)
-        defer { File.Directory.Contents.closeIterator(handle) }
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
-        var iter = iterator
-        var count = 0
-        while iter.next() != nil {
-            count += 1
+            for i in 0..<100 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let (iterator, handle) = try File.Directory.Contents.makeIterator(at: dir)
+            defer { File.Directory.Contents.closeIterator(handle) }
+
+            var iter = iterator
+            var count = 0
+            while iter.next() != nil {
+                count += 1
+            }
+            #expect(count == 100)
         }
-        #expect(count == 100)
     }
 
     // MARK: - 1000 Files Benchmarks
@@ -101,8 +95,18 @@ final class DirectoryIterationPerformanceTests {
         .timed(iterations: 20, warmup: 3, trackAllocations: false)
     )
     func syncList1000() throws {
-        let entries = try File.Directory.Contents.list(at: testDir1000Files)
-        #expect(entries.count == 1000)
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
+
+            for i in 0..<1000 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 1000)
+        }
     }
 
     @Test(
@@ -110,8 +114,18 @@ final class DirectoryIterationPerformanceTests {
         .timed(iterations: 20, warmup: 3, trackAllocations: false)
     )
     func syncNames1000() throws {
-        let names = try File.Directory.Contents.names(at: testDir1000Files)
-        #expect(names.count == 1000)
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
+
+            for i in 0..<1000 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let names = try File.Directory.Contents.names(at: dir)
+            #expect(names.count == 1000)
+        }
     }
 
     @Test(
@@ -119,29 +133,16 @@ final class DirectoryIterationPerformanceTests {
         .timed(iterations: 20, warmup: 3, trackAllocations: false)
     )
     func syncIterator1000() throws {
-        let (iterator, handle) = try File.Directory.Contents.makeIterator(at: testDir1000Files)
-        defer { File.Directory.Contents.closeIterator(handle) }
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
-        var iter = iterator
-        var count = 0
-        while iter.next() != nil {
-            count += 1
-        }
-        #expect(count == 1000)
-    }
+            for i in 0..<1000 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
 
-    // MARK: - Tight Loop (No Harness Overhead)
-
-    @Test("Raw iteration cost - 1000 files × 100 loops")
-    func rawIterationCost() throws {
-        let loopCount = 100
-        let clock = Time.Clock.Continuous()
-        let start = clock.now
-
-        for _ in 0..<loopCount {
-            let (iterator, handle) = try File.Directory.Contents.makeIterator(
-                at: testDir1000Files
-            )
+            let (iterator, handle) = try File.Directory.Contents.makeIterator(at: dir)
             defer { File.Directory.Contents.closeIterator(handle) }
 
             var iter = iterator
@@ -151,39 +152,80 @@ final class DirectoryIterationPerformanceTests {
             }
             #expect(count == 1000)
         }
+    }
 
-        let elapsed = (clock.now - start).inSeconds
-        let totalFiles = loopCount * 1000
-        let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
+    // MARK: - Tight Loop (No Harness Overhead)
 
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(
-            "SYNC ITERATOR: \(totalFiles) files in \((elapsed * 1000).formatted(.number.precision(3)))ms"
-        )
-        print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    @Test("Raw iteration cost - 1000 files × 100 loops")
+    func rawIterationCost() throws {
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
+
+            for i in 0..<1000 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let loopCount = 100
+            let clock = Time.Clock.Continuous()
+            let start = clock.now
+
+            for _ in 0..<loopCount {
+                let (iterator, handle) = try File.Directory.Contents.makeIterator(at: dir)
+                defer { File.Directory.Contents.closeIterator(handle) }
+
+                var iter = iterator
+                var count = 0
+                while iter.next() != nil {
+                    count += 1
+                }
+                #expect(count == 1000)
+            }
+
+            let elapsed = (clock.now - start).inSeconds
+            let totalFiles = loopCount * 1000
+            let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
+
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print(
+                "SYNC ITERATOR: \(totalFiles) files in \((elapsed * 1000).formatted(.number.precision(3)))ms"
+            )
+            print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        }
     }
 
     @Test("Sync list cost - 1000 files × 100 loops")
     func syncListCost() throws {
-        let loopCount = 100
-        let clock = Time.Clock.Continuous()
-        let start = clock.now
+        try File.Directory.temporary { dir in
+            let fileData = [UInt8](repeating: 0x00, count: 10)
+            let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
-        for _ in 0..<loopCount {
-            let entries = try File.Directory.Contents.list(at: testDir1000Files)
-            #expect(entries.count == 1000)
+            for i in 0..<1000 {
+                let filePath = File.Path(dir.path, appending: "file_\(i).txt")
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
+            }
+
+            let loopCount = 100
+            let clock = Time.Clock.Continuous()
+            let start = clock.now
+
+            for _ in 0..<loopCount {
+                let entries = try File.Directory.Contents.list(at: dir)
+                #expect(entries.count == 1000)
+            }
+
+            let elapsed = (clock.now - start).inSeconds
+            let totalFiles = loopCount * 1000
+            let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
+
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print(
+                "SYNC LIST: \(totalFiles) files in \((elapsed * 1000).formatted(.number.precision(3)))ms"
+            )
+            print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         }
-
-        let elapsed = (clock.now - start).inSeconds
-        let totalFiles = loopCount * 1000
-        let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
-
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(
-            "SYNC LIST: \(totalFiles) files in \((elapsed * 1000).formatted(.number.precision(3)))ms"
-        )
-        print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
-        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     }
 }

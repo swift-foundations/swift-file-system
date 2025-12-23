@@ -420,10 +420,10 @@ extension File.System.Test.EdgeCase {
 
     @Test("Iterate empty directory yields nothing")
     func iterateEmptyDirectory() throws {
-        let dir = try File.Path(createTempPath())
-        defer { cleanupPath(dir) }
+        let dir = try File.Directory(createTempPath())
+        defer { cleanupPath(dir.path) }
 
-        try File.System.Create.Directory.create(at: dir)
+        try File.System.Create.Directory.create(at: dir.path)
 
         var iterator = try File.Directory.Iterator.open(at: dir)
 
@@ -703,7 +703,7 @@ extension File.System.Test.Performance {
         func bufferReadZeroAllocation() throws {
             let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                td,
+                td.path,
                 appending: "perf_alloc_\(Int.random(in: 0..<Int.max)).bin"
             )
 
@@ -728,7 +728,7 @@ extension File.System.Test.Performance {
         func statMinimalAllocation() throws {
             let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                td,
+                td.path,
                 appending: "perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt"
             )
 
@@ -757,7 +757,7 @@ extension File.System.Test.Performance {
         func largeFileWrite() throws {
             let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                td,
+                td.path,
                 appending: "perf_large_write_\(Int.random(in: 0..<Int.max)).bin"
             )
 
@@ -774,7 +774,7 @@ extension File.System.Test.Performance {
         func largeFileRead() throws {
             let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                td,
+                td.path,
                 appending: "perf_large_read_\(Int.random(in: 0..<Int.max)).bin"
             )
 
@@ -793,7 +793,7 @@ extension File.System.Test.Performance {
         )
         func manySmallFiles() throws {
             let td = try File.Directory.Temporary.system
-            let testDir = File.Path(td, appending: "perf_many_\(Int.random(in: 0..<Int.max))")
+            let testDir = File.Path(td.path, appending: "perf_many_\(Int.random(in: 0..<Int.max))")
 
             try File.System.Create.Directory.create(at: testDir)
             defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }

@@ -25,22 +25,6 @@ extension File.System.Metadata.Ownership {
 
 extension File.System.Metadata.Ownership.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile() throws -> String {
-        let path = "/tmp/ownership-test-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
-        let empty: [UInt8] = []
-        try File.System.Write.Atomic.write(empty.span, to: filePath)
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath)
-        }
-    }
-
     // MARK: - Initialization
 
     @Test("Ownership initialization")
@@ -55,19 +39,21 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
     @Test("Get ownership of file")
     func getOwnershipOfFile() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            let empty: [UInt8] = []
+            try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let ownership = try File.System.Metadata.Ownership(at: filePath)
+            let ownership = try File.System.Metadata.Ownership(at: filePath)
 
-        // Current user should own the file
-        #expect(ownership.uid == getuid())
-        // GID inherits from parent directory, not necessarily user's primary group
-        // Verify we get the same value as stat
-        var statBuf = stat()
-        _ = stat(path, &statBuf)
-        #expect(ownership.gid == statBuf.st_gid)
+            // Current user should own the file
+            #expect(ownership.uid == getuid())
+            // GID inherits from parent directory, not necessarily user's primary group
+            // Verify we get the same value as stat
+            var statBuf = stat()
+            _ = stat(filePath.string, &statBuf)
+            #expect(ownership.gid == statBuf.st_gid)
+        }
     }
 
     @Test("Get ownership of system file")
@@ -83,41 +69,45 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
     @Test("Set ownership to same owner succeeds")
     func setOwnershipToSameOwner() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            let empty: [UInt8] = []
+            try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let currentOwnership = try File.System.Metadata.Ownership(at: filePath)
+            let currentOwnership = try File.System.Metadata.Ownership(at: filePath)
 
-        // Setting to same ownership should succeed (no-op)
-        try File.System.Metadata.Ownership.set(currentOwnership, at: filePath)
+            // Setting to same ownership should succeed (no-op)
+            try File.System.Metadata.Ownership.set(currentOwnership, at: filePath)
 
-        let afterSet = try File.System.Metadata.Ownership(at: filePath)
-        #expect(afterSet.uid == currentOwnership.uid)
-        #expect(afterSet.gid == currentOwnership.gid)
+            let afterSet = try File.System.Metadata.Ownership(at: filePath)
+            #expect(afterSet.uid == currentOwnership.uid)
+            #expect(afterSet.gid == currentOwnership.gid)
+        }
     }
 
     // MARK: - Error Cases
 
     @Test("Get ownership of non-existent file throws pathNotFound")
     func getOwnershipOfNonExistentFileThrows() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let path = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "non-existent.txt")
 
-        #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
-            _ = try File.System.Metadata.Ownership(at: path)
+            #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
+                _ = try File.System.Metadata.Ownership(at: path)
+            }
         }
     }
 
     @Test("Set ownership of non-existent file throws pathNotFound")
     func setOwnershipOfNonExistentFileThrows() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let path = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "non-existent.txt")
 
-        let ownership = File.System.Metadata.Ownership(uid: 0, gid: 0)
+            let ownership = File.System.Metadata.Ownership(uid: 0, gid: 0)
 
-        #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
-            try File.System.Metadata.Ownership.set(ownership, at: path)
+            #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
+                try File.System.Metadata.Ownership.set(ownership, at: path)
+            }
         }
     }
 

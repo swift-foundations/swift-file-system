@@ -3,6 +3,7 @@
 //  swift-file-system
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -15,84 +16,69 @@ extension File.Directory.Iterator {
 // MARK: - Unit Tests
 
 extension File.Directory.Iterator.Test.Unit {
-    private func createTempDir() throws -> File.Path {
-        let path = try File.Path("/tmp/iter-test-\(Int.random(in: 0..<Int.max))")
-        try File.System.Create.Directory.create(at: path)
-        return path
-    }
-
-    private func cleanup(_ path: File.Path) {
-        try? File.System.Delete.delete(at: path, options: .init(recursive: true))
-    }
-
     @Test("open on valid directory succeeds")
     func openValidDirectory() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
-
-        let iterator = try File.Directory.Iterator.open(at: dir)
-        iterator.close()
+        try File.Directory.temporary { dir in
+            let iterator = try File.Directory.Iterator.open(at: dir)
+            iterator.close()
+        }
     }
 
     @Test("next returns nil for empty directory")
     func nextReturnsNilForEmptyDirectory() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            var iterator = try File.Directory.Iterator.open(at: dir)
+            let entry = try iterator.next()
+            iterator.close()
 
-        var iterator = try File.Directory.Iterator.open(at: dir)
-        let entry = try iterator.next()
-        iterator.close()
-
-        #expect(entry == nil)
+            #expect(entry == nil)
+        }
     }
 
     @Test("next returns entries for non-empty directory")
     func nextReturnsEntriesForNonEmptyDirectory() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            // Create a file in the directory
+            let filePath = File.Path(dir.path, appending: "testfile.txt")
+            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+            try handle.close()
 
-        // Create a file in the directory
-        let filePath = File.Path(dir, appending: "testfile.txt")
-        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
-        try handle.close()
+            var iterator = try File.Directory.Iterator.open(at: dir)
+            let entry = try iterator.next()
+            iterator.close()
 
-        var iterator = try File.Directory.Iterator.open(at: dir)
-        let entry = try iterator.next()
-        iterator.close()
-
-        #expect(entry != nil)
-        #expect(entry.flatMap { String($0.name) } == "testfile.txt")
-        #expect(entry?.type == .file)
+            #expect(entry != nil)
+            #expect(entry.flatMap { String($0.name) } == "testfile.txt")
+            #expect(entry?.type == .file)
+        }
     }
 
     @Test("iterator skips . and .. entries")
     func iteratorSkipsDotEntries() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            var iterator = try File.Directory.Iterator.open(at: dir)
 
-        var iterator = try File.Directory.Iterator.open(at: dir)
-
-        // Collect all entries
-        var entries: [String] = []
-        while let entry = try iterator.next() {
-            if let name = String(entry.name) {
-                entries.append(name)
+            // Collect all entries
+            var entries: [String] = []
+            while let entry = try iterator.next() {
+                if let name = String(entry.name) {
+                    entries.append(name)
+                }
             }
-        }
-        iterator.close()
+            iterator.close()
 
-        #expect(!entries.contains("."))
-        #expect(!entries.contains(".."))
+            #expect(!entries.contains("."))
+            #expect(!entries.contains(".."))
+        }
     }
 
     @Test("close is idempotent")
     func closeIsIdempotent() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
-
-        let iterator = try File.Directory.Iterator.open(at: dir)
-        iterator.close()
-        // close() is consuming, so this is the only call
+        try File.Directory.temporary { dir in
+            let iterator = try File.Directory.Iterator.open(at: dir)
+            iterator.close()
+            // close() is consuming, so this is the only call
+        }
     }
 }
 
@@ -146,24 +132,24 @@ extension File.Directory.Iterator.Test.Unit {
 extension File.Directory.Iterator.Test.EdgeCase {
     @Test("open on non-existent directory throws pathNotFound")
     func openNonExistentDirectory() throws {
-        let path = try File.Path("/nonexistent-dir-\(Int.random(in: 0..<Int.max))")
+        let directory = try File.Directory("/nonexistent-dir-\(Int.random(in: 0..<Int.max))")
 
         #expect(throws: File.Directory.Iterator.Error.self) {
-            _ = try File.Directory.Iterator.open(at: path)
+            _ = try File.Directory.Iterator.open(at: directory)
         }
     }
 
     @Test("open on file throws notADirectory")
     func openOnFile() throws {
-        let filePath = try File.Path("/tmp/iter-file-test-\(Int.random(in: 0..<Int.max))")
-        defer { try? File.System.Delete.delete(at: filePath) }
+        try File.Directory.temporary { dir in
+            // Create a file, not a directory
+            let filePath = File.Path(dir.path, appending: "iter-file-test.txt")
+            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+            try handle.close()
 
-        // Create a file, not a directory
-        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
-        try handle.close()
-
-        #expect(throws: File.Directory.Iterator.Error.self) {
-            _ = try File.Directory.Iterator.open(at: filePath)
+            #expect(throws: File.Directory.Iterator.Error.self) {
+                _ = try File.Directory.Iterator.open(at: File.Directory(filePath))
+            }
         }
     }
 }

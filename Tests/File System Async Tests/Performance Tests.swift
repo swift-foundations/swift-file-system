@@ -51,9 +51,9 @@ extension File.IO.Test.Performance {
             self.executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 8))
 
             // Create a file for fstat testing (instead of Thread.sleep)
-            let td = try File.Directory.Temporary.system
+            let tempDir = try File.Directory.Temporary.system
             self.statFilePath = File.Path(
-                td,
+                tempDir.path,
                 appending: "perf_executor_stat_\(Int.random(in: 0..<Int.max)).txt"
             )
 
@@ -107,10 +107,10 @@ extension File.IO.Test.Performance {
             // INTENTIONALLY creates executor inside timed region
             // to measure first-job latency including worker startup
             let newExecutor = File.IO.Executor()
-            defer { Task { await newExecutor.shutdown() } }
 
             let result = try await newExecutor.run { 42 }
             #expect(result == 42)
+            await newExecutor.shutdown()
         }
 
         @Test("Concurrent job completion", .timed(iterations: 5, warmup: 1))
@@ -152,9 +152,9 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try File.Directory.Temporary.system
+            let tempDir = try File.Directory.Temporary.system
             self.filePath = File.Path(
-                td,
+                tempDir.path,
                 appending: "perf_handle_\(Int.random(in: 0..<Int.max)).txt"
             )
 
@@ -207,14 +207,13 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try File.Directory.Temporary.system
-
+            let tempDir = try File.Directory.Temporary.system
             let fileData = [UInt8](repeating: 0x00, count: 10)
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
 
             // Setup: 100 files directory
             self.testDir100Files = File.Path(
-                td,
+                tempDir.path,
                 appending: "perf_async_dir_\(Int.random(in: 0..<Int.max))"
             )
             try File.System.Create.Directory.create(at: testDir100Files)
@@ -229,7 +228,7 @@ extension File.IO.Test.Performance {
 
             // Setup: shallow tree (10 dirs × 10 files)
             self.testDirShallowTree = File.Path(
-                td,
+                tempDir.path,
                 appending: "perf_walk_shallow_\(Int.random(in: 0..<Int.max))"
             )
             try File.System.Create.Directory.create(at: testDirShallowTree)
@@ -248,7 +247,7 @@ extension File.IO.Test.Performance {
 
             // Setup: deep tree (5 levels, 3 files per level)
             self.testDirDeepTree = File.Path(
-                td,
+                tempDir.path,
                 appending: "perf_walk_deep_\(Int.random(in: 0..<Int.max))"
             )
             try File.System.Create.Directory.create(at: testDirDeepTree)
@@ -291,7 +290,7 @@ extension File.IO.Test.Performance {
         )
         func asyncDirectoryContents() async throws {
             let entries = try await File.Directory.Async(io: executor).contents(
-                at: testDir100Files
+                at: File.Directory(testDir100Files)
             )
             #expect(entries.count == 100)
         }
@@ -302,7 +301,7 @@ extension File.IO.Test.Performance {
         )
         func directoryEntriesStreaming() async throws {
             var count = 0
-            for try await _ in File.Directory.Async(io: executor).entries(at: testDir100Files) {
+            for try await _ in File.Directory.Async(io: executor).entries(at: File.Directory(testDir100Files)) {
                 count += 1
             }
             #expect(count == 100)
@@ -314,7 +313,7 @@ extension File.IO.Test.Performance {
         )
         func directoryWalkShallow() async throws {
             var count = 0
-            let walk = File.Directory.Async(io: executor).walk(at: testDirShallowTree)
+            let walk = File.Directory.Async(io: executor).walk(at: File.Directory(testDirShallowTree))
             let iterator = walk.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -329,7 +328,7 @@ extension File.IO.Test.Performance {
         )
         func directoryWalkDeep() async throws {
             var count = 0
-            let walk = File.Directory.Async(io: executor).walk(at: testDirDeepTree)
+            let walk = File.Directory.Async(io: executor).walk(at: File.Directory(testDirDeepTree))
             let iterator = walk.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -351,26 +350,21 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try File.Directory.Temporary.system
-
-            // Initialize all paths first (before any closures)
-            let path1MB = File.Path(
-                td,
+            let tempDir = try File.Directory.Temporary.system
+            self.file1MB = File.Path(
+                tempDir.path,
                 appending: "perf_stream_1mb_\(Int.random(in: 0..<Int.max)).bin"
             )
-            let path5MB = File.Path(
-                td,
+            self.file5MB = File.Path(
+                tempDir.path,
                 appending: "perf_stream_5mb_\(Int.random(in: 0..<Int.max)).bin"
             )
-            self.file1MB = path1MB
-            self.file5MB = path5MB
 
-            // Now create files using local variables (not self)
             let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
-            try File.System.Write.Atomic.write(oneMB.span, to: path1MB)
+            try File.System.Write.Atomic.write(oneMB.span, to: file1MB)
 
             let fiveMB = [UInt8](repeating: 0xEF, count: 5_000_000)
-            try File.System.Write.Atomic.write(fiveMB.span, to: path5MB)
+            try File.System.Write.Atomic.write(fiveMB.span, to: file5MB)
         }
 
         deinit {
@@ -437,33 +431,27 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try File.Directory.Temporary.system
-
-            // Initialize all paths first (before any closures)
-            let pathStatFile = File.Path(
-                td,
+            let tempDir = try File.Directory.Temporary.system
+            self.statFile = File.Path(
+                tempDir.path,
                 appending: "perf_async_stat_\(Int.random(in: 0..<Int.max)).txt"
             )
-            let pathCopySource = File.Path(
-                td,
+            self.copySource = File.Path(
+                tempDir.path,
                 appending: "perf_async_copy_src_\(Int.random(in: 0..<Int.max)).bin"
             )
-            let pathCopyDestDir = File.Path(
-                td,
+            self.copyDestDir = File.Path(
+                tempDir.path,
                 appending: "perf_async_copy_dest_\(Int.random(in: 0..<Int.max))"
             )
-            self.statFile = pathStatFile
-            self.copySource = pathCopySource
-            self.copyDestDir = pathCopyDestDir
 
-            // Now create files using local variables (not self)
             let statData = [UInt8](repeating: 0x00, count: 1000)
-            try File.System.Write.Atomic.write(statData.span, to: pathStatFile)
+            try File.System.Write.Atomic.write(statData.span, to: statFile)
 
             let oneMB = [UInt8](repeating: 0xAA, count: 1_000_000)
-            try File.System.Write.Atomic.write(oneMB.span, to: pathCopySource)
+            try File.System.Write.Atomic.write(oneMB.span, to: copySource)
 
-            try File.System.Create.Directory.create(at: pathCopyDestDir)
+            try File.System.Create.Directory.create(at: copyDestDir)
         }
 
         deinit {
@@ -510,11 +498,9 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try File.Directory.Temporary.system
-
-            // Create test directory with 10 files, 100KB each
+            let tempDir = try File.Directory.Temporary.system
             self.testDir = File.Path(
-                td,
+                tempDir.path,
                 appending: "perf_concurrent_\(Int.random(in: 0..<Int.max))"
             )
             try File.System.Create.Directory.create(at: testDir)
@@ -608,26 +594,21 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try File.Directory.Temporary.system
-
-            // Initialize all paths first (before any closures)
-            let pathTestFile = File.Path(
-                td,
+            let tempDir = try File.Directory.Temporary.system
+            self.testFile = File.Path(
+                tempDir.path,
                 appending: "perf_mem_handle_\(Int.random(in: 0..<Int.max)).txt"
             )
-            let pathStreamFile = File.Path(
-                td,
+            self.streamFile = File.Path(
+                tempDir.path,
                 appending: "perf_mem_stream_\(Int.random(in: 0..<Int.max)).bin"
             )
-            self.testFile = pathTestFile
-            self.streamFile = pathStreamFile
 
-            // Now create files using local variables (not self)
             let smallData = [UInt8](repeating: 0x00, count: 100)
-            try File.System.Write.Atomic.write(smallData.span, to: pathTestFile)
+            try File.System.Write.Atomic.write(smallData.span, to: testFile)
 
             let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
-            try File.System.Write.Atomic.write(oneMB.span, to: pathStreamFile)
+            try File.System.Write.Atomic.write(oneMB.span, to: streamFile)
         }
 
         deinit {

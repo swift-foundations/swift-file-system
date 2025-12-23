@@ -46,7 +46,7 @@ extension File {
         ) throws -> T {
             let base = try File.Directory.Temporary.system
             let dirName = "\(prefix)-\(File.Directory.Temporary.randomID())"
-            let dirPath = File.Path(base, appending: dirName)
+            let dirPath = File.Path(base.path, appending: dirName)
 
             try File.System.Create.Directory.create(at: dirPath)
             defer { try? File.System.Delete.delete(at: dirPath, options: .init(recursive: true)) }
@@ -68,7 +68,7 @@ extension File {
         ) async throws -> T {
             let base = try File.Directory.Temporary.system
             let dirName = "\(prefix)-\(File.Directory.Temporary.randomID())"
-            let dirPath = File.Path(base, appending: dirName)
+            let dirPath = File.Path(base.path, appending: dirName)
 
             try await File.System.Create.Directory.create(at: dirPath)
             defer { try? File.System.Delete.delete(at: dirPath, options: .init(recursive: true)) }

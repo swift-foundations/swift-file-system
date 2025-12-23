@@ -3,6 +3,7 @@
 //  swift-file-system
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -15,118 +16,103 @@ extension File.Directory.Walk {
 // MARK: - Unit Tests
 
 extension File.Directory.Walk.Test.Unit {
-    private func createTempDir() throws -> File.Path {
-        let path = try File.Path("/tmp/walk-test-\(Int.random(in: 0..<Int.max))")
-        try File.System.Create.Directory.create(at: path)
-        return path
-    }
-
-    private func cleanup(_ path: File.Path) {
-        try? File.System.Delete.delete(at: path, options: .init(recursive: true))
-    }
-
     @Test("walk empty directory returns empty array")
     func walkEmptyDirectory() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
-
-        let entries = try File.Directory.Walk.walk(at: dir)
-        #expect(entries.isEmpty)
+        try File.Directory.temporary { dir in
+            let entries = try File.Directory.Walk.walk(at: dir)
+            #expect(entries.isEmpty)
+        }
     }
 
     @Test("walk returns entries for non-empty directory")
     func walkNonEmptyDirectory() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            // Create files
+            let file1 = File.Path(dir.path, appending: "file1.txt")
+            let file2 = File.Path(dir.path, appending: "file2.txt")
+            let h1 = try File.Handle.open(file1, mode: .write, options: [.create, .closeOnExec])
+            try h1.close()
+            let h2 = try File.Handle.open(file2, mode: .write, options: [.create, .closeOnExec])
+            try h2.close()
 
-        // Create files
-        let file1 = File.Path(dir, appending: "file1.txt")
-        let file2 = File.Path(dir, appending: "file2.txt")
-        let h1 = try File.Handle.open(file1, mode: .write, options: [.create, .closeOnExec])
-        try h1.close()
-        let h2 = try File.Handle.open(file2, mode: .write, options: [.create, .closeOnExec])
-        try h2.close()
+            let entries = try File.Directory.Walk.walk(at: dir)
+            #expect(entries.count == 2)
 
-        let entries = try File.Directory.Walk.walk(at: dir)
-        #expect(entries.count == 2)
-
-        let names = entries.compactMap { String($0.name) }.sorted()
-        #expect(names == ["file1.txt", "file2.txt"])
+            let names = entries.compactMap { String($0.name) }.sorted()
+            #expect(names == ["file1.txt", "file2.txt"])
+        }
     }
 
     @Test("walk recurses into subdirectories")
     func walkRecursesIntoSubdirectories() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            // Create subdir with file
+            let subdir = File.Path(dir.path, appending: "subdir")
+            try File.System.Create.Directory.create(at: subdir)
 
-        // Create subdir with file
-        let subdir = File.Path(dir, appending: "subdir")
-        try File.System.Create.Directory.create(at: subdir)
+            let file = File.Path(subdir, appending: "nested.txt")
+            let h = try File.Handle.open(file, mode: .write, options: [.create, .closeOnExec])
+            try h.close()
 
-        let file = File.Path(subdir, appending: "nested.txt")
-        let h = try File.Handle.open(file, mode: .write, options: [.create, .closeOnExec])
-        try h.close()
+            let entries = try File.Directory.Walk.walk(at: dir)
+            #expect(entries.count == 2)  // subdir + nested.txt
 
-        let entries = try File.Directory.Walk.walk(at: dir)
-        #expect(entries.count == 2)  // subdir + nested.txt
-
-        let names = entries.compactMap { String($0.name) }.sorted()
-        #expect(names.contains("subdir"))
-        #expect(names.contains("nested.txt"))
+            let names = entries.compactMap { String($0.name) }.sorted()
+            #expect(names.contains("subdir"))
+            #expect(names.contains("nested.txt"))
+        }
     }
 
     @Test("Options.maxDepth limits recursion")
     func optionsMaxDepthLimitsRecursion() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            // Create nested structure: dir/a/b/c.txt
+            let a = File.Path(dir.path, appending: "a")
+            let b = File.Path(a, appending: "b")
+            try File.System.Create.Directory.create(at: a)
+            try File.System.Create.Directory.create(at: b)
 
-        // Create nested structure: dir/a/b/c.txt
-        let a = File.Path(dir, appending: "a")
-        let b = File.Path(a, appending: "b")
-        try File.System.Create.Directory.create(at: a)
-        try File.System.Create.Directory.create(at: b)
+            let c = File.Path(b, appending: "c.txt")
+            let h = try File.Handle.open(c, mode: .write, options: [.create, .closeOnExec])
+            try h.close()
 
-        let c = File.Path(b, appending: "c.txt")
-        let h = try File.Handle.open(c, mode: .write, options: [.create, .closeOnExec])
-        try h.close()
+            // maxDepth: 0 should only return immediate children
+            let entries0 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 0))
+            #expect(entries0.count == 1)
+            #expect(String(entries0[0].name) == "a")
 
-        // maxDepth: 0 should only return immediate children
-        let entries0 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 0))
-        #expect(entries0.count == 1)
-        #expect(String(entries0[0].name) == "a")
-
-        // maxDepth: 1 should return dir/a and dir/a/b
-        let entries1 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 1))
-        #expect(entries1.count == 2)
+            // maxDepth: 1 should return dir/a and dir/a/b
+            let entries1 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 1))
+            #expect(entries1.count == 2)
+        }
     }
 
     @Test("Options.includeHidden filters hidden files")
     func optionsIncludeHiddenFilters() throws {
-        let dir = try createTempDir()
-        defer { cleanup(dir) }
+        try File.Directory.temporary { dir in
+            // Create visible and hidden files
+            let visible = File.Path(dir.path, appending: "visible.txt")
+            let hidden = File.Path(dir.path, appending: ".hidden")
+            let h1 = try File.Handle.open(visible, mode: .write, options: [.create, .closeOnExec])
+            try h1.close()
+            let h2 = try File.Handle.open(hidden, mode: .write, options: [.create, .closeOnExec])
+            try h2.close()
 
-        // Create visible and hidden files
-        let visible = File.Path(dir, appending: "visible.txt")
-        let hidden = File.Path(dir, appending: ".hidden")
-        let h1 = try File.Handle.open(visible, mode: .write, options: [.create, .closeOnExec])
-        try h1.close()
-        let h2 = try File.Handle.open(hidden, mode: .write, options: [.create, .closeOnExec])
-        try h2.close()
+            // includeHidden: true (default)
+            let entriesWithHidden = try File.Directory.Walk.walk(
+                at: dir,
+                options: .init(includeHidden: true)
+            )
+            #expect(entriesWithHidden.count == 2)
 
-        // includeHidden: true (default)
-        let entriesWithHidden = try File.Directory.Walk.walk(
-            at: dir,
-            options: .init(includeHidden: true)
-        )
-        #expect(entriesWithHidden.count == 2)
-
-        // includeHidden: false
-        let entriesWithoutHidden = try File.Directory.Walk.walk(
-            at: dir,
-            options: .init(includeHidden: false)
-        )
-        #expect(entriesWithoutHidden.count == 1)
-        #expect(String(entriesWithoutHidden[0].name) == "visible.txt")
+            // includeHidden: false
+            let entriesWithoutHidden = try File.Directory.Walk.walk(
+                at: dir,
+                options: .init(includeHidden: false)
+            )
+            #expect(entriesWithoutHidden.count == 1)
+            #expect(String(entriesWithoutHidden[0].name) == "visible.txt")
+        }
     }
 
     @Test("Options default values")
@@ -334,22 +320,24 @@ extension File.Directory.Walk.Test.EdgeCase {
     @Test("walk on non-existent directory throws")
     func walkNonExistentDirectory() throws {
         let path = try File.Path("/nonexistent-\(Int.random(in: 0..<Int.max))")
+        let nonExistentDir = File.Directory(path)
 
         #expect(throws: File.Directory.Walk.Error.self) {
-            _ = try File.Directory.Walk.walk(at: path)
+            _ = try File.Directory.Walk.walk(at: nonExistentDir)
         }
     }
 
     @Test("walk on file throws notADirectory")
     func walkOnFile() throws {
-        let filePath = try File.Path("/tmp/walk-file-test-\(Int.random(in: 0..<Int.max))")
-        defer { try? File.System.Delete.delete(at: filePath) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "testfile.txt")
+            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+            try handle.close()
 
-        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
-        try handle.close()
-
-        #expect(throws: File.Directory.Walk.Error.self) {
-            _ = try File.Directory.Walk.walk(at: filePath)
+            let fileAsDir = File.Directory(filePath)
+            #expect(throws: File.Directory.Walk.Error.self) {
+                _ = try File.Directory.Walk.walk(at: fileAsDir)
+            }
         }
     }
 }

@@ -17,172 +17,141 @@ extension File.Directory.Contents {
 }
 
 extension File.Directory.Contents.Test.Unit {
-    // MARK: - Test Fixtures
-
-    private func createTempDir() throws -> String {
-        let path = "/tmp/contents-test-\(Int.random(in: 0..<Int.max))"
-        try File.System.Create.Directory.create(at: try File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Listing
 
     @Test("List empty directory")
     func listEmptyDirectory() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
-
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-        #expect(entries.isEmpty)
+        try File.Directory.temporary { dir in
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.isEmpty)
+        }
     }
 
     @Test("List directory with files")
     func listDirectoryWithFiles() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            // Create some files
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "file1.txt"))
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "file2.txt"))
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "file3.txt"))
 
-        // Create some files
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file1.txt"))
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file2.txt"))
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file3.txt"))
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 3)
 
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-        #expect(entries.count == 3)
-
-        let names = entries.compactMap { String($0.name) }.sorted()
-        #expect(names == ["file1.txt", "file2.txt", "file3.txt"])
+            let names = entries.compactMap { String($0.name) }.sorted()
+            #expect(names == ["file1.txt", "file2.txt", "file3.txt"])
+        }
     }
 
     @Test("List directory with subdirectories")
     func listDirectoryWithSubdirectories() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            // Create subdirectories
+            try File.System.Create.Directory.create(at: File.Path(dir.path, appending: "subdir1"))
+            try File.System.Create.Directory.create(at: File.Path(dir.path, appending: "subdir2"))
 
-        // Create subdirectories
-        try File.System.Create.Directory.create(at: .init("\(dirPath)/subdir1"))
-        try File.System.Create.Directory.create(at: .init("\(dirPath)/subdir2"))
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 2)
 
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-        #expect(entries.count == 2)
-
-        for entry in entries {
-            #expect(entry.type == .directory)
+            for entry in entries {
+                #expect(entry.type == .directory)
+            }
         }
     }
 
     @Test("List directory with mixed content")
     func listDirectoryWithMixedContent() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            // Create file
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "file.txt"))
 
-        // Create file
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file.txt"))
+            // Create subdirectory
+            try File.System.Create.Directory.create(at: File.Path(dir.path, appending: "subdir"))
 
-        // Create subdirectory
-        try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir"))
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 2)
 
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-        #expect(entries.count == 2)
+            let fileEntry = entries.first { String($0.name) == "file.txt" }
+            #expect(fileEntry?.type == .file)
 
-        let fileEntry = entries.first { String($0.name) == "file.txt" }
-        #expect(fileEntry?.type == .file)
-
-        let dirEntry = entries.first { String($0.name) == "subdir" }
-        #expect(dirEntry?.type == .directory)
+            let dirEntry = entries.first { String($0.name) == "subdir" }
+            #expect(dirEntry?.type == .directory)
+        }
     }
 
     @Test("List directory excludes . and ..")
     func listDirectoryExcludesDotEntries() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "regular.txt"))
 
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/regular.txt"))
+            let entries = try File.Directory.Contents.list(at: dir)
 
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-
-        let names = entries.compactMap { String($0.name) }
-        #expect(!names.contains("."))
-        #expect(!names.contains(".."))
+            let names = entries.compactMap { String($0.name) }
+            #expect(!names.contains("."))
+            #expect(!names.contains(".."))
+        }
     }
 
     @Test("List directory with symlink")
     func listDirectoryWithSymlink() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            // Create a regular file
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "target.txt"))
 
-        // Create a regular file
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/target.txt"))
+            // Create a symlink
+            try File.System.Link.Symbolic.create(
+                at: File.Path(dir.path, appending: "link.txt"),
+                pointingTo: File.Path(dir.path, appending: "target.txt")
+            )
 
-        // Create a symlink
-        try File.System.Link.Symbolic.create(
-            at: try File.Path("\(dirPath)/link.txt"),
-            pointingTo: try File.Path("\(dirPath)/target.txt")
-        )
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 2)
 
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-        #expect(entries.count == 2)
-
-        let linkEntry = entries.first { String($0.name) == "link.txt" }
-        #expect(linkEntry?.type == .symbolicLink)
+            let linkEntry = entries.first { String($0.name) == "link.txt" }
+            #expect(linkEntry?.type == .symbolicLink)
+        }
     }
 
     // MARK: - Entry Properties
 
     @Test("Entry has correct path")
     func entryHasCorrectPath() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            try File.System.Write.Atomic.write([], to: File.Path(dir.path, appending: "test.txt"))
 
-        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/test.txt"))
+            let entries = try File.Directory.Contents.list(at: dir)
+            #expect(entries.count == 1)
 
-        let path = try File.Path(dirPath)
-        let entries = try File.Directory.Contents.list(at: path)
-        #expect(entries.count == 1)
-
-        let entry = entries[0]
-        #expect(String(entry.name) == "test.txt")
-        #expect(entry.pathIfValid?.string.hasSuffix("/test.txt") == true)
+            let entry = entries[0]
+            #expect(String(entry.name) == "test.txt")
+            #expect(entry.pathIfValid?.string.hasSuffix("/test.txt") == true)
+        }
     }
 
     // MARK: - Error Cases
 
     @Test("List non-existent directory throws pathNotFound")
     func listNonExistentDirectoryThrows() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let path = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let nonExistent = File.Path(dir.path, appending: "non-existent-\(Int.random(in: 0..<Int.max))")
+            let nonExistentDir = File.Directory( nonExistent)
 
-        #expect(throws: File.Directory.Contents.Error.self) {
-            _ = try File.Directory.Contents.list(at: path)
+            #expect(throws: File.Directory.Contents.Error.self) {
+                _ = try File.Directory.Contents.list(at: nonExistentDir)
+            }
         }
     }
 
     @Test("List file throws notADirectory")
     func listFileThrowsNotADirectory() throws {
-        let filePath = "/tmp/contents-file-\(Int.random(in: 0..<Int.max)).txt"
-        defer {
-            if let path = try? File.Path(filePath) {
-                try? File.System.Delete.delete(at: path)
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test-file.txt")
+            try File.System.Write.Atomic.write([], to: filePath)
+
+            let fileAsDir = File.Directory( filePath)
+            #expect(throws: File.Directory.Contents.Error.notADirectory(filePath)) {
+                _ = try File.Directory.Contents.list(at: fileAsDir)
             }
-        }
-
-        try File.System.Write.Atomic.write([], to: File.Path(filePath))
-
-        let path = try File.Path(filePath)
-
-        #expect(throws: File.Directory.Contents.Error.notADirectory(path)) {
-            _ = try File.Directory.Contents.list(at: path)
         }
     }
 
@@ -251,19 +220,20 @@ extension File.Directory.Contents.Test.Performance {
     /// Setup runs once per test method (in init), not per .timed() iteration.
     @Suite(.serialized)
     final class DirectoryListingBenchmarks {
-        let testDir: File.Path
+        let testDir: File.Directory
 
         init() throws {
             let td = try File.Directory.Temporary.system
-            self.testDir = File.Path(td, appending: "bench_\(Int.random(in: 0..<Int.max))")
+            let testPath = File.Path(td.path, appending: "bench_\(Int.random(in: 0..<Int.max))")
+            self.testDir = File.Directory( testPath)
 
             // Setup: create directory with 100 files
             // Use durability: .none to avoid F_FULLFSYNC overhead
-            try File.System.Create.Directory.create(at: testDir)
+            try File.System.Create.Directory.create(at: testPath)
             let fileData = [UInt8](repeating: 0x00, count: 10)
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
             for i in 0..<100 {
-                let filePath = File.Path(testDir, appending: "file_\(i).txt")
+                let filePath = File.Path(testPath, appending: "file_\(i).txt")
                 try File.System.Write.Atomic.write(
                     fileData.span,
                     to: filePath,
@@ -273,7 +243,7 @@ extension File.Directory.Contents.Test.Performance {
         }
 
         deinit {
-            try? File.System.Delete.delete(at: testDir, options: .init(recursive: true))
+            try? File.System.Delete.delete(at: testDir.path, options: .init(recursive: true))
         }
 
         @Test(

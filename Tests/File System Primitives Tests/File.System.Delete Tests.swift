@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -16,68 +17,28 @@ extension File.System.Delete {
 
 extension File.System.Delete.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: String = "test") throws -> String {
-        let path = "/tmp/delete-test-\(Int.random(in: 0..<Int.max)).txt"
-        try File.System.Write.Atomic.write(Array(content.utf8).span, to: File.Path(path))
-        return path
-    }
-
-    private func createTempDirectory() throws -> String {
-        let path = "/tmp/delete-test-dir-\(Int.random(in: 0..<Int.max))"
-        try File.System.Create.Directory.create(at: try File.Path(path))
-        return path
-    }
-
-    private func createNestedDirectory() throws -> String {
-        let basePath = "/tmp/delete-test-nested-\(Int.random(in: 0..<Int.max))"
-        let nestedPath = "\(basePath)/a/b/c"
-        try File.System.Create.Directory.create(
-            at: try File.Path(nestedPath),
-            options: .init(createIntermediates: true)
-        )
-        // Add some files
-        try File.System.Write.Atomic.write(
-            Array("file1".utf8),
-            to: File.Path("\(basePath)/file1.txt")
-        )
-        try File.System.Write.Atomic.write(
-            Array("file2".utf8),
-            to: File.Path("\(basePath)/a/file2.txt")
-        )
-        try File.System.Write.Atomic.write(
-            Array("file3".utf8),
-            to: File.Path("\(basePath)/a/b/file3.txt")
-        )
-        return basePath
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Delete file
 
     @Test("Delete existing file")
     func deleteExistingFile() throws {
-        let path = try createTempFile()
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            try File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
 
-        let filePath = try File.Path(path)
-        try File.System.Delete.delete(at: filePath)
+            try File.System.Delete.delete(at: filePath)
 
-        #expect(!File.System.Stat.exists(at: try File.Path(path)))
+            #expect(!File.System.Stat.exists(at: filePath))
+        }
     }
 
     @Test("Delete non-existing file throws pathNotFound")
     func deleteNonExistingFile() throws {
-        let path = "/tmp/non-existing-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "non-existing.txt")
 
-        #expect(throws: File.System.Delete.Error.self) {
-            try File.System.Delete.delete(at: filePath)
+            #expect(throws: File.System.Delete.Error.self) {
+                try File.System.Delete.delete(at: filePath)
+            }
         }
     }
 
@@ -85,38 +46,46 @@ extension File.System.Delete.Test.Unit {
 
     @Test("Delete empty directory")
     func deleteEmptyDirectory() throws {
-        let path = try createTempDirectory()
+        try File.Directory.temporary { dir in
+            let subdir = File.Path(dir.path, appending: "subdir")
+            try File.System.Create.Directory.create(at: subdir)
 
-        let filePath = try File.Path(path)
-        try File.System.Delete.delete(at: filePath)
+            try File.System.Delete.delete(at: subdir)
 
-        #expect(!File.System.Stat.exists(at: try File.Path(path)))
+            #expect(!File.System.Stat.exists(at: subdir))
+        }
     }
 
     @Test("Delete non-empty directory without recursive throws")
     func deleteNonEmptyDirectoryWithoutRecursive() throws {
-        let basePath = try createNestedDirectory()
-        defer { cleanup(basePath) }
+        try File.Directory.temporary { dir in
+            let subdir = File.Path(dir.path, appending: "subdir")
+            try File.System.Create.Directory.create(at: subdir)
+            try File.System.Write.Atomic.write(Array("content".utf8), to: File.Path(subdir, appending: "file.txt"))
 
-        let filePath = try File.Path(basePath)
+            #expect(throws: File.System.Delete.Error.self) {
+                try File.System.Delete.delete(at: subdir)
+            }
 
-        #expect(throws: File.System.Delete.Error.self) {
-            try File.System.Delete.delete(at: filePath)
+            // Directory should still exist
+            #expect(File.System.Stat.exists(at: subdir))
         }
-
-        // Directory should still exist
-        #expect(File.System.Stat.exists(at: try File.Path(basePath)))
     }
 
     @Test("Delete non-empty directory with recursive option")
     func deleteNonEmptyDirectoryWithRecursive() throws {
-        let basePath = try createNestedDirectory()
+        try File.Directory.temporary { dir in
+            // Create nested structure
+            let nested = File.Path(dir.path, appending: "a/b/c")
+            try File.System.Create.Directory.create(at: nested, options: .init(createIntermediates: true))
+            try File.System.Write.Atomic.write(Array("file1".utf8), to: File.Path(dir.path, appending: "a/file1.txt"))
+            try File.System.Write.Atomic.write(Array("file2".utf8), to: File.Path(dir.path, appending: "a/b/file2.txt"))
 
-        let filePath = try File.Path(basePath)
-        let options = File.System.Delete.Options(recursive: true)
-        try File.System.Delete.delete(at: filePath, options: options)
+            let targetDir = File.Path(dir.path, appending: "a")
+            try File.System.Delete.delete(at: targetDir, options: .init(recursive: true))
 
-        #expect(!File.System.Stat.exists(at: try File.Path(basePath)))
+            #expect(!File.System.Stat.exists(at: targetDir))
+        }
     }
 
     // MARK: - Options
@@ -137,30 +106,35 @@ extension File.System.Delete.Test.Unit {
 
     @Test("Delete file variant")
     func deleteFileVariant() throws {
-        let path = try createTempFile()
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "variant.txt")
+            try File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
 
-        let filePath = try File.Path(path)
-        try File.System.Delete.delete(at: filePath)
+            try File.System.Delete.delete(at: filePath)
 
-        #expect(!File.System.Stat.exists(at: try File.Path(path)))
+            #expect(!File.System.Stat.exists(at: filePath))
+        }
     }
 
     @Test("Delete directory with options variant")
     func deleteDirectoryWithOptionsVariant() throws {
-        let basePath = try createNestedDirectory()
+        try File.Directory.temporary { dir in
+            let nested = File.Path(dir.path, appending: "nested/deep")
+            try File.System.Create.Directory.create(at: nested, options: .init(createIntermediates: true))
+            try File.System.Write.Atomic.write(Array("content".utf8), to: File.Path(dir.path, appending: "nested/file.txt"))
 
-        let filePath = try File.Path(basePath)
-        let options = File.System.Delete.Options(recursive: true)
-        try File.System.Delete.delete(at: filePath, options: options)
+            let targetDir = File.Path(dir.path, appending: "nested")
+            try File.System.Delete.delete(at: targetDir, options: .init(recursive: true))
 
-        #expect(!File.System.Stat.exists(at: try File.Path(basePath)))
+            #expect(!File.System.Stat.exists(at: targetDir))
+        }
     }
 
     // MARK: - Error descriptions
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
-        let path = File.Path("/tmp/missing.txt")
+        let path: File.Path = "/tmp/missing.txt"
         let error = File.System.Delete.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
         #expect(error.description.contains("/tmp/missing.txt"))
@@ -168,14 +142,14 @@ extension File.System.Delete.Test.Unit {
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = File.Path("/root/protected")
+        let path: File.Path = "/root/protected"
         let error = File.System.Delete.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("isDirectory error description")
     func isDirectoryErrorDescription() throws {
-        let path = File.Path("/tmp/somedir")
+        let path: File.Path = "/tmp/somedir"
         let error = File.System.Delete.Error.isDirectory(path)
         #expect(error.description.contains("Is a directory"))
         #expect(error.description.contains("recursive"))
@@ -183,7 +157,7 @@ extension File.System.Delete.Test.Unit {
 
     @Test("directoryNotEmpty error description")
     func directoryNotEmptyErrorDescription() throws {
-        let path = File.Path("/tmp/nonempty")
+        let path: File.Path = "/tmp/nonempty"
         let error = File.System.Delete.Error.directoryNotEmpty(path)
         #expect(error.description.contains("Directory not empty"))
         #expect(error.description.contains("recursive"))
@@ -204,9 +178,9 @@ extension File.System.Delete.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = File.Path("/tmp/a")
-        let path2 = File.Path("/tmp/a")
-        let path3 = File.Path("/tmp/b")
+        let path1: File.Path = "/tmp/a"
+        let path2: File.Path = "/tmp/a"
+        let path3: File.Path = "/tmp/b"
 
         #expect(
             File.System.Delete.Error.pathNotFound(path1)

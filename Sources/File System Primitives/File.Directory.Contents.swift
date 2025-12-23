@@ -175,9 +175,10 @@ extension File.Directory.Contents {
 #if os(Windows)
     extension File.Directory.Contents {
         package static func _listWindows(
-            at path: File.Path
+            at directory: File.Directory
         ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
             // Verify it's a directory
+            let path = directory.path
             let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
