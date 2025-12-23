@@ -65,9 +65,9 @@ extension File.Directory.Temporary {
     }
 }
 
-// MARK: - File.Directory.TemporaryScope (wrapper)
+// MARK: - File.Directory.Temporary.Scope (wrapper)
 
-extension File.Directory {
+extension File.Directory.Temporary {
     /// Wrapper for scoped temporary directory operations.
     ///
     /// Provides a temporary directory with automatic cleanup when the closure exits.
@@ -79,11 +79,11 @@ extension File.Directory {
     ///     // automatically deleted when the closure exits
     /// }
     /// ```
-    public struct TemporaryScope: Sendable {
+    public struct Scope: Sendable {
         /// The prefix for the temp directory name.
         public let prefix: String
 
-        /// Creates a TemporaryScope instance.
+        /// Creates a File.Directory.Temporary.Scope instance.
         internal init(prefix: String) {
             self.prefix = prefix
         }
@@ -128,15 +128,15 @@ extension File.Directory {
     }
 
     /// Creates a temporary directory wrapper with default prefix "test".
-    public static var temporary: TemporaryScope {
-        TemporaryScope(prefix: "test")
+    public static var temporary: File.Directory.Temporary.Scope {
+        File.Directory.Temporary.Scope(prefix: "test")
     }
 
     /// Creates a temporary directory wrapper with custom prefix.
     ///
     /// - Parameter prefix: Prefix for the temp directory name.
-    /// - Returns: A `TemporaryScope` wrapper for scoped directory operations.
-    public static func temporary(prefix: String) -> TemporaryScope {
-        TemporaryScope(prefix: prefix)
+    /// - Returns: A `Temporary.Scope` wrapper for scoped directory operations.
+    public static func temporary(prefix: String) -> File.Directory.Temporary.Scope {
+        File.Directory.Temporary.Scope(prefix: prefix)
     }
 }
