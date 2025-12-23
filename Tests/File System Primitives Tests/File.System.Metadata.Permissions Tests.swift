@@ -185,14 +185,14 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Metadata.Permissions.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Metadata.Permissions.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
@@ -273,7 +273,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
     @Test("Error is Sendable")
     func errorSendable() async throws {
-        let path = try File.Path("/test")
+        let path = File.Path("/test")
         let error = File.System.Metadata.Permissions.Error.pathNotFound(path)
 
         let result = await Task {

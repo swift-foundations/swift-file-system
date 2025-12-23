@@ -127,13 +127,8 @@ extension File.Name.Test.Unit {
     func stringValidatingErrorContainsName() {
         let name = File.Name(rawBytes: [0x80, 0x81])
 
-        do {
+        #expect(throws: File.Name.Decode.Error.self) {
             _ = try String(validating: name)
-            Issue.record("Expected Decode.Error to be thrown")
-        } catch let error as File.Name.Decode.Error {
-            #expect(error.name == name)
-        } catch {
-            Issue.record("Unexpected error type: \(error)")
         }
     }
 

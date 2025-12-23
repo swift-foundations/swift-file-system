@@ -111,7 +111,7 @@ extension File.System.Link.Read.Target.Test.Unit {
         // Create relative symlink
         try File.System.Link.Symbolic.create(
             at: try File.Path(linkPath),
-            pointingTo: try File.Path("target.txt")
+            pointingTo: File.Path("target.txt")
         )
 
         let link = try File.Path(linkPath)
@@ -160,21 +160,21 @@ extension File.System.Link.Read.Target.Test.Unit {
 
     @Test("notASymlink error description")
     func notASymlinkErrorDescription() throws {
-        let path = try File.Path("/tmp/regular")
+        let path = File.Path("/tmp/regular")
         let error = File.System.Link.Read.Target.Error.notASymlink(path)
         #expect(error.description.contains("Not a symbolic link"))
     }
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Link.Read.Target.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Link.Read.Target.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
@@ -190,8 +190,8 @@ extension File.System.Link.Read.Target.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Link.Read.Target.Error.notASymlink(path1)

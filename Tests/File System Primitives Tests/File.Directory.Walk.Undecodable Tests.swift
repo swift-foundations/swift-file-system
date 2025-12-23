@@ -46,9 +46,9 @@ extension File.Directory.Walk.Undecodable.Test.Unit {
     }
 
     @Test("Context type is accessible through Undecodable namespace")
-    func contextAccessible() throws {
+    func contextAccessible() {
         // Context should be constructible through the namespace
-        let parent = try File.Path("/tmp")
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [0x80])
         let context = File.Directory.Walk.Undecodable.Context(
             parent: parent,

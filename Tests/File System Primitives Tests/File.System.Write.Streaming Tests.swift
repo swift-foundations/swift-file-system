@@ -259,7 +259,7 @@ extension File.System.Write.Streaming.Test.Unit {
     func parentNotFoundError() {
         #expect(throws: File.System.Write.Streaming.Error.self) {
             let chunks: [[UInt8]] = [[1, 2, 3]]
-            let filePath = try File.Path("/nonexistent/directory/file.txt")
+            let filePath = File.Path("/nonexistent/directory/file.txt")
             try File.System.Write.Streaming.write(chunks, to: filePath)
         }
     }
@@ -267,26 +267,26 @@ extension File.System.Write.Streaming.Test.Unit {
     // MARK: - Error Descriptions
 
     @Test("parent error description")
-    func parentErrorDescription() throws {
+    func parentErrorDescription() {
         let parentError = File.System.Parent.Check.Error.missing(
-            path: try File.Path("/nonexistent/parent")
+            path: "/nonexistent/parent"
         )
         let error = File.System.Write.Streaming.Error.parent(parentError)
         #expect(error.description.contains("Parent directory"))
     }
 
     @Test("destinationExists error description")
-    func destinationExistsErrorDescription() throws {
+    func destinationExistsErrorDescription() {
         let error = File.System.Write.Streaming.Error.destinationExists(
-            path: try File.Path("/tmp/existing.txt")
+            path: "/tmp/existing.txt"
         )
         #expect(error.description.contains("already exists"))
     }
 
     @Test("writeFailed error description")
-    func writeFailedErrorDescription() throws {
+    func writeFailedErrorDescription() {
         let error = File.System.Write.Streaming.Error.writeFailed(
-            path: try File.Path("/tmp/test.txt"),
+            path: "/tmp/test.txt",
             bytesWritten: 100,
             errno: 28,
             message: "No space left on device"
@@ -342,9 +342,9 @@ extension File.System.Write.Streaming.Test.Unit {
     }
 
     @Test("durabilityNotGuaranteed error description")
-    func durabilityNotGuaranteedErrorDescription() throws {
+    func durabilityNotGuaranteedErrorDescription() {
         let error = File.System.Write.Streaming.Error.durabilityNotGuaranteed(
-            path: try File.Path("/tmp/test.txt"),
+            path: "/tmp/test.txt",
             reason: "Task was cancelled"
         )
         #expect(error.description.contains("durability not guaranteed"))
@@ -352,9 +352,9 @@ extension File.System.Write.Streaming.Test.Unit {
     }
 
     @Test("directorySyncFailedAfterCommit error description")
-    func directorySyncFailedAfterCommitErrorDescription() throws {
+    func directorySyncFailedAfterCommitErrorDescription() {
         let error = File.System.Write.Streaming.Error.directorySyncFailedAfterCommit(
-            path: try File.Path("/tmp/test.txt"),
+            path: "/tmp/test.txt",
             errno: 5,
             message: "I/O error"
         )

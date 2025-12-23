@@ -80,7 +80,7 @@ extension File.IO.Test.Performance {
             await withTaskGroup(of: Int.self) { group in
                 for i in 0..<1000 {
                     group.addTask {
-                        try? await self.executor.run { i * 2 }
+                        _ = try? await self.executor.run { i * 2 }
                         return i
                     }
                 }

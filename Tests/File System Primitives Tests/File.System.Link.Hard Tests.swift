@@ -163,36 +163,36 @@ extension File.System.Link.Hard.Test.Unit {
 
     @Test("sourceNotFound error description")
     func sourceNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Link.Hard.Error.sourceNotFound(path)
         #expect(error.description.contains("Source not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Link.Hard.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("alreadyExists error description")
     func alreadyExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.System.Link.Hard.Error.alreadyExists(path)
         #expect(error.description.contains("already exists"))
     }
 
     @Test("crossDevice error description")
     func crossDeviceErrorDescription() throws {
-        let source = try File.Path("/tmp/source")
-        let dest = try File.Path("/var/dest")
+        let source = File.Path("/tmp/source")
+        let dest = File.Path("/var/dest")
         let error = File.System.Link.Hard.Error.crossDevice(source: source, destination: dest)
         #expect(error.description.contains("Cross-device"))
     }
 
     @Test("isDirectory error description")
     func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
+        let path = File.Path("/tmp")
         let error = File.System.Link.Hard.Error.isDirectory(path)
         #expect(error.description.contains("Cannot create hard link to directory"))
     }
@@ -210,8 +210,8 @@ extension File.System.Link.Hard.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Link.Hard.Error.sourceNotFound(path1)

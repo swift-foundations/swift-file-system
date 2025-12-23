@@ -189,28 +189,28 @@ extension File.System.Copy.Test.Unit {
 
     @Test("sourceNotFound error description")
     func sourceNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Copy.Error.sourceNotFound(path)
         #expect(error.description.contains("Source not found"))
     }
 
     @Test("destinationExists error description")
     func destinationExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.System.Copy.Error.destinationExists(path)
         #expect(error.description.contains("already exists"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Copy.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("isDirectory error description")
     func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
+        let path = File.Path("/tmp")
         let error = File.System.Copy.Error.isDirectory(path)
         #expect(error.description.contains("Is a directory"))
     }
@@ -226,8 +226,8 @@ extension File.System.Copy.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Copy.Error.sourceNotFound(path1)
@@ -360,7 +360,7 @@ extension File.System.Copy.Test.Unit {
                     let destPath = "/tmp/copy-attrs-dest-\(Int.random(in: 0..<Int.max)).bin"
 
                     // Set specific permissions and modification date on source
-                    let sourceURL = URL(fileURLWithPath: sourcePath)
+                    _ = URL(fileURLWithPath: sourcePath)
                     let testDate = Date(timeIntervalSince1970: 1_000_000_000)  // 2001-09-09
                     try FileManager.default.setAttributes(
                         [.posixPermissions: 0o644, .modificationDate: testDate],

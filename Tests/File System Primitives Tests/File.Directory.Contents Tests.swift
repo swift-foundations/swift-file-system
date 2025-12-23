@@ -67,8 +67,8 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create subdirectories
-        try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir1"))
-        try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir2"))
+        try File.System.Create.Directory.create(at: .init("\(dirPath)/subdir1"))
+        try File.System.Create.Directory.create(at: .init("\(dirPath)/subdir2"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -189,22 +189,22 @@ extension File.Directory.Contents.Test.Unit {
     // MARK: - Error Descriptions
 
     @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+    func pathNotFoundErrorDescription() {
+        let path: File.Path = "/tmp/missing"
         let error = File.Directory.Contents.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root")
+    func permissionDeniedErrorDescription() {
+        let path: File.Path = "/root"
         let error = File.Directory.Contents.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("notADirectory error description")
-    func notADirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp/file.txt")
+    func notADirectoryErrorDescription() {
+        let path: File.Path = "/tmp/file.txt"
         let error = File.Directory.Contents.Error.notADirectory(path)
         #expect(error.description.contains("Not a directory"))
     }

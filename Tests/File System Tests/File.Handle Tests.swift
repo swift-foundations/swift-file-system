@@ -270,7 +270,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let readData = try await File.Handle.withOpen(filePath, mode: .read) { handle in
+        let readData = try File.Handle.withOpen(filePath, mode: .read) { handle in
             try handle.read(count: 10)
         }
 

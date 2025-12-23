@@ -17,7 +17,7 @@ extension File.Directory {
 extension File.Directory.Test.Unit {
     @Test("init from path")
     func initFromPath() throws {
-        let path = try File.Path("/tmp/mydir")
+        let path = File.Path("/tmp/mydir")
         let dir = File.Directory(path)
         #expect(dir.path == path)
     }
@@ -30,14 +30,14 @@ extension File.Directory.Test.Unit {
 
     @Test("path property returns correct value")
     func pathProperty() throws {
-        let path = try File.Path("/usr/local/lib")
+        let path = File.Path("/usr/local/lib")
         let dir = File.Directory(path)
         #expect(dir.path.string == "/usr/local/lib")
     }
 
     @Test("Hashable conformance - equal paths have equal hashes")
     func hashableConformanceEqual() throws {
-        let path = try File.Path("/tmp/mydir")
+        let path = File.Path("/tmp/mydir")
         let dir1 = File.Directory(path)
         let dir2 = File.Directory(path)
         #expect(dir1.hashValue == dir2.hashValue)
@@ -45,8 +45,8 @@ extension File.Directory.Test.Unit {
 
     @Test("Hashable conformance - different paths have different hashes")
     func hashableConformanceDifferent() throws {
-        let path1 = try File.Path("/tmp/dir1")
-        let path2 = try File.Path("/tmp/dir2")
+        let path1 = File.Path("/tmp/dir1")
+        let path2 = File.Path("/tmp/dir2")
         let dir1 = File.Directory(path1)
         let dir2 = File.Directory(path2)
         #expect(dir1.hashValue != dir2.hashValue)
@@ -54,7 +54,7 @@ extension File.Directory.Test.Unit {
 
     @Test("Equatable conformance - equal directories")
     func equatableConformanceEqual() throws {
-        let path = try File.Path("/tmp/mydir")
+        let path = File.Path("/tmp/mydir")
         let dir1 = File.Directory(path)
         let dir2 = File.Directory(path)
         #expect(dir1 == dir2)
@@ -62,8 +62,8 @@ extension File.Directory.Test.Unit {
 
     @Test("Equatable conformance - different directories")
     func equatableConformanceDifferent() throws {
-        let path1 = try File.Path("/tmp/dir1")
-        let path2 = try File.Path("/tmp/dir2")
+        let path1 = File.Path("/tmp/dir1")
+        let path2 = File.Path("/tmp/dir2")
         let dir1 = File.Directory(path1)
         let dir2 = File.Directory(path2)
         #expect(dir1 != dir2)
@@ -71,8 +71,8 @@ extension File.Directory.Test.Unit {
 
     @Test("Use in Set")
     func useInSet() throws {
-        let path1 = try File.Path("/tmp/dir1")
-        let path2 = try File.Path("/tmp/dir2")
+        let path1 = File.Path("/tmp/dir1")
+        let path2 = File.Path("/tmp/dir2")
         let dir1 = File.Directory(path1)
         let dir2 = File.Directory(path1)  // same as dir1
         let dir3 = File.Directory(path2)
@@ -83,8 +83,8 @@ extension File.Directory.Test.Unit {
 
     @Test("Use as Dictionary key")
     func useAsDictionaryKey() throws {
-        let path1 = try File.Path("/tmp/dir1")
-        let path2 = try File.Path("/tmp/dir2")
+        let path1 = File.Path("/tmp/dir1")
+        let path2 = File.Path("/tmp/dir2")
         let dir1 = File.Directory(path1)
         let dir2 = File.Directory(path2)
 
@@ -102,7 +102,7 @@ extension File.Directory.Test.Unit {
 extension File.Directory.Test.EdgeCase {
     @Test("Directory with root path")
     func directoryWithRootPath() throws {
-        let path = try File.Path("/")
+        let path = File.Path("/")
         let dir = File.Directory(path)
         #expect(dir.path.string == "/")
     }

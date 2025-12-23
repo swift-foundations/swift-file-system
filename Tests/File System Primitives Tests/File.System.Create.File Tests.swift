@@ -28,8 +28,8 @@ extension File.System.Create.File.Test.Unit {
 
 extension File.System.Create.File.Test.Unit {
     @Test("Error.alreadyExists")
-    func errorAlreadyExists() throws {
-        let path = try File_System_Primitives.File.Path("/tmp/existing.txt")
+    func errorAlreadyExists() {
+        let path: File.Path = "/tmp/existing.txt"
         let error = File.System.Create.File.Error.alreadyExists(path)
 
         if case .alreadyExists(let p) = error {
@@ -40,8 +40,8 @@ extension File.System.Create.File.Test.Unit {
     }
 
     @Test("Error.permissionDenied")
-    func errorPermissionDenied() throws {
-        let path = try File_System_Primitives.File.Path("/protected/file.txt")
+    func errorPermissionDenied() {
+        let path: File.Path = "/protected/file.txt"
         let error = File.System.Create.File.Error.permissionDenied(path)
 
         if case .permissionDenied(let p) = error {
@@ -52,8 +52,8 @@ extension File.System.Create.File.Test.Unit {
     }
 
     @Test("Error.parentDirectoryNotFound")
-    func errorParentDirectoryNotFound() throws {
-        let path = try File_System_Primitives.File.Path("/nonexistent/dir/file.txt")
+    func errorParentDirectoryNotFound() {
+        let path: File.Path = "/nonexistent/dir/file.txt"
         let error = File.System.Create.File.Error.parentDirectoryNotFound(path)
 
         if case .parentDirectoryNotFound(let p) = error {
@@ -79,8 +79,8 @@ extension File.System.Create.File.Test.Unit {
     }
 
     @Test("Error is Equatable")
-    func errorIsEquatable() throws {
-        let path = try File_System_Primitives.File.Path("/test")
+    func errorIsEquatable() {
+        let path: File.Path = "/test"
         let error1 = File.System.Create.File.Error.alreadyExists(path)
         let error2 = File.System.Create.File.Error.alreadyExists(path)
         let error3 = File.System.Create.File.Error.permissionDenied(path)
@@ -90,8 +90,8 @@ extension File.System.Create.File.Test.Unit {
     }
 
     @Test("Error is Sendable")
-    func errorIsSendable() throws {
-        let path = try File_System_Primitives.File.Path("/test")
+    func errorIsSendable() {
+        let path: File.Path = "/test"
         let error: File.System.Create.File.Error = .alreadyExists(path)
         Task {
             _ = error
@@ -103,8 +103,8 @@ extension File.System.Create.File.Test.Unit {
 
 extension File.System.Create.File.Test.EdgeCase {
     @Test("Error with root path")
-    func errorWithRootPath() throws {
-        let path = try File_System_Primitives.File.Path("/")
+    func errorWithRootPath() {
+        let path: File.Path = "/"
         let error = File.System.Create.File.Error.alreadyExists(path)
 
         if case .alreadyExists(let p) = error {

@@ -152,10 +152,10 @@ extension File.Directory.Walk.Test.Unit {
     // MARK: - onUndecodable Callback Tests
 
     @Test("Options default onUndecodable returns skip")
-    func optionsDefaultOnUndecodable() throws {
+    func optionsDefaultOnUndecodable() {
         let options = File.Directory.Walk.Options()
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 0
@@ -170,12 +170,12 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Options custom onUndecodable callback returns custom policy")
-    func optionsCustomOnUndecodable() throws {
+    func optionsCustomOnUndecodable() {
         let options = File.Directory.Walk.Options(
             onUndecodable: { _ in .emit }
         )
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 0
@@ -190,12 +190,12 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Options onUndecodable can return stopAndThrow")
-    func optionsOnUndecodableStopAndThrow() throws {
+    func optionsOnUndecodableStopAndThrow() {
         let options = File.Directory.Walk.Options(
             onUndecodable: { _ in .stopAndThrow }
         )
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .directory,
             depth: 2
@@ -210,7 +210,7 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Options onUndecodable callback receives context properties")
-    func optionsOnUndecodableContext() throws {
+    func optionsOnUndecodableContext() {
         // Test that the callback can access context properties
         // by returning different policies based on context
         let options = File.Directory.Walk.Options(
@@ -225,7 +225,7 @@ extension File.Directory.Walk.Test.Unit {
 
         // Test with shallow file - should skip
         let shallowFile = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 1
@@ -239,7 +239,7 @@ extension File.Directory.Walk.Test.Unit {
 
         // Test with deep directory - should stopAndThrow
         let deepDir = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/a/b/c"),
+            parent: "/a/b/c",
             name: File.Name(rawBytes: [0x80]),
             type: .directory,
             depth: 3
@@ -257,22 +257,22 @@ extension File.Directory.Walk.Test.Unit {
 
 extension File.Directory.Walk.Test.Unit {
     @Test("Error.pathNotFound description")
-    func errorPathNotFoundDescription() throws {
-        let path = try File.Path("/nonexistent")
+    func errorPathNotFoundDescription() {
+        let path: File.Path = "/nonexistent"
         let error = File.Directory.Walk.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("Error.permissionDenied description")
-    func errorPermissionDeniedDescription() throws {
-        let path = try File.Path("/protected")
+    func errorPermissionDeniedDescription() {
+        let path: File.Path = "/protected"
         let error = File.Directory.Walk.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("Error.notADirectory description")
-    func errorNotADirectoryDescription() throws {
-        let path = try File.Path("/tmp/file.txt")
+    func errorNotADirectoryDescription() {
+        let path: File.Path = "/tmp/file.txt"
         let error = File.Directory.Walk.Error.notADirectory(path)
         #expect(error.description.contains("Not a directory"))
     }
@@ -285,8 +285,8 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Error is Equatable")
-    func errorIsEquatable() throws {
-        let path = try File.Path("/test")
+    func errorIsEquatable() {
+        let path: File.Path = "/test"
         let error1 = File.Directory.Walk.Error.pathNotFound(path)
         let error2 = File.Directory.Walk.Error.pathNotFound(path)
         let error3 = File.Directory.Walk.Error.permissionDenied(path)
@@ -296,8 +296,8 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Error.undecodableEntry description")
-    func errorUndecodableEntryDescription() throws {
-        let parent = try File.Path("/test/dir")
+    func errorUndecodableEntryDescription() {
+        let parent: File.Path = "/test/dir"
         let name = File.Name(rawBytes: [0x80, 0x81])
         let error = File.Directory.Walk.Error.undecodableEntry(parent: parent, name: name)
         #expect(error.description.contains("Undecodable entry"))
@@ -305,8 +305,8 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Error.undecodableEntry is Equatable")
-    func errorUndecodableEntryEquatable() throws {
-        let parent = try File.Path("/test")
+    func errorUndecodableEntryEquatable() {
+        let parent: File.Path = "/test"
         let name = File.Name(rawBytes: [0x80])
 
         let error1 = File.Directory.Walk.Error.undecodableEntry(parent: parent, name: name)
@@ -316,8 +316,8 @@ extension File.Directory.Walk.Test.Unit {
     }
 
     @Test("Error is Sendable")
-    func errorIsSendable() async throws {
-        let path = try File.Path("/test")
+    func errorIsSendable() async {
+        let path: File.Path = "/test"
         let error = File.Directory.Walk.Error.pathNotFound(path)
 
         let result = await Task {

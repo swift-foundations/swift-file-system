@@ -17,7 +17,7 @@ extension File.Directory.Entry {
 extension File.Directory.Entry.Test.Unit {
     @Test("init with all properties")
     func initWithAllProperties() throws {
-        let parent = try File.Path("/tmp")
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("testfile.txt"))
         let entry = File.Directory.Entry(
             name: name,
@@ -31,8 +31,8 @@ extension File.Directory.Entry.Test.Unit {
     }
 
     @Test("init with directory type")
-    func initWithDirectoryType() throws {
-        let parent = try File.Path("/tmp")
+    func initWithDirectoryType() {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("mydir"))
         let entry = File.Directory.Entry(
             name: name,
@@ -45,8 +45,8 @@ extension File.Directory.Entry.Test.Unit {
     }
 
     @Test("init with symbolic link type")
-    func initWithSymbolicLinkType() throws {
-        let parent = try File.Path("/tmp")
+    func initWithSymbolicLinkType() {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("mylink"))
         let entry = File.Directory.Entry(
             name: name,
@@ -59,8 +59,8 @@ extension File.Directory.Entry.Test.Unit {
     }
 
     @Test("init with other type")
-    func initWithOtherType() throws {
-        let parent = try File.Path("/dev")
+    func initWithOtherType() {
+        let parent: File.Path = "/dev"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("null"))
         let entry = File.Directory.Entry(
             name: name,
@@ -74,7 +74,7 @@ extension File.Directory.Entry.Test.Unit {
 
     @Test("path is computed from parent and name")
     func pathComputedFromParentAndName() throws {
-        let parent = try File.Path("/usr/local/bin")
+        let parent: File.Path = "/usr/local/bin"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("test"))
         let entry = File.Directory.Entry(
             name: name,
@@ -87,8 +87,8 @@ extension File.Directory.Entry.Test.Unit {
     }
 
     @Test("pathIfValid returns path for valid entry")
-    func pathIfValidReturnsPath() throws {
-        let parent = try File.Path("/tmp")
+    func pathIfValidReturnsPath() {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("valid.txt"))
         let entry = File.Directory.Entry(
             name: name,
@@ -101,8 +101,8 @@ extension File.Directory.Entry.Test.Unit {
     }
 
     @Test("parent is accessible")
-    func parentAccessible() throws {
-        let parent = try File.Path("/tmp")
+    func parentAccessible() {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt"))
         let entry = File.Directory.Entry(
             name: name,
@@ -119,7 +119,7 @@ extension File.Directory.Entry.Test.Unit {
 extension File.Directory.Entry.Test.EdgeCase {
     @Test("entry with name containing spaces")
     func entryWithSpacesInName() throws {
-        let parent = try File.Path("/tmp")
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("my file.txt"))
         let entry = File.Directory.Entry(
             name: name,
@@ -133,7 +133,7 @@ extension File.Directory.Entry.Test.EdgeCase {
 
     @Test("entry with unicode name")
     func entryWithUnicodeName() throws {
-        let parent = try File.Path("/tmp")
+        let parent: File.Path = "/tmp"
         // Use UTF-8 bytes directly for non-ASCII names
         let name = File.Name(rawBytes: Array("日本語ファイル.txt".utf8))
         let entry = File.Directory.Entry(
@@ -147,8 +147,8 @@ extension File.Directory.Entry.Test.EdgeCase {
     }
 
     @Test("entry with hidden file name")
-    func entryWithHiddenFileName() throws {
-        let parent = try File.Path("/tmp")
+    func entryWithHiddenFileName() {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked(".hidden"))
         let entry = File.Directory.Entry(
             name: name,
@@ -161,8 +161,8 @@ extension File.Directory.Entry.Test.EdgeCase {
     }
 
     @Test("Entry is Sendable")
-    func entrySendable() async throws {
-        let parent = try File.Path("/tmp")
+    func entrySendable() async {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [UInt8].ascii.unchecked("file.txt"))
         let entry = File.Directory.Entry(
             name: name,
@@ -180,8 +180,8 @@ extension File.Directory.Entry.Test.EdgeCase {
     }
 
     @Test("Entry with undecodable name")
-    func entryWithUndecodableName() throws {
-        let parent = try File.Path("/tmp")
+    func entryWithUndecodableName() {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [0x80, 0x81, 0x82])  // Invalid UTF-8
         let entry = File.Directory.Entry(
             name: name,
@@ -204,8 +204,8 @@ extension File.Directory.Entry.Test.EdgeCase {
     }
 
     @Test("Entry stored in collection")
-    func entryInCollection() throws {
-        let parent = try File.Path("/tmp")
+    func entryInCollection() {
+        let parent: File.Path = "/tmp"
 
         let entries: [File.Directory.Entry] = [
             File.Directory.Entry(

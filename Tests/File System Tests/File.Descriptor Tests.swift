@@ -148,7 +148,7 @@ extension File.Descriptor.Test.Unit {
         let filePath = try File.Path(path)
         var wasValid = false
 
-        try await File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+        try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
             wasValid = descriptor.isValid
         }
 

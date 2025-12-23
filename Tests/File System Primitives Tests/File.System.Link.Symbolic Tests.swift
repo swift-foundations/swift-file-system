@@ -139,21 +139,21 @@ extension File.System.Link.Symbolic.Test.Unit {
 
     @Test("targetNotFound error description")
     func targetNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Link.Symbolic.Error.targetNotFound(path)
         #expect(error.description.contains("Target not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Link.Symbolic.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("alreadyExists error description")
     func alreadyExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.System.Link.Symbolic.Error.alreadyExists(path)
         #expect(error.description.contains("already exists"))
     }
@@ -171,8 +171,8 @@ extension File.System.Link.Symbolic.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Link.Symbolic.Error.alreadyExists(path1)

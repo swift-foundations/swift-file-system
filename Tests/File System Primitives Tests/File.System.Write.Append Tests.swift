@@ -121,7 +121,7 @@ extension File.System.Write.Append.Test.Unit {
         let path = try File.Path(dirPath)
 
         #expect(throws: File.System.Write.Append.Error.isDirectory(path)) {
-            var bytes: [UInt8] = [1, 2, 3]
+            let bytes: [UInt8] = [1, 2, 3]
             try File.System.Write.Append.append(bytes.span, to: path)
         }
     }
@@ -129,22 +129,22 @@ extension File.System.Write.Append.Test.Unit {
     // MARK: - Error Descriptions
 
     @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing/nested/file.txt")
+    func pathNotFoundErrorDescription() {
+        let path: File.Path = "/tmp/missing/nested/file.txt"
         let error = File.System.Write.Append.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret.txt")
+    func permissionDeniedErrorDescription() {
+        let path: File.Path = "/root/secret.txt"
         let error = File.System.Write.Append.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("isDirectory error description")
-    func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
+    func isDirectoryErrorDescription() {
+        let path: File.Path = "/tmp"
         let error = File.System.Write.Append.Error.isDirectory(path)
         #expect(error.description.contains("Is a directory"))
     }
@@ -162,9 +162,9 @@ extension File.System.Write.Append.Test.Unit {
     // MARK: - Error Equatable
 
     @Test("Errors are equatable")
-    func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+    func errorsAreEquatable() {
+        let path1: File.Path = "/tmp/a"
+        let path2: File.Path = "/tmp/a"
 
         #expect(
             File.System.Write.Append.Error.pathNotFound(path1)

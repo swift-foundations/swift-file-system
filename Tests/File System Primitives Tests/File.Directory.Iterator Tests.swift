@@ -101,7 +101,7 @@ extension File.Directory.Iterator.Test.Unit {
 extension File.Directory.Iterator.Test.Unit {
     @Test("Error.pathNotFound description")
     func errorPathNotFoundDescription() throws {
-        let path = try File.Path("/nonexistent")
+        let path = File.Path("/nonexistent")
         let error = File.Directory.Iterator.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
         #expect(error.description.contains("/nonexistent"))
@@ -109,14 +109,14 @@ extension File.Directory.Iterator.Test.Unit {
 
     @Test("Error.permissionDenied description")
     func errorPermissionDeniedDescription() throws {
-        let path = try File.Path("/protected")
+        let path = File.Path("/protected")
         let error = File.Directory.Iterator.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("Error.notADirectory description")
     func errorNotADirectoryDescription() throws {
-        let path = try File.Path("/tmp/file.txt")
+        let path = File.Path("/tmp/file.txt")
         let error = File.Directory.Iterator.Error.notADirectory(path)
         #expect(error.description.contains("Not a directory"))
     }
@@ -131,7 +131,7 @@ extension File.Directory.Iterator.Test.Unit {
 
     @Test("Error is Equatable")
     func errorIsEquatable() throws {
-        let path = try File.Path("/test")
+        let path = File.Path("/test")
         let error1 = File.Directory.Iterator.Error.pathNotFound(path)
         let error2 = File.Directory.Iterator.Error.pathNotFound(path)
         let error3 = File.Directory.Iterator.Error.permissionDenied(path)

@@ -186,7 +186,7 @@ extension File.System.Stat.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let exists = await File.System.Stat.exists(at: filePath)
+        let exists = File.System.Stat.exists(at: filePath)
         #expect(exists == true)
     }
 
@@ -196,22 +196,22 @@ extension File.System.Stat.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let info = try await File.System.Stat.info(at: filePath)
+        let info = try File.System.Stat.info(at: filePath)
         #expect(info.type == .regular)
     }
 
     // MARK: - Error cases
 
     @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/non-existing")
+    func pathNotFoundErrorDescription() {
+        let path: File.Path = "/tmp/non-existing"
         let error = File.System.Stat.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/restricted")
+    func permissionDeniedErrorDescription() {
+        let path: File.Path = "/root/restricted"
         let error = File.System.Stat.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }

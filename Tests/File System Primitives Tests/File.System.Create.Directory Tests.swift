@@ -133,28 +133,28 @@ extension File.System.Create.Directory.Test.Unit {
         #expect(options.permissions == permissions)
     }
 
-    // MARK: - Async variants
+    // MARK: - Additional variants
 
-    @Test("Async create directory")
-    func asyncCreateDirectory() async throws {
+    @Test("Create directory variant")
+    func createDirectoryVariant() throws {
         let path = uniquePath()
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        try await File.System.Create.Directory.create(at: filePath)
+        try File.System.Create.Directory.create(at: filePath)
 
         #expect(File.System.Stat.exists(at: try File.Path(path)))
     }
 
-    @Test("Async create directory with options")
-    func asyncCreateDirectoryWithOptions() async throws {
+    @Test("Create directory with options variant")
+    func createDirectoryWithOptionsVariant() throws {
         let basePath = uniquePath()
         let path = "\(basePath)/nested/dir"
         defer { cleanup(basePath) }
 
         let filePath = try File.Path(path)
         let options = File.System.Create.Directory.Options(createIntermediates: true)
-        try await File.System.Create.Directory.create(at: filePath, options: options)
+        try File.System.Create.Directory.create(at: filePath, options: options)
 
         #expect(File.System.Stat.exists(at: try File.Path(path)))
     }

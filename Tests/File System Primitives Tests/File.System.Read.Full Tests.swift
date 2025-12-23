@@ -155,7 +155,7 @@ extension File.System.Read.Full.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let readContent = try await File.System.Read.Full.read(from: filePath)
+        let readContent = try File.System.Read.Full.read(from: filePath)
 
         #expect(readContent == content)
     }
@@ -166,7 +166,7 @@ extension File.System.Read.Full.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        let readContent = try await File.System.Read.Full.read(from: filePath)
+        let readContent = try File.System.Read.Full.read(from: filePath)
 
         #expect(readContent.isEmpty)
     }
@@ -174,23 +174,23 @@ extension File.System.Read.Full.Test.Unit {
     // MARK: - Error descriptions
 
     @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing.txt")
+    func pathNotFoundErrorDescription() {
+        let path: File.Path = "/tmp/missing.txt"
         let error = File.System.Read.Full.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
         #expect(error.description.contains("/tmp/missing.txt"))
     }
 
     @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret.txt")
+    func permissionDeniedErrorDescription() {
+        let path: File.Path = "/root/secret.txt"
         let error = File.System.Read.Full.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("isDirectory error description")
-    func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
+    func isDirectoryErrorDescription() {
+        let path: File.Path = "/tmp"
         let error = File.System.Read.Full.Error.isDirectory(path)
         #expect(error.description.contains("Is a directory"))
     }
@@ -212,10 +212,10 @@ extension File.System.Read.Full.Test.Unit {
     // MARK: - Error Equatable
 
     @Test("Errors are equatable")
-    func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
-        let path3 = try File.Path("/tmp/b")
+    func errorsAreEquatable() {
+        let path1: File.Path = "/tmp/a"
+        let path2: File.Path = "/tmp/a"
+        let path3: File.Path = "/tmp/b"
 
         #expect(
             File.System.Read.Full.Error.pathNotFound(path1)

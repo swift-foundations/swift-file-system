@@ -37,8 +37,8 @@ extension File.Directory.Test.Unit {
     // MARK: - Initializers
 
     @Test("init from path")
-    func initFromPath() throws {
-        let path = try File.Path("/tmp/test")
+    func initFromPath() {
+        let path: File.Path = "/tmp/test"
         let dir = File.Directory(path)
         #expect(dir.path == path)
     }

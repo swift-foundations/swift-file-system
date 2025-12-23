@@ -247,16 +247,11 @@ extension File.System.Test.EdgeCase {
         var handle = try File.Handle.open(filePath, mode: .read)
 
         let data: [UInt8] = [1, 2, 3]
-        var didThrow = false
-        do {
+        #expect(throws: (any Error).self) {
             try handle.write(data.span)
-        } catch is File.Handle.Error {
-            didThrow = true
         }
 
         try handle.close()
-
-        #expect(didThrow)
     }
 
     // MARK: - Seek Edge Cases

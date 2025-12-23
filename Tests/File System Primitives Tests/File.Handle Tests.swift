@@ -302,14 +302,14 @@ extension File.Handle.Test.Unit {
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.Handle.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.Handle.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
@@ -340,14 +340,14 @@ extension File.Handle.Test.Unit {
 
     @Test("alreadyExists error description")
     func alreadyExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.Handle.Error.alreadyExists(path)
         #expect(error.description.contains("already exists"))
     }
 
     @Test("isDirectory error description")
     func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp/dir")
+        let path = File.Path("/tmp/dir")
         let error = File.Handle.Error.isDirectory(path)
         #expect(error.description.contains("directory"))
     }
@@ -374,7 +374,7 @@ extension File.Handle.Test.Unit {
 
     @Test("Handle.Error is Equatable")
     func errorEquatable() throws {
-        let path = try File.Path("/tmp/test")
+        let path = File.Path("/tmp/test")
 
         #expect(File.Handle.Error.pathNotFound(path) == File.Handle.Error.pathNotFound(path))
         #expect(File.Handle.Error.invalidHandle == File.Handle.Error.invalidHandle)
@@ -387,7 +387,7 @@ extension File.Handle.Test.Unit {
 
     @Test("Handle.Error is Sendable")
     func errorSendable() async throws {
-        let path = try File.Path("/tmp/test")
+        let path = File.Path("/tmp/test")
         let error = File.Handle.Error.pathNotFound(path)
 
         let result = await Task {

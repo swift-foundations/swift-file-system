@@ -196,21 +196,21 @@ extension File.System.Move.Test.Unit {
 
     @Test("sourceNotFound error description")
     func sourceNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Move.Error.sourceNotFound(path)
         #expect(error.description.contains("Source not found"))
     }
 
     @Test("destinationExists error description")
     func destinationExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.System.Move.Error.destinationExists(path)
         #expect(error.description.contains("already exists"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Move.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
@@ -226,8 +226,8 @@ extension File.System.Move.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Move.Error.sourceNotFound(path1)

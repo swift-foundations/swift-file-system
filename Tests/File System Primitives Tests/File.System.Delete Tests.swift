@@ -124,25 +124,25 @@ extension File.System.Delete.Test.Unit {
         #expect(options.recursive == true)
     }
 
-    // MARK: - Async variants
+    // MARK: - Additional variants
 
-    @Test("Async delete file")
-    func asyncDeleteFile() async throws {
+    @Test("Delete file variant")
+    func deleteFileVariant() throws {
         let path = try createTempFile()
 
         let filePath = try File.Path(path)
-        try await File.System.Delete.delete(at: filePath)
+        try File.System.Delete.delete(at: filePath)
 
         #expect(!File.System.Stat.exists(at: try File.Path(path)))
     }
 
-    @Test("Async delete directory with options")
-    func asyncDeleteDirectoryWithOptions() async throws {
+    @Test("Delete directory with options variant")
+    func deleteDirectoryWithOptionsVariant() throws {
         let basePath = try createNestedDirectory()
 
         let filePath = try File.Path(basePath)
         let options = File.System.Delete.Options(recursive: true)
-        try await File.System.Delete.delete(at: filePath, options: options)
+        try File.System.Delete.delete(at: filePath, options: options)
 
         #expect(!File.System.Stat.exists(at: try File.Path(basePath)))
     }
@@ -151,7 +151,7 @@ extension File.System.Delete.Test.Unit {
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing.txt")
+        let path = File.Path("/tmp/missing.txt")
         let error = File.System.Delete.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
         #expect(error.description.contains("/tmp/missing.txt"))
@@ -159,14 +159,14 @@ extension File.System.Delete.Test.Unit {
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/protected")
+        let path = File.Path("/root/protected")
         let error = File.System.Delete.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("isDirectory error description")
     func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp/somedir")
+        let path = File.Path("/tmp/somedir")
         let error = File.System.Delete.Error.isDirectory(path)
         #expect(error.description.contains("Is a directory"))
         #expect(error.description.contains("recursive"))
@@ -174,7 +174,7 @@ extension File.System.Delete.Test.Unit {
 
     @Test("directoryNotEmpty error description")
     func directoryNotEmptyErrorDescription() throws {
-        let path = try File.Path("/tmp/nonempty")
+        let path = File.Path("/tmp/nonempty")
         let error = File.System.Delete.Error.directoryNotEmpty(path)
         #expect(error.description.contains("Directory not empty"))
         #expect(error.description.contains("recursive"))
@@ -195,9 +195,9 @@ extension File.System.Delete.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
-        let path3 = try File.Path("/tmp/b")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
+        let path3 = File.Path("/tmp/b")
 
         #expect(
             File.System.Delete.Error.pathNotFound(path1)

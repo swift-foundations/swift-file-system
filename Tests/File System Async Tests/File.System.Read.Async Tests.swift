@@ -154,7 +154,7 @@ extension File.System.Read.Async.Test.Unit {
         let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max)).bin")
 
         let stream = File.System.Read.Async(io: io).bytes(from: path)
-        var iterator = stream.makeAsyncIterator()
+        let iterator = stream.makeAsyncIterator()
 
         do {
             while try await iterator.next() != nil {
@@ -182,7 +182,7 @@ extension File.System.Read.Async.Test.Unit {
         // Stream with 1KB chunks
         let options = File.System.Read.Async.Options(chunkSize: 1024)
         let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
-        var iterator = stream.makeAsyncIterator()
+        let iterator = stream.makeAsyncIterator()
         var count = 0
 
         // Read 3 chunks
@@ -214,7 +214,7 @@ extension File.System.Read.Async.Test.Unit {
         // Stream with 1KB chunks
         let options = File.System.Read.Async.Options(chunkSize: 1024)
         let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
-        var iterator = stream.makeAsyncIterator()
+        let iterator = stream.makeAsyncIterator()
         var count = 0
 
         while try await iterator.next() != nil {
