@@ -420,8 +420,8 @@ extension NIOComparison.Test.Performance {
             let io = File.IO.Executor()
             defer { Task { await io.shutdown() } }
 
-            let options = File.Stream.Bytes.Async.Options(chunkSize: 64 * 1024)
-            let stream = File.Stream.Async(io: io).bytes(from: Self.fixture.file100MB, options: options)
+            let options = File.System.Read.Async.Options(chunkSize: 64 * 1024)
+            let stream = File.System.Read.Async(io: io).bytes(from: Self.fixture.file100MB, options: options)
 
             var totalBytes = 0
             for try await chunk in stream {
