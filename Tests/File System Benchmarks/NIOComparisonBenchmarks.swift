@@ -671,7 +671,7 @@ extension NIOComparison.Test.Performance {
             let dir = try Self.dir100.path()
 
             var count = 0
-            for try await _ in File.Directory.entries(at: dir) {
+            for try await _ in File.Directory.entries(at: File.Directory(dir)) {
                 count += 1
             }
             #expect(count == 100)
@@ -704,7 +704,7 @@ extension NIOComparison.Test.Performance {
             let dir = try Self.dir1000.path()
 
             var count = 0
-            for try await _ in File.Directory.entries(at: dir) {
+            for try await _ in File.Directory.entries(at: File.Directory(dir)) {
                 count += 1
             }
             #expect(count == 1000)
@@ -750,7 +750,7 @@ extension NIOComparison.Test.Performance {
             let dir = try Self.fixture.path()
 
             var count = 0
-            for try await _ in File.Directory.walk(at: dir) {
+            for try await _ in File.Directory.walk(at: File.Directory(dir)) {
                 count += 1
             }
             // 1000 files + 100 subdirs + 10 dirs = 1110 entries
@@ -971,7 +971,6 @@ extension NIOComparison.Test.Performance {
             .timed(iterations: 20, warmup: 5, trackAllocations: false)
         )
         func swiftFileSystemExists() throws {
-            // Call sync version (no io executor) for fair comparison
             let exists = File.System.Stat.exists(at: Self.fixture.file1MB)
             #expect(exists)
         }
