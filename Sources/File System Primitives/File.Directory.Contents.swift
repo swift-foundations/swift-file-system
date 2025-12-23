@@ -34,7 +34,7 @@ extension File.Directory.Contents {
         at directory: File.Directory
     ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
         #if os(Windows)
-            return try _listWindows(at: directory.path)
+            return try _listWindows(at: directory)
         #else
             return try _listPOSIX(at: directory.path)
         #endif

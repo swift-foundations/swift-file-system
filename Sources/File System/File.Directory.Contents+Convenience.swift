@@ -21,7 +21,7 @@ extension File.Directory.Contents {
     ) throws(File.Directory.Contents.Error) -> [File.Name] {
         #if os(Windows)
             // Windows uses the existing _listWindows and extracts names
-            return try _listWindows(at: path).map(\.name)
+            return try _listWindows(at: directory).map(\.name)
         #else
             let (iterator, handle) = try makeIterator(at: directory)
             defer { closeIterator(handle) }
