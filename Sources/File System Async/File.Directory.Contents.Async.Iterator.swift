@@ -138,20 +138,12 @@ extension File.Directory.Contents.Async {
                     await closeBox(box)
                     state = .finished
                 }
-            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+            } catch {
                 // Cleanup and rethrow
                 // INVARIANT: IteratorBox only touched inside io.run
                 await closeBox(box)
                 state = .finished
                 throw error
-            } catch is CancellationError {
-                await closeBox(box)
-                state = .finished
-                throw .cancelled
-            } catch {
-                await closeBox(box)
-                state = .finished
-                throw .operation(.readFailed(errno: 0, message: "Unknown error: \(error)"))
             }
         }
 

@@ -239,12 +239,14 @@ extension File.Directory.Walk.Async.Sequence {
                     }
 
                     // Read batch of entries via single io.run call
-                    let batch: [File.Directory.Entry] = try await io.run {
+                    let batch: [File.Directory.Entry] = try await io.run { () throws(File.Directory.Iterator.Error) in
                         var entries: [File.Directory.Entry] = []
                         entries.reserveCapacity(batchSize)
                         for _ in 0..<batchSize {
                             // withValue returns nil if box is closed, next() returns nil at EOF
-                            guard let maybeEntry = try box.withValue({ try $0.next() }),
+                            guard let maybeEntry = try box.withValue({ (iter: inout File.Directory.Iterator) throws(File.Directory.Iterator.Error) in
+                                try iter.next()
+                            }),
                                 let entry = maybeEntry
                             else { break }
                             entries.append(entry)
@@ -310,20 +312,16 @@ extension File.Directory.Walk.Async.Sequence {
                         }
                     }
                 }
-            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
-                // Map iterator error to walk error
-                await authority.fail(with: error.mapOperation { iteratorError in
+            } catch {
+                let walkError: File.IO.Error<File.Directory.Walk.Error> = error.mapOperation { iteratorError in
                     switch iteratorError {
                     case .pathNotFound(let p): return .pathNotFound(p)
                     case .permissionDenied(let p): return .permissionDenied(p)
                     case .notADirectory(let p): return .notADirectory(p)
                     case .readFailed(let errno, let msg): return .walkFailed(errno: errno, message: msg)
                     }
-                })
-            } catch is CancellationError {
-                await authority.fail(with: .cancelled)
-            } catch {
-                await authority.fail(with: .operation(.walkFailed(errno: 0, message: "Walk failed: \(error)")))
+                }
+                await authority.fail(with: walkError)
             }
 
             // Close box synchronously before returning

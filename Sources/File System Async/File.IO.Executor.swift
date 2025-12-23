@@ -141,9 +141,9 @@ extension File.IO {
             let result: Result<T, E>
             do {
                 result = try await lane.run(deadline: nil, operation)
-            } catch let laneFailure {
-                // laneFailure is statically Lane.Failure due to typed throws
-                switch laneFailure {
+            } catch {
+                // error is statically Lane.Failure due to typed throws
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -303,11 +303,11 @@ extension File.IO {
                         try body(&handle)
                     }
                 }
-            } catch let laneFailure{
-                // laneFailure is statically Lane.Failure
+            } catch{
+                // error is statically Lane.Failure
                 await _checkInHandle(slot.take(), for: id, entry: entry)
                 slot.deallocateRawOnly()
-                throw .lane(laneFailure)
+                throw .lane(error)
             }
 
             // Check if task was cancelled during execution
@@ -394,8 +394,8 @@ extension File.IO {
                     let raw = UnsafeMutableRawPointer(bitPattern: address)!
                     try Slot.closeHandle(at: raw)
                 }
-            } catch let laneFailure {
-                throw .lane(laneFailure)
+            } catch {
+                throw .lane(error)
             }
             
             switch result {
@@ -455,8 +455,8 @@ extension File.IO {
                     let handle = try File.Handle.open(path, mode: mode, options: options)
                     Slot.initializeMemory(at: raw, with: handle)
                 }
-            } catch let laneFailure {
-                switch laneFailure {
+            } catch {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -499,10 +499,10 @@ extension File.IO {
         ) async throws(File.IO.Error<E>) -> T {
             do {
                 return try await transaction(id, body)
-            } catch let error {
+            } catch {
                 switch error {
-                case .lane(let laneFailure):
-                    switch laneFailure {
+                case .lane(let error):
+                    switch error {
                     case .shutdown:
                         throw .executor(.shutdownInProgress)
                     case .queueFull:
@@ -557,24 +557,7 @@ extension File.IO {
 
             if let h = entry.handle.take() {
                 handles.removeValue(forKey: id)
-                do {
-                    try await _closeHandle(h)
-                } catch let laneFailure as File.IO.Blocking.Lane.Failure {
-                    switch laneFailure {
-                    case .shutdown:
-                        throw .executor(.shutdownInProgress)
-                    case .queueFull:
-                        throw .lane(.queueFull)
-                    case .deadlineExceeded:
-                        throw .lane(.deadlineExceeded)
-                    case .cancelled:
-                        throw .cancelled
-                    }
-                } catch let error as File.Handle.Error {
-                    throw .operation(error)
-                } catch {
-                    throw .executor(.shutdownInProgress)
-                }
+                try await _closeHandle(h)
             }
         }
 
@@ -638,8 +621,8 @@ extension File.IO {
                         try POSIXStreaming.openForStreaming(path: pathString, options: options)
                     #endif
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
-                switch laneFailure {
+            } catch {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -723,10 +706,10 @@ extension File.IO {
                         try POSIXStreaming.writeChunk(bytes.span, to: ctx)
                     #endif
                 }
-            } catch let laneFailure {
+            } catch {
                 entry.isOperationInFlight = false
                 entry.waiters.resumeNext()
-                switch laneFailure {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -797,13 +780,13 @@ extension File.IO {
                         try POSIXStreaming.commit(ctx)
                     #endif
                 }
-            } catch let laneFailure {
+            } catch {
                 // Commit failed - state is now uncertain
                 entry.state = .closed
                 entry.isOperationInFlight = false
                 entry.waiters.resumeAll()
                 writes.removeValue(forKey: id)
-                switch laneFailure {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
