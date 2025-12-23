@@ -216,9 +216,9 @@ extension File {
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// - Returns: Self for chaining.
-    /// - Throws: `File.Error` on failure.
+    /// - Throws: `File.Handle.Error` on failure.
     @discardableResult
-    public func touch() throws(File.Error) -> Self {
+    public func touch() throws(File.Handle.Error) -> Self {
         // Opening with .create and readWrite mode will create the file if it doesn't exist,
         // or update its access/modification times if it does.
         try File.Handle.open(path, options: [.create]).readWrite { _ in }
@@ -228,9 +228,9 @@ extension File {
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// Async variant.
-    /// - Throws: `File.Error` on failure.
+    /// - Throws: `File.Handle.Error` on failure.
     @discardableResult
-    public func touch() async throws(File.Error) -> Self {
+    public func touch() async throws(File.Handle.Error) -> Self {
         try File.Handle.open(path, options: [.create]).readWrite { _ in }
         return self
     }

@@ -24,11 +24,11 @@ extension File.Directory {
 
         /// Lists directory contents (non-streaming).
         public func contents(
-            at path: File.Path
+            at directory: File.Directory
         ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
             let operation:
                 @Sendable () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] = {
-                    try File.Directory.Contents.list(at: path)
+                    try File.Directory.Contents.list(at: directory)
                 }
             return try await io.run(operation)
         }

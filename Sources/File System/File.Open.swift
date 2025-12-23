@@ -50,11 +50,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func callAsFunction<Result>(
-            _ body: (inout File.Handle) throws -> Result
-        ) throws(File.Error) -> Result {
+            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
+        ) throws(File.Handle.Error) -> Result {
             try read(body)
         }
 
@@ -64,11 +64,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func read<Result>(
-            _ body: (inout File.Handle) throws -> Result
-        ) throws(File.Error) -> Result {
+            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
+        ) throws(File.Handle.Error) -> Result {
             try File.Handle.withOpen(path, mode: .read, options: options, body: body)
         }
 
@@ -78,11 +78,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func write<Result>(
-            _ body: (inout File.Handle) throws -> Result
-        ) throws(File.Error) -> Result {
+            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
+        ) throws(File.Handle.Error) -> Result {
             try File.Handle.withOpen(path, mode: .write, options: options, body: body)
         }
 
@@ -92,11 +92,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func appending<Result>(
-            _ body: (inout File.Handle) throws -> Result
-        ) throws(File.Error) -> Result {
+            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
+        ) throws(File.Handle.Error) -> Result {
             try File.Handle.withOpen(path, mode: .append, options: options, body: body)
         }
 
@@ -106,11 +106,11 @@ extension File {
         ///
         /// - Parameter body: A closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func readWrite<Result>(
-            _ body: (inout File.Handle) throws -> Result
-        ) throws(File.Error) -> Result {
+            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
+        ) throws(File.Handle.Error) -> Result {
             try File.Handle.withOpen(path, mode: .readWrite, options: options, body: body)
         }
 
@@ -122,11 +122,11 @@ extension File {
         ///
         /// - Parameter body: An async closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func callAsFunction<Result>(
-            _ body: (inout File.Handle) async throws -> Result
-        ) async throws(File.Error) -> Result {
+            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
+        ) async throws(File.Handle.Error) -> Result {
             try await read(body)
         }
 
@@ -134,11 +134,11 @@ extension File {
         ///
         /// - Parameter body: An async closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func read<Result>(
-            _ body: (inout File.Handle) async throws -> Result
-        ) async throws(File.Error) -> Result {
+            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
+        ) async throws(File.Handle.Error) -> Result {
             try await File.Handle.withOpen(path, mode: .read, options: options, body: body)
         }
 
@@ -146,11 +146,11 @@ extension File {
         ///
         /// - Parameter body: An async closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func write<Result>(
-            _ body: (inout File.Handle) async throws -> Result
-        ) async throws(File.Error) -> Result {
+            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
+        ) async throws(File.Handle.Error) -> Result {
             try await File.Handle.withOpen(path, mode: .write, options: options, body: body)
         }
 
@@ -158,11 +158,11 @@ extension File {
         ///
         /// - Parameter body: An async closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func appending<Result>(
-            _ body: (inout File.Handle) async throws -> Result
-        ) async throws(File.Error) -> Result {
+            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
+        ) async throws(File.Handle.Error) -> Result {
             try await File.Handle.withOpen(path, mode: .append, options: options, body: body)
         }
 
@@ -170,11 +170,11 @@ extension File {
         ///
         /// - Parameter body: An async closure that receives the file handle.
         /// - Returns: The result from the closure.
-        /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+        /// - Throws: `File.Handle.Error` on failure.
         @inlinable
         public func readWrite<Result>(
-            _ body: (inout File.Handle) async throws -> Result
-        ) async throws(File.Error) -> Result {
+            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
+        ) async throws(File.Handle.Error) -> Result {
             try await File.Handle.withOpen(path, mode: .readWrite, options: options, body: body)
         }
     }

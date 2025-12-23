@@ -37,15 +37,15 @@ extension File.Directory.Contents.Async {
             case finished
         }
 
-        private let path: File.Path
+        private let directory: File.Directory
         private let io: File.IO.Executor
         private var state: State = .unopened
         private var buffer: [Element] = []
         private var cursor: Int = 0
         internal let batchSize: Int
 
-        init(path: File.Path, io: File.IO.Executor, batchSize: Int = 64) {
-            self.path = path
+        init(directory: File.Directory, io: File.IO.Executor, batchSize: Int = 64) {
+            self.directory = directory
             self.io = io
             self.batchSize = batchSize
         }
@@ -56,7 +56,7 @@ extension File.Directory.Contents.Async {
             #if DEBUG
                 if case .open = state {
                     print(
-                        "Warning: Contents.Async.Iterator deallocated without terminate() for path: \(path)"
+                        "Warning: Contents.Async.Iterator deallocated without terminate() for directory: \(directory)"
                     )
                 }
             #endif
@@ -99,8 +99,8 @@ extension File.Directory.Contents.Async {
             // INVARIANT: IteratorBox only touched inside io.run
             // Explicit typed throws in closure signature for proper inference
             let openOperation: @Sendable () throws(File.Directory.Iterator.Error) -> Box = {
-                [path] () throws(File.Directory.Iterator.Error) -> Box in
-                try Box(File.Directory.Iterator.open(at: path))
+                [directory] () throws(File.Directory.Iterator.Error) -> Box in
+                try Box(File.Directory.Iterator.open(at: directory))
             }
             let box = try await io.run(openOperation)
             state = .open(box)

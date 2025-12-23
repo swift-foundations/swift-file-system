@@ -26,13 +26,13 @@ extension File.Directory.Async {
     /// - Breaking from the loop triggers cleanup via deinit (best-effort)
     /// - Use `iterator.terminate()` for explicit cleanup if needed
     /// - Resources are always cleaned up regardless of exit path
-    public func entries(at path: File.Path) -> File.Directory.Contents.Async {
-        File.Directory.Contents.Async(path: path, io: io, batchSize: 128)
+    public func entries(at directory: File.Directory) -> File.Directory.Contents.Async {
+        File.Directory.Contents.Async(directory: directory, io: io, batchSize: 128)
     }
 
     /// Internal: Returns an async sequence with configurable batch size for benchmarking.
-    internal func entries(at path: File.Path, batchSize: Int) -> File.Directory.Contents.Async {
-        File.Directory.Contents.Async(path: path, io: io, batchSize: batchSize)
+    internal func entries(at directory: File.Directory, batchSize: Int) -> File.Directory.Contents.Async {
+        File.Directory.Contents.Async(directory: directory, io: io, batchSize: batchSize)
     }
 }
 
@@ -63,12 +63,12 @@ extension File.Directory.Contents {
     public struct Async: AsyncSequence, Sendable {
         public typealias Element = File.Directory.Entry
 
-        let path: File.Path
+        let directory: File.Directory
         let io: File.IO.Executor
         let batchSize: Int
 
         public func makeAsyncIterator() -> Iterator {
-            Iterator(path: path, io: io, batchSize: batchSize)
+            Iterator(directory: directory, io: io, batchSize: batchSize)
         }
     }
 }

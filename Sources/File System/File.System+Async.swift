@@ -311,11 +311,11 @@ extension File.Directory.Contents {
     ///
     /// - Throws: `File.IO.Error<Error>` with `.operation` for list errors, or `.executor`/`.cancelled` for I/O errors.
     public static func list(
-        at path: File.Path,
+        at directory: File.Directory,
         io: File.IO.Executor = .default
     ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
         try await io.run { () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] in
-            try list(at: path)
+            try list(at: directory)
         }
     }
 }
@@ -326,17 +326,17 @@ extension File.Directory.Walk {
     /// Recursively walks a directory tree asynchronously.
     ///
     /// ```swift
-    /// let entries = try await File.Directory.Walk.walk(at: path)
+    /// let entries = try await File.Directory.Walk.walk(at: directory)
     /// ```
     ///
     /// - Throws: `File.IO.Error<Error>` with `.operation` for walk errors, or `.executor`/`.cancelled` for I/O errors.
     public static func walk(
-        at path: File.Path,
+        at directory: File.Directory,
         options: Options = .init(),
         io: File.IO.Executor = .default
     ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File.Directory.Entry] {
         try await io.run { () throws(File.Directory.Walk.Error) -> [File.Directory.Entry] in
-            try walk(at: path, options: options)
+            try walk(at: directory, options: options)
         }
     }
 }

@@ -27,16 +27,16 @@ extension File.Directory {
 extension File.Directory.Contents {
     /// Lists the contents of a directory.
     ///
-    /// - Parameter path: The path to the directory.
+    /// - Parameter directory: The directory to list.
     /// - Returns: An array of directory entries.
     /// - Throws: `File.Directory.Contents.Error` on failure.
     public static func list(
-        at path: File.Path
+        at directory: File.Directory
     ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
         #if os(Windows)
-            return try _listWindows(at: path)
+            return try _listWindows(at: directory.path)
         #else
-            return try _listPOSIX(at: path)
+            return try _listPOSIX(at: directory.path)
         #endif
     }
 }

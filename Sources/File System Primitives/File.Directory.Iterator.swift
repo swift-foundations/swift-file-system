@@ -86,12 +86,12 @@ extension File.Directory.Iterator {
     /// - Returns: An iterator for the directory.
     /// - Throws: `File.Directory.Iterator.Error` on failure.
     public static func open(
-        at path: File.Path
+        at directory: File.Directory
     ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
         #if os(Windows)
-            return try _openWindows(at: path)
+        return try _openWindows(at: directory.path)
         #else
-            return try _openPOSIX(at: path)
+        return try _openPOSIX(at: directory.path)
         #endif
     }
 

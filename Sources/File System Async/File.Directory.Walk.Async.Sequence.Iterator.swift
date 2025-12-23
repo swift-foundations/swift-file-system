@@ -33,7 +33,7 @@ extension File.Directory.Walk.Async.Sequence {
         /// Factory method to create iterator and start producer.
         /// Uses factory pattern to avoid init-region isolation issues.
         static func make(
-            root: File.Path,
+            root: File.Directory,
             options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor
         ) -> Iterator {
@@ -98,7 +98,7 @@ extension File.Directory.Walk.Async.Sequence {
         // MARK: - Walk Implementation
 
         private static func runWalk(
-            root: File.Path,
+            root: File.Directory,
             options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor,
             channel: AsyncThrowingChannel<Element, ChannelError>
@@ -171,7 +171,7 @@ extension File.Directory.Walk.Async.Sequence {
         }
 
         private static func processDirectory(
-            _ dir: File.Path,
+            _ dir: File.Directory,
             depth: Int,
             options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor,
@@ -320,7 +320,8 @@ extension File.Directory.Walk.Async.Sequence {
                         }
 
                         if shouldRecurse {
-                            await state.enqueue(entryPath, depth: depth + 1)
+                            let subdir = File.Directory(entryPath)
+                            await state.enqueue(subdir, depth: depth + 1)
                         }
                     }
                 }

@@ -255,7 +255,7 @@ extension File.Directory {
     /// - Returns: An array of directory entries.
     /// - Throws: `File.Directory.Contents.Error` on failure.
     public func contents() throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
-        try File.Directory.Contents.list(at: path)
+        try File.Directory.Contents.list(at: self)
     }
 
     /// Returns the contents of the directory.
@@ -265,7 +265,7 @@ extension File.Directory {
     public func contents() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File
         .Directory.Entry]
     {
-        try await File.Directory.Contents.list(at: path)
+        try await File.Directory.Contents.list(at: self)
     }
 
     /// Returns all files in the directory.
@@ -332,7 +332,7 @@ extension File.Directory {
     public func walk(
         options: File.Directory.Walk.Options = .init()
     ) throws(File.Directory.Walk.Error) -> [File.Directory.Entry] {
-        try File.Directory.Walk.walk(at: path, options: options)
+        try File.Directory.Walk.walk(at: self, options: options)
     }
 
     /// Recursively walks the directory tree and returns all entries.
@@ -342,7 +342,7 @@ extension File.Directory {
     public func walk(
         options: File.Directory.Walk.Options = .init()
     ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File.Directory.Entry] {
-        try await File.Directory.Walk.walk(at: path, options: options)
+        try await File.Directory.Walk.walk(at: self, options: options)
     }
 
     /// Recursively walks the directory tree and returns all files.

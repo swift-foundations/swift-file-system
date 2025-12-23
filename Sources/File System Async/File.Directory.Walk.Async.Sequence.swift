@@ -26,7 +26,7 @@ extension File.Directory.Async {
     /// ## Cycle Detection
     /// When `followSymlinks` is true, tracks visited inodes to prevent infinite loops.
     public func walk(
-        at root: File.Path,
+        at root: File.Directory,
         options: File.Directory.Walk.Async.Options = .init()
     ) -> File.Directory.Walk.Async.Sequence {
         File.Directory.Walk.Async.Sequence(root: root, options: options, io: io)
@@ -47,7 +47,7 @@ extension File.Directory.Walk.Async {
     public struct Sequence: AsyncSequence, Sendable {
         public typealias Element = File.Path
 
-        let root: File.Path
+        let root: File.Directory
         let options: Options
         let io: File.IO.Executor
 

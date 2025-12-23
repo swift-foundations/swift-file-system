@@ -8,7 +8,7 @@
 /// Actor-protected state for the walk algorithm.
 extension File.Directory.Walk.Async {
     actor State {
-        private var queue: [(path: File.Path, depth: Int)] = []
+        private var queue: [(directory: File.Directory, depth: Int)] = []
         private var activeWorkers: Int = 0
         private var visited: Set<Inode.Key> = []
 
@@ -26,8 +26,8 @@ extension File.Directory.Walk.Async {
             !queue.isEmpty || activeWorkers > 0
         }
 
-        func enqueue(_ path: File.Path, depth: Int) {
-            queue.append((path, depth))
+        func enqueue(_ directory: File.Directory, depth: Int) {
+            queue.append((directory, depth))
             activeWorkers += 1
             // Wake one completion waiter
             if let waiter = completionWaiters.first {
@@ -36,7 +36,7 @@ extension File.Directory.Walk.Async {
             }
         }
 
-        func dequeue() -> (path: File.Path, depth: Int)? {
+        func dequeue() -> (directory: File.Directory, depth: Int)? {
             guard !queue.isEmpty else { return nil }
             return queue.removeFirst()
         }
