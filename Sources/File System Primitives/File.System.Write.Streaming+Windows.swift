@@ -62,13 +62,9 @@
                 if !renamed { _ = deleteFile(tempPath) }
             }
 
-            // Write all chunks - internally convert to Span for zero-copy writes
+            // Write all chunks
             for chunk in chunks {
-                try chunk.withUnsafeBufferPointer {
-                    buffer throws(File.System.Write.Streaming.Error) in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try writeAll(span, to: handle, path: resolvedPath)
-                }
+                try writeAll(chunk.span, to: handle, path: resolvedPath)
             }
 
             try flushFile(handle, durability: options.durability)
@@ -134,13 +130,9 @@
                 if !handleClosed { _ = CloseHandle(handle) }
             }
 
-            // Write all chunks - internally convert to Span for zero-copy writes
+            // Write all chunks
             for chunk in chunks {
-                try chunk.withUnsafeBufferPointer {
-                    buffer throws(File.System.Write.Streaming.Error) in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try writeAll(span, to: handle, path: resolvedPath)
-                }
+                try writeAll(chunk.span, to: handle, path: resolvedPath)
             }
 
             try flushFile(handle, durability: options.durability)

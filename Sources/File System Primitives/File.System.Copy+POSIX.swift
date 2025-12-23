@@ -26,7 +26,7 @@
             from source: File.Path,
             to destination: File.Path,
             options: Options
-        ) throws(Error) {
+        ) throws(File.System.Copy.Error) {
             // Stat source (lstat when not following symlinks)
             var sourceStat = stat()
             let statResult: Int32
@@ -181,7 +181,7 @@
             dstFd: Int32,
             source: File.Path,
             destination: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Copy.Error) {
             let bufferSize = 64 * 1024
             var buffer = [UInt8](repeating: 0, count: bufferSize)
 
@@ -226,7 +226,7 @@
         private static func _copySymlink(
             from source: File.Path,
             to destination: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Copy.Error) {
             // Read the symlink target
             var buffer = [CChar](repeating: 0, count: Int(PATH_MAX) + 1)
             let len = readlink(source.string, &buffer, buffer.count - 1)
@@ -301,7 +301,7 @@
                 srcFd: Int32,
                 dstFd: Int32,
                 sourceSize: Int64
-            ) throws(Error) -> Bool {
+            ) throws(File.System.Copy.Error) -> Bool {
                 var remaining = sourceSize
 
                 while remaining > 0 {

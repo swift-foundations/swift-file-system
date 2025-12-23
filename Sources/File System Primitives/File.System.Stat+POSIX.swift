@@ -21,7 +21,7 @@
         /// Gets file info using POSIX stat (follows symlinks).
         internal static func _infoPOSIX(
             at path: File.Path
-        ) throws(Error) -> File.System.Metadata.Info {
+        ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
             var statBuf = stat()
 
             guard stat(path.string, &statBuf) == 0 else {
@@ -36,7 +36,7 @@
         /// Returns info about the symlink itself rather than its target.
         internal static func _lstatInfoPOSIX(
             at path: File.Path
-        ) throws(Error) -> File.System.Metadata.Info {
+        ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
             var statBuf = stat()
 
             guard lstat(path.string, &statBuf) == 0 else {

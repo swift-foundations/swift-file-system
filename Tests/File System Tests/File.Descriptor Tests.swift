@@ -21,10 +21,7 @@ extension File.Descriptor.Test.Unit {
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/descriptor-convenience-test-\(Int.random(in: 0..<Int.max)).bin"
         let filePath = try File.Path(path)
-        try content.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(content.span, to: filePath)
         return path
     }
 
@@ -195,7 +192,7 @@ extension File.Descriptor.Test.Unit {
         }
 
         // Verify can open again
-        let result = try await File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+        let result = try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
             descriptor.isValid
         }
         #expect(result == true)
@@ -211,7 +208,7 @@ extension File.Descriptor.Test.Unit {
 
         let filePath = try File.Path(path)
         let wasValid = try File.Descriptor.withOpen(filePath, mode: .read) { original in
-            var duplicate = try original.duplicated()
+            let duplicate = try original.duplicated()
             let valid = duplicate.isValid
             try duplicate.close()
             return valid
@@ -230,7 +227,7 @@ extension File.Descriptor.Test.Unit {
             filePath,
             mode: .read
         ) { original in
-            var duplicate = try original.duplicated()
+            let duplicate = try original.duplicated()
 
             let origValid = original.isValid
             let dupValid = duplicate.isValid
@@ -255,7 +252,7 @@ extension File.Descriptor.Test.Unit {
         let filePath = try File.Path(path)
         let originalStillValid = try File.Descriptor.withOpen(filePath, mode: .read) {
             original in
-            var duplicate = try original.duplicated()
+            let duplicate = try original.duplicated()
             try duplicate.close()
 
             // Original should still be valid after closing duplicate

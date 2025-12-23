@@ -22,7 +22,7 @@ extension File.Directory {
     public static func entries(
         at path: File.Path,
         io: File.IO.Executor = .default
-    ) -> File.Directory.Entries.Async {
+    ) -> File.Directory.Contents.Async {
         Async(io: io).entries(at: path)
     }
 
@@ -36,7 +36,7 @@ extension File.Directory {
     public static func contents(
         at path: File.Path,
         io: File.IO.Executor = .default
-    ) async throws -> [File.Directory.Entry] {
+    ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
         try await Async(io: io).contents(at: path)
     }
 

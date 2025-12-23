@@ -18,17 +18,9 @@ extension File.System.Delete.Test.Unit {
 
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: String = "test") throws -> String {
         let path = "/tmp/delete-test-\(Int.random(in: 0..<Int.max)).txt"
-        try writeBytes(Array(content.utf8), to: try File.Path(path))
+        try File.System.Write.Atomic.write(Array(content.utf8).span, to: File.Path(path))
         return path
     }
 
@@ -46,9 +38,9 @@ extension File.System.Delete.Test.Unit {
             options: .init(createIntermediates: true)
         )
         // Add some files
-        try writeBytes(Array("file1".utf8), to: try File.Path("\(basePath)/file1.txt"))
-        try writeBytes(Array("file2".utf8), to: try File.Path("\(basePath)/a/file2.txt"))
-        try writeBytes(Array("file3".utf8), to: try File.Path("\(basePath)/a/b/file3.txt"))
+        try File.System.Write.Atomic.write(Array("file1".utf8), to: File.Path("\(basePath)/file1.txt"))
+        try File.System.Write.Atomic.write(Array("file2".utf8), to: File.Path("\(basePath)/a/file2.txt"))
+        try File.System.Write.Atomic.write(Array("file3".utf8), to: File.Path("\(basePath)/a/b/file3.txt"))
         return basePath
     }
 

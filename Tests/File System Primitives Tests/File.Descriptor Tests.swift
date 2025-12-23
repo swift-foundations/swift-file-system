@@ -17,17 +17,9 @@ extension File.Descriptor {
 extension File.Descriptor.Test.Unit {
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/descriptor-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
@@ -45,7 +37,7 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .read)
+        let descriptor = try File.Descriptor.open(filePath, mode: .read)
         let isValid = descriptor.isValid
         #expect(isValid)
         try descriptor.close()
@@ -57,7 +49,7 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .write)
+        let descriptor = try File.Descriptor.open(filePath, mode: .write)
         let isValid = descriptor.isValid
         #expect(isValid)
         try descriptor.close()
@@ -69,7 +61,7 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .readWrite)
+        let descriptor = try File.Descriptor.open(filePath, mode: .readWrite)
         let isValid = descriptor.isValid
         #expect(isValid)
         try descriptor.close()
@@ -93,7 +85,7 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .write, options: [.create])
+        let descriptor = try File.Descriptor.open(filePath, mode: .write, options: [.create])
         let isValid = descriptor.isValid
         #expect(isValid)
         #expect(File.System.Stat.exists(at: try File.Path(path)))
@@ -106,10 +98,10 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .write, options: [.truncate])
+        let descriptor = try File.Descriptor.open(filePath, mode: .write, options: [.truncate])
         try descriptor.close()
 
-        let data = try File.System.Read.Full.read(from: try File.Path(path))
+        let data = try File.System.Read.Full.read(from: File.Path(path))
         #expect(data.isEmpty)
     }
 
@@ -136,7 +128,7 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .read)
+        let descriptor = try File.Descriptor.open(filePath, mode: .read)
         let isValid = descriptor.isValid
         #expect(isValid)
         try descriptor.close()
@@ -149,7 +141,7 @@ extension File.Descriptor.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var descriptor = try File.Descriptor.open(filePath, mode: .read)
+        let descriptor = try File.Descriptor.open(filePath, mode: .read)
         try descriptor.close()
 
         // Can't actually test double close since close() is consuming
@@ -289,8 +281,8 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.Descriptor.Error.pathNotFound(path1)
@@ -304,7 +296,7 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Errors are Sendable")
     func errorsSendable() async throws {
-        let path = try File.Path("/tmp/test")
+        let path = File.Path("/tmp/test")
         let error = File.Descriptor.Error.pathNotFound(path)
 
         let result = await Task {
@@ -318,7 +310,7 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Error.pathNotFound")
     func errorPathNotFound() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.Descriptor.Error.pathNotFound(path)
         if case .pathNotFound(let p) = error {
             #expect(p == path)
@@ -329,7 +321,7 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Error.permissionDenied")
     func errorPermissionDenied() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.Descriptor.Error.permissionDenied(path)
         if case .permissionDenied(let p) = error {
             #expect(p == path)
@@ -340,7 +332,7 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Error.alreadyExists")
     func errorAlreadyExists() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.Descriptor.Error.alreadyExists(path)
         if case .alreadyExists(let p) = error {
             #expect(p == path)
@@ -351,7 +343,7 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Error.isDirectory")
     func errorIsDirectory() throws {
-        let path = try File.Path("/tmp")
+        let path = File.Path("/tmp")
         let error = File.Descriptor.Error.isDirectory(path)
         if case .isDirectory(let p) = error {
             #expect(p == path)

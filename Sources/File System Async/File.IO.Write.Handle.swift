@@ -7,5 +7,5 @@
 
 extension File.IO.Write {
     /// Namespace for streaming write handle types.
-    public enum Handle {}
+    package enum Handle {}
 }

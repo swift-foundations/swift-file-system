@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -45,7 +46,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         var readHandle = try File.Handle.open(filePath, mode: .read)
@@ -69,9 +70,7 @@ extension File.System.Test.EdgeCase {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
 
         let emptyArray: [UInt8] = []
-        try emptyArray.withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(emptyArray.span)
 
         try handle.close()
 
@@ -115,7 +114,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(File.System.Stat.exists(at: filePath))
@@ -142,7 +141,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(File.System.Stat.exists(at: filePath))
@@ -156,7 +155,7 @@ extension File.System.Test.EdgeCase {
         let filePath = try File.Path(path)
 
         #expect(throws: (any Error).self) {
-            var handle = try File.Handle.open(
+            let handle = try File.Handle.open(
                 filePath,
                 mode: .write,
                 options: [.create, .closeOnExec]
@@ -173,7 +172,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
 
         // Handle should be valid immediately after open
         let isValidBeforeClose = handle.isValid
@@ -190,7 +189,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
 
         // Close should succeed without error
         try handle.close()
@@ -213,9 +212,7 @@ extension File.System.Test.EdgeCase {
 
         // Write should work
         let data: [UInt8] = [1, 2, 3, 4, 5]
-        try data.withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(data.span)
 
         // Seek should work
         _ = try handle.seek(to: 0, from: .start)
@@ -239,7 +236,7 @@ extension File.System.Test.EdgeCase {
 
         // Create the file first
         let filePath = try File.Path(path)
-        var createHandle = try File.Handle.open(
+        let createHandle = try File.Handle.open(
             filePath,
             mode: .write,
             options: [.create, .closeOnExec]
@@ -252,9 +249,7 @@ extension File.System.Test.EdgeCase {
         let data: [UInt8] = [1, 2, 3]
         var didThrow = false
         do {
-            try data.withUnsafeBufferPointer { buffer in
-                try handle.write(Span<UInt8>(_unsafeElements: buffer))
-            }
+            try handle.write(data.span)
         } catch is File.Handle.Error {
             didThrow = true
         }
@@ -304,9 +299,7 @@ extension File.System.Test.EdgeCase {
 
         // Write something
         let data: [UInt8] = [42]
-        try data.withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(data.span)
 
         try handle.close()
 
@@ -324,9 +317,7 @@ extension File.System.Test.EdgeCase {
 
         // Write some data
         let data: [UInt8] = [1, 2, 3, 4, 5]
-        try data.withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(data.span)
 
         // Seek to end
         let pos = try handle.seek(to: 0, from: .end)
@@ -424,7 +415,7 @@ extension File.System.Test.EdgeCase {
 
         // Create file inside
         let filePath = try File.Path(dir.string + "/file.txt")
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(throws: (any Error).self) {
@@ -463,9 +454,7 @@ extension File.System.Test.EdgeCase {
             options: [.create, .closeOnExec]
         )
         let data: [UInt8] = [1, 2, 3, 4, 5]
-        try data.withUnsafeBufferPointer { buffer in
-            try handle1.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle1.write(data.span)
 
         // Open second handle for reading
         var handle2 = try File.Handle.open(filePath, mode: .read)
@@ -498,9 +487,7 @@ extension File.System.Test.EdgeCase {
 
         // Write some data
         let data: [UInt8] = [1, 2, 3]
-        try data.withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(data.span)
 
         _ = try handle.seek(to: 0, from: .start)
 
@@ -529,9 +516,7 @@ extension File.System.Test.EdgeCase {
 
         // Write data
         let data: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        try data.withUnsafeBufferPointer { buffer in
-            try handle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try handle.write(data.span)
 
         _ = try handle.seek(to: 0, from: .start)
 
@@ -570,7 +555,7 @@ extension File.System.Test.EdgeCase {
             let filePath = try File.Path(path)
 
             // Create file with no permissions
-            var handle = try File.Handle.open(
+            let handle = try File.Handle.open(
                 filePath,
                 mode: .write,
                 options: [.create, .closeOnExec]
@@ -601,9 +586,7 @@ extension File.System.Test.EdgeCase {
             var handle = try File.Handle.open(path, mode: .write)
 
             let data: [UInt8] = [1, 2, 3, 4, 5]
-            try data.withUnsafeBufferPointer { buffer in
-                try handle.write(Span<UInt8>(_unsafeElements: buffer))
-            }
+            try handle.write(data.span)
             try handle.close()
         // No assertion needed - just shouldn't crash
         #endif
@@ -617,7 +600,7 @@ extension File.System.Test.EdgeCase {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(throws: (any Error).self) {
@@ -644,9 +627,7 @@ extension File.System.Test.EdgeCase {
             options: [.create, .closeOnExec]
         )
         let srcData: [UInt8] = [1, 2, 3]
-        try srcData.withUnsafeBufferPointer { buffer in
-            try srcHandle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try srcHandle.write(srcData.span)
         try srcHandle.close()
 
         // Create destination with different content
@@ -656,9 +637,7 @@ extension File.System.Test.EdgeCase {
             options: [.create, .closeOnExec]
         )
         let dstData: [UInt8] = [4, 5, 6, 7, 8]
-        try dstData.withUnsafeBufferPointer { buffer in
-            try dstHandle.write(Span<UInt8>(_unsafeElements: buffer))
-        }
+        try dstHandle.write(dstData.span)
         try dstHandle.close()
 
         // Move to existing destination should fail (safe API behavior)
@@ -692,9 +671,7 @@ extension File.System.Test.EdgeCase {
                 options: [.create, .truncate, .closeOnExec]
             )
             let data = [UInt8(i & 0xFF)]
-            try data.withUnsafeBufferPointer { buffer in
-                try handle.write(Span<UInt8>(_unsafeElements: buffer))
-            }
+            try handle.write(data.span)
             try handle.close()
         }
 
@@ -708,7 +685,7 @@ extension File.System.Test.EdgeCase {
 
         for i in 0..<50 {
             let path: File.Path = try .init("\(basePath)-\(i)")
-            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
             try File.System.Delete.delete(at: path)
         }
@@ -718,10 +695,6 @@ extension File.System.Test.EdgeCase {
 }
 
 // MARK: - Performance Tests
-
-#if canImport(Foundation)
-    import Foundation
-#endif
 
 extension File.System.Test.Performance {
 
@@ -733,23 +706,16 @@ extension File.System.Test.Performance {
         // Note: threshold increased to accommodate Linux runtime overhead
         @Test("Buffer read is zero-allocation", .timed(iterations: 10, maxAllocations: 256_000))
         func bufferReadZeroAllocation() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                tempDir,
+                td,
                 appending: "perf_alloc_\(Int.random(in: 0..<Int.max)).bin"
             )
 
             // Setup
             let size = 64 * 1024
             let setupData = [UInt8](repeating: 0x42, count: size)
-            try setupData.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try File.System.Write.Atomic.write(span, to: filePath)
-            }
+            try File.System.Write.Atomic.write(setupData.span, to: filePath)
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -765,22 +731,15 @@ extension File.System.Test.Performance {
 
         @Test("Stat operations minimal allocation", .timed(iterations: 20, maxAllocations: 50_000))
         func statMinimalAllocation() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                tempDir,
+                td,
                 appending: "perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt"
             )
 
             // Setup
             let data = [UInt8](repeating: 0x00, count: 100)
-            try data.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try File.System.Write.Atomic.write(span, to: filePath)
-            }
+            try File.System.Write.Atomic.write(data.span, to: filePath)
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -801,23 +760,16 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
         )
         func largeFileWrite() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                tempDir,
+                td,
                 appending: "perf_large_write_\(Int.random(in: 0..<Int.max)).bin"
             )
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
             let tenMB = [UInt8](repeating: 0xFF, count: 10_000_000)
-            try tenMB.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try File.System.Write.Atomic.write(span, to: filePath)
-            }
+            try File.System.Write.Atomic.write(tenMB.span, to: filePath)
         }
 
         @Test(
@@ -825,22 +777,15 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
         )
         func largeFileRead() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
-                tempDir,
+                td,
                 appending: "perf_large_read_\(Int.random(in: 0..<Int.max)).bin"
             )
 
             // Setup
             let tenMB = [UInt8](repeating: 0xFF, count: 10_000_000)
-            try tenMB.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try File.System.Write.Atomic.write(span, to: filePath)
-            }
+            try File.System.Write.Atomic.write(tenMB.span, to: filePath)
 
             defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -852,12 +797,8 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(10))
         )
         func manySmallFiles() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
-            let testDir = File.Path(tempDir, appending: "perf_many_\(Int.random(in: 0..<Int.max))")
+            let td = try File.Directory.Temporary.system
+            let testDir = File.Path(td, appending: "perf_many_\(Int.random(in: 0..<Int.max))")
 
             try File.System.Create.Directory.create(at: testDir)
             defer { try? File.System.Delete.delete(at: testDir, options: .init(recursive: true)) }
@@ -867,10 +808,7 @@ extension File.System.Test.Performance {
             // Create 100 small files
             for i in 0..<100 {
                 let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                try smallData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: filePath)
-                }
+                try File.System.Write.Atomic.write(smallData.span, to: filePath)
             }
         }
     }

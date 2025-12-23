@@ -15,15 +15,16 @@ extension File.Directory.Walk.Async.Sequence {
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
         private typealias Box = File.IO.Iterator.Box<File.Directory.Iterator>
+        private typealias ChannelError = File.IO.Error<File.Directory.Walk.Error>
 
-        private let channel: AsyncThrowingChannel<Element, any Error>
-        private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
+        private let channel: AsyncThrowingChannel<Element, ChannelError>
+        private var channelIterator: AsyncThrowingChannel<Element, ChannelError>.AsyncIterator
         private var producerTask: Task<Void, Never>?
         private var isFinished = false
 
         private init(
-            channel: AsyncThrowingChannel<Element, any Error>,
-            channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
+            channel: AsyncThrowingChannel<Element, ChannelError>,
+            channelIterator: AsyncThrowingChannel<Element, ChannelError>.AsyncIterator
         ) {
             self.channel = channel
             self.channelIterator = channelIterator
@@ -36,7 +37,7 @@ extension File.Directory.Walk.Async.Sequence {
             options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor
         ) -> Iterator {
-            let channel = AsyncThrowingChannel<Element, any Error>()
+            let channel = AsyncThrowingChannel<Element, ChannelError>()
             let iterator = Iterator(
                 channel: channel,
                 channelIterator: channel.makeAsyncIterator()
@@ -57,7 +58,7 @@ extension File.Directory.Walk.Async.Sequence {
             producerTask?.cancel()
         }
 
-        public func next() async throws -> Element? {
+        public func next() async throws(File.IO.Error<File.Directory.Walk.Error>) -> Element? {
             guard !isFinished else { return nil }
 
             do {
@@ -67,10 +68,18 @@ extension File.Directory.Walk.Async.Sequence {
                     isFinished = true
                 }
                 return result
-            } catch {
+            } catch let error as File.IO.Error<File.Directory.Walk.Error> {
                 isFinished = true
                 producerTask?.cancel()
                 throw error
+            } catch is CancellationError {
+                isFinished = true
+                producerTask?.cancel()
+                throw .cancelled
+            } catch {
+                isFinished = true
+                producerTask?.cancel()
+                throw .operation(.walkFailed(errno: 0, message: "Unknown error: \(error)"))
             }
         }
 
@@ -92,7 +101,7 @@ extension File.Directory.Walk.Async.Sequence {
             root: File.Path,
             options: File.Directory.Walk.Async.Options,
             io: File.IO.Executor,
-            channel: AsyncThrowingChannel<Element, any Error>
+            channel: AsyncThrowingChannel<Element, ChannelError>
         ) async {
             let state = File.Directory.Walk.Async.State(maxConcurrency: options.maxConcurrency)
             let authority = File.Directory.Walk.Async.Completion.Authority()
@@ -168,7 +177,7 @@ extension File.Directory.Walk.Async.Sequence {
             io: File.IO.Executor,
             state: File.Directory.Walk.Async.State,
             authority: File.Directory.Walk.Async.Completion.Authority,
-            channel: AsyncThrowingChannel<Element, any Error>
+            channel: AsyncThrowingChannel<Element, ChannelError>
         ) async {
             // Check if already done
             guard await !authority.isComplete else {
@@ -177,15 +186,27 @@ extension File.Directory.Walk.Async.Sequence {
             }
 
             // Open iterator
-            let boxResult: Result<Box, any Error> = await {
+            let boxResult: Result<Box, ChannelError> = await {
                 do {
                     let box = try await io.run {
                         let iterator = try File.Directory.Iterator.open(at: dir)
                         return Box(iterator)
                     }
                     return .success(box)
+                } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+                    // Map iterator error to walk error
+                    return .failure(error.mapOperation { iteratorError in
+                        switch iteratorError {
+                        case .pathNotFound(let p): return .pathNotFound(p)
+                        case .permissionDenied(let p): return .permissionDenied(p)
+                        case .notADirectory(let p): return .notADirectory(p)
+                        case .readFailed(let errno, let msg): return .walkFailed(errno: errno, message: msg)
+                        }
+                    })
+                } catch is CancellationError {
+                    return .failure(.cancelled)
                 } catch {
-                    return .failure(error)
+                    return .failure(.operation(.walkFailed(errno: 0, message: "Open failed: \(error)")))
                 }
             }()
 
@@ -257,10 +278,10 @@ extension File.Directory.Walk.Async.Sequence {
                                 continue
                             case .stopAndThrow:
                                 await authority.fail(
-                                    with: File.Directory.Walk.Error.undecodableEntry(
+                                    with: .operation(.undecodableEntry(
                                         parent: entry.parent,
                                         name: entry.name
-                                    )
+                                    ))
                                 )
                             }
                             continue
@@ -289,8 +310,20 @@ extension File.Directory.Walk.Async.Sequence {
                         }
                     }
                 }
+            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+                // Map iterator error to walk error
+                await authority.fail(with: error.mapOperation { iteratorError in
+                    switch iteratorError {
+                    case .pathNotFound(let p): return .pathNotFound(p)
+                    case .permissionDenied(let p): return .permissionDenied(p)
+                    case .notADirectory(let p): return .notADirectory(p)
+                    case .readFailed(let errno, let msg): return .walkFailed(errno: errno, message: msg)
+                    }
+                })
+            } catch is CancellationError {
+                await authority.fail(with: .cancelled)
             } catch {
-                await authority.fail(with: error)
+                await authority.fail(with: .operation(.walkFailed(errno: 0, message: "Walk failed: \(error)")))
             }
 
             // Close box synchronously before returning

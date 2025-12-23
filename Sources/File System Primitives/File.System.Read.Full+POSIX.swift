@@ -17,7 +17,7 @@
 
     extension File.System.Read.Full {
         /// Reads file contents using POSIX APIs.
-        internal static func _readPOSIX(from path: File.Path) throws(Error) -> [UInt8] {
+        internal static func _readPOSIX(from path: File.Path) throws(File.System.Read.Full.Error) -> [UInt8] {
             // Open file for reading
             let fd = open(path.string, O_RDONLY)
             guard fd >= 0 else {

@@ -14,7 +14,7 @@ extension File.Handle {
     ///
     /// - Returns: The current file position.
     /// - Throws: `File.Handle.Error` on failure.
-    public mutating func position() throws(Error) -> Int64 {
+    public mutating func position() throws(File.Handle.Error) -> Int64 {
         try seek(to: 0, from: .current)
     }
 
@@ -31,7 +31,7 @@ extension File.Handle {
     /// - Returns: The new position (always 0).
     /// - Throws: `File.Handle.Error` on failure.
     @discardableResult
-    public mutating func rewind() throws(Error) -> Int64 {
+    public mutating func rewind() throws(File.Handle.Error) -> Int64 {
         try seek(to: 0, from: .start)
     }
 
@@ -47,7 +47,7 @@ extension File.Handle {
     /// - Returns: The new position (file size).
     /// - Throws: `File.Handle.Error` on failure.
     @discardableResult
-    public mutating func seekToEnd() throws(Error) -> Int64 {
+    public mutating func seekToEnd() throws(File.Handle.Error) -> Int64 {
         try seek(to: 0, from: .end)
     }
 }
@@ -68,27 +68,51 @@ extension File.Handle {
     /// }
     /// ```
     ///
+    /// ## Error Handling
+    /// This method uses `File.Error` to distinguish between handle errors
+    /// (from opening/closing) and operation errors (from the closure):
+    /// ```swift
+    /// do {
+    ///     try File.Handle.withOpen(path, mode: .read) { handle in
+    ///         try handle.read(count: 1024)
+    ///     }
+    /// } catch .handle(let handleError) {
+    ///     // File open/close failed
+    /// } catch .operation(let description) {
+    ///     // Closure threw an error
+    /// }
+    /// ```
+    ///
     /// - Parameters:
     ///   - path: The path to the file.
     ///   - mode: The access mode.
     ///   - options: Additional options.
     ///   - body: A closure that receives an inout handle and returns a result.
     /// - Returns: The result from the closure.
-    /// - Throws: `File.Handle.Error` on open failure, or any error thrown by the closure.
+    /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
     public static func withOpen<Result>(
         _ path: File.Path,
         mode: Mode,
         options: Options = [],
         body: (inout File.Handle) throws -> Result
-    ) throws -> Result {
-        var handle = try open(path, mode: mode, options: options)
+    ) throws(File.Error) -> Result {
+        var handle: File.Handle
+        do {
+            handle = try open(path, mode: mode, options: options)
+        } catch {
+            throw .handle(error)
+        }
+
         do {
             let result = try body(&handle)
             try? handle.close()  // Best-effort close after success
             return result
+        } catch let error as File.Handle.Error {
+            try? handle.close()
+            throw .handle(error)
         } catch {
-            try? handle.close()  // Best-effort close after error
-            throw error
+            try? handle.close()
+            throw .operation(description: String(describing: error))
         }
     }
 
@@ -102,21 +126,30 @@ extension File.Handle {
     ///   - options: Additional options.
     ///   - body: An async closure that receives an inout handle and returns a result.
     /// - Returns: The result from the closure.
-    /// - Throws: `File.Handle.Error` on open failure, or any error thrown by the closure.
+    /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
     public static func withOpen<Result>(
         _ path: File.Path,
         mode: Mode,
         options: Options = [],
         body: (inout File.Handle) async throws -> Result
-    ) async throws -> Result {
-        var handle = try open(path, mode: mode, options: options)
+    ) async throws(File.Error) -> Result {
+        var handle: File.Handle
+        do {
+            handle = try open(path, mode: mode, options: options)
+        } catch {
+            throw .handle(error)
+        }
+
         do {
             let result = try await body(&handle)
             try? handle.close()  // Best-effort close after success
             return result
+        } catch let error as File.Handle.Error {
+            try? handle.close()
+            throw .handle(error)
         } catch {
-            try? handle.close()  // Best-effort close after error
-            throw error
+            try? handle.close()
+            throw .operation(description: String(describing: error))
         }
     }
 }
@@ -127,7 +160,7 @@ extension File.Handle.Async {
     /// Get the current position.
     ///
     /// - Returns: The current file position.
-    public func position() async throws -> Int64 {
+    public func position() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
         try await seek(to: 0, from: .current)
     }
 
@@ -135,7 +168,7 @@ extension File.Handle.Async {
     ///
     /// - Returns: The new position (always 0).
     @discardableResult
-    public func rewind() async throws -> Int64 {
+    public func rewind() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
         try await seek(to: 0, from: .start)
     }
 
@@ -143,7 +176,7 @@ extension File.Handle.Async {
     ///
     /// - Returns: The new position (file size).
     @discardableResult
-    public func seekToEnd() async throws -> Int64 {
+    public func seekToEnd() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
         try await seek(to: 0, from: .end)
     }
 }

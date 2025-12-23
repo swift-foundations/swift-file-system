@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -17,17 +18,9 @@ extension File.Handle {
 extension File.Handle.Test.Unit {
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/handle-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
@@ -46,7 +39,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .read)
+        let handle = try File.Handle.open(filePath, mode: .read)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -60,7 +53,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write)
+        let handle = try File.Handle.open(filePath, mode: .write)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -74,7 +67,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .readWrite)
+        let handle = try File.Handle.open(filePath, mode: .readWrite)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -88,7 +81,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .append)
+        let handle = try File.Handle.open(filePath, mode: .append)
         let isValid = handle.isValid
         let mode = handle.mode
         #expect(isValid)
@@ -102,7 +95,7 @@ extension File.Handle.Test.Unit {
         defer { cleanup(path) }
 
         let filePath = try File.Path(path)
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create])
         let isValid = handle.isValid
         #expect(isValid)
         #expect(File.System.Stat.exists(at: try File.Path(path)))
@@ -192,10 +185,7 @@ extension File.Handle.Test.Unit {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.truncate])
 
         let data: [UInt8] = [100, 101, 102, 103, 104]
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(data.span)
         try handle.close()
 
         let readBack = try File.System.Read.Full.read(from: try File.Path(path))
@@ -211,10 +201,7 @@ extension File.Handle.Test.Unit {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.truncate])
 
         let data: [UInt8] = []
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(data.span)
         try handle.close()
 
         let readBack = try File.System.Read.Full.read(from: try File.Path(path))
@@ -303,10 +290,7 @@ extension File.Handle.Test.Unit {
         var handle = try File.Handle.open(filePath, mode: .write, options: [.create])
 
         let data: [UInt8] = [1, 2, 3]
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(data.span)
         try handle.sync()
         try handle.close()
 
@@ -416,30 +400,19 @@ extension File.Handle.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.Handle.Test.Performance {
 
     @Test(.timed(iterations: 10, warmup: 2))
     func sequentialRead1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_read_1mb_\(Int.random(in: 0..<Int.max)).bin"
         )
 
         // Setup: create 1MB file
         let oneMB = [UInt8](repeating: 0xAB, count: 1_000_000)
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(oneMB.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -451,13 +424,9 @@ extension File.Handle.Test.Performance {
 
     @Test("Sequential write 1MB file", .timed(iterations: 10, warmup: 2))
     func sequentialWrite1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_write_1mb_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -470,32 +439,22 @@ extension File.Handle.Test.Performance {
             mode: .write,
             options: [.create, .truncate, .closeOnExec]
         )
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(oneMB.span)
         try handle.close()
     }
 
     @Test("Buffer-based read into preallocated buffer", .timed(iterations: 50, warmup: 5))
     func bufferBasedRead() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_buffer_read_\(Int.random(in: 0..<Int.max)).bin"
         )
 
         // Setup: create 64KB file
         let size = 64 * 1024
         let data = [UInt8](repeating: 0x42, count: size)
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
@@ -512,13 +471,9 @@ extension File.Handle.Test.Performance {
 
     @Test("Small write throughput (4KB blocks)", .timed(iterations: 20, warmup: 3))
     func smallWriteThroughput() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_small_writes_\(Int.random(in: 0..<Int.max)).bin"
         )
 
@@ -535,10 +490,7 @@ extension File.Handle.Test.Performance {
         )
 
         for _ in 0..<blocks {
-            try block.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(block.span)
         }
 
         try handle.close()
@@ -546,20 +498,13 @@ extension File.Handle.Test.Performance {
 
     @Test("Seek operations (random access pattern)", .timed(iterations: 50, warmup: 5))
     func seekPerformance() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
-        let filePath = File.Path(tempDir, appending: "perf_seek_\(Int.random(in: 0..<Int.max)).bin")
+        let td = try File.Directory.Temporary.system
+        let filePath = File.Path(td, appending: "perf_seek_\(Int.random(in: 0..<Int.max)).bin")
 
         // Create a 1MB file for seeking
         let size = 1_000_000
         let data = [UInt8](repeating: 0x00, count: size)
-        try data.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath)
 
         defer { try? File.System.Delete.delete(at: filePath) }
 

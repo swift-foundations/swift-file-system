@@ -43,7 +43,7 @@ extension File.System.Link.Hard {
     ///   - path: The path where the hard link will be created.
     ///   - existing: The path to the existing file.
     /// - Throws: `File.System.Link.Hard.Error` on failure.
-    public static func create(at path: File.Path, to existing: File.Path) throws(Error) {
+    public static func create(at path: File.Path, to existing: File.Path) throws(File.System.Link.Hard.Error) {
         #if os(Windows)
             try _createWindows(at: path, to: existing)
         #else
@@ -57,7 +57,7 @@ extension File.System.Link.Hard {
 
 #if !os(Windows)
     extension File.System.Link.Hard {
-        internal static func _createPOSIX(at path: File.Path, to existing: File.Path) throws(Error)
+        internal static func _createPOSIX(at path: File.Path, to existing: File.Path) throws(File.System.Link.Hard.Error)
         {
             guard link(existing.string, path.string) == 0 else {
                 throw _mapErrno(errno, path: path, existing: existing)
@@ -97,7 +97,7 @@ extension File.System.Link.Hard {
         internal static func _createWindows(
             at path: File.Path,
             to existing: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Link.Hard.Error) {
             let success = existing.string.withCString(encodedAs: UTF16.self) { wexisting in
                 path.string.withCString(encodedAs: UTF16.self) { wpath in
                     CreateHardLinkW(wpath, wexisting, nil)

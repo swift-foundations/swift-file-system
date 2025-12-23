@@ -69,7 +69,7 @@ extension File.System.Metadata.Timestamps {
     ///
     /// - Parameter path: The path to the file.
     /// - Throws: `File.System.Metadata.Timestamps.Error` on failure.
-    public init(at path: File.Path) throws(Error) {
+    public init(at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
         #if os(Windows)
             self = try Self._getWindows(path)
         #else
@@ -90,7 +90,7 @@ extension File.System.Metadata.Timestamps {
     ///   - timestamps: The timestamps to set.
     ///   - path: The path to the file.
     /// - Throws: `File.System.Metadata.Timestamps.Error` on failure.
-    public static func set(_ timestamps: Self, at path: File.Path) throws(Error) {
+    public static func set(_ timestamps: Self, at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
         #if os(Windows)
             try _setWindows(timestamps, at: path)
         #else
@@ -104,7 +104,7 @@ extension File.System.Metadata.Timestamps {
 
 #if !os(Windows)
     extension File.System.Metadata.Timestamps {
-        internal static func _getPOSIX(_ path: File.Path) throws(Error) -> Self {
+        internal static func _getPOSIX(_ path: File.Path) throws(File.System.Metadata.Timestamps.Error) -> Self {
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
@@ -163,7 +163,7 @@ extension File.System.Metadata.Timestamps {
             #endif
         }
 
-        internal static func _setPOSIX(_ timestamps: Self, at path: File.Path) throws(Error) {
+        internal static func _setPOSIX(_ timestamps: Self, at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
             var times = [timespec](repeating: timespec(), count: 2)
 
             // Access time
@@ -202,7 +202,7 @@ extension File.System.Metadata.Timestamps {
 
 #if os(Windows)
     extension File.System.Metadata.Timestamps {
-        internal static func _getWindows(_ path: File.Path) throws(Error) -> Self {
+        internal static func _getWindows(_ path: File.Path) throws(File.System.Metadata.Timestamps.Error) -> Self {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
@@ -240,7 +240,7 @@ extension File.System.Metadata.Timestamps {
             )
         }
 
-        internal static func _setWindows(_ timestamps: Self, at path: File.Path) throws(Error) {
+        internal static func _setWindows(_ timestamps: Self, at path: File.Path) throws(File.System.Metadata.Timestamps.Error) {
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,

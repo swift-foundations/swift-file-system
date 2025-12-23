@@ -7,7 +7,7 @@
 
 extension File.IO.Handle {
     /// Errors related to handle operations in the store.
-    public enum Error: Swift.Error, Sendable {
+    public enum Error: Swift.Error, Sendable, Equatable {
         /// The handle ID does not exist in the store (already closed or never existed).
         case invalidID
         /// The handle ID belongs to a different executor/store.

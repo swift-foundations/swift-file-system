@@ -196,7 +196,7 @@ try await File.System.Write.Atomic.write(data, to: path, options: .init(durabili
 
 ```swift
 // Async byte streaming with backpressure
-for try await chunk in File.Stream.bytes(from: path) {
+for try await chunk in File.System.Read.bytes(from: path) {
     process(chunk)
 }
 ```
@@ -307,8 +307,8 @@ for entry in try File.Directory.Walk(at: rootPath, options: options) {
 ### Custom Executor (Advanced)
 
 ```swift
-// For heavy I/O, use a dedicated executor to avoid starving the cooperative pool
-let io = File.IO.Executor(.init(workers: 4, threadModel: .dedicated))
+// For heavy I/O, use a custom executor with more workers
+let io = File.IO.Executor(.init(workers: 4))
 
 // Pass custom executor to any operation
 let data = try await File.System.Read.Full.read(from: path, io: io)

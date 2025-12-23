@@ -75,7 +75,7 @@ extension File.System.Write.Streaming {
         _ chunks: Chunks,
         to path: File.Path,
         options: Options = Options()
-    ) throws(Error) where Chunks.Element == [UInt8] {
+    ) throws(File.System.Write.Streaming.Error) where Chunks.Element == [UInt8] {
         #if os(Windows)
             try WindowsStreaming.write(chunks, to: path.string, options: options)
         #else

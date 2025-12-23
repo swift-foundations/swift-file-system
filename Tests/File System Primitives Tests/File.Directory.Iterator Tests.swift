@@ -30,7 +30,7 @@ extension File.Directory.Iterator.Test.Unit {
         let dir = try createTempDir()
         defer { cleanup(dir) }
 
-        var iterator = try File.Directory.Iterator.open(at: dir)
+        let iterator = try File.Directory.Iterator.open(at: dir)
         iterator.close()
     }
 
@@ -53,7 +53,7 @@ extension File.Directory.Iterator.Test.Unit {
 
         // Create a file in the directory
         let filePath = File.Path(dir, appending: "testfile.txt")
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         var iterator = try File.Directory.Iterator.open(at: dir)
@@ -90,7 +90,7 @@ extension File.Directory.Iterator.Test.Unit {
         let dir = try createTempDir()
         defer { cleanup(dir) }
 
-        var iterator = try File.Directory.Iterator.open(at: dir)
+        let iterator = try File.Directory.Iterator.open(at: dir)
         iterator.close()
         // close() is consuming, so this is the only call
     }
@@ -159,7 +159,7 @@ extension File.Directory.Iterator.Test.EdgeCase {
         defer { try? File.System.Delete.delete(at: filePath) }
 
         // Create a file, not a directory
-        var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+        let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
         try handle.close()
 
         #expect(throws: File.Directory.Iterator.Error.self) {

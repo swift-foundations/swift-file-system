@@ -41,7 +41,7 @@ extension File.System.Link.Symbolic {
     ///   - path: The path where the symlink will be created.
     ///   - target: The path the symlink will point to.
     /// - Throws: `File.System.Link.Symbolic.Error` on failure.
-    public static func create(at path: File.Path, pointingTo target: File.Path) throws(Error) {
+    public static func create(at path: File.Path, pointingTo target: File.Path) throws(File.System.Link.Symbolic.Error) {
         #if os(Windows)
             try _createWindows(at: path, pointingTo: target)
         #else
@@ -58,7 +58,7 @@ extension File.System.Link.Symbolic {
         internal static func _createPOSIX(
             at path: File.Path,
             pointingTo target: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Link.Symbolic.Error) {
             guard symlink(target.string, path.string) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
@@ -92,7 +92,7 @@ extension File.System.Link.Symbolic {
         internal static func _createWindows(
             at path: File.Path,
             pointingTo target: File.Path
-        ) throws(Error) {
+        ) throws(File.System.Link.Symbolic.Error) {
             // Check if target is a directory
             let targetAttrs = target.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)

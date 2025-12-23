@@ -21,7 +21,7 @@ extension File.Directory.Test.Unit {
     private func createTempDir() throws -> File.Directory {
         let pathString = "/tmp/directory-instance-test-\(uniqueId())"
         let dir = try File.Directory(pathString)
-        try dir.create(withIntermediates: true)
+        try dir.create(recursive: true)
         return dir
     }
 
@@ -74,7 +74,7 @@ extension File.Directory.Test.Unit {
         defer { cleanup(root) }
 
         #expect(dir.exists == false)
-        try dir.create(withIntermediates: true)
+        try dir.create(recursive: true)
         #expect(dir.exists == true)
     }
 

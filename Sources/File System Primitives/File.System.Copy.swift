@@ -73,7 +73,7 @@ extension File.System.Copy {
         from source: File.Path,
         to destination: File.Path,
         options: Options = .init()
-    ) throws(Error) {
+    ) throws(File.System.Copy.Error) {
         #if os(Windows)
             try _copyWindows(from: source, to: destination, options: options)
         #else

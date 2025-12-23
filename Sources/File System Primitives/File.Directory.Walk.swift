@@ -33,7 +33,7 @@ extension File.Directory.Walk {
     public static func walk(
         at path: File.Path,
         options: Options = Options()
-    ) throws(Error) -> [File.Directory.Entry] {
+    ) throws(File.Directory.Walk.Error) -> [File.Directory.Entry] {
         var entries: [File.Directory.Entry] = []
         try _walk(at: path, options: options, depth: 0, entries: &entries)
         return entries
@@ -49,7 +49,7 @@ extension File.Directory.Walk {
         options: Options,
         depth: Int,
         entries: inout [File.Directory.Entry]
-    ) throws(Error) {
+    ) throws(File.Directory.Walk.Error) {
         // Check depth limit
         if let maxDepth = options.maxDepth, depth > maxDepth {
             return

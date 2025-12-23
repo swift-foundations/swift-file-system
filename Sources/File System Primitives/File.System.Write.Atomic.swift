@@ -74,7 +74,7 @@ extension File.System.Write.Atomic {
         _ bytes: borrowing Span<UInt8>,
         to path: File.Path,
         options: borrowing Options = Options()
-    ) throws(Error) {
+    ) throws(File.System.Write.Atomic.Error) {
         #if os(Windows)
             try WindowsAtomic.writeSpan(bytes, to: path.string, options: options)
         #else
@@ -99,8 +99,8 @@ extension File.System.Write.Atomic {
         _ value: S,
         to path: File.Path,
         options: Options = Options()
-    ) throws(Error) {
-        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(Error) in
+    ) throws(File.System.Write.Atomic.Error) {
+        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(File.System.Write.Atomic.Error) in
             try write(span, to: path, options: options)
         }
     }

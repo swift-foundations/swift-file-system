@@ -21,7 +21,7 @@
             from source: File.Path,
             to destination: File.Path,
             options: Options
-        ) throws(Error) {
+        ) throws(File.System.Move.Error) {
             // Check if source exists
             var sourceStat = stat()
             guard stat(source.string, &sourceStat) == 0 else {
@@ -63,7 +63,7 @@
             from source: File.Path,
             to destination: File.Path,
             options: Options
-        ) throws(Error) {
+        ) throws(File.System.Move.Error) {
             // Use Copy to copy the file
             let copyOptions = File.System.Copy.Options(
                 overwrite: options.overwrite,

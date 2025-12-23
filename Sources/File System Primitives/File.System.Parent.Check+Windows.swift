@@ -21,7 +21,7 @@
         static func verify(
             _ dir: String,
             createIntermediates: Bool
-        ) throws(Error) {
+        ) throws(File.System.Parent.Check.Error) {
             let attrs = dir.withCString(encodedAs: UTF16.self) { GetFileAttributesW($0) }
 
             if attrs == INVALID_FILE_ATTRIBUTES {
@@ -59,7 +59,7 @@
             }
         }
 
-        private static func createParent(at path: File.Path) throws(Error) {
+        private static func createParent(at path: File.Path) throws(File.System.Parent.Check.Error) {
             do {
                 try File.System.Create.Directory.create(
                     at: path,

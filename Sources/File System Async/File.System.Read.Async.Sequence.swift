@@ -1,5 +1,5 @@
 //
-//  File.Stream.Byte.Async.Sequence.swift
+//  File.System.Read.Async.Sequence.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
@@ -9,13 +9,13 @@ import AsyncAlgorithms
 
 // MARK: - Bytes API
 
-extension File.Stream.Async {
+extension File.System.Read.Async {
     /// Stream file bytes with backpressure.
     ///
     /// ## Example
     /// ```swift
-    /// let stream = File.Stream.Async(io: executor)
-    /// for try await chunk in stream.bytes(from: path) {
+    /// let reader = File.System.Read.Async(io: executor)
+    /// for try await chunk in reader.bytes(from: path) {
     ///     process(chunk)
     /// }
     /// ```
@@ -29,15 +29,15 @@ extension File.Stream.Async {
     /// Producer suspends when consumer is slow (via AsyncChannel).
     public func bytes(
         from path: File.Path,
-        options: File.Stream.Bytes.Async.Options = .init()
-    ) -> File.Stream.Byte.Async.Sequence {
-        File.Stream.Byte.Async.Sequence(path: path, chunkSize: options.chunkSize, io: io)
+        options: File.System.Read.Async.Options = .init()
+    ) -> File.System.Read.Async.Sequence {
+        File.System.Read.Async.Sequence(path: path, chunkSize: options.chunkSize, io: io)
     }
 }
 
-// MARK: - Byte.Async.Sequence
+// MARK: - Async.Sequence
 
-extension File.Stream.Byte.Async {
+extension File.System.Read.Async {
     /// An AsyncSequence of byte chunks from a file.
     ///
     /// ## Memory Contract

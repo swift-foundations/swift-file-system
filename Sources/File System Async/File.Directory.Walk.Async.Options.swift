@@ -1,5 +1,5 @@
 //
-//  File.Directory.Walk.Options.Async.swift
+//  File.Directory.Walk.Async.Options.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.

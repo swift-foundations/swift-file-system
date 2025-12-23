@@ -21,10 +21,7 @@ extension File.Handle.Async.Test.Unit {
 
     private func createTempFile(content: [UInt8] = []) throws -> File.Path {
         let path = try File.Path("/tmp/async-handle-test-\(Int.random(in: 0..<Int.max)).bin")
-        try content.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
+        try File.System.Write.Atomic.write(content.span, to: path)
         return path
     }
 
@@ -219,8 +216,15 @@ extension File.Handle.Async.Test.Unit {
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
             try await handle.close()
 
-            await #expect(throws: File.Handle.Error.self) {
+            do {
                 _ = try await handle.read(count: 10)
+                Issue.record("Expected error to be thrown")
+            } catch {
+                // error is File.IO.Error<File.Handle.Error>
+                guard case .operation(.invalidHandle) = error else {
+                    Issue.record("Expected .operation(.invalidHandle), got \(error)")
+                    return
+                }
             }
         }
 

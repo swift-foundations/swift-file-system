@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -28,19 +29,6 @@ extension File.System.Write.Atomic.Test.Unit {
         }
     }
 
-    private func writeBytes(
-        _ bytes: [UInt8],
-        to pathString: String,
-        options: File.System.Write.Atomic.Options = .init()
-    ) throws {
-        let filePath = try File.Path(pathString)
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath, options: options)
-        }
-    }
-
     // MARK: - Basic write
 
     @Test("Write and read back bytes")
@@ -50,9 +38,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
         let testData: [UInt8] = [72, 101, 108, 108, 111]  // "Hello"
 
-        try writeBytes(testData, to: path)
+        try File.System.Write.Atomic.write(testData, to: File.Path(path))
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == testData)
     }
 
@@ -61,9 +49,9 @@ extension File.System.Write.Atomic.Test.Unit {
         let path = uniquePath()
         defer { cleanup(path) }
 
-        try writeBytes([], to: path)
+        try File.System.Write.Atomic.write([], to: File.Path(path))
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData.isEmpty)
     }
 
@@ -74,9 +62,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
         let binaryData: [UInt8] = [0x00, 0x01, 0xFF, 0xFE, 0x7F, 0x80]
 
-        try writeBytes(binaryData, to: path)
+        try File.System.Write.Atomic.write(binaryData, to: File.Path(path))
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == binaryData)
     }
 
@@ -88,9 +76,9 @@ extension File.System.Write.Atomic.Test.Unit {
         // 64KB of data
         let largeData = [UInt8](repeating: 0xAB, count: 64 * 1024)
 
-        try writeBytes(largeData, to: path)
+        try File.System.Write.Atomic.write(largeData, to: File.Path(path))
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == largeData)
     }
 
@@ -98,15 +86,17 @@ extension File.System.Write.Atomic.Test.Unit {
 
     @Test("Invalid path - empty")
     func invalidPathEmpty() {
+        let emptyPath: String = ""
         #expect(throws: File.Path.Error.self) {
-            try writeBytes([1, 2, 3], to: "")
+            try File.System.Write.Atomic.write([1, 2, 3], to: try File.Path(emptyPath))
         }
     }
 
     @Test("Invalid path - contains control characters")
     func invalidPathControlCharacters() {
+        let invalidPath: String = "/tmp/test\0file.txt"
         #expect(throws: File.Path.Error.self) {
-            try writeBytes([1, 2, 3], to: "/tmp/test\0file.txt")
+            try File.System.Write.Atomic.write([1, 2, 3], to: try File.Path(invalidPath))
         }
     }
 
@@ -118,13 +108,13 @@ extension File.System.Write.Atomic.Test.Unit {
         defer { cleanup(path) }
 
         // First write
-        try writeBytes([1, 2, 3], to: path)
+        try File.System.Write.Atomic.write([1, 2, 3], to: File.Path(path))
 
         // Second write should replace
         let newData: [UInt8] = [4, 5, 6, 7, 8]
-        try writeBytes(newData, to: path)
+        try File.System.Write.Atomic.write(newData, to: File.Path(path))
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == newData)
     }
 
@@ -133,13 +123,13 @@ extension File.System.Write.Atomic.Test.Unit {
         let path = uniquePath()
         defer { cleanup(path) }
 
-        try writeBytes([1, 2, 3], to: path)
+        try File.System.Write.Atomic.write([1, 2, 3], to: File.Path(path))
 
         let options = File.System.Write.Atomic.Options(strategy: .replaceExisting)
         let newData: [UInt8] = [7, 8, 9]
-        try writeBytes(newData, to: path, options: options)
+        try File.System.Write.Atomic.write(newData, to: File.Path(path), options: options)
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == newData)
     }
 
@@ -151,16 +141,16 @@ extension File.System.Write.Atomic.Test.Unit {
         defer { cleanup(path) }
 
         // First write should succeed
-        try writeBytes([1, 2, 3], to: path)
+        try File.System.Write.Atomic.write([1, 2, 3], to: File.Path(path))
 
         // Second write with noClobber should fail
         let options = File.System.Write.Atomic.Options(strategy: .noClobber)
         #expect(throws: File.System.Write.Atomic.Error.self) {
-            try writeBytes([4, 5, 6], to: path, options: options)
+            try File.System.Write.Atomic.write([4, 5, 6], to: File.Path(path), options: options)
         }
 
         // Original content should be preserved
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == [1, 2, 3])
     }
 
@@ -171,9 +161,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
         let options = File.System.Write.Atomic.Options(strategy: .noClobber)
         let data: [UInt8] = [1, 2, 3]
-        try writeBytes(data, to: path, options: options)
+        try File.System.Write.Atomic.write(data, to: File.Path(path), options: options)
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
+        let readData = try File.System.Read.Full.read(from: File.Path(path))
         #expect(readData == data)
     }
 
@@ -233,11 +223,8 @@ extension File.System.Write.Atomic.Test.Unit {
         let testData: [UInt8] = [10, 20, 30, 40, 50]
 
         let filePath = try File.Path(path)
-        var bytes = testData
-        try await bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        let bytes = testData
+        try File.System.Write.Atomic.write(bytes.span, to: filePath)
 
         let readData = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(readData == testData)
@@ -252,11 +239,7 @@ extension File.System.Write.Atomic.Test.Unit {
         let data: [UInt8] = [1, 2, 3]
 
         let filePath = try File.Path(path)
-        var bytes = data
-        try await bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath, options: options)
-        }
+        try File.System.Write.Atomic.write(data.span, to: filePath, options: options)
 
         let readData = try File.System.Read.Full.read(from: try File.Path(path))
         #expect(readData == data)
@@ -265,25 +248,25 @@ extension File.System.Write.Atomic.Test.Unit {
     // MARK: - Error descriptions
 
     @Test("parent missing error description")
-    func parentMissingErrorDescription() throws {
+    func parentMissingErrorDescription() {
         let parentError = File.System.Parent.Check.Error.missing(
-            path: try File.Path("/nonexistent/parent")
+            path: "/nonexistent/parent"
         )
         let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("Parent directory"))
     }
 
     @Test("parent accessDenied error description")
-    func parentAccessDeniedErrorDescription() throws {
-        let parentError = File.System.Parent.Check.Error.accessDenied(path: try File.Path("/root"))
+    func parentAccessDeniedErrorDescription() {
+        let parentError = File.System.Parent.Check.Error.accessDenied(path: "/root")
         let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("Access denied"))
     }
 
     @Test("parent notDirectory error description")
-    func parentNotDirectoryErrorDescription() throws {
+    func parentNotDirectoryErrorDescription() {
         let parentError = File.System.Parent.Check.Error.notDirectory(
-            path: try File.Path("/tmp/file")
+            path: "/tmp/file"
         )
         let error = File.System.Write.Atomic.Error.parent(parentError)
         #expect(error.description.contains("not a directory"))
@@ -375,30 +358,19 @@ extension File.System.Write.Atomic.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.System.Write.Atomic.Test.Performance {
 
     @Test("File.System.Write.Atomic.write (1MB)", .timed(iterations: 10, warmup: 2))
     func systemWrite1MB() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            tempDir,
+            td,
             appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin"
         )
 
         defer { try? File.System.Delete.delete(at: filePath) }
 
         let oneMB = [UInt8](repeating: 0xEF, count: 1_000_000)
-        try oneMB.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(oneMB.span, to: filePath)
     }
 }

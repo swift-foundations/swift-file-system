@@ -98,10 +98,10 @@ extension File.IO.Executor {
         ///
         /// **Must only be called from within the lane closure.**
         /// The `raw` pointer must be reconstructed from address inside the closure.
-        static func withHandle<T>(
+        static func withHandle<T, E: Swift.Error>(
             at raw: UnsafeMutableRawPointer,
-            _ body: (inout File.Handle) throws -> T
-        ) rethrows -> T {
+            _ body: (inout File.Handle) throws(E) -> T
+        ) throws(E) -> T {
             let typed = raw.assumingMemoryBound(to: File.Handle.self)
             return try body(&typed.pointee)
         }
@@ -122,7 +122,7 @@ extension File.IO.Executor {
         /// This is for the close path where we consume the handle entirely.
         /// **Must only be called from within the lane closure.**
         /// The `raw` pointer must be reconstructed from address inside the closure.
-        static func closeHandle(at raw: UnsafeMutableRawPointer) throws {
+        static func closeHandle(at raw: UnsafeMutableRawPointer) throws(File.Handle.Error) {
             let typed = raw.assumingMemoryBound(to: File.Handle.self)
             let handle = typed.move()
             try handle.close()

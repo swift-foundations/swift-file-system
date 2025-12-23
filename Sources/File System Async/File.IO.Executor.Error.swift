@@ -7,7 +7,7 @@
 
 extension File.IO.Executor {
     /// Errors specific to the executor.
-    public enum Error: Swift.Error, Sendable {
+    public enum Error: Swift.Error, Sendable, Equatable {
         /// The executor has been shut down.
         case shutdownInProgress
 

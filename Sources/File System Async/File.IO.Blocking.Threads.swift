@@ -6,7 +6,7 @@
 //
 
 extension File.IO.Blocking {
-    /// A lane backed by dedicated OS threads.
+    /// A lane implementation backed by dedicated OS threads.
     ///
     /// ## Design
     /// - Spawns dedicated OS threads that do not interfere with Swift's cooperative pool.
@@ -20,7 +20,7 @@ extension File.IO.Blocking {
     /// ## Backpressure
     /// - `.suspend`: Callers wait for queue capacity (bounded by deadline).
     /// - `.throw`: Callers receive `.queueFull` immediately if queue is full.
-    public final class Threads: Lane, Sendable {
+    public final class Threads: Sendable {
         private let runtime: Runtime
 
         /// Creates a Threads lane with the given options.
@@ -41,7 +41,7 @@ extension File.IO.Blocking {
     }
 }
 
-// MARK: - Lane Conformance
+// MARK: - Capabilities
 
 extension File.IO.Blocking.Threads {
     public var capabilities: File.IO.Blocking.Capabilities {
@@ -50,13 +50,24 @@ extension File.IO.Blocking.Threads {
             guaranteesRunOnceEnqueued: true
         )
     }
+}
 
-    public func run<T: Sendable>(
+// MARK: - runBoxed (for Lane factory)
+
+extension File.IO.Blocking.Threads {
+    /// Execute a boxed operation - used by Lane factory.
+    /// The operation returns a boxed Result (already containing any error).
+    /// Threads only throws Lane.Failure for infrastructure failures.
+    public func runBoxed(
         deadline: File.IO.Blocking.Deadline?,
-        _ operation: @Sendable @escaping () throws -> T
-    ) async throws -> T {
+        _ operation: @Sendable @escaping () -> UnsafeMutableRawPointer
+    ) async throws(File.IO.Blocking.Lane.Failure) -> UnsafeMutableRawPointer {
         // Check cancellation upfront
-        try Task.checkCancellation()
+        do {
+            try Task.checkCancellation()
+        } catch {
+            throw .cancelled
+        }
 
         // Lazy start workers
         runtime.startIfNeeded()
@@ -64,21 +75,27 @@ extension File.IO.Blocking.Threads {
         // Check shutdown
         let isShutdown = runtime.state.lock.withLock { runtime.state.isShutdown }
         if isShutdown {
-            throw Error.shutdown
+            throw .shutdown
         }
 
-        // Create job and enqueue (with backpressure handling)
         let state = runtime.state
         let options = runtime.options
-        return try await withCheckedThrowingContinuation { continuation in
-            let job = Job.Instance(operation: operation, continuation: continuation)
+
+        // Use non-throwing continuation - result comes through return value
+        let result: Result<UnsafeMutableRawPointer, File.IO.Blocking.Lane.Failure> =
+            await withCheckedContinuation {
+                (continuation: CheckedContinuation<Result<UnsafeMutableRawPointer, File.IO.Blocking.Lane.Failure>, Never>) in
+
+            let job = Job.Instance(operation: operation) { ptr in
+                continuation.resume(returning: .success(ptr))
+            }
 
             state.lock.lock()
 
             // Double-check shutdown
             if state.isShutdown {
                 state.lock.unlock()
-                continuation.resume(throwing: Error.shutdown)
+                continuation.resume(returning: .failure(.shutdown))
                 return
             }
 
@@ -94,7 +111,7 @@ extension File.IO.Blocking.Threads {
             switch options.backpressure {
             case .throw:
                 state.lock.unlock()
-                continuation.resume(throwing: Error.queueFull)
+                continuation.resume(returning: .failure(.queueFull))
 
             case .suspend:
                 // Create pending job and wait for capacity
@@ -103,73 +120,71 @@ extension File.IO.Blocking.Threads {
 
                 // Use Task to handle the async wait
                 Task { [state, deadline] in
-                    do {
-                        try await withTaskCancellationHandler {
-                            try await withCheckedThrowingContinuation {
-                                (pendingCont: CheckedContinuation<Void, any Swift.Error>) in
+                    // Non-throwing continuation for pending wait
+                    let waitResult: Result<Void, File.IO.Blocking.Lane.Failure> =
+                        await withCheckedContinuation {
+                            (pendingCont: CheckedContinuation<Result<Void, File.IO.Blocking.Lane.Failure>, Never>) in
+
+                        state.lock.lock()
+
+                        // Check if shutdown happened while we were setting up
+                        if state.isShutdown {
+                            state.lock.unlock()
+                            pendingCont.resume(returning: .failure(.shutdown))
+                            return
+                        }
+
+                        // Check if capacity became available
+                        if !state.queue.isFull {
+                            state.queue.enqueue(job)
+                            state.lock.signal()
+                            state.lock.unlock()
+                            pendingCont.resume(returning: .success(()))
+                            return
+                        }
+
+                        // Still full - add to pending queue
+                        let pending = Pending.Job(
+                            token: token,
+                            job: job,
+                            continuation: pendingCont
+                        )
+                        state.pendingQueue.append(pending)
+                        state.lock.unlock()
+
+                        // Handle deadline in a separate task if needed
+                        if let deadline = deadline {
+                            Task {
+                                let remaining = deadline.remainingNanoseconds
+                                if remaining > 0 {
+                                    try? await Task.sleep(nanoseconds: remaining)
+                                }
+                                // Check if still pending
                                 state.lock.lock()
-
-                                // Check if shutdown happened while we were setting up
-                                if state.isShutdown {
+                                if let cancelled = state.pendingQueue.cancel(token: token) {
                                     state.lock.unlock()
-                                    pendingCont.resume(throwing: Error.shutdown)
-                                    return
-                                }
-
-                                // Check if capacity became available
-                                if !state.queue.isFull {
-                                    state.queue.enqueue(job)
-                                    state.lock.signal()
+                                    cancelled.continuation.resume(returning: .failure(.deadlineExceeded))
+                                } else {
                                     state.lock.unlock()
-                                    pendingCont.resume()
-                                    return
                                 }
-
-                                // Still full - add to pending queue
-                                let pending = Pending.Job(
-                                    token: token,
-                                    job: job,
-                                    continuation: pendingCont
-                                )
-                                state.pendingQueue.append(pending)
-                                state.lock.unlock()
-
-                                // Handle deadline in a separate task if needed
-                                if let deadline = deadline {
-                                    Task {
-                                        let remaining = deadline.remainingNanoseconds
-                                        if remaining > 0 {
-                                            try? await Task.sleep(nanoseconds: remaining)
-                                        }
-                                        // Check if still pending
-                                        state.lock.lock()
-                                        if let cancelled = state.pendingQueue.cancel(token: token) {
-                                            state.lock.unlock()
-                                            cancelled.continuation.resume(
-                                                throwing: Error.deadlineExceeded
-                                            )
-                                        } else {
-                                            state.lock.unlock()
-                                        }
-                                    }
-                                }
-                            }
-                        } onCancel: {
-                            // Cancel the pending job
-                            state.lock.lock()
-                            if let cancelled = state.pendingQueue.cancel(token: token) {
-                                state.lock.unlock()
-                                cancelled.continuation.resume(throwing: CancellationError())
-                            } else {
-                                state.lock.unlock()
                             }
                         }
-                    } catch {
-                        // The pending continuation already handled the error
+                    }
+
+                    // Check for failure in waiting
+                    switch waitResult {
+                    case .success:
+                        // Job was enqueued - the job itself will resume the outer continuation
+                        break
+                    case .failure(let failure):
+                        // Waiting failed - resume outer continuation with failure
+                        continuation.resume(returning: .failure(failure))
                     }
                 }
             }
         }
+
+        return try result.get()
     }
 
     public func shutdown() async {
@@ -177,12 +192,12 @@ extension File.IO.Blocking.Threads {
 
         let state = runtime.state
 
-        // Set shutdown flag and fail pending jobs
+        // Set shutdown flag and collect pending jobs
         let pendingJobs: [Pending.Job] = state.lock.withLock {
             guard !state.isShutdown else { return [] }
             state.isShutdown = true
 
-            // Fail all pending capacity waiters
+            // Drain all pending capacity waiters
             let pending = state.pendingQueue.drainAll()
 
             return pending
@@ -191,9 +206,9 @@ extension File.IO.Blocking.Threads {
         // Wake all workers
         state.lock.broadcast()
 
-        // Resume pending jobs with shutdown error (outside lock)
+        // Resume pending jobs with shutdown failure (outside lock)
         for pending in pendingJobs {
-            pending.continuation.resume(throwing: Error.shutdown)
+            pending.continuation.resume(returning: .failure(.shutdown))
         }
 
         // Wait for in-flight jobs to complete
@@ -271,18 +286,3 @@ extension File.IO.Blocking.Threads {
     }
 }
 
-// MARK: - Error
-
-extension File.IO.Blocking.Threads {
-    /// Errors thrown by the Threads lane.
-    public enum Error: Swift.Error, Sendable, Equatable {
-        /// Queue is full (when backpressure is `.throw`).
-        case queueFull
-
-        /// Deadline expired while waiting for queue capacity.
-        case deadlineExceeded
-
-        /// Lane is shut down.
-        case shutdown
-    }
-}

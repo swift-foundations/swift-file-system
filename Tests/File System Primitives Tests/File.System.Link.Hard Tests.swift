@@ -18,28 +18,17 @@ extension File.System.Link.Hard.Test.Unit {
 
     // MARK: - Test Fixtures
 
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
-
     /// Writes bytes in-place using a file handle (doesn't replace the file).
     /// This is important for hard link tests where we need to preserve the inode.
     private func writeBytesInPlace(_ bytes: [UInt8], to path: File.Path) throws {
         var handle = try File.Handle.open(path, mode: .write, options: [.truncate])
-        try bytes.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try handle.write(span)
-        }
+        try handle.write(bytes.span)
         try handle.close()
     }
 
     private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
         let path = "/tmp/hardlink-test-\(Int.random(in: 0..<Int.max)).bin"
-        try writeBytes(content, to: try File.Path(path))
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 

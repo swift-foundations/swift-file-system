@@ -43,7 +43,7 @@ extension File.System.Read.Full {
     /// - Parameter path: The path to the file to read.
     /// - Returns: The file contents as an array of bytes.
     /// - Throws: `File.System.Read.Full.Error` on failure.
-    public static func read(from path: File.Path) throws(Error) -> [UInt8] {
+    public static func read(from path: File.Path) throws(File.System.Read.Full.Error) -> [UInt8] {
         #if os(Windows)
             return try _readWindows(from: path)
         #else

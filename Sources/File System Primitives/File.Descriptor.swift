@@ -118,7 +118,7 @@ extension File.Descriptor {
         _ path: File.Path,
         mode: Mode,
         options: Options = [.closeOnExec]
-    ) throws(Error) -> File.Descriptor {
+    ) throws(File.Descriptor.Error) -> File.Descriptor {
         #if os(Windows)
             return try _openWindows(path, mode: mode, options: options)
         #else
@@ -133,7 +133,7 @@ extension File.Descriptor {
     /// preventing double-close scenarios.
     ///
     /// - Throws: `File.Descriptor.Error` on failure.
-    public consuming func close() throws(Error) {
+    public consuming func close() throws(File.Descriptor.Error) {
         #if os(Windows)
             guard let handle = _handle.value, handle != INVALID_HANDLE_VALUE else {
                 throw .alreadyClosed
@@ -173,7 +173,7 @@ extension File.Descriptor {
     ///
     /// - Parameter other: The file descriptor to duplicate.
     /// - Throws: `File.Descriptor.Error.duplicateFailed` on failure.
-    public init(duplicating other: borrowing File.Descriptor) throws(Error) {
+    public init(duplicating other: borrowing File.Descriptor) throws(File.Descriptor.Error) {
         #if os(Windows)
             guard let handle = other._handle.value, handle != INVALID_HANDLE_VALUE else {
                 throw .invalidDescriptor

@@ -1,5 +1,5 @@
 //
-//  File.Stream.Byte.Async.Sequence.Iterator.swift
+//  File.System.Read.Async.Sequence.Iterator.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
@@ -7,21 +7,21 @@
 
 import AsyncAlgorithms
 
-extension File.Stream.Byte.Async.Sequence {
+extension File.System.Read.Async.Sequence {
     /// The async iterator for byte streaming.
     ///
     /// ## Thread Safety
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
-        private let channel: AsyncThrowingChannel<Element, any Error>
-        private var channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
+        private let channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
+        private var channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
         private var producerTask: Task<Void, Never>?
         private var isFinished = false
 
         private init(
-            channel: AsyncThrowingChannel<Element, any Error>,
-            channelIterator: AsyncThrowingChannel<Element, any Error>.AsyncIterator
+            channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>,
+            channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
         ) {
             self.channel = channel
             self.channelIterator = channelIterator
@@ -30,7 +30,7 @@ extension File.Stream.Byte.Async.Sequence {
         /// Factory method to create iterator and start producer.
         /// Uses factory pattern to avoid init-region isolation issues.
         static func make(path: File.Path, chunkSize: Int, io: File.IO.Executor) -> Iterator {
-            let channel = AsyncThrowingChannel<Element, any Error>()
+            let channel = AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>()
             let iterator = Iterator(
                 channel: channel,
                 channelIterator: channel.makeAsyncIterator()
@@ -56,7 +56,7 @@ extension File.Stream.Byte.Async.Sequence {
             producerTask?.cancel()
         }
 
-        public func next() async throws -> Element? {
+        public func next() async throws(File.IO.Error<File.Handle.Error>) -> Element? {
             guard !isFinished else { return nil }
 
             do {
@@ -66,10 +66,18 @@ extension File.Stream.Byte.Async.Sequence {
                     isFinished = true
                 }
                 return result
-            } catch {
+            } catch let error as File.IO.Error<File.Handle.Error> {
                 isFinished = true
                 producerTask?.cancel()
                 throw error
+            } catch is CancellationError {
+                isFinished = true
+                producerTask?.cancel()
+                throw .cancelled
+            } catch {
+                isFinished = true
+                producerTask?.cancel()
+                throw .operation(.readFailed(errno: 0, message: "Unknown error: \(error)"))
             }
         }
 
@@ -91,15 +99,19 @@ extension File.Stream.Byte.Async.Sequence {
             path: File.Path,
             chunkSize: Int,
             io: File.IO.Executor,
-            channel: AsyncThrowingChannel<Element, any Error>
+            channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
         ) async {
             // Open file and register with executor
-            let handleResult: Result<File.IO.Handle.ID, any Error> = await {
+            let handleResult: Result<File.IO.Handle.ID, File.IO.Error<File.Handle.Error>> = await {
                 do {
                     let id = try await io.openFile(path, mode: .read)
                     return .success(id)
-                } catch {
+                } catch let error as File.IO.Error<File.Handle.Error> {
                     return .failure(error)
+                } catch is CancellationError {
+                    return .failure(.cancelled)
+                } catch {
+                    return .failure(.operation(.openFailed(errno: 0, message: "Open failed: \(error)")))
                 }
             }()
 
@@ -140,10 +152,15 @@ extension File.Stream.Byte.Async.Sequence {
                 try? await io.destroyHandle(handleId)
                 channel.finish()
 
-            } catch {
+            } catch let error as File.IO.Error<File.Handle.Error> {
                 // Error - clean up and propagate
                 try? await io.destroyHandle(handleId)
                 channel.fail(error)
+
+            } catch {
+                // Defensive - should not happen with typed executor
+                try? await io.destroyHandle(handleId)
+                channel.fail(.operation(.readFailed(errno: 0, message: "Unknown error: \(error)")))
             }
         }
     }

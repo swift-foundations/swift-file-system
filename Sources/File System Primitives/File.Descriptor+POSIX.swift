@@ -22,7 +22,7 @@
             _ path: File.Path,
             mode: Mode,
             options: Options
-        ) throws(Error) -> File.Descriptor {
+        ) throws(File.Descriptor.Error) -> File.Descriptor {
             var flags: Int32 = 0
 
             // Set access mode

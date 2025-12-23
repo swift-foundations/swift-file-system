@@ -5,8 +5,35 @@
 //  Async overloads for sync operations.
 //  Swift disambiguates by context - use `await` for async version.
 //
+//  These methods use `File.IO.Error<SpecificError>` to preserve the specific
+//  operation error type while also capturing executor/thread/cancellation errors.
+//
 
 // MARK: - Read
+
+extension File.System.Read {
+    /// Stream file bytes asynchronously.
+    ///
+    /// ## Example
+    /// ```swift
+    /// for try await chunk in File.System.Read.bytes(from: path) {
+    ///     process(chunk)
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - path: The file path.
+    ///   - options: Byte streaming options.
+    ///   - io: The I/O executor (defaults to `.default`).
+    /// - Returns: An async sequence of byte chunks.
+    public static func bytes(
+        from path: File.Path,
+        options: File.System.Read.Async.Options = .init(),
+        io: File.IO.Executor = .default
+    ) -> File.System.Read.Async.Sequence {
+        Async(io: io).bytes(from: path, options: options)
+    }
+}
 
 extension File.System.Read.Full {
     /// Reads entire file contents asynchronously.
@@ -14,11 +41,15 @@ extension File.System.Read.Full {
     /// ```swift
     /// let data = try await File.System.Read.Full.read(from: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for read errors, or `.executor`/`.cancelled` for I/O errors.
     public static func read(
         from path: File.Path,
         io: File.IO.Executor = .default
-    ) async throws -> [UInt8] {
-        try await io.run { try read(from: path) }
+    ) async throws(File.IO.Error<File.System.Read.Full.Error>) -> [UInt8] {
+        try await io.run { () throws(File.System.Read.Full.Error) -> [UInt8] in
+            try read(from: path)
+        }
     }
 }
 
@@ -30,17 +61,16 @@ extension File.System.Write.Atomic {
     /// ```swift
     /// try await File.System.Write.Atomic.write(data, to: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for write errors, or `.executor`/`.cancelled` for I/O errors.
     public static func write(
         _ bytes: [UInt8],
         to path: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run {
-            try bytes.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try write(span, to: path, options: options)
-            }
+    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) {
+        try await io.run { () throws(File.System.Write.Atomic.Error) in
+            try write(bytes.span, to: path, options: options)
         }
     }
 }
@@ -70,13 +100,16 @@ extension File.System.Write.Streaming {
     ///   - path: Destination file path
     ///   - options: Write options (atomic by default)
     ///   - io: IO executor for offloading blocking work
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for write errors, or `.executor`/`.cancelled` for I/O errors.
     public static func write<Chunks: Sequence & Sendable>(
         _ chunks: Chunks,
         to path: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws where Chunks.Element == [UInt8] {
-        try await io.run { try write(chunks, to: path, options: options) }
+    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) where Chunks.Element == [UInt8] {
+        try await io.run { () throws(File.System.Write.Streaming.Error) in
+            try write(chunks, to: path, options: options)
+        }
     }
 }
 
@@ -86,16 +119,15 @@ extension File.System.Write.Append {
     /// ```swift
     /// try await File.System.Write.Append.append(data, to: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for append errors, or `.executor`/`.cancelled` for I/O errors.
     public static func append(
         _ bytes: [UInt8],
         to path: File.Path,
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run {
-            try bytes.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try append(span, to: path)
-            }
+    ) async throws(File.IO.Error<File.System.Write.Append.Error>) {
+        try await io.run { () throws(File.System.Write.Append.Error) in
+            try append(bytes.span, to: path)
         }
     }
 }
@@ -108,13 +140,17 @@ extension File.System.Copy {
     /// ```swift
     /// try await File.System.Copy.copy(from: source, to: destination)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for copy errors, or `.executor`/`.cancelled` for I/O errors.
     public static func copy(
         from source: File.Path,
         to destination: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run { try copy(from: source, to: destination, options: options) }
+    ) async throws(File.IO.Error<File.System.Copy.Error>) {
+        try await io.run { () throws(File.System.Copy.Error) in
+            try copy(from: source, to: destination, options: options)
+        }
     }
 }
 
@@ -126,13 +162,17 @@ extension File.System.Move {
     /// ```swift
     /// try await File.System.Move.move(from: source, to: destination)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for move errors, or `.executor`/`.cancelled` for I/O errors.
     public static func move(
         from source: File.Path,
         to destination: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run { try move(from: source, to: destination, options: options) }
+    ) async throws(File.IO.Error<File.System.Move.Error>) {
+        try await io.run { () throws(File.System.Move.Error) in
+            try move(from: source, to: destination, options: options)
+        }
     }
 }
 
@@ -144,12 +184,16 @@ extension File.System.Delete {
     /// ```swift
     /// try await File.System.Delete.delete(at: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for delete errors, or `.executor`/`.cancelled` for I/O errors.
     public static func delete(
         at path: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run { try delete(at: path, options: options) }
+    ) async throws(File.IO.Error<File.System.Delete.Error>) {
+        try await io.run { () throws(File.System.Delete.Error) in
+            try delete(at: path, options: options)
+        }
     }
 }
 
@@ -161,12 +205,16 @@ extension File.System.Create.Directory {
     /// ```swift
     /// try await File.System.Create.Directory.create(at: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for create errors, or `.executor`/`.cancelled` for I/O errors.
     public static func create(
         at path: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run { try create(at: path, options: options) }
+    ) async throws(File.IO.Error<File.System.Create.Directory.Error>) {
+        try await io.run { () throws(File.System.Create.Directory.Error) in
+            try create(at: path, options: options)
+        }
     }
 }
 
@@ -178,11 +226,15 @@ extension File.System.Stat {
     /// ```swift
     /// let info = try await File.System.Stat.info(at: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for stat errors, or `.executor`/`.cancelled` for I/O errors.
     public static func info(
         at path: File.Path,
         io: File.IO.Executor = .default
-    ) async throws -> File.System.Metadata.Info {
-        try await io.run { try info(at: path) }
+    ) async throws(File.IO.Error<File.System.Stat.Error>) -> File.System.Metadata.Info {
+        try await io.run { () throws(File.System.Stat.Error) -> File.System.Metadata.Info in
+            try info(at: path)
+        }
     }
 
     /// Checks if a path exists asynchronously.
@@ -207,7 +259,7 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata = try await io.run { try File.System.Stat.info(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.info(at: path) }
             return metadata.type == .regular
         } catch {
             return false
@@ -220,7 +272,7 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata = try await io.run { try File.System.Stat.info(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.info(at: path) }
             return metadata.type == .directory
         } catch {
             return false
@@ -233,7 +285,7 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata = try await io.run { try File.System.Stat.lstatInfo(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.lstatInfo(at: path) }
             return metadata.type == .symbolicLink
         } catch {
             return false
@@ -249,11 +301,36 @@ extension File.Directory.Contents {
     /// ```swift
     /// let entries = try await File.Directory.Contents.list(at: path)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for list errors, or `.executor`/`.cancelled` for I/O errors.
     public static func list(
         at path: File.Path,
         io: File.IO.Executor = .default
-    ) async throws -> [File.Directory.Entry] {
-        try await io.run { try list(at: path) }
+    ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
+        try await io.run { () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] in
+            try list(at: path)
+        }
+    }
+}
+
+// MARK: - Directory Walk
+
+extension File.Directory.Walk {
+    /// Recursively walks a directory tree asynchronously.
+    ///
+    /// ```swift
+    /// let entries = try await File.Directory.Walk.walk(at: path)
+    /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for walk errors, or `.executor`/`.cancelled` for I/O errors.
+    public static func walk(
+        at path: File.Path,
+        options: Options = .init(),
+        io: File.IO.Executor = .default
+    ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File.Directory.Entry] {
+        try await io.run { () throws(File.Directory.Walk.Error) -> [File.Directory.Entry] in
+            try walk(at: path, options: options)
+        }
     }
 }
 
@@ -265,12 +342,16 @@ extension File.System.Link.Symbolic {
     /// ```swift
     /// try await File.System.Link.Symbolic.create(at: link, pointingTo: target)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for link errors, or `.executor`/`.cancelled` for I/O errors.
     public static func create(
         at path: File.Path,
         pointingTo target: File.Path,
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run { try create(at: path, pointingTo: target) }
+    ) async throws(File.IO.Error<File.System.Link.Symbolic.Error>) {
+        try await io.run { () throws(File.System.Link.Symbolic.Error) in
+            try create(at: path, pointingTo: target)
+        }
     }
 }
 
@@ -280,12 +361,16 @@ extension File.System.Link.Hard {
     /// ```swift
     /// try await File.System.Link.Hard.create(at: link, to: target)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for link errors, or `.executor`/`.cancelled` for I/O errors.
     public static func create(
         at path: File.Path,
         to existing: File.Path,
         io: File.IO.Executor = .default
-    ) async throws {
-        try await io.run { try create(at: path, to: existing) }
+    ) async throws(File.IO.Error<File.System.Link.Hard.Error>) {
+        try await io.run { () throws(File.System.Link.Hard.Error) in
+            try create(at: path, to: existing)
+        }
     }
 }
 
@@ -295,10 +380,14 @@ extension File.System.Link.Read.Target {
     /// ```swift
     /// let target = try await File.System.Link.Read.Target.target(of: link)
     /// ```
+    ///
+    /// - Throws: `File.IO.Error<Error>` with `.operation` for read errors, or `.executor`/`.cancelled` for I/O errors.
     public static func target(
         of path: File.Path,
         io: File.IO.Executor = .default
-    ) async throws -> File.Path {
-        try await io.run { try target(of: path) }
+    ) async throws(File.IO.Error<File.System.Link.Read.Target.Error>) -> File.Path {
+        try await io.run { () throws(File.System.Link.Read.Target.Error) -> File.Path in
+            try target(of: path)
+        }
     }
 }

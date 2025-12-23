@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -218,20 +219,12 @@ extension File.System.Create.Directory.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.System.Create.Directory.Test.Performance {
 
     @Test("Create and delete directory", .timed(iterations: 50, warmup: 5))
     func createDeleteDirectory() throws {
-        #if canImport(Foundation)
-            let tempDir = try File.Path(NSTemporaryDirectory())
-        #else
-            let tempDir = try File.Path("/tmp")
-        #endif
-        let testDir = File.Path(tempDir, appending: "perf_mkdir_\(Int.random(in: 0..<Int.max))")
+        let td = try File.Directory.Temporary.system
+        let testDir = File.Path(td, appending: "perf_mkdir_\(Int.random(in: 0..<Int.max))")
 
         try File.System.Create.Directory.create(at: testDir)
         try File.System.Delete.delete(at: testDir)

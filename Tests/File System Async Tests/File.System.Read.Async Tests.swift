@@ -1,5 +1,5 @@
 //
-//  File.Stream.Bytes Tests.swift
+//  File.System.Read.Async Tests.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
@@ -11,20 +11,17 @@ import Testing
 
 @testable import File_System_Async
 
-extension File.Stream.Async {
+extension File.System.Read.Async {
     #TestSuites
 }
 
-extension File.Stream.Async.Test.Unit {
+extension File.System.Read.Async.Test.Unit {
 
     // MARK: - Test Fixtures
 
     private func createTempFile(content: [UInt8]) throws -> File.Path {
         let path = try File.Path("/tmp/async-stream-test-\(Int.random(in: 0..<Int.max)).bin")
-        try content.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
+        try File.System.Write.Atomic.write(content.span, to: path)
         return path
     }
 
@@ -41,7 +38,7 @@ extension File.Stream.Async.Test.Unit {
         let path = try createTempFile(content: [])
         defer { cleanup(path) }
 
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         var count = 0
 
         for try await _ in stream {
@@ -60,7 +57,7 @@ extension File.Stream.Async.Test.Unit {
         let path = try createTempFile(content: content)
         defer { cleanup(path) }
 
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         var allBytes: [UInt8] = []
 
         for try await chunk in stream {
@@ -82,7 +79,7 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 64KB chunks (default)
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         var totalBytes = 0
         var chunkCount = 0
 
@@ -107,8 +104,8 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 100 byte chunks
-        let options = File.Stream.Bytes.Async.Options(chunkSize: 100)
-        let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
+        let options = File.System.Read.Async.Options(chunkSize: 100)
+        let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
 
         var chunkSizes: [Int] = []
         for try await chunk in stream {
@@ -133,8 +130,8 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 100 byte chunks
-        let options = File.Stream.Bytes.Async.Options(chunkSize: 100)
-        let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
+        let options = File.System.Read.Async.Options(chunkSize: 100)
+        let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
 
         var chunkSizes: [Int] = []
         for try await chunk in stream {
@@ -156,7 +153,7 @@ extension File.Stream.Async.Test.Unit {
 
         let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max)).bin")
 
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         var iterator = stream.makeAsyncIterator()
 
         do {
@@ -183,8 +180,8 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 1KB chunks
-        let options = File.Stream.Bytes.Async.Options(chunkSize: 1024)
-        let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
+        let options = File.System.Read.Async.Options(chunkSize: 1024)
+        let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
         var iterator = stream.makeAsyncIterator()
         var count = 0
 
@@ -215,8 +212,8 @@ extension File.Stream.Async.Test.Unit {
         defer { cleanup(path) }
 
         // Stream with 1KB chunks
-        let options = File.Stream.Bytes.Async.Options(chunkSize: 1024)
-        let stream = File.Stream.Async(io: io).bytes(from: path, options: options)
+        let options = File.System.Read.Async.Options(chunkSize: 1024)
+        let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
         var iterator = stream.makeAsyncIterator()
         var count = 0
 
@@ -246,7 +243,7 @@ extension File.Stream.Async.Test.Unit {
         let path = try createTempFile(content: content)
         defer { cleanup(path) }
 
-        let stream = File.Stream.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(io: io).bytes(from: path)
         var allBytes: [UInt8] = []
 
         for try await chunk in stream {

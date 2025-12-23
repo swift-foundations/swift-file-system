@@ -11,7 +11,7 @@
 
     extension File.System.Delete {
         /// Deletes a file or directory using Windows APIs.
-        internal static func _deleteWindows(at path: File.Path, options: Options) throws(Error) {
+        internal static func _deleteWindows(at path: File.Path, options: Options) throws(File.System.Delete.Error) {
             // Get file attributes to determine type
             let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
@@ -47,7 +47,7 @@
         }
 
         /// Recursively deletes a directory and all its contents.
-        private static func _deleteDirectoryRecursive(at path: File.Path) throws(Error) {
+        private static func _deleteDirectoryRecursive(at path: File.Path) throws(File.System.Delete.Error) {
             var findData = WIN32_FIND_DATAW()
             let searchPath = path.string + "\\*"
 

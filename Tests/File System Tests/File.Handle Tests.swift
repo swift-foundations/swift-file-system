@@ -20,11 +20,7 @@ extension File.Handle.Test.Unit {
 
     private func createTempFile(content: [UInt8] = []) throws -> String {
         let path = "/tmp/handle-convenience-test-\(Int.random(in: 0..<Int.max)).bin"
-        let filePath = try File.Path(path)
-        try content.withUnsafeBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: filePath)
-        }
+        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
         return path
     }
 
@@ -59,10 +55,7 @@ extension File.Handle.Test.Unit {
         let dataToWrite: [UInt8] = [10, 20, 30, 40, 50]
 
         try File.Handle.withOpen(filePath, mode: .write, options: [.truncate]) { handle in
-            try dataToWrite.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(dataToWrite.span)
         }
 
         let readBack = try File.System.Read.Full.read(from: filePath)
@@ -106,8 +99,13 @@ extension File.Handle.Test.Unit {
                 throw TestError()
             }
             Issue.record("Expected error to be thrown")
-        } catch is TestError {
-            // Expected
+        } catch {
+            // Closure errors are wrapped in .operation with description (error is File.Error)
+            guard case .operation(let description) = error else {
+                Issue.record("Expected .operation case, got \(error)")
+                return
+            }
+            #expect(description.contains("TestError"))
         }
 
         // Verify handle was closed by opening successfully again
@@ -143,10 +141,7 @@ extension File.Handle.Test.Unit {
 
         try File.Handle.withOpen(filePath, mode: .write, options: [.create]) { handle in
             let bytes: [UInt8] = [72, 105]  // "Hi"
-            try bytes.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(bytes.span)
         }
 
         #expect(File.System.Stat.exists(at: filePath))
@@ -157,10 +152,19 @@ extension File.Handle.Test.Unit {
         let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).txt"
         let filePath = try File.Path(nonExistent)
 
-        #expect(throws: File.Handle.Error.self) {
+        do {
             try File.Handle.withOpen(filePath, mode: .read) { _ in
                 // Should never reach here
             }
+            Issue.record("Expected error to be thrown")
+        } catch {
+            // Open errors are wrapped in .handle (error is File.Error)
+            guard case .handle(let handleError) = error else {
+                Issue.record("Expected .handle case, got \(error)")
+                return
+            }
+            // Verify it's a pathNotFound error
+            #expect(handleError == .pathNotFound(filePath))
         }
     }
 
@@ -316,10 +320,7 @@ extension File.Handle.Test.Unit {
         let dataToWrite: [UInt8] = [100, 200]
 
         try File.Handle.open(filePath, options: [.truncate]).write { handle in
-            try dataToWrite.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(dataToWrite.span)
         }
 
         let readBack = try File.System.Read.Full.read(from: filePath)
@@ -336,10 +337,7 @@ extension File.Handle.Test.Unit {
         let dataToAppend: [UInt8] = [4, 5, 6]
 
         try File.Handle.open(filePath).appending { handle in
-            try dataToAppend.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(dataToAppend.span)
         }
 
         let readBack = try File.System.Read.Full.read(from: filePath)
@@ -361,10 +359,7 @@ extension File.Handle.Test.Unit {
             try handle.rewind()
             // Write
             let newData: [UInt8] = [10, 20, 30]
-            try newData.withUnsafeBufferPointer { buffer in
-                let span = Span<UInt8>(_unsafeElements: buffer)
-                try handle.write(span)
-            }
+            try handle.write(newData.span)
             return data
         }
 

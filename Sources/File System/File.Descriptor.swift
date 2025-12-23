@@ -21,7 +21,7 @@ extension File.Descriptor {
     /// - Returns: A new file descriptor referring to the same file.
     /// - Throws: `File.Descriptor.Error.duplicateFailed` on failure.
     @inlinable
-    public func duplicated() throws(Error) -> File.Descriptor {
+    public func duplicated() throws(File.Descriptor.Error) -> File.Descriptor {
         try File.Descriptor(duplicating: self)
     }
 }

@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 import TestingPerformance
@@ -17,14 +18,6 @@ extension File.Directory.Contents {
 
 extension File.Directory.Contents.Test.Unit {
     // MARK: - Test Fixtures
-
-    private func writeBytes(_ bytes: [UInt8], to path: File.Path) throws {
-        var bytes = bytes
-        try bytes.withUnsafeMutableBufferPointer { buffer in
-            let span = Span<UInt8>(_unsafeElements: buffer)
-            try File.System.Write.Atomic.write(span, to: path)
-        }
-    }
 
     private func createTempDir() throws -> String {
         let path = "/tmp/contents-test-\(Int.random(in: 0..<Int.max))"
@@ -56,9 +49,9 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create some files
-        try writeBytes([], to: try File.Path("\(dirPath)/file1.txt"))
-        try writeBytes([], to: try File.Path("\(dirPath)/file2.txt"))
-        try writeBytes([], to: try File.Path("\(dirPath)/file3.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file1.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file2.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file3.txt"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -92,7 +85,7 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create file
-        try writeBytes([], to: try File.Path("\(dirPath)/file.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/file.txt"))
 
         // Create subdirectory
         try File.System.Create.Directory.create(at: try File.Path("\(dirPath)/subdir"))
@@ -113,7 +106,7 @@ extension File.Directory.Contents.Test.Unit {
         let dirPath = try createTempDir()
         defer { cleanup(dirPath) }
 
-        try writeBytes([], to: try File.Path("\(dirPath)/regular.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/regular.txt"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -129,7 +122,7 @@ extension File.Directory.Contents.Test.Unit {
         defer { cleanup(dirPath) }
 
         // Create a regular file
-        try writeBytes([], to: try File.Path("\(dirPath)/target.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/target.txt"))
 
         // Create a symlink
         try File.System.Link.Symbolic.create(
@@ -152,7 +145,7 @@ extension File.Directory.Contents.Test.Unit {
         let dirPath = try createTempDir()
         defer { cleanup(dirPath) }
 
-        try writeBytes([], to: try File.Path("\(dirPath)/test.txt"))
+        try File.System.Write.Atomic.write([], to: File.Path("\(dirPath)/test.txt"))
 
         let path = try File.Path(dirPath)
         let entries = try File.Directory.Contents.list(at: path)
@@ -184,7 +177,7 @@ extension File.Directory.Contents.Test.Unit {
             }
         }
 
-        try writeBytes([], to: try File.Path(filePath))
+        try File.System.Write.Atomic.write([], to: File.Path(filePath))
 
         let path = try File.Path(filePath)
 
@@ -252,10 +245,6 @@ extension File.Directory.Contents.Test.Unit {
 
 // MARK: - Performance Tests
 
-#if canImport(Foundation)
-    import Foundation
-#endif
-
 extension File.Directory.Contents.Test.Performance {
 
     /// Performance tests using .timed() harness with class fixture for setup isolation.
@@ -265,12 +254,8 @@ extension File.Directory.Contents.Test.Performance {
         let testDir: File.Path
 
         init() throws {
-            #if canImport(Foundation)
-                let tempDir = try File.Path(NSTemporaryDirectory())
-            #else
-                let tempDir = try File.Path("/tmp")
-            #endif
-            self.testDir = File.Path(tempDir, appending: "bench_\(Int.random(in: 0..<Int.max))")
+            let td = try File.Directory.Temporary.system
+            self.testDir = File.Path(td, appending: "bench_\(Int.random(in: 0..<Int.max))")
 
             // Setup: create directory with 100 files
             // Use durability: .none to avoid F_FULLFSYNC overhead
@@ -279,10 +264,7 @@ extension File.Directory.Contents.Test.Performance {
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
             for i in 0..<100 {
                 let filePath = File.Path(testDir, appending: "file_\(i).txt")
-                try fileData.withUnsafeBufferPointer { buffer in
-                    let span = Span<UInt8>(_unsafeElements: buffer)
-                    try File.System.Write.Atomic.write(span, to: filePath, options: writeOptions)
-                }
+                try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
             }
         }
 

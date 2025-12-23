@@ -7,5 +7,5 @@
 
 extension File.IO {
     /// Namespace for streaming write types.
-    public enum Write {}
+    package enum Write {}
 }

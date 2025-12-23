@@ -16,11 +16,12 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-system", from: "1.4.0"),
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
+        .package(path: "../swift-async-algorithms"),
         .package(url: "https://github.com/swift-standards/swift-standards", from: "0.19.4"),
         .package(url: "https://github.com/swift-standards/swift-incits-4-1986", from: "0.7.1"),
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
         .package(url: "https://github.com/apple/swift-nio", from: "2.70.0"),
+        .package(url: "https://github.com/swift-standards/swift-time-standard", from: "0.1.0"),
     ],
     targets: [
         .target(
@@ -37,49 +38,60 @@ let package = Package(
                 .product(name: "StandardTime", package: "swift-standards"),
                 .product(name: "INCITS 4 1986", package: "swift-incits-4-1986"),
                 .product(name: "RFC 4648", package: "swift-rfc-4648"),
-            ],
-            path: "Sources/File System Primitives"
+            ]
         ),
         .target(
             name: "File System",
             dependencies: [
                 "File System Primitives",
                 "File System Async",
+            ]
+        ),
+        .target(
+            name: "File System Test Support",
+            dependencies: [
+                "File System Primitives",
+                "File System",
             ],
-            path: "Sources/File System"
+            path: "Tests/Support"
         ),
         .testTarget(
             name: "File System Primitives Tests",
             dependencies: [
                 "File System Primitives",
+                "File System Test Support",
                 .product(name: "StandardsTestSupport", package: "swift-standards"),
-            ],
-            path: "Tests/File System Primitives Tests"
+            ]
         ),
         .testTarget(
             name: "File System Tests",
             dependencies: [
                 "File System",
+                "File System Test Support",
                 .product(name: "StandardsTestSupport", package: "swift-standards"),
-            ],
-            path: "Tests/File System Tests"
+                .product(name: "Clocks", package: "swift-time-standard"),
+                .product(name: "Formatting", package: "swift-standards"),
+                .product(name: "StandardLibraryExtensions", package: "swift-standards"),
+            ]
         ),
         .target(
             name: "File System Async",
             dependencies: [
                 "File System Primitives",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
-            ],
-            path: "Sources/File System Async"
+            ]
         ),
         .testTarget(
             name: "File System Async Tests",
             dependencies: [
                 "File System Async",
                 "File System",
+                "File System Test Support",
                 .product(name: "StandardsTestSupport", package: "swift-standards"),
-            ],
-            path: "Tests/File System Async Tests"
+                .product(name: "Clocks", package: "swift-time-standard"),
+                .product(name: "Formatting", package: "swift-standards"),
+                .product(name: "StandardLibraryExtensions", package: "swift-standards"),
+            ]
         ),
         .testTarget(
             name: "File System Benchmarks",
