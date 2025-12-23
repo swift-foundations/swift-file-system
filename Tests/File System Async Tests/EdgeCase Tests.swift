@@ -424,7 +424,7 @@ extension File.IO.Test.EdgeCase {
 
             let path = try File.Path("\(dir.path.string)/small-file")
             let data: [UInt8] = [1, 2, 3, 4, 5]
-            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.write(data.span)
             try handle.close()
 
@@ -449,7 +449,7 @@ extension File.IO.Test.EdgeCase {
 
             let path = try File.Path("\(dir.path.string)/tiny-chunks-file")
             let data: [UInt8] = Array(0..<100)
-            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.write(data.span)
             try handle.close()
 
@@ -497,7 +497,7 @@ extension File.IO.Test.EdgeCase {
             let path = try File.Path("\(dir.path.string)/large-file")
             // Create larger file
             let data: [UInt8] = Array(repeating: 42, count: 10000)
-            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.write(data.span)
             try handle.close()
 
@@ -962,7 +962,7 @@ extension File.IO.Test.EdgeCase {
             let target = try File.Path("\(dir.path.string)/target")
             let link = try File.Path("\(dir.path.string)/link")
 
-            let handle = try File.Handle.open(target, mode: .write, options: [.create, .closeOnExec])
+            var handle = try File.Handle.open(target, mode: .write, options: [.create, .closeOnExec])
             try handle.write([1, 2, 3].span)
             try handle.close()
             try File.System.Link.Symbolic.create(at: link, pointingTo: target)
@@ -988,7 +988,7 @@ extension File.IO.Test.EdgeCase {
                     group.addTask {
                         let path = try File.Path("\(dir.path.string)/concurrent-\(i)")
 
-                        let handle = try File.Handle.open(
+                        var handle = try File.Handle.open(
                             path,
                             mode: .write,
                             options: [.create, .closeOnExec]
@@ -1017,7 +1017,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create file with known content
             let data: [UInt8] = Array(0..<255)
-            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.write(data.span)
             try handle.close()
 
