@@ -242,7 +242,7 @@ extension File.System.Read.Full.Test.Performance {
 
     @Test("File.System.Read.Full.read (1MB)", .timed(iterations: 10, warmup: 2))
     func systemRead1MB() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
             td,
             appending: "perf_sysread_\(Int.random(in: 0..<Int.max)).bin"

@@ -7,7 +7,10 @@
 //  Regression tests for directory iteration performance.
 //  These tests compare sync iteration APIs to establish baseline performance.
 
+import Clocks
 import File_System_Test_Support
+import Formatting
+import StandardLibraryExtensions
 import StandardsTestSupport
 import Testing
 import TestingPerformance
@@ -22,7 +25,7 @@ final class DirectoryIterationPerformanceTests {
     let testDir1000Files: File.Path
 
     init() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
 
         let fileData = [UInt8](repeating: 0x00, count: 10)
         let writeOptions = File.System.Write.Atomic.Options(durability: .none)
@@ -132,7 +135,8 @@ final class DirectoryIterationPerformanceTests {
     @Test("Raw iteration cost - 1000 files × 100 loops")
     func rawIterationCost() throws {
         let loopCount = 100
-        let clock = MonotonicClock()
+        let clock = Time.Clock.Continuous()
+        let start = clock.now
 
         for _ in 0..<loopCount {
             let (iterator, handle) = try File.Directory.Contents.makeIterator(
@@ -148,7 +152,7 @@ final class DirectoryIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = clock.elapsed()
+        let elapsed = (clock.now - start).inSeconds
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -163,14 +167,15 @@ final class DirectoryIterationPerformanceTests {
     @Test("Sync list cost - 1000 files × 100 loops")
     func syncListCost() throws {
         let loopCount = 100
-        let clock = MonotonicClock()
+        let clock = Time.Clock.Continuous()
+        let start = clock.now
 
         for _ in 0..<loopCount {
             let entries = try File.Directory.Contents.list(at: testDir1000Files)
             #expect(entries.count == 1000)
         }
 
-        let elapsed = clock.elapsed()
+        let elapsed = (clock.now - start).inSeconds
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 

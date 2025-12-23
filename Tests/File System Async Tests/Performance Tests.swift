@@ -51,7 +51,7 @@ extension File.IO.Test.Performance {
             self.executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 8))
 
             // Create a file for fstat testing (instead of Thread.sleep)
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             self.statFilePath = File.Path(
                 td,
                 appending: "perf_executor_stat_\(Int.random(in: 0..<Int.max)).txt"
@@ -152,7 +152,7 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             self.filePath = File.Path(
                 td,
                 appending: "perf_handle_\(Int.random(in: 0..<Int.max)).txt"
@@ -207,7 +207,7 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
 
             let fileData = [UInt8](repeating: 0x00, count: 10)
             let writeOptions = File.System.Write.Atomic.Options(durability: .none)
@@ -351,7 +351,7 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
 
             // Initialize all paths first (before any closures)
             let path1MB = File.Path(
@@ -437,7 +437,7 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
 
             // Initialize all paths first (before any closures)
             let pathStatFile = File.Path(
@@ -510,7 +510,7 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
 
             // Create test directory with 10 files, 100KB each
             self.testDir = File.Path(
@@ -608,7 +608,7 @@ extension File.IO.Test.Performance {
         init() async throws {
             self.executor = File.IO.Executor()
 
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
 
             // Initialize all paths first (before any closures)
             let pathTestFile = File.Path(

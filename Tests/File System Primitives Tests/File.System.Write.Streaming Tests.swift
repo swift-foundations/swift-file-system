@@ -369,7 +369,7 @@ extension File.System.Write.Streaming.Test.Performance {
 
     @Test("Streaming write 1MB in 64KB chunks", .timed(iterations: 10, warmup: 2))
     func streamingWrite1MB() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
             td,
             appending: "perf_streaming_\(Int.random(in: 0..<Int.max)).bin"
@@ -388,7 +388,7 @@ extension File.System.Write.Streaming.Test.Performance {
 
     @Test("Streaming write 1MB with lazy sequence", .timed(iterations: 10, warmup: 2))
     func streamingWriteLazy1MB() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
             td,
             appending: "perf_lazy_streaming_\(Int.random(in: 0..<Int.max)).bin"
@@ -407,7 +407,7 @@ extension File.System.Write.Streaming.Test.Performance {
 
     @Test("Direct streaming write 1MB (no atomicity)", .timed(iterations: 10, warmup: 2))
     func directStreamingWrite1MB() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
             td,
             appending: "perf_direct_streaming_\(Int.random(in: 0..<Int.max)).bin"

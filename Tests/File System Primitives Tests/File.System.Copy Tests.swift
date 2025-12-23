@@ -989,7 +989,7 @@ extension File.System.Copy.Test.Performance {
 
     @Test("File.System.Copy.copy (1MB)", .timed(iterations: 10, warmup: 2))
     func copyFile1MB() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let sourcePath = File.Path(
             td,
             appending: "perf_copy_src_\(Int.random(in: 0..<Int.max)).bin"

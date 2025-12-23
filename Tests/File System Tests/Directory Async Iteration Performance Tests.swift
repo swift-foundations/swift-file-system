@@ -7,7 +7,10 @@
 //  Performance benchmarks for async directory iteration.
 //  Compares pull-based async iteration against sync baseline.
 
+import Clocks
 import File_System_Test_Support
+import Formatting
+import StandardLibraryExtensions
 import StandardsTestSupport
 import Testing
 
@@ -22,7 +25,7 @@ final class DirectoryAsyncIterationPerformanceTests {
     let io: File.IO.Executor
 
     init() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
 
         let fileData = [UInt8](repeating: 0x00, count: 10)
         let writeOptions = File.System.Write.Atomic.Options(durability: .none)
@@ -52,7 +55,8 @@ final class DirectoryAsyncIterationPerformanceTests {
     func batchSize64() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let clock = MonotonicClock()
+        let clock = Time.Clock.Continuous()
+        let start = clock.now
 
         for _ in 0..<loopCount {
             var count = 0
@@ -62,7 +66,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = clock.elapsed()
+        let elapsed = (clock.now - start).inSeconds
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -78,7 +82,8 @@ final class DirectoryAsyncIterationPerformanceTests {
     func batchSize128() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let clock = MonotonicClock()
+        let clock = Time.Clock.Continuous()
+        let start = clock.now
 
         for _ in 0..<loopCount {
             var count = 0
@@ -88,7 +93,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = clock.elapsed()
+        let elapsed = (clock.now - start).inSeconds
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -104,7 +109,8 @@ final class DirectoryAsyncIterationPerformanceTests {
     func batchSize256() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let clock = MonotonicClock()
+        let clock = Time.Clock.Continuous()
+        let start = clock.now
 
         for _ in 0..<loopCount {
             var count = 0
@@ -114,7 +120,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = clock.elapsed()
+        let elapsed = (clock.now - start).inSeconds
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -132,7 +138,8 @@ final class DirectoryAsyncIterationPerformanceTests {
     func pullBasedAsyncDefaultBatch() async throws {
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
-        let clock = MonotonicClock()
+        let clock = Time.Clock.Continuous()
+        let start = clock.now
 
         for _ in 0..<loopCount {
             var count = 0
@@ -142,7 +149,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             #expect(count == 1000)
         }
 
-        let elapsed = clock.elapsed()
+        let elapsed = (clock.now - start).inSeconds
         let totalFiles = loopCount * 1000
         let perFileNs = (elapsed / Double(totalFiles)) * 1_000_000_000
 
@@ -163,7 +170,8 @@ final class DirectoryAsyncIterationPerformanceTests {
         let totalFiles = loopCount * 1000
 
         // Sync baseline
-        let syncClock = MonotonicClock()
+        let syncClock = Time.Clock.Continuous()
+        let syncStart = syncClock.now
         for _ in 0..<loopCount {
             let (iterator, handle) = try File.Directory.Contents.makeIterator(
                 at: testDir1000Files
@@ -177,12 +185,13 @@ final class DirectoryAsyncIterationPerformanceTests {
             }
             #expect(count == 1000)
         }
-        let syncElapsed = syncClock.elapsed()
+        let syncElapsed = (syncClock.now - syncStart).inSeconds
         let syncPerFileNs = (syncElapsed / Double(totalFiles)) * 1_000_000_000
 
         // Async
         let dir = File.Directory.Async(io: io)
-        let asyncClock = MonotonicClock()
+        let asyncClock = Time.Clock.Continuous()
+        let asyncStart = asyncClock.now
         for _ in 0..<loopCount {
             var count = 0
             for try await _ in dir.entries(at: testDir1000Files) {
@@ -190,7 +199,7 @@ final class DirectoryAsyncIterationPerformanceTests {
             }
             #expect(count == 1000)
         }
-        let asyncElapsed = asyncClock.elapsed()
+        let asyncElapsed = (asyncClock.now - asyncStart).inSeconds
         let asyncPerFileNs = (asyncElapsed / Double(totalFiles)) * 1_000_000_000
 
         let overhead = asyncPerFileNs / syncPerFileNs

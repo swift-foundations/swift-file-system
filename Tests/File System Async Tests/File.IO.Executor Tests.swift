@@ -5,8 +5,10 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import Clocks
 import File_System
 import File_System_Test_Support
+import StandardLibraryExtensions
 import StandardsTestSupport
 import Testing
 
@@ -279,9 +281,10 @@ extension File.IO.Executor.Test.EdgeCase {
         }
 
         // Shutdown should complete quickly without hanging
-        let shutdownStart = MonotonicClock()
+        let shutdownClock = Time.Clock.Continuous()
+        let shutdownStart = shutdownClock.now
         await executor.shutdown()
-        let shutdownDuration = shutdownStart.elapsed()
+        let shutdownDuration = (shutdownClock.now - shutdownStart).inSeconds
 
         // Shutdown should be fast (< 1 second)
         #expect(shutdownDuration < 1.0, "Shutdown took \(shutdownDuration)s, expected < 1s")

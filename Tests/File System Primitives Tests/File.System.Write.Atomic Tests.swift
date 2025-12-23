@@ -362,7 +362,7 @@ extension File.System.Write.Atomic.Test.Performance {
 
     @Test("File.System.Write.Atomic.write (1MB)", .timed(iterations: 10, warmup: 2))
     func systemWrite1MB() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
             td,
             appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin"

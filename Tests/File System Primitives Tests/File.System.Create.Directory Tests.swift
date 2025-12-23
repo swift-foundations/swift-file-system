@@ -223,7 +223,7 @@ extension File.System.Create.Directory.Test.Performance {
 
     @Test("Create and delete directory", .timed(iterations: 50, warmup: 5))
     func createDeleteDirectory() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let testDir = File.Path(td, appending: "perf_mkdir_\(Int.random(in: 0..<Int.max))")
 
         try File.System.Create.Directory.create(at: testDir)

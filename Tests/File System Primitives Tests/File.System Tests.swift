@@ -706,7 +706,7 @@ extension File.System.Test.Performance {
         // Note: threshold increased to accommodate Linux runtime overhead
         @Test("Buffer read is zero-allocation", .timed(iterations: 10, maxAllocations: 256_000))
         func bufferReadZeroAllocation() throws {
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
                 td,
                 appending: "perf_alloc_\(Int.random(in: 0..<Int.max)).bin"
@@ -731,7 +731,7 @@ extension File.System.Test.Performance {
 
         @Test("Stat operations minimal allocation", .timed(iterations: 20, maxAllocations: 50_000))
         func statMinimalAllocation() throws {
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
                 td,
                 appending: "perf_stat_alloc_\(Int.random(in: 0..<Int.max)).txt"
@@ -760,7 +760,7 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
         )
         func largeFileWrite() throws {
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
                 td,
                 appending: "perf_large_write_\(Int.random(in: 0..<Int.max)).bin"
@@ -777,7 +777,7 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(5))
         )
         func largeFileRead() throws {
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             let filePath = File.Path(
                 td,
                 appending: "perf_large_read_\(Int.random(in: 0..<Int.max)).bin"
@@ -797,7 +797,7 @@ extension File.System.Test.Performance {
             .timed(iterations: 5, warmup: 1, threshold: .seconds(10))
         )
         func manySmallFiles() throws {
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             let testDir = File.Path(td, appending: "perf_many_\(Int.random(in: 0..<Int.max))")
 
             try File.System.Create.Directory.create(at: testDir)

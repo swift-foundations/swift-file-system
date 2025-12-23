@@ -320,7 +320,7 @@ extension File.System.Stat.Test.Performance {
 
     @Test("File.System.Stat.info", .timed(iterations: 100, warmup: 10))
     func statInfo() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(td, appending: "perf_stat_\(Int.random(in: 0..<Int.max)).txt")
 
         // Create file
@@ -334,7 +334,7 @@ extension File.System.Stat.Test.Performance {
 
     @Test("File.System.Stat.exists check", .timed(iterations: 100, warmup: 10))
     func existsCheck() throws {
-        let td = try tempDir()
+        let td = try File.Directory.Temporary.system
         let filePath = File.Path(
             td,
             appending: "perf_exists_\(Int.random(in: 0..<Int.max)).txt"

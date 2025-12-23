@@ -254,7 +254,7 @@ extension File.Directory.Contents.Test.Performance {
         let testDir: File.Path
 
         init() throws {
-            let td = try tempDir()
+            let td = try File.Directory.Temporary.system
             self.testDir = File.Path(td, appending: "bench_\(Int.random(in: 0..<Int.max))")
 
             // Setup: create directory with 100 files
