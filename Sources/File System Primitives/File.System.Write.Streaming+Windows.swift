@@ -400,8 +400,7 @@
             }
         }
 
-        private static func flushDirectory(_ path: String) throws(File.System.Write.Streaming.Error)
-        {
+        private static func flushDirectory(_ path: String) throws(File.System.Write.Streaming.Error) {
             let handle = withWideString(path) { wPath in
                 CreateFileW(
                     wPath,

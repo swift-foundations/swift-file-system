@@ -589,8 +589,7 @@
             #if ATOMICFILEWRITE_HAS_WINDOWS_SECURITY_SHIM
                 if options.preservePermissions {
                     var winErr: DWORD = 0
-                    if atomicfilewrite_copy_security_descriptor(srcHandle, dstHandle, &winErr) == 0
-                    {
+                    if atomicfilewrite_copy_security_descriptor(srcHandle, dstHandle, &winErr) == 0 {
                         throw .metadataPreservationFailed(
                             operation: "SecurityDescriptor",
                             code: .windows(winErr),

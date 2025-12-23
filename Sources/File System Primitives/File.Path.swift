@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
+public import Binary
 public import INCITS_4_1986
 import SystemPackage
 
@@ -227,5 +228,20 @@ extension File.Path {
     @inlinable
     public static func / (lhs: File.Path, rhs: File.Path) -> File.Path {
         File.Path(lhs, appending: rhs)
+    }
+}
+
+// MARK: - Binary.Serializable
+
+extension File.Path: Binary.Serializable {
+    /// Serializes the path as UTF-8 bytes.
+    ///
+    /// This enables `String(path)` via `StringProtocol.init<T: Binary.Serializable>(_:)`.
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ path: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(contentsOf: path._path.string.utf8)
     }
 }

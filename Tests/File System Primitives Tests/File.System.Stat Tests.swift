@@ -165,7 +165,7 @@ extension File.System.Stat.Test.Unit {
     func asyncExists() async throws {
         try await File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "test.txt")
-            try await File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
+            try File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
 
             let exists = File.System.Stat.exists(at: filePath)
             #expect(exists == true)
@@ -176,7 +176,7 @@ extension File.System.Stat.Test.Unit {
     func asyncInfo() async throws {
         try await File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "test.txt")
-            try await File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
+            try File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
 
             let info = try File.System.Stat.info(at: filePath)
             #expect(info.type == .regular)

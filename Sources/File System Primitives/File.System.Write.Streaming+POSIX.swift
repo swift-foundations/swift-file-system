@@ -628,8 +628,7 @@
             }
         }
 
-        private static func syncDirectory(_ path: String) throws(File.System.Write.Streaming.Error)
-        {
+        private static func syncDirectory(_ path: String) throws(File.System.Write.Streaming.Error) {
             var flags: Int32 = O_RDONLY | O_CLOEXEC
             #if os(Linux)
                 flags |= O_DIRECTORY

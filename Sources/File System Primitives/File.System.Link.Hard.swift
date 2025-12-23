@@ -69,8 +69,7 @@ extension File.System.Link.Hard {
             }
         }
 
-        private static func _mapErrno(_ errno: Int32, path: File.Path, existing: File.Path) -> Error
-        {
+        private static func _mapErrno(_ errno: Int32, path: File.Path, existing: File.Path) -> Error {
             switch errno {
             case ENOENT:
                 return .sourceNotFound(existing)

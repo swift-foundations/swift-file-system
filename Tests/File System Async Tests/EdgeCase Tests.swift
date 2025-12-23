@@ -79,7 +79,7 @@ extension File.IO.Test.EdgeCase {
             // Create 100 files
             for i in 0..<100 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -102,7 +102,7 @@ extension File.IO.Test.EdgeCase {
             // Create initial files
             for i in 0..<10 {
                 let filePath = try File.Path("\(dir.path.string)/initial-\(i).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -117,7 +117,7 @@ extension File.IO.Test.EdgeCase {
                         let newPath = try File.Path(
                             "\(dir.path.string)/added-during-\(Int.random(in: 0..<Int.max)).txt"
                         )
-                        var handle = try File.Handle.open(newPath, mode: .write, options: [.create, .closeOnExec])
+                        let handle = try File.Handle.open(newPath, mode: .write, options: [.create, .closeOnExec])
                         try handle.close()
                     }
                     _ = entry
@@ -158,7 +158,7 @@ extension File.IO.Test.EdgeCase {
             // Create many files
             for i in 0..<50 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -186,7 +186,7 @@ extension File.IO.Test.EdgeCase {
             // Create files
             for i in 0..<20 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -240,7 +240,7 @@ extension File.IO.Test.EdgeCase {
                 )
                 // Add a file at each level
                 let filePath = try File.Path("\(subPath.string)/file.txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
                 currentPath = subPath
             }
@@ -305,7 +305,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create a file so we can verify walk works
             let filePath = try File.Path("\(dir.path.string)/file.txt")
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
 
             // Walk with following symlinks - cycle detection should prevent infinite loop
@@ -360,7 +360,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create regular file
             let filePath = try File.Path("\(dir.path.string)/file.txt")
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
 
             // Create subdirectory
@@ -403,7 +403,7 @@ extension File.IO.Test.EdgeCase {
             let io = File.IO.Executor()
 
             let path = try File.Path("\(dir.path.string)/empty-file")
-            var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
+            let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
 
             var chunks: [[UInt8]] = []
@@ -531,7 +531,7 @@ extension File.IO.Test.EdgeCase {
             // Create many files
             for i in 0..<100 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -587,7 +587,7 @@ extension File.IO.Test.EdgeCase {
                 )
                 for j in 0..<10 {
                     let filePath = try File.Path("\(subPath.string)/file-\(j).txt")
-                    var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                    let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                     try handle.close()
                 }
             }
@@ -638,7 +638,7 @@ extension File.IO.Test.EdgeCase {
             // Create 200 files to ensure we're mid-batch when we cancel
             for i in 0..<200 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(padded(i, width: 3)).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -699,7 +699,7 @@ extension File.IO.Test.EdgeCase {
                 // 20 files per directory = 200 files + 10 dirs = 210 entries total
                 for j in 0..<20 {
                     let filePath = try File.Path("\(subPath.string)/file-\(j).txt")
-                    var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                    let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                     try handle.close()
                 }
             }
@@ -755,7 +755,7 @@ extension File.IO.Test.EdgeCase {
             // Create many files to test backpressure
             for i in 0..<500 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(padded(i, width: 4)).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -793,7 +793,7 @@ extension File.IO.Test.EdgeCase {
             let fileCount = 1500
             for i in 0..<fileCount {
                 let filePath = try File.Path("\(dir.path.string)/file-\(padded(i, width: 4)).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
@@ -825,7 +825,7 @@ extension File.IO.Test.EdgeCase {
                     let filePath = try File.Path(
                         "\(subPath.string)/file-\(padded(j, width: 2)).txt"
                     )
-                    var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                    let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                     try handle.close()
                 }
             }
@@ -851,7 +851,7 @@ extension File.IO.Test.EdgeCase {
             // Create files
             for i in 0..<100 {
                 let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
-                var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
 
