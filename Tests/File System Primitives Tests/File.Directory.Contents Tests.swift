@@ -134,7 +134,7 @@ extension File.Directory.Contents.Test.Unit {
     func listNonExistentDirectoryThrows() throws {
         try File.Directory.temporary { dir in
             let nonExistent = File.Path(dir.path, appending: "non-existent-\(Int.random(in: 0..<Int.max))")
-            let nonExistentDir = File.Directory( nonExistent)
+            let nonExistentDir = File.Directory(nonExistent)
 
             #expect(throws: File.Directory.Contents.Error.self) {
                 _ = try File.Directory.Contents.list(at: nonExistentDir)
@@ -148,7 +148,7 @@ extension File.Directory.Contents.Test.Unit {
             let filePath = File.Path(dir.path, appending: "test-file.txt")
             try File.System.Write.Atomic.write([], to: filePath)
 
-            let fileAsDir = File.Directory( filePath)
+            let fileAsDir = File.Directory(filePath)
             #expect(throws: File.Directory.Contents.Error.notADirectory(filePath)) {
                 _ = try File.Directory.Contents.list(at: fileAsDir)
             }
@@ -225,7 +225,7 @@ extension File.Directory.Contents.Test.Performance {
         init() throws {
             let td = try File.Directory.Temporary.system
             let testPath = File.Path(td.path, appending: "bench_\(Int.random(in: 0..<Int.max))")
-            self.testDir = File.Directory( testPath)
+            self.testDir = File.Directory(testPath)
 
             // Setup: create directory with 100 files
             // Use durability: .none to avoid F_FULLFSYNC overhead

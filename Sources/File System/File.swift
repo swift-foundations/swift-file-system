@@ -134,8 +134,7 @@ extension File {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
-    public func append(_ bytes: [UInt8]) async throws(File.IO.Error<File.System.Write.Append.Error>)
-    {
+    public func append(_ bytes: [UInt8]) async throws(File.IO.Error<File.System.Write.Append.Error>) {
         try await File.System.Write.Append.append(bytes, to: path)
     }
 
@@ -151,8 +150,7 @@ extension File {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
-    public func append(_ string: String) async throws(File.IO.Error<File.System.Write.Append.Error>)
-    {
+    public func append(_ string: String) async throws(File.IO.Error<File.System.Write.Append.Error>) {
         try await append(Array(string.utf8))
     }
 }

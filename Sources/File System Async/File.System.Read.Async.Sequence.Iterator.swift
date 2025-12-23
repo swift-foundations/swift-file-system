@@ -15,8 +15,7 @@ extension File.System.Read.Async.Sequence {
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
         private let channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
-        private var channelIterator:
-            AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
+        private var channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
         private var producerTask: Task<Void, Never>?
         private var isFinished = false
 

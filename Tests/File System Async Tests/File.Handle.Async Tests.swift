@@ -24,7 +24,7 @@ extension File.Handle.Async.Test.Unit {
     func openForReading() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5]
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
@@ -42,7 +42,7 @@ extension File.Handle.Async.Test.Unit {
     func openForWriting() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write([UInt8]().span, to: path)
 
@@ -61,7 +61,7 @@ extension File.Handle.Async.Test.Unit {
     func readBytes() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let content: [UInt8] = [10, 20, 30, 40, 50]
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
@@ -79,7 +79,7 @@ extension File.Handle.Async.Test.Unit {
     func readPartialBytes() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
@@ -107,7 +107,7 @@ extension File.Handle.Async.Test.Unit {
     func writeBytes() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write([UInt8]().span, to: path)
 
@@ -134,7 +134,7 @@ extension File.Handle.Async.Test.Unit {
     func seekAndRead() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
@@ -157,7 +157,7 @@ extension File.Handle.Async.Test.Unit {
     func rewindAndSeekToEnd() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5]
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
@@ -187,7 +187,7 @@ extension File.Handle.Async.Test.Unit {
     func closeIsIdempotent() async throws {
         let io = File.IO.Executor()
 
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let path = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write([1, 2, 3].span, to: path)
 
@@ -240,7 +240,7 @@ extension File.Handle.Async.Test.Unit {
 
     @Test("Handle ID scope mismatch throws")
     func scopeMismatchThrows() async throws {
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let io1 = File.IO.Executor()
             let io2 = File.IO.Executor()
             defer {
@@ -266,7 +266,7 @@ extension File.Handle.Async.Test.Unit {
 
     @Test("Shutdown closes remaining handles")
     func shutdownClosesHandles() async throws {
-        try await File.Directory.temporary { dir -> Void in
+        try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
             let path = File.Path(dir.path, appending: "test-file.bin")

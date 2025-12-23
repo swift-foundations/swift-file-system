@@ -610,8 +610,7 @@ extension File.IO {
         package func openWriteStreaming(
             to path: File.Path,
             options: File.System.Write.Streaming.Options = .init()
-        ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) -> File.IO.Write.Handle.ID
-        {
+        ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) -> File.IO.Write.Handle.ID {
             guard !isShutdown else {
                 throw .executor(.shutdownInProgress)
             }
@@ -897,8 +896,7 @@ extension File.IO {
             }
         }
 
-        private func _waitForWriteNonThrowing(id: File.IO.Write.Handle.ID, entry: Write.Entry) async
-        {
+        private func _waitForWriteNonThrowing(id: File.IO.Write.Handle.ID, entry: Write.Entry) async {
             let token = entry.waiters.generateToken()
 
             await withTaskCancellationHandler {

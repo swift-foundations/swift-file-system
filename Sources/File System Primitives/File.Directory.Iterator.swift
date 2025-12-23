@@ -89,9 +89,9 @@ extension File.Directory.Iterator {
         at directory: File.Directory
     ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
         #if os(Windows)
-        return try _openWindows(at: directory.path)
+            return try _openWindows(at: directory.path)
         #else
-        return try _openPOSIX(at: directory.path)
+            return try _openPOSIX(at: directory.path)
         #endif
     }
 

@@ -272,12 +272,11 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
     func callbackPattern() {
         var capturedContext: File.Directory.Walk.Undecodable.Context?
 
-        let handler:
-            (File.Directory.Walk.Undecodable.Context) -> File.Directory.Walk.Undecodable.Policy = {
-                context in
-                capturedContext = context
-                return .skip
-            }
+        let handler: (File.Directory.Walk.Undecodable.Context) -> File.Directory.Walk.Undecodable.Policy = {
+            context in
+            capturedContext = context
+            return .skip
+        }
 
         let context = File.Directory.Walk.Undecodable.Context(
             parent: "/tmp",

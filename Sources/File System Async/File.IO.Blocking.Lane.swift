@@ -154,8 +154,7 @@ extension File.IO.Blocking {
             return UnsafeMutableRawPointer(ptr)
         }
 
-        private static func unbox<T, E: Swift.Error>(_ ptr: UnsafeMutableRawPointer) -> Result<T, E>
-        {
+        private static func unbox<T, E: Swift.Error>(_ ptr: UnsafeMutableRawPointer) -> Result<T, E> {
             let typed = ptr.assumingMemoryBound(to: Result<T, E>.self)
             let result = typed.move()
             typed.deallocate()

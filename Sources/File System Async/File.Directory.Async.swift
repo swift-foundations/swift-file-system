@@ -26,10 +26,9 @@ extension File.Directory {
         public func contents(
             at directory: File.Directory
         ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
-            let operation:
-                @Sendable () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] = {
-                    try File.Directory.Contents.list(at: directory)
-                }
+            let operation: @Sendable () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] = {
+                try File.Directory.Contents.list(at: directory)
+            }
             return try await io.run(operation)
         }
     }
