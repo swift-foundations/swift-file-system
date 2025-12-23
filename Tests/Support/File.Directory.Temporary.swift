@@ -5,15 +5,15 @@
 //  Test support for temporary directories with automatic cleanup.
 //
 
-public import File_System_Primitives
 import File_System
+public import File_System_Primitives
 
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #elseif canImport(Glibc)
-import Glibc
+    import Glibc
 #elseif canImport(Musl)
-import Musl
+    import Musl
 #endif
 
 // MARK: - File.Directory.Temporary (namespace)
@@ -83,8 +83,10 @@ extension File.Directory.Temporary {
         /// The prefix for the temp directory name.
         public let prefix: String
 
-        /// Creates a File.Directory.Temporary.Scope instance.
-        internal init(prefix: String) {
+        /// Creates a Scope instance.
+        ///
+        /// - Parameter prefix: Prefix for the temp directory name (default: "test").
+        public init(prefix: String = "test") {
             self.prefix = prefix
         }
 
@@ -127,16 +129,23 @@ extension File.Directory.Temporary {
         }
     }
 
-    /// Creates a temporary directory wrapper with default prefix "test".
-    public static var temporary: File.Directory.Temporary.Scope {
-        File.Directory.Temporary.Scope(prefix: "test")
-    }
+}
 
-    /// Creates a temporary directory wrapper with custom prefix.
+// MARK: - File.Directory convenience
+
+extension File.Directory {
+    /// Creates a temporary directory wrapper with default prefix "test".
     ///
-    /// - Parameter prefix: Prefix for the temp directory name.
-    /// - Returns: A `Temporary.Scope` wrapper for scoped directory operations.
-    public static func temporary(prefix: String) -> File.Directory.Temporary.Scope {
-        File.Directory.Temporary.Scope(prefix: prefix)
+    /// ## Example
+    /// ```swift
+    /// try File.Directory.temporary { dir in
+    ///     // dir is a File.Path to a newly created temp directory
+    ///     // automatically deleted when the closure exits
+    /// }
+    /// ```
+    ///
+    /// For custom prefix, use `File.Directory.Temporary.Scope(prefix:)` directly.
+    public static var temporary: Temporary.Scope {
+        Temporary.Scope()
     }
 }
