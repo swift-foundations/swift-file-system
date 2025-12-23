@@ -106,7 +106,8 @@ extension File.System.Write.Streaming {
         to path: File.Path,
         options: Options = .init(),
         io: File.IO.Executor = .default
-    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) where Chunks.Element == [UInt8] {
+    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>)
+    where Chunks.Element == [UInt8] {
         try await io.run { () throws(File.System.Write.Streaming.Error) in
             try write(chunks, to: path, options: options)
         }
@@ -259,7 +260,9 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.info(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run {
+                try File.System.Stat.info(at: path)
+            }
             return metadata.type == .regular
         } catch {
             return false
@@ -272,7 +275,9 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.info(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run {
+                try File.System.Stat.info(at: path)
+            }
             return metadata.type == .directory
         } catch {
             return false
@@ -285,7 +290,9 @@ extension File.System.Stat {
         io: File.IO.Executor = .default
     ) async -> Bool {
         do {
-            let metadata: File.System.Metadata.Info = try await io.run { try File.System.Stat.lstatInfo(at: path) }
+            let metadata: File.System.Metadata.Info = try await io.run {
+                try File.System.Stat.lstatInfo(at: path)
+            }
             return metadata.type == .symbolicLink
         } catch {
             return false
@@ -304,11 +311,11 @@ extension File.Directory.Contents {
     ///
     /// - Throws: `File.IO.Error<Error>` with `.operation` for list errors, or `.executor`/`.cancelled` for I/O errors.
     public static func list(
-        at path: File.Path,
+        at directory: File.Directory,
         io: File.IO.Executor = .default
     ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
         try await io.run { () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] in
-            try list(at: path)
+            try list(at: directory)
         }
     }
 }
@@ -319,17 +326,17 @@ extension File.Directory.Walk {
     /// Recursively walks a directory tree asynchronously.
     ///
     /// ```swift
-    /// let entries = try await File.Directory.Walk.walk(at: path)
+    /// let entries = try await File.Directory.Walk.walk(at: directory)
     /// ```
     ///
     /// - Throws: `File.IO.Error<Error>` with `.operation` for walk errors, or `.executor`/`.cancelled` for I/O errors.
     public static func walk(
-        at path: File.Path,
+        at directory: File.Directory,
         options: Options = .init(),
         io: File.IO.Executor = .default
     ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File.Directory.Entry] {
         try await io.run { () throws(File.Directory.Walk.Error) -> [File.Directory.Entry] in
-            try walk(at: path, options: options)
+            try walk(at: directory, options: options)
         }
     }
 }

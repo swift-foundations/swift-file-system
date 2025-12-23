@@ -7,6 +7,7 @@
 
 import StandardsTestSupport
 import Testing
+import File_System_Test_Support
 
 @testable import File_System_Primitives
 
@@ -16,134 +17,104 @@ extension File.System.Move {
 
 extension File.System.Move.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-        let path = "/tmp/move-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Basic Move
 
     @Test("Move file to new location")
     func moveFileToNewLocation() throws {
-        let sourcePath = try createTempFile(content: [10, 20, 30, 40])
-        let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
+
+            try File.System.Write.Atomic.write([10, 20, 30, 40].span, to: sourcePath)
+
+            let originalData = try File.System.Read.Full.read(from: sourcePath)
+
+            try File.System.Move.move(from: sourcePath, to: destPath)
+
+            #expect(File.System.Stat.exists(at: destPath))
+
+            let destData = try File.System.Read.Full.read(from: destPath)
+            #expect(originalData == destData)
         }
-
-        let originalData = try File.System.Read.Full.read(from: try File.Path(sourcePath))
-
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
-
-        try File.System.Move.move(from: source, to: dest)
-
-        #expect(File.System.Stat.exists(at: try File.Path(destPath)))
-
-        let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
-        #expect(originalData == destData)
     }
 
     @Test("Move removes source file")
     func moveRemovesSourceFile() throws {
-        let sourcePath = try createTempFile(content: [1, 2, 3])
-        let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
+
+            try File.System.Move.move(from: sourcePath, to: destPath)
+
+            // Source should no longer exist
+            #expect(!File.System.Stat.exists(at: sourcePath))
         }
-
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
-
-        try File.System.Move.move(from: source, to: dest)
-
-        // Source should no longer exist
-        #expect(!File.System.Stat.exists(at: try File.Path(sourcePath)))
     }
 
     @Test("Move empty file")
     func moveEmptyFile() throws {
-        let sourcePath = try createTempFile(content: [])
-        let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
+
+            try File.System.Write.Atomic.write([UInt8]().span, to: sourcePath)
+
+            try File.System.Move.move(from: sourcePath, to: destPath)
+
+            let destData = try File.System.Read.Full.read(from: destPath)
+            #expect(destData.isEmpty)
         }
-
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
-
-        try File.System.Move.move(from: source, to: dest)
-
-        let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
-        #expect(destData.isEmpty)
     }
 
     @Test("Rename file in same directory")
     func renameFileInSameDirectory() throws {
-        let sourcePath = try createTempFile(content: [1, 2, 3])
-        let destPath = "/tmp/renamed-\(Int.random(in: 0..<Int.max)).bin"
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "renamed.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
+
+            try File.System.Move.move(from: sourcePath, to: destPath)
+
+            #expect(!File.System.Stat.exists(at: sourcePath))
+            #expect(File.System.Stat.exists(at: destPath))
         }
-
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
-
-        try File.System.Move.move(from: source, to: dest)
-
-        #expect(!File.System.Stat.exists(at: try File.Path(sourcePath)))
-        #expect(File.System.Stat.exists(at: try File.Path(destPath)))
     }
 
     // MARK: - Options
 
     @Test("Move with overwrite option")
     func moveWithOverwriteOption() throws {
-        let sourcePath = try createTempFile(content: [1, 2, 3])
-        let destPath = try createTempFile(content: [99, 99])
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
+            try File.System.Write.Atomic.write([99, 99].span, to: destPath)
+
+            let options = File.System.Move.Options(overwrite: true)
+            try File.System.Move.move(from: sourcePath, to: destPath, options: options)
+
+            let destData = try File.System.Read.Full.read(from: destPath)
+            #expect(destData == [1, 2, 3])
         }
-
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
-
-        let options = File.System.Move.Options(overwrite: true)
-        try File.System.Move.move(from: source, to: dest, options: options)
-
-        let destData = try File.System.Read.Full.read(from: try File.Path(destPath))
-        #expect(destData == [1, 2, 3])
     }
 
     @Test("Move without overwrite throws when destination exists")
     func moveWithoutOverwriteThrows() throws {
-        let sourcePath = try createTempFile(content: [1, 2, 3])
-        let destPath = try createTempFile(content: [99, 99])
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
-        }
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
 
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
+            try File.System.Write.Atomic.write([99, 99].span, to: destPath)
 
-        let options = File.System.Move.Options(overwrite: false)
-        #expect(throws: File.System.Move.Error.self) {
-            try File.System.Move.move(from: source, to: dest, options: options)
+            let options = File.System.Move.Options(overwrite: false)
+            #expect(throws: File.System.Move.Error.self) {
+                try File.System.Move.move(from: sourcePath, to: destPath, options: options)
+            }
         }
     }
 
@@ -163,32 +134,28 @@ extension File.System.Move.Test.Unit {
 
     @Test("Move non-existent source throws sourceNotFound")
     func moveNonExistentSourceThrows() throws {
-        let sourcePath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max)).bin"
-        let destPath = "/tmp/move-dest-\(Int.random(in: 0..<Int.max)).bin"
-        defer { cleanup(destPath) }
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "non-existent.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
 
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
-
-        #expect(throws: File.System.Move.Error.self) {
-            try File.System.Move.move(from: source, to: dest)
+            #expect(throws: File.System.Move.Error.self) {
+                try File.System.Move.move(from: sourcePath, to: destPath)
+            }
         }
     }
 
     @Test("Move to existing file without overwrite throws destinationExists")
     func moveToExistingFileThrows() throws {
-        let sourcePath = try createTempFile(content: [1, 2, 3])
-        let destPath = try createTempFile(content: [99])
-        defer {
-            cleanup(sourcePath)
-            cleanup(destPath)
-        }
+        try File.Directory.temporary { dir in
+            let sourcePath = File.Path(dir.path, appending: "source.bin")
+            let destPath = File.Path(dir.path, appending: "dest.bin")
 
-        let source = try File.Path(sourcePath)
-        let dest = try File.Path(destPath)
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
+            try File.System.Write.Atomic.write([99].span, to: destPath)
 
-        #expect(throws: File.System.Move.Error.destinationExists(dest)) {
-            try File.System.Move.move(from: source, to: dest)
+            #expect(throws: File.System.Move.Error.destinationExists(destPath)) {
+                try File.System.Move.move(from: sourcePath, to: destPath)
+            }
         }
     }
 
@@ -196,21 +163,21 @@ extension File.System.Move.Test.Unit {
 
     @Test("sourceNotFound error description")
     func sourceNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Move.Error.sourceNotFound(path)
         #expect(error.description.contains("Source not found"))
     }
 
     @Test("destinationExists error description")
     func destinationExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.System.Move.Error.destinationExists(path)
         #expect(error.description.contains("already exists"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Move.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
@@ -226,8 +193,8 @@ extension File.System.Move.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Move.Error.sourceNotFound(path1)

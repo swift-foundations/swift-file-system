@@ -141,9 +141,9 @@ extension File.IO {
             let result: Result<T, E>
             do {
                 result = try await lane.run(deadline: nil, operation)
-            } catch let laneFailure {
-                // laneFailure is statically Lane.Failure due to typed throws
-                switch laneFailure {
+            } catch {
+                // error is statically Lane.Failure due to typed throws
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -299,15 +299,16 @@ extension File.IO {
                     let raw = UnsafeMutableRawPointer(bitPattern: address)!
                     // Execute body with typed throws
                     // Explicit type annotation on inner closure forces E unification
-                    return try Slot.withHandle(at: raw) { (handle: inout File.Handle) throws(E) -> T in
+                    return try Slot.withHandle(at: raw) {
+                        (handle: inout File.Handle) throws(E) -> T in
                         try body(&handle)
                     }
                 }
-            } catch let laneFailure{
-                // laneFailure is statically Lane.Failure
+            } catch {
+                // error is statically Lane.Failure
                 await _checkInHandle(slot.take(), for: id, entry: entry)
                 slot.deallocateRawOnly()
-                throw .lane(laneFailure)
+                throw .lane(error)
             }
 
             // Check if task was cancelled during execution
@@ -358,7 +359,7 @@ extension File.IO {
 
                 // 3. Deterministically await close on lane
                 //    Errors swallowed since we're cleaning up destroyed entry
-                _ = try? await lane.run(deadline: nil) { () -> Void in
+                _ = try? await lane.run(deadline: nil) { () in
                     let raw = UnsafeMutableRawPointer(bitPattern: address)!
                     try? Slot.closeHandle(at: raw)
                 }
@@ -382,7 +383,9 @@ extension File.IO {
         ///
         /// This is the single point where handles are closed via lane.run.
         /// Uses the integer address to bridge ~Copyable across await.
-        private func _closeHandle(_ handle: consuming File.Handle) async throws(File.IO.Error<File.Handle.Error>) {
+        private func _closeHandle(
+            _ handle: consuming File.Handle
+        ) async throws(File.IO.Error<File.Handle.Error>) {
             var slot = Slot.allocate()
             defer { slot.deallocateRawOnly() }
             slot.initialize(with: handle)
@@ -390,14 +393,14 @@ extension File.IO {
 
             let result: Result<Void, File.Handle.Error>
             do {
-                result = try await lane.run(deadline: nil) { () throws(File.Handle.Error) -> Void in
+                result = try await lane.run(deadline: nil) { () throws(File.Handle.Error) in
                     let raw = UnsafeMutableRawPointer(bitPattern: address)!
                     try Slot.closeHandle(at: raw)
                 }
-            } catch let laneFailure {
-                throw .lane(laneFailure)
+            } catch {
+                throw .lane(error)
             }
-            
+
             switch result {
             case .success:
                 break
@@ -412,7 +415,9 @@ extension File.IO {
         /// - Parameter handle: The handle to register (ownership transferred).
         /// - Returns: A unique handle ID for future operations.
         /// - Throws: `Executor.Error.shutdownInProgress` if executor is shut down.
-        package func registerHandle(_ handle: consuming File.Handle) throws(File.IO.Executor.Error) -> File.IO.Handle.ID {
+        package func registerHandle(
+            _ handle: consuming File.Handle
+        ) throws(File.IO.Executor.Error) -> File.IO.Handle.ID {
             guard !isShutdown else {
                 throw .shutdownInProgress
             }
@@ -450,13 +455,13 @@ extension File.IO {
             let result: Result<Void, File.Handle.Error>
             do {
                 // Use typed-throws lane.run - Lane handles the quarantined cast
-                result = try await lane.run(deadline: nil) { () throws(File.Handle.Error) -> Void in
+                result = try await lane.run(deadline: nil) { () throws(File.Handle.Error) in
                     let raw = UnsafeMutableRawPointer(bitPattern: address)!
                     let handle = try File.Handle.open(path, mode: mode, options: options)
                     Slot.initializeMemory(at: raw, with: handle)
                 }
-            } catch let laneFailure {
-                switch laneFailure {
+            } catch {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -499,10 +504,10 @@ extension File.IO {
         ) async throws(File.IO.Error<E>) -> T {
             do {
                 return try await transaction(id, body)
-            } catch let error {
+            } catch {
                 switch error {
-                case .lane(let laneFailure):
-                    switch laneFailure {
+                case .lane(let error):
+                    switch error {
                     case .shutdown:
                         throw .executor(.shutdownInProgress)
                     case .queueFull:
@@ -525,7 +530,9 @@ extension File.IO {
         /// - Parameter id: The handle ID.
         /// - Throws: `File.IO.Error<File.Handle.Error>` on failure.
         /// - Note: Idempotent for handles that were already destroyed.
-        package func destroyHandle(_ id: File.IO.Handle.ID) async throws(File.IO.Error<File.Handle.Error>) {
+        package func destroyHandle(
+            _ id: File.IO.Handle.ID
+        ) async throws(File.IO.Error<File.Handle.Error>) {
             guard id.scope == scope else {
                 throw .handle(.scopeMismatch)
             }
@@ -557,24 +564,7 @@ extension File.IO {
 
             if let h = entry.handle.take() {
                 handles.removeValue(forKey: id)
-                do {
-                    try await _closeHandle(h)
-                } catch let laneFailure as File.IO.Blocking.Lane.Failure {
-                    switch laneFailure {
-                    case .shutdown:
-                        throw .executor(.shutdownInProgress)
-                    case .queueFull:
-                        throw .lane(.queueFull)
-                    case .deadlineExceeded:
-                        throw .lane(.deadlineExceeded)
-                    case .cancelled:
-                        throw .cancelled
-                    }
-                } catch let error as File.Handle.Error {
-                    throw .operation(error)
-                } catch {
-                    throw .executor(.shutdownInProgress)
-                }
+                try await _closeHandle(h)
             }
         }
 
@@ -620,7 +610,8 @@ extension File.IO {
         package func openWriteStreaming(
             to path: File.Path,
             options: File.System.Write.Streaming.Options = .init()
-        ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) -> File.IO.Write.Handle.ID {
+        ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) -> File.IO.Write.Handle.ID
+        {
             guard !isShutdown else {
                 throw .executor(.shutdownInProgress)
             }
@@ -631,15 +622,16 @@ extension File.IO {
             // Open on lane (blocking operation)
             let result: Result<PlatformWriteContext, File.System.Write.Streaming.Error>
             do {
-                result = try await lane.run(deadline: nil) { () throws(File.System.Write.Streaming.Error) -> PlatformWriteContext in
+                result = try await lane.run(deadline: nil) {
+                    () throws(File.System.Write.Streaming.Error) -> PlatformWriteContext in
                     #if os(Windows)
                         try WindowsStreaming.openForStreaming(path: pathString, options: options)
                     #else
                         try POSIXStreaming.openForStreaming(path: pathString, options: options)
                     #endif
                 }
-            } catch let laneFailure as File.IO.Blocking.Lane.Failure {
-                switch laneFailure {
+            } catch {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -716,17 +708,18 @@ extension File.IO {
             let result: Result<Void, File.System.Write.Streaming.Error>
             do {
                 // Extract context before closure (ctx is Sendable)
-                result = try await lane.run(deadline: nil) { () throws(File.System.Write.Streaming.Error) -> Void in
+                result = try await lane.run(deadline: nil) {
+                    () throws(File.System.Write.Streaming.Error) in
                     #if os(Windows)
                         try WindowsStreaming.writeChunk(bytes.span, to: ctx)
                     #else
                         try POSIXStreaming.writeChunk(bytes.span, to: ctx)
                     #endif
                 }
-            } catch let laneFailure {
+            } catch {
                 entry.isOperationInFlight = false
                 entry.waiters.resumeNext()
-                switch laneFailure {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -757,7 +750,9 @@ extension File.IO {
         ///
         /// - Parameter id: The write handle ID from `openWriteStreaming`.
         /// - Throws: `File.System.Write.Streaming.Error` on failure.
-        package func commitWrite(_ id: File.IO.Write.Handle.ID) async throws(File.IO.Error<File.System.Write.Streaming.Error>) {
+        package func commitWrite(
+            _ id: File.IO.Write.Handle.ID
+        ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) {
             guard id.scope == scope else {
                 throw .executor(.scopeMismatch)
             }
@@ -790,20 +785,21 @@ extension File.IO {
             let result: Result<Void, File.System.Write.Streaming.Error>
             do {
                 // Extract context before closure (ctx is Sendable)
-                result = try await lane.run(deadline: nil) { () throws(File.System.Write.Streaming.Error) -> Void in
+                result = try await lane.run(deadline: nil) {
+                    () throws(File.System.Write.Streaming.Error) in
                     #if os(Windows)
                         try WindowsStreaming.commit(ctx)
                     #else
                         try POSIXStreaming.commit(ctx)
                     #endif
                 }
-            } catch let laneFailure {
+            } catch {
                 // Commit failed - state is now uncertain
                 entry.state = .closed
                 entry.isOperationInFlight = false
                 entry.waiters.resumeAll()
                 writes.removeValue(forKey: id)
-                switch laneFailure {
+                switch error {
                 case .shutdown:
                     throw .executor(.shutdownInProgress)
                 case .queueFull:
@@ -880,7 +876,10 @@ extension File.IO {
             return File.IO.Write.Handle.ID(raw: raw, scope: scope)
         }
 
-        private func _waitForWrite(id: File.IO.Write.Handle.ID, entry: Write.Entry) async throws(CancellationError) {
+        private func _waitForWrite(
+            id: File.IO.Write.Handle.ID,
+            entry: Write.Entry
+        ) async throws(CancellationError) {
             let token = entry.waiters.generateToken()
 
             await withTaskCancellationHandler {

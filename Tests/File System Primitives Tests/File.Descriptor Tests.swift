@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import File_System
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -15,65 +17,55 @@ extension File.Descriptor {
 }
 
 extension File.Descriptor.Test.Unit {
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: [UInt8] = []) throws -> String {
-        let path = "/tmp/descriptor-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Opening
 
     @Test("Open file in read mode")
     func openReadMode() throws {
-        let path = try createTempFile(content: [1, 2, 3])
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: file.path)
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .read)
-        let isValid = descriptor.isValid
-        #expect(isValid)
-        try descriptor.close()
+            let descriptor = try File.Descriptor.open(file.path, mode: .read)
+            let isValid = descriptor.isValid
+            #expect(isValid)
+            try descriptor.close()
+        }
     }
 
     @Test("Open file in write mode")
     func openWriteMode() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([UInt8]().span, to: file.path)
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .write)
-        let isValid = descriptor.isValid
-        #expect(isValid)
-        try descriptor.close()
+            let descriptor = try File.Descriptor.open(file.path, mode: .write)
+            let isValid = descriptor.isValid
+            #expect(isValid)
+            try descriptor.close()
+        }
     }
 
     @Test("Open file in readWrite mode")
     func openReadWriteMode() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([UInt8]().span, to: file.path)
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .readWrite)
-        let isValid = descriptor.isValid
-        #expect(isValid)
-        try descriptor.close()
+            let descriptor = try File.Descriptor.open(file.path, mode: .readWrite)
+            let isValid = descriptor.isValid
+            #expect(isValid)
+            try descriptor.close()
+        }
     }
 
     @Test("Open non-existing file throws error")
     func openNonExisting() throws {
-        let path = "/tmp/non-existing-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
+        try File.Directory.temporary { dir in
+            let file = dir["non-existing.txt"]
 
-        #expect(throws: File.Descriptor.Error.self) {
-            _ = try File.Descriptor.open(filePath, mode: .read)
+            #expect(throws: File.Descriptor.Error.self) {
+                _ = try File.Descriptor.open(file.path, mode: .read)
+            }
         }
     }
 
@@ -81,42 +73,44 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Open with create option creates file")
     func openWithCreate() throws {
-        let path = "/tmp/descriptor-create-\(Int.random(in: 0..<Int.max)).txt"
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["new-file.txt"]
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .write, options: [.create])
-        let isValid = descriptor.isValid
-        #expect(isValid)
-        #expect(File.System.Stat.exists(at: try File.Path(path)))
-        try descriptor.close()
+            let descriptor = try File.Descriptor.open(file.path, mode: .write, options: [.create])
+            let isValid = descriptor.isValid
+            #expect(isValid)
+            #expect(File.System.Stat.exists(at: file.path))
+            try descriptor.close()
+        }
     }
 
     @Test("Open with truncate option truncates file")
     func openWithTruncate() throws {
-        let path = try createTempFile(content: [1, 2, 3, 4, 5])
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([1, 2, 3, 4, 5].span, to: file.path)
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .write, options: [.truncate])
-        try descriptor.close()
+            let descriptor = try File.Descriptor.open(file.path, mode: .write, options: [.truncate])
+            try descriptor.close()
 
-        let data = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(data.isEmpty)
+            let data = try File.System.Read.Full.read(from: file.path)
+            #expect(data.isEmpty)
+        }
     }
 
     @Test("Open with exclusive and create on existing file throws")
     func openWithExclusiveOnExisting() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([UInt8]().span, to: file.path)
 
-        let filePath = try File.Path(path)
-        #expect(throws: File.Descriptor.Error.self) {
-            _ = try File.Descriptor.open(
-                filePath,
-                mode: .write,
-                options: [.create, .exclusive]
-            )
+            #expect(throws: File.Descriptor.Error.self) {
+                _ = try File.Descriptor.open(
+                    file.path,
+                    mode: .write,
+                    options: [.create, .exclusive]
+                )
+            }
         }
     }
 
@@ -124,28 +118,30 @@ extension File.Descriptor.Test.Unit {
 
     @Test("Close makes descriptor invalid")
     func closeInvalidates() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([UInt8]().span, to: file.path)
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .read)
-        let isValid = descriptor.isValid
-        #expect(isValid)
-        try descriptor.close()
-        // After close, descriptor is consumed, can't check isValid
+            let descriptor = try File.Descriptor.open(file.path, mode: .read)
+            let isValid = descriptor.isValid
+            #expect(isValid)
+            try descriptor.close()
+            // After close, descriptor is consumed, can't check isValid
+        }
     }
 
     @Test("Double close throws alreadyClosed")
     func doubleCloseThrows() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let file = dir["test.bin"]
+            try File.System.Write.Atomic.write([UInt8]().span, to: file.path)
 
-        let filePath = try File.Path(path)
-        let descriptor = try File.Descriptor.open(filePath, mode: .read)
-        try descriptor.close()
+            let descriptor = try File.Descriptor.open(file.path, mode: .read)
+            try descriptor.close()
 
-        // Can't actually test double close since close() is consuming
-        // The descriptor is consumed after first close
+            // Can't actually test double close since close() is consuming
+            // The descriptor is consumed after first close
+        }
     }
 
     // MARK: - Mode enum

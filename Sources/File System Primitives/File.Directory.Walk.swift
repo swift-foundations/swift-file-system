@@ -26,16 +26,16 @@ extension File.Directory.Walk {
     /// Recursively walks a directory and returns all entries.
     ///
     /// - Parameters:
-    ///   - path: The root directory to walk.
+    ///   - directory: The root directory to walk.
     ///   - options: Walk options.
     /// - Returns: An array of all entries found.
     /// - Throws: `File.Directory.Walk.Error` on failure.
     public static func walk(
-        at path: File.Path,
+        at directory: File.Directory,
         options: Options = Options()
     ) throws(File.Directory.Walk.Error) -> [File.Directory.Entry] {
         var entries: [File.Directory.Entry] = []
-        try _walk(at: path, options: options, depth: 0, entries: &entries)
+        try _walk(at: directory, options: options, depth: 0, entries: &entries)
         return entries
     }
 
@@ -45,7 +45,7 @@ extension File.Directory.Walk {
 
 extension File.Directory.Walk {
     private static func _walk(
-        at path: File.Path,
+        at directory: File.Directory,
         options: Options,
         depth: Int,
         entries: inout [File.Directory.Entry]
@@ -58,7 +58,7 @@ extension File.Directory.Walk {
         // List directory contents
         let contents: [File.Directory.Entry]
         do {
-            contents = try File.Directory.Contents.list(at: path)
+            contents = try File.Directory.Contents.list(at: directory)
         } catch let error {
             switch error {
             case .pathNotFound(let p):
@@ -84,14 +84,16 @@ extension File.Directory.Walk {
                 entries.append(entry)
 
                 if entry.type == .directory {
-                    try _walk(at: entryPath, options: options, depth: depth + 1, entries: &entries)
+                    let subdir = File.Directory(entryPath)
+                    try _walk(at: subdir, options: options, depth: depth + 1, entries: &entries)
                 } else if entry.type == .symbolicLink && options.followSymlinks {
                     // Check if symlink points to a directory (follows symlink via stat)
                     if let info = try? File.System.Stat.info(at: entryPath),
                         info.type == .directory
                     {
+                        let subdir = File.Directory(entryPath)
                         try _walk(
-                            at: entryPath,
+                            at: subdir,
                             options: options,
                             depth: depth + 1,
                             entries: &entries

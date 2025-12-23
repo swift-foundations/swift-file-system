@@ -68,51 +68,27 @@ extension File.Handle {
     /// }
     /// ```
     ///
-    /// ## Error Handling
-    /// This method uses `File.Error` to distinguish between handle errors
-    /// (from opening/closing) and operation errors (from the closure):
-    /// ```swift
-    /// do {
-    ///     try File.Handle.withOpen(path, mode: .read) { handle in
-    ///         try handle.read(count: 1024)
-    ///     }
-    /// } catch .handle(let handleError) {
-    ///     // File open/close failed
-    /// } catch .operation(let description) {
-    ///     // Closure threw an error
-    /// }
-    /// ```
-    ///
     /// - Parameters:
     ///   - path: The path to the file.
     ///   - mode: The access mode.
     ///   - options: Additional options.
     ///   - body: A closure that receives an inout handle and returns a result.
     /// - Returns: The result from the closure.
-    /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+    /// - Throws: `File.Handle.Error` on failure.
     public static func withOpen<Result>(
         _ path: File.Path,
         mode: Mode,
         options: Options = [],
-        body: (inout File.Handle) throws -> Result
-    ) throws(File.Error) -> Result {
-        var handle: File.Handle
-        do {
-            handle = try open(path, mode: mode, options: options)
-        } catch {
-            throw .handle(error)
-        }
-
+        body: (inout File.Handle) throws(File.Handle.Error) -> Result
+    ) throws(File.Handle.Error) -> Result {
+        var handle = try open(path, mode: mode, options: options)
         do {
             let result = try body(&handle)
-            try? handle.close()  // Best-effort close after success
-            return result
-        } catch let error as File.Handle.Error {
             try? handle.close()
-            throw .handle(error)
+            return result
         } catch {
             try? handle.close()
-            throw .operation(description: String(describing: error))
+            throw error
         }
     }
 
@@ -126,30 +102,21 @@ extension File.Handle {
     ///   - options: Additional options.
     ///   - body: An async closure that receives an inout handle and returns a result.
     /// - Returns: The result from the closure.
-    /// - Throws: `File.Error.handle` on open failure, or `File.Error.operation` for closure errors.
+    /// - Throws: `File.Handle.Error` on failure.
     public static func withOpen<Result>(
         _ path: File.Path,
         mode: Mode,
         options: Options = [],
-        body: (inout File.Handle) async throws -> Result
-    ) async throws(File.Error) -> Result {
-        var handle: File.Handle
-        do {
-            handle = try open(path, mode: mode, options: options)
-        } catch {
-            throw .handle(error)
-        }
-
+        body: (inout File.Handle) async throws(File.Handle.Error) -> Result
+    ) async throws(File.Handle.Error) -> Result {
+        var handle = try open(path, mode: mode, options: options)
         do {
             let result = try await body(&handle)
-            try? handle.close()  // Best-effort close after success
-            return result
-        } catch let error as File.Handle.Error {
             try? handle.close()
-            throw .handle(error)
+            return result
         } catch {
             try? handle.close()
-            throw .operation(description: String(describing: error))
+            throw error
         }
     }
 }

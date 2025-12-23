@@ -16,54 +16,40 @@ extension File.System.Create.Directory {
 }
 
 extension File.System.Create.Directory.Test.Unit {
-    // MARK: - Test Fixtures
-
-    private func uniquePath() -> String {
-        "/tmp/create-dir-test-\(Int.random(in: 0..<Int.max))"
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - create() basic
 
     @Test("Create directory at path")
     func createDirectory() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let testDir = File.Path(dir.path, appending: "test-dir")
+            try File.System.Create.Directory.create(at: testDir)
 
-        let filePath = try File.Path(path)
-        try File.System.Create.Directory.create(at: filePath)
-
-        #expect(File.System.Stat.exists(at: try File.Path(path)))
-        let stat = try File.System.Stat.info(at: try File.Path(path))
-        #expect(stat.type == .directory)
+            #expect(File.System.Stat.exists(at: testDir))
+            let stat = try File.System.Stat.info(at: testDir)
+            #expect(stat.type == .directory)
+        }
     }
 
     @Test("Create directory throws if already exists")
     func createDirectoryAlreadyExists() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let testDir = File.Path(dir.path, appending: "test-dir")
+            try File.System.Create.Directory.create(at: testDir)
 
-        try File.System.Create.Directory.create(at: try File.Path(path))
-
-        let filePath = try File.Path(path)
-        #expect(throws: File.System.Create.Directory.Error.self) {
-            try File.System.Create.Directory.create(at: filePath)
+            #expect(throws: File.System.Create.Directory.Error.self) {
+                try File.System.Create.Directory.create(at: testDir)
+            }
         }
     }
 
     @Test("Create directory throws if parent doesn't exist")
     func createDirectoryParentNotFound() throws {
-        let nonExistentParent = uniquePath()
-        let path = "\(nonExistentParent)/child"
+        try File.Directory.temporary { dir in
+            let nonExistentPath = File.Path(dir.path, appending: "nonexistent/child")
 
-        let filePath = try File.Path(path)
-        #expect(throws: File.System.Create.Directory.Error.self) {
-            try File.System.Create.Directory.create(at: filePath)
+            #expect(throws: File.System.Create.Directory.Error.self) {
+                try File.System.Create.Directory.create(at: nonExistentPath)
+            }
         }
     }
 
@@ -71,46 +57,42 @@ extension File.System.Create.Directory.Test.Unit {
 
     @Test("Create directory with createIntermediates")
     func createDirectoryWithIntermediates() throws {
-        let basePath = uniquePath()
-        let path = "\(basePath)/a/b/c"
-        defer { cleanup(basePath) }
+        try File.Directory.temporary { dir in
+            let nestedPath = File.Path(dir.path, appending: "a/b/c")
+            let options = File.System.Create.Directory.Options(createIntermediates: true)
+            try File.System.Create.Directory.create(at: nestedPath, options: options)
 
-        let filePath = try File.Path(path)
-        let options = File.System.Create.Directory.Options(createIntermediates: true)
-        try File.System.Create.Directory.create(at: filePath, options: options)
-
-        #expect(File.System.Stat.exists(at: try File.Path(path)))
-        #expect(File.System.Stat.exists(at: try File.Path("\(basePath)/a")))
-        #expect(File.System.Stat.exists(at: try File.Path("\(basePath)/a/b")))
+            #expect(File.System.Stat.exists(at: nestedPath))
+            #expect(File.System.Stat.exists(at: File.Path(dir.path, appending: "a")))
+            #expect(File.System.Stat.exists(at: File.Path(dir.path, appending: "a/b")))
+        }
     }
 
     @Test("Create directory without createIntermediates fails for nested path")
     func createDirectoryWithoutIntermediatesFails() throws {
-        let basePath = uniquePath()
-        let path = "\(basePath)/a/b/c"
+        try File.Directory.temporary { dir in
+            let nestedPath = File.Path(dir.path, appending: "a/b/c")
+            let options = File.System.Create.Directory.Options(createIntermediates: false)
 
-        let filePath = try File.Path(path)
-        let options = File.System.Create.Directory.Options(createIntermediates: false)
-
-        #expect(throws: File.System.Create.Directory.Error.self) {
-            try File.System.Create.Directory.create(at: filePath, options: options)
+            #expect(throws: File.System.Create.Directory.Error.self) {
+                try File.System.Create.Directory.create(at: nestedPath, options: options)
+            }
         }
     }
 
     @Test("Create directory with custom permissions")
     func createDirectoryWithPermissions() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let testDir = File.Path(dir.path, appending: "test-dir")
+            let permissions: File.System.Metadata.Permissions = [
+                .ownerRead, .ownerWrite, .ownerExecute,
+            ]
+            let options = File.System.Create.Directory.Options(permissions: permissions)
+            try File.System.Create.Directory.create(at: testDir, options: options)
 
-        let filePath = try File.Path(path)
-        let permissions: File.System.Metadata.Permissions = [
-            .ownerRead, .ownerWrite, .ownerExecute,
-        ]
-        let options = File.System.Create.Directory.Options(permissions: permissions)
-        try File.System.Create.Directory.create(at: filePath, options: options)
-
-        #expect(File.System.Stat.exists(at: try File.Path(path)))
-        // Directory should exist (permission verification is platform-specific)
+            #expect(File.System.Stat.exists(at: testDir))
+            // Directory should exist (permission verification is platform-specific)
+        }
     }
 
     // MARK: - Options
@@ -133,30 +115,27 @@ extension File.System.Create.Directory.Test.Unit {
         #expect(options.permissions == permissions)
     }
 
-    // MARK: - Async variants
+    // MARK: - Additional variants
 
-    @Test("Async create directory")
-    func asyncCreateDirectory() async throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+    @Test("Create directory variant")
+    func createDirectoryVariant() throws {
+        try File.Directory.temporary { dir in
+            let testDir = File.Path(dir.path, appending: "test-dir")
+            try File.System.Create.Directory.create(at: testDir)
 
-        let filePath = try File.Path(path)
-        try await File.System.Create.Directory.create(at: filePath)
-
-        #expect(File.System.Stat.exists(at: try File.Path(path)))
+            #expect(File.System.Stat.exists(at: testDir))
+        }
     }
 
-    @Test("Async create directory with options")
-    func asyncCreateDirectoryWithOptions() async throws {
-        let basePath = uniquePath()
-        let path = "\(basePath)/nested/dir"
-        defer { cleanup(basePath) }
+    @Test("Create directory with options variant")
+    func createDirectoryWithOptionsVariant() throws {
+        try File.Directory.temporary { dir in
+            let nestedPath = File.Path(dir.path, appending: "nested/dir")
+            let options = File.System.Create.Directory.Options(createIntermediates: true)
+            try File.System.Create.Directory.create(at: nestedPath, options: options)
 
-        let filePath = try File.Path(path)
-        let options = File.System.Create.Directory.Options(createIntermediates: true)
-        try await File.System.Create.Directory.create(at: filePath, options: options)
-
-        #expect(File.System.Stat.exists(at: try File.Path(path)))
+            #expect(File.System.Stat.exists(at: nestedPath))
+        }
     }
 
     // MARK: - Error descriptions
@@ -224,7 +203,7 @@ extension File.System.Create.Directory.Test.Performance {
     @Test("Create and delete directory", .timed(iterations: 50, warmup: 5))
     func createDeleteDirectory() throws {
         let td = try File.Directory.Temporary.system
-        let testDir = File.Path(td, appending: "perf_mkdir_\(Int.random(in: 0..<Int.max))")
+        let testDir = File.Path(td.path, appending: "perf_mkdir_\(Int.random(in: 0..<Int.max))")
 
         try File.System.Create.Directory.create(at: testDir)
         try File.System.Delete.delete(at: testDir)

@@ -51,18 +51,18 @@
         /// - Returns: A tuple of the iterator and an opaque handle for cleanup.
         /// - Throws: `Error` if the directory cannot be opened.
         public static func makeIterator(
-            at path: File.Path
+            at directory: File.Directory
         ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: OpaquePointer) {
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
-                throw Self._mapErrno(errno, path: path)
+            guard stat(directory.path.string, &statBuf) == 0 else {
+                throw Self._mapErrno(errno, path: directory.path)
             }
             guard (statBuf.st_mode & S_IFMT) == S_IFDIR else {
-                throw .notADirectory(path)
+                throw .notADirectory(directory.path)
             }
 
-            guard let dir = opendir(path.string) else {
-                throw Self._mapErrno(errno, path: path)
+            guard let dir = opendir(directory.path.string) else {
+                throw Self._mapErrno(errno, path: directory.path)
             }
 
             return (Iterator(dir: dir), OpaquePointer(dir))
@@ -83,9 +83,9 @@
         /// ended due to an error or end-of-stream.
         ///
         /// - Returns: An error if `errno` was set, `nil` otherwise.
-        public static func iteratorError(for path: File.Path) -> Error? {
+        public static func iteratorError(for directory: File.Directory) -> Error? {
             if errno != 0 {
-                return Self._mapErrno(errno, path: path)
+                return Self._mapErrno(errno, path: directory.path)
             }
             return nil
         }
@@ -135,22 +135,22 @@
         ///
         /// The caller is responsible for closing the handle via `closeIterator(_:)`.
         ///
-        /// - Parameter path: The path to the directory.
+        /// - Parameter directory: The directory to iterate.
         /// - Returns: A tuple of the iterator and an opaque handle for cleanup.
         /// - Throws: `Error` if the directory cannot be opened.
         public static func makeIterator(
-            at path: File.Path
+            at directory: File.Directory
         ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: OpaquePointer) {
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
-                throw Self._mapErrno(errno, path: path)
+            guard stat(directory.path.string, &statBuf) == 0 else {
+                throw Self._mapErrno(errno, path: directory.path)
             }
             guard (statBuf.st_mode & S_IFMT) == S_IFDIR else {
-                throw .notADirectory(path)
+                throw .notADirectory(directory.path)
             }
 
-            guard let dir = Glibc.opendir(path.string) else {
-                throw Self._mapErrno(errno, path: path)
+            guard let dir = Glibc.opendir(directory.path.string) else {
+                throw Self._mapErrno(errno, path: directory.path)
             }
 
             return (Iterator(dir: dir), dir)
@@ -171,9 +171,9 @@
         /// ended due to an error or end-of-stream.
         ///
         /// - Returns: An error if `errno` was set, `nil` otherwise.
-        public static func iteratorError(for path: File.Path) -> Error? {
+        public static func iteratorError(for directory: File.Directory) -> Error? {
             if errno != 0 {
-                return Self._mapErrno(errno, path: path)
+                return Self._mapErrno(errno, path: directory.path)
             }
             return nil
         }
@@ -223,22 +223,22 @@
         ///
         /// The caller is responsible for closing the handle via `closeIterator(_:)`.
         ///
-        /// - Parameter path: The path to the directory.
+        /// - Parameter directory: The directory to iterate.
         /// - Returns: A tuple of the iterator and an opaque handle for cleanup.
         /// - Throws: `Error` if the directory cannot be opened.
         public static func makeIterator(
-            at path: File.Path
+            at directory: File.Directory
         ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: OpaquePointer) {
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
-                throw Self._mapErrno(errno, path: path)
+            guard stat(directory.path.string, &statBuf) == 0 else {
+                throw Self._mapErrno(errno, path: directory.path)
             }
             guard (statBuf.st_mode & S_IFMT) == S_IFDIR else {
-                throw .notADirectory(path)
+                throw .notADirectory(directory.path)
             }
 
-            guard let dir = Musl.opendir(path.string) else {
-                throw Self._mapErrno(errno, path: path)
+            guard let dir = Musl.opendir(directory.path.string) else {
+                throw Self._mapErrno(errno, path: directory.path)
             }
 
             return (Iterator(dir: dir), dir)
@@ -259,9 +259,9 @@
         /// ended due to an error or end-of-stream.
         ///
         /// - Returns: An error if `errno` was set, `nil` otherwise.
-        public static func iteratorError(for path: File.Path) -> Error? {
+        public static func iteratorError(for directory: File.Directory) -> Error? {
             if errno != 0 {
-                return Self._mapErrno(errno, path: path)
+                return Self._mapErrno(errno, path: directory.path)
             }
             return nil
         }

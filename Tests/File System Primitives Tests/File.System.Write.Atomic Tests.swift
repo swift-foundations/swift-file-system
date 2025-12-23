@@ -17,69 +17,58 @@ extension File.System.Write.Atomic {
 
 extension File.System.Write.Atomic.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func uniquePath(extension ext: String = "txt") -> String {
-        "/tmp/atomic-test-\(Int.random(in: 0..<Int.max)).\(ext)"
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath)
-        }
-    }
-
     // MARK: - Basic write
 
     @Test("Write and read back bytes")
     func writeAndReadBytes() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let testData: [UInt8] = [72, 101, 108, 108, 111]  // "Hello"
+            let path = File.Path(dir.path, appending: "test.txt")
 
-        let testData: [UInt8] = [72, 101, 108, 108, 111]  // "Hello"
+            try File.System.Write.Atomic.write(testData, to: path)
 
-        try File.System.Write.Atomic.write(testData, to: File.Path(path))
-
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == testData)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == testData)
+        }
     }
 
     @Test("Write empty file")
     func emptyFileWrite() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "empty.txt")
 
-        try File.System.Write.Atomic.write([], to: File.Path(path))
+            try File.System.Write.Atomic.write([], to: path)
 
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData.isEmpty)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData.isEmpty)
+        }
     }
 
     @Test("Write binary data")
     func writeBinaryData() throws {
-        let path = uniquePath(extension: "bin")
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "test.bin")
+            let binaryData: [UInt8] = [0x00, 0x01, 0xFF, 0xFE, 0x7F, 0x80]
 
-        let binaryData: [UInt8] = [0x00, 0x01, 0xFF, 0xFE, 0x7F, 0x80]
+            try File.System.Write.Atomic.write(binaryData, to: path)
 
-        try File.System.Write.Atomic.write(binaryData, to: File.Path(path))
-
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == binaryData)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == binaryData)
+        }
     }
 
     @Test("Write large file")
     func writeLargeFile() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "large.txt")
+            // 64KB of data
+            let largeData = [UInt8](repeating: 0xAB, count: 64 * 1024)
 
-        // 64KB of data
-        let largeData = [UInt8](repeating: 0xAB, count: 64 * 1024)
+            try File.System.Write.Atomic.write(largeData, to: path)
 
-        try File.System.Write.Atomic.write(largeData, to: File.Path(path))
-
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == largeData)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == largeData)
+        }
     }
 
     // MARK: - Path validation errors
@@ -104,67 +93,71 @@ extension File.System.Write.Atomic.Test.Unit {
 
     @Test("Replace existing file (default strategy)")
     func replaceExistingFile() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "replace.txt")
 
-        // First write
-        try File.System.Write.Atomic.write([1, 2, 3], to: File.Path(path))
+            // First write
+            try File.System.Write.Atomic.write([1, 2, 3], to: path)
 
-        // Second write should replace
-        let newData: [UInt8] = [4, 5, 6, 7, 8]
-        try File.System.Write.Atomic.write(newData, to: File.Path(path))
+            // Second write should replace
+            let newData: [UInt8] = [4, 5, 6, 7, 8]
+            try File.System.Write.Atomic.write(newData, to: path)
 
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == newData)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == newData)
+        }
     }
 
     @Test("Replace with explicit replaceExisting strategy")
     func explicitReplaceExisting() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "explicit.txt")
 
-        try File.System.Write.Atomic.write([1, 2, 3], to: File.Path(path))
+            try File.System.Write.Atomic.write([1, 2, 3], to: path)
 
-        let options = File.System.Write.Atomic.Options(strategy: .replaceExisting)
-        let newData: [UInt8] = [7, 8, 9]
-        try File.System.Write.Atomic.write(newData, to: File.Path(path), options: options)
+            let options = File.System.Write.Atomic.Options(strategy: .replaceExisting)
+            let newData: [UInt8] = [7, 8, 9]
+            try File.System.Write.Atomic.write(newData, to: path, options: options)
 
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == newData)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == newData)
+        }
     }
 
     // MARK: - Strategy: noClobber
 
     @Test("NoClobber strategy prevents overwrite")
     func noClobberPreventsOverwrite() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "noclobber.txt")
 
-        // First write should succeed
-        try File.System.Write.Atomic.write([1, 2, 3], to: File.Path(path))
+            // First write should succeed
+            try File.System.Write.Atomic.write([1, 2, 3], to: path)
 
-        // Second write with noClobber should fail
-        let options = File.System.Write.Atomic.Options(strategy: .noClobber)
-        #expect(throws: File.System.Write.Atomic.Error.self) {
-            try File.System.Write.Atomic.write([4, 5, 6], to: File.Path(path), options: options)
+            // Second write with noClobber should fail
+            let options = File.System.Write.Atomic.Options(strategy: .noClobber)
+            #expect(throws: File.System.Write.Atomic.Error.self) {
+                try File.System.Write.Atomic.write([4, 5, 6], to: path, options: options)
+            }
+
+            // Original content should be preserved
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == [1, 2, 3])
         }
-
-        // Original content should be preserved
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == [1, 2, 3])
     }
 
     @Test("NoClobber allows writing to new file")
     func noClobberAllowsNewFile() throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "newfile.txt")
 
-        let options = File.System.Write.Atomic.Options(strategy: .noClobber)
-        let data: [UInt8] = [1, 2, 3]
-        try File.System.Write.Atomic.write(data, to: File.Path(path), options: options)
+            let options = File.System.Write.Atomic.Options(strategy: .noClobber)
+            let data: [UInt8] = [1, 2, 3]
+            try File.System.Write.Atomic.write(data, to: path, options: options)
 
-        let readData = try File.System.Read.Full.read(from: File.Path(path))
-        #expect(readData == data)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == data)
+        }
     }
 
     // MARK: - Options
@@ -217,32 +210,31 @@ extension File.System.Write.Atomic.Test.Unit {
 
     @Test("Async write and read back")
     func asyncWriteAndReadBack() async throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "async.txt")
+            let testData: [UInt8] = [10, 20, 30, 40, 50]
 
-        let testData: [UInt8] = [10, 20, 30, 40, 50]
+            let bytes = testData
+            try File.System.Write.Atomic.write(bytes.span, to: path)
 
-        let filePath = try File.Path(path)
-        let bytes = testData
-        try File.System.Write.Atomic.write(bytes.span, to: filePath)
-
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
-        #expect(readData == testData)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == testData)
+        }
     }
 
     @Test("Async write with options")
     func asyncWriteWithOptions() async throws {
-        let path = uniquePath()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "asyncopt.txt")
 
-        let options = File.System.Write.Atomic.Options(strategy: .noClobber)
-        let data: [UInt8] = [1, 2, 3]
+            let options = File.System.Write.Atomic.Options(strategy: .noClobber)
+            let data: [UInt8] = [1, 2, 3]
 
-        let filePath = try File.Path(path)
-        try File.System.Write.Atomic.write(data.span, to: filePath, options: options)
+            try File.System.Write.Atomic.write(data.span, to: path, options: options)
 
-        let readData = try File.System.Read.Full.read(from: try File.Path(path))
-        #expect(readData == data)
+            let readData = try File.System.Read.Full.read(from: path)
+            #expect(readData == data)
+        }
     }
 
     // MARK: - Error descriptions
@@ -364,7 +356,7 @@ extension File.System.Write.Atomic.Test.Performance {
     func systemWrite1MB() throws {
         let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            td,
+            td.path,
             appending: "perf_syswrite_\(Int.random(in: 0..<Int.max)).bin"
         )
 

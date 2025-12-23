@@ -6,6 +6,7 @@
 //
 
 import File_System
+import File_System_Test_Support
 import StandardsTestSupport
 import Testing
 
@@ -17,27 +18,17 @@ extension File.Handle.Async {
 
 extension File.Handle.Async.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: [UInt8] = []) throws -> File.Path {
-        let path = try File.Path("/tmp/async-handle-test-\(Int.random(in: 0..<Int.max)).bin")
-        try File.System.Write.Atomic.write(content.span, to: path)
-        return path
-    }
-
-    private func cleanup(_ path: File.Path) {
-        try? File.System.Delete.delete(at: path)
-    }
-
     // MARK: - Opening
 
     @Test("Open file for reading")
     func openForReading() async throws {
         let io = File.IO.Executor()
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write(content.span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
             #expect(await handle.isOpen)
             #expect(handle.mode == .read)
@@ -45,15 +36,16 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     @Test("Open file for writing")
     func openForWriting() async throws {
         let io = File.IO.Executor()
-        let path = try createTempFile()
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .write, io: io)
             #expect(await handle.isOpen)
             #expect(handle.mode == .write)
@@ -61,7 +53,6 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     // MARK: - Reading
@@ -69,10 +60,12 @@ extension File.Handle.Async.Test.Unit {
     @Test("Read bytes from file")
     func readBytes() async throws {
         let io = File.IO.Executor()
-        let content: [UInt8] = [10, 20, 30, 40, 50]
-        let path = try createTempFile(content: content)
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let content: [UInt8] = [10, 20, 30, 40, 50]
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write(content.span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
             let data = try await handle.read(count: 5)
             #expect(data == content)
@@ -80,16 +73,17 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     @Test("Read partial bytes")
     func readPartialBytes() async throws {
         let io = File.IO.Executor()
-        let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        let path = try createTempFile(content: content)
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write(content.span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
 
             let first = try await handle.read(count: 5)
@@ -102,7 +96,6 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     // Note: read(into:) with caller-provided buffer is tested via integration tests.
@@ -113,9 +106,11 @@ extension File.Handle.Async.Test.Unit {
     @Test("Write bytes to file")
     func writeBytes() async throws {
         let io = File.IO.Executor()
-        let path = try createTempFile()
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: path)
+
             let handle = try await File.Handle.Async.open(
                 path,
                 mode: .write,
@@ -131,7 +126,6 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     // MARK: - Seeking
@@ -139,10 +133,12 @@ extension File.Handle.Async.Test.Unit {
     @Test("Seek and read")
     func seekAndRead() async throws {
         let io = File.IO.Executor()
-        let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        let path = try createTempFile(content: content)
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write(content.span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
 
             let pos = try await handle.seek(to: 5)
@@ -155,16 +151,17 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     @Test("Rewind and seekToEnd")
     func rewindAndSeekToEnd() async throws {
         let io = File.IO.Executor()
-        let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let content: [UInt8] = [1, 2, 3, 4, 5]
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write(content.span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
 
             // Read some data
@@ -182,7 +179,6 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     // MARK: - Close
@@ -190,9 +186,11 @@ extension File.Handle.Async.Test.Unit {
     @Test("Close is idempotent")
     func closeIsIdempotent() async throws {
         let io = File.IO.Executor()
-        let path = try createTempFile(content: [1, 2, 3])
 
-        do {
+        try await File.Directory.temporary { dir -> Void in
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: path)
+
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
             #expect(await handle.isOpen)
 
@@ -204,43 +202,57 @@ extension File.Handle.Async.Test.Unit {
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     @Test("Operations on closed handle throw")
     func operationsOnClosedThrow() async throws {
         let io = File.IO.Executor()
-        let path = try createTempFile(content: [1, 2, 3])
+
+        let base = try File.Directory.Temporary.system
+        let dirName = "test-\(Int.random(in: 0..<Int.max))"
+        let dirPath = File.Path(base.path, appending: dirName)
+        try await File.System.Create.Directory.create(at: dirPath)
+        defer { try? File.System.Delete.delete(at: dirPath, options: .init(recursive: true)) }
+
+        let dir = File.Directory(dirPath)
+        let path = File.Path(dir.path, appending: "test-file.bin")
+        try File.System.Write.Atomic.write([1, 2, 3].span, to: path)
+
+        let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
+        try await handle.close()
 
         do {
-            let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
-            try await handle.close()
-
-            do {
-                _ = try await handle.read(count: 10)
-                Issue.record("Expected error to be thrown")
-            } catch {
-                // error is File.IO.Error<File.Handle.Error>
-                guard case .operation(.invalidHandle) = error else {
-                    Issue.record("Expected .operation(.invalidHandle), got \(error)")
-                    return
-                }
+            _ = try await handle.read(count: 10)
+            Issue.record("Expected error to be thrown")
+        } catch {
+            // error is File.IO.Error<File.Handle.Error>
+            if case .operation(.invalidHandle) = error {
+                // Expected error
+            } else {
+                Issue.record("Expected .operation(.invalidHandle), got \(error)")
             }
         }
 
         await io.shutdown()
-        cleanup(path)
     }
 
     // MARK: - Handle Store Tests
 
     @Test("Handle ID scope mismatch throws")
     func scopeMismatchThrows() async throws {
-        let io1 = File.IO.Executor()
-        let io2 = File.IO.Executor()
-        let path = try createTempFile(content: [1, 2, 3])
+        try await File.Directory.temporary { dir -> Void in
+            let io1 = File.IO.Executor()
+            let io2 = File.IO.Executor()
+            defer {
+                Task {
+                    await io1.shutdown()
+                    await io2.shutdown()
+                }
+            }
 
-        do {
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: path)
+
             // Open on io1
             let handle = try await File.Handle.Async.open(path, mode: .read, io: io1)
 
@@ -250,27 +262,26 @@ extension File.Handle.Async.Test.Unit {
 
             try await handle.close()
         }
-
-        await io1.shutdown()
-        await io2.shutdown()
-        cleanup(path)
     }
 
     @Test("Shutdown closes remaining handles")
     func shutdownClosesHandles() async throws {
-        let io = File.IO.Executor()
-        let path = try createTempFile(content: [1, 2, 3])
+        try await File.Directory.temporary { dir -> Void in
+            let io = File.IO.Executor()
 
-        // Open but don't explicitly close - shutdown should handle it
-        let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
+            let path = File.Path(dir.path, appending: "test-file.bin")
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: path)
 
-        // Shutdown should close the handle (best-effort)
-        await io.shutdown()
+            // Open but don't explicitly close - shutdown should handle it
+            let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
 
-        // Handle should no longer be valid (shutdown closed it)
-        #expect(await !handle.isOpen)
+            // Shutdown should close the handle (best-effort)
+            await io.shutdown()
 
-        // Now the handle can go out of scope safely - isClosed should be true
-        cleanup(path)
+            // Handle should no longer be valid (shutdown closed it)
+            #expect(await !handle.isOpen)
+
+            // Now the handle can go out of scope safely - isClosed should be true
+        }
     }
 }

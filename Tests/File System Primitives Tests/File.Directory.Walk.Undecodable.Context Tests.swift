@@ -19,8 +19,8 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     // MARK: - Initialization
 
     @Test("init stores all properties")
-    func initStoresAllProperties() throws {
-        let parent = try File.Path("/tmp/test")
+    func initStoresAllProperties() {
+        let parent: File.Path = "/tmp/test"
         let name = File.Name(rawBytes: [0x80, 0x81])
         let type: File.Directory.Entry.Kind = .file
         let depth = 3
@@ -41,8 +41,8 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     // MARK: - Parent Property
 
     @Test("parent property returns the parent path")
-    func parentProperty() throws {
-        let parent = try File.Path("/usr/local/bin")
+    func parentProperty() {
+        let parent: File.Path = "/usr/local/bin"
         let context = File.Directory.Walk.Undecodable.Context(
             parent: parent,
             name: File.Name(rawBytes: [0x80]),
@@ -57,10 +57,10 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     // MARK: - Name Property
 
     @Test("name property returns the undecodable name")
-    func nameProperty() throws {
+    func nameProperty() {
         let name = File.Name(rawBytes: [0x80, 0x81, 0x82])
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: name,
             type: .file,
             depth: 0
@@ -70,10 +70,10 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("name.debugDescription is accessible for logging")
-    func nameDebugDescription() throws {
+    func nameDebugDescription() {
         let name = File.Name(rawBytes: [0xAB, 0xCD])
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: name,
             type: .file,
             depth: 0
@@ -85,10 +85,10 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("name can be lossy decoded for display")
-    func nameLossyDecoded() throws {
+    func nameLossyDecoded() {
         let name = File.Name(rawBytes: [0x80])
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: name,
             type: .file,
             depth: 0
@@ -101,9 +101,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     // MARK: - Type Property
 
     @Test("type property returns file")
-    func typePropertyFile() throws {
+    func typePropertyFile() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 0
@@ -113,9 +113,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("type property returns directory")
-    func typePropertyDirectory() throws {
+    func typePropertyDirectory() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .directory,
             depth: 0
@@ -125,9 +125,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("type property returns symbolicLink")
-    func typePropertySymbolicLink() throws {
+    func typePropertySymbolicLink() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .symbolicLink,
             depth: 0
@@ -137,9 +137,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("type property returns other")
-    func typePropertyOther() throws {
+    func typePropertyOther() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/dev"),
+            parent: "/dev",
             name: File.Name(rawBytes: [0x80]),
             type: .other,
             depth: 0
@@ -151,9 +151,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     // MARK: - Depth Property
 
     @Test("depth property returns zero for root directory")
-    func depthZero() throws {
+    func depthZero() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 0
@@ -163,9 +163,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("depth property returns positive value for nested entries")
-    func depthPositive() throws {
+    func depthPositive() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp/a/b/c"),
+            parent: "/tmp/a/b/c",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 3
@@ -175,9 +175,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     }
 
     @Test("depth property can be large")
-    func depthLarge() throws {
+    func depthLarge() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/very/deep/path"),
+            parent: "/very/deep/path",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 100
@@ -189,8 +189,8 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
     // MARK: - Sendable
 
     @Test("Context is Sendable")
-    func sendable() async throws {
-        let parent = try File.Path("/tmp")
+    func sendable() async {
+        let parent: File.Path = "/tmp"
         let name = File.Name(rawBytes: [0x80])
         let context = File.Directory.Walk.Undecodable.Context(
             parent: parent,
@@ -215,9 +215,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.Unit {
 extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
 
     @Test("context with root path as parent")
-    func rootPathParent() throws {
+    func rootPathParent() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/"),
+            parent: "/",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 0
@@ -227,9 +227,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
     }
 
     @Test("context with unicode parent path")
-    func unicodeParent() throws {
+    func unicodeParent() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/日本語/フォルダ"),
+            parent: "/日本語/フォルダ",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 2
@@ -239,10 +239,10 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
     }
 
     @Test("context with various invalid byte patterns")
-    func variousInvalidBytes() throws {
+    func variousInvalidBytes() {
         // Lone continuation byte
         let context1 = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 0
@@ -251,7 +251,7 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
 
         // Invalid start byte
         let context2 = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0xFF]),
             type: .file,
             depth: 0
@@ -260,7 +260,7 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
 
         // Overlong encoding
         let context3 = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0xC0, 0xAF]),
             type: .file,
             depth: 0
@@ -269,7 +269,7 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
     }
 
     @Test("context used in callback pattern")
-    func callbackPattern() throws {
+    func callbackPattern() {
         var capturedContext: File.Directory.Walk.Undecodable.Context?
 
         let handler:
@@ -280,7 +280,7 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
             }
 
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .directory,
             depth: 5
@@ -303,9 +303,9 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
     }
 
     @Test("context properties can be destructured")
-    func destructuring() throws {
+    func destructuring() {
         let context = File.Directory.Walk.Undecodable.Context(
-            parent: try File.Path("/tmp"),
+            parent: "/tmp",
             name: File.Name(rawBytes: [0x80]),
             type: .file,
             depth: 2
@@ -323,16 +323,16 @@ extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
     }
 
     @Test("context can be stored in collection")
-    func storedInCollection() throws {
+    func storedInCollection() {
         let contexts = [
             File.Directory.Walk.Undecodable.Context(
-                parent: try File.Path("/tmp"),
+                parent: "/tmp",
                 name: File.Name(rawBytes: [0x80]),
                 type: .file,
                 depth: 0
             ),
             File.Directory.Walk.Undecodable.Context(
-                parent: try File.Path("/var"),
+                parent: "/var",
                 name: File.Name(rawBytes: [0x81]),
                 type: .directory,
                 depth: 1

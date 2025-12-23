@@ -109,7 +109,10 @@ extension File.System.Metadata.Permissions {
     ///   - permissions: The permissions to set.
     ///   - path: The path to the file.
     /// - Throws: `File.System.Metadata.Permissions.Error` on failure.
-    public static func set(_ permissions: Self, at path: File.Path) throws(File.System.Metadata.Permissions.Error) {
+    public static func set(
+        _ permissions: Self,
+        at path: File.Path
+    ) throws(File.System.Metadata.Permissions.Error) {
         #if os(Windows)
             // Windows doesn't have POSIX permissions - this is a no-op
             return

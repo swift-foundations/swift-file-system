@@ -11,12 +11,12 @@ let package = Package(
         .watchOS(.v26),
     ],
     products: [
-        // Only File System is public; Primitives and Async are internal
         .library(name: "File System", targets: ["File System"]),
+        .library(name: "File System Test Support", targets: ["File System Test Support"]),
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-system", from: "1.4.0"),
-        .package(path: "../swift-async-algorithms"),
+        .package(url: "https://github.com/coenttb/swift-async-algorithms-fork.git", from: "1.2.0"),
         .package(url: "https://github.com/swift-standards/swift-standards", from: "0.19.4"),
         .package(url: "https://github.com/swift-standards/swift-incits-4-1986", from: "0.7.1"),
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
@@ -78,7 +78,7 @@ let package = Package(
             name: "File System Async",
             dependencies: [
                 "File System Primitives",
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms-fork"),
             ]
         ),
         .testTarget(
@@ -110,9 +110,10 @@ let package = Package(
 
 for target in package.targets where ![.system, .binary, .plugin].contains(target.type) {
     let existing = target.swiftSettings ?? []
-    target.swiftSettings = existing + [
-        .enableUpcomingFeature("ExistentialAny"),
-        .enableUpcomingFeature("InternalImportsByDefault"),
-        .enableUpcomingFeature("MemberImportVisibility"),
-    ]
+    target.swiftSettings =
+        existing + [
+            .enableUpcomingFeature("ExistentialAny"),
+            .enableUpcomingFeature("InternalImportsByDefault"),
+            .enableUpcomingFeature("MemberImportVisibility"),
+        ]
 }

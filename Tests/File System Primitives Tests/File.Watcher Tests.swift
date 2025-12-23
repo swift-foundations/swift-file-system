@@ -24,7 +24,7 @@ extension File.Watcher.Test.Unit {
 extension File.Watcher.Test.Unit {
     @Test("Event init")
     func eventInit() throws {
-        let path = try File.Path("/tmp/watched.txt")
+        let path = File.Path("/tmp/watched.txt")
         let event = File.Watcher.Event(path: path, type: .created)
 
         #expect(event.path == path)
@@ -33,7 +33,7 @@ extension File.Watcher.Test.Unit {
 
     @Test("Event with different types")
     func eventWithDifferentTypes() throws {
-        let path = try File.Path("/tmp/watched.txt")
+        let path = File.Path("/tmp/watched.txt")
 
         let created = File.Watcher.Event(path: path, type: .created)
         #expect(created.type == .created)

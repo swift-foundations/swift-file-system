@@ -7,6 +7,7 @@
 
 import StandardsTestSupport
 import Testing
+import File_System_Test_Support
 
 @testable import File_System_Primitives
 
@@ -15,144 +16,109 @@ extension File.System.Link.Read.Target {
 }
 
 extension File.System.Link.Read.Target.Test.Unit {
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-        let path = "/tmp/readtarget-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
-        return path
-    }
-
-    private func createTempDir() throws -> String {
-        let path = "/tmp/readtarget-dir-\(Int.random(in: 0..<Int.max))"
-        try File.System.Create.Directory.create(at: try File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Read Target
 
     @Test("Read target of symlink to file")
     func readTargetOfSymlinkToFile() throws {
-        let targetPath = try createTempFile()
-        let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(targetPath)
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let targetPath = File.Path(dir.path, appending: "target.bin")
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: targetPath)
+
+            let linkPath = File.Path(dir.path, appending: "link")
+            try File.System.Link.Symbolic.create(
+                at: linkPath,
+                pointingTo: targetPath
+            )
+
+            let target = try File.System.Link.Read.Target.target(of: linkPath)
+            #expect(target.string == targetPath.string)
         }
-
-        try File.System.Link.Symbolic.create(
-            at: try File.Path(linkPath),
-            pointingTo: try File.Path(targetPath)
-        )
-
-        let link = try File.Path(linkPath)
-        let target = try File.System.Link.Read.Target.target(of: link)
-
-        #expect(target.string == targetPath)
     }
 
     @Test("Read target of symlink to directory")
     func readTargetOfSymlinkToDirectory() throws {
-        let targetPath = try createTempDir()
-        let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(targetPath)
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let targetPath = File.Path(dir.path, appending: "target-dir")
+            try File.System.Create.Directory.create(at: targetPath)
+
+            let linkPath = File.Path(dir.path, appending: "link")
+            try File.System.Link.Symbolic.create(
+                at: linkPath,
+                pointingTo: targetPath
+            )
+
+            let target = try File.System.Link.Read.Target.target(of: linkPath)
+            #expect(target.string == targetPath.string)
         }
-
-        try File.System.Link.Symbolic.create(
-            at: try File.Path(linkPath),
-            pointingTo: try File.Path(targetPath)
-        )
-
-        let link = try File.Path(linkPath)
-        let target = try File.System.Link.Read.Target.target(of: link)
-
-        #expect(target.string == targetPath)
     }
 
     @Test("Read target of dangling symlink")
     func readTargetOfDanglingSymlink() throws {
-        let targetPath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let linkPath = "/tmp/link-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let targetPath = File.Path(dir.path, appending: "non-existent")
+            let linkPath = File.Path(dir.path, appending: "link")
+
+            try File.System.Link.Symbolic.create(
+                at: linkPath,
+                pointingTo: targetPath
+            )
+
+            let target = try File.System.Link.Read.Target.target(of: linkPath)
+            #expect(target.string == targetPath.string)
         }
-
-        try File.System.Link.Symbolic.create(
-            at: try File.Path(linkPath),
-            pointingTo: try File.Path(targetPath)
-        )
-
-        let link = try File.Path(linkPath)
-        let target = try File.System.Link.Read.Target.target(of: link)
-
-        #expect(target.string == targetPath)
     }
 
     @Test("Read target of relative symlink")
     func readTargetOfRelativeSymlink() throws {
-        let dirPath = try createTempDir()
-        let targetPath = "\(dirPath)/target.txt"
-        let linkPath = "\(dirPath)/link.txt"
-        defer {
-            cleanup(dirPath)
+        try File.Directory.temporary { dir in
+            let targetPath = File.Path(dir.path, appending: "target.txt")
+            try File.System.Write.Atomic.write([], to: targetPath)
+
+            let linkPath = File.Path(dir.path, appending: "link.txt")
+            try File.System.Link.Symbolic.create(
+                at: linkPath,
+                pointingTo: File.Path("target.txt")
+            )
+
+            let target = try File.System.Link.Read.Target.target(of: linkPath)
+            #expect(target.string == "target.txt")
         }
-
-        // Create target file
-        try File.System.Write.Atomic.write([], to: File.Path(targetPath))
-
-        // Create relative symlink
-        try File.System.Link.Symbolic.create(
-            at: try File.Path(linkPath),
-            pointingTo: try File.Path("target.txt")
-        )
-
-        let link = try File.Path(linkPath)
-        let target = try File.System.Link.Read.Target.target(of: link)
-
-        #expect(target.string == "target.txt")
     }
 
     // MARK: - Error Cases
 
     @Test("Read target of regular file throws notASymlink")
     func readTargetOfRegularFileThrows() throws {
-        let filePath = try createTempFile()
-        defer { cleanup(filePath) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "file.bin")
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
 
-        let path = try File.Path(filePath)
-
-        #expect(throws: File.System.Link.Read.Target.Error.notASymlink(path)) {
-            _ = try File.System.Link.Read.Target.target(of: path)
+            #expect(throws: File.System.Link.Read.Target.Error.notASymlink(filePath)) {
+                _ = try File.System.Link.Read.Target.target(of: filePath)
+            }
         }
     }
 
     @Test("Read target of directory throws notASymlink")
     func readTargetOfDirectoryThrows() throws {
-        let dirPath = try createTempDir()
-        defer { cleanup(dirPath) }
+        try File.Directory.temporary { dir in
+            let dirPath = File.Path(dir.path, appending: "subdir")
+            try File.System.Create.Directory.create(at: dirPath)
 
-        let path = try File.Path(dirPath)
-
-        #expect(throws: File.System.Link.Read.Target.Error.notASymlink(path)) {
-            _ = try File.System.Link.Read.Target.target(of: path)
+            #expect(throws: File.System.Link.Read.Target.Error.notASymlink(dirPath)) {
+                _ = try File.System.Link.Read.Target.target(of: dirPath)
+            }
         }
     }
 
     @Test("Read target of non-existent path throws pathNotFound")
     func readTargetOfNonExistentPathThrows() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let path = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let nonExistent = File.Path(dir.path, appending: "non-existent")
 
-        #expect(throws: File.System.Link.Read.Target.Error.pathNotFound(path)) {
-            _ = try File.System.Link.Read.Target.target(of: path)
+            #expect(throws: File.System.Link.Read.Target.Error.pathNotFound(nonExistent)) {
+                _ = try File.System.Link.Read.Target.target(of: nonExistent)
+            }
         }
     }
 
@@ -160,21 +126,21 @@ extension File.System.Link.Read.Target.Test.Unit {
 
     @Test("notASymlink error description")
     func notASymlinkErrorDescription() throws {
-        let path = try File.Path("/tmp/regular")
+        let path = File.Path("/tmp/regular")
         let error = File.System.Link.Read.Target.Error.notASymlink(path)
         #expect(error.description.contains("Not a symbolic link"))
     }
 
     @Test("pathNotFound error description")
     func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Link.Read.Target.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Link.Read.Target.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
@@ -190,8 +156,8 @@ extension File.System.Link.Read.Target.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Link.Read.Target.Error.notASymlink(path1)

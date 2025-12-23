@@ -26,22 +26,6 @@ extension File.System.Metadata.Timestamps {
 
 extension File.System.Metadata.Timestamps.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile() throws -> String {
-        let path = "/tmp/timestamps-test-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
-        let empty: [UInt8] = []
-        try File.System.Write.Atomic.write(empty.span, to: filePath)
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath)
-        }
-    }
-
     // MARK: - Initialization
 
     @Test("Timestamps initialization")
@@ -76,110 +60,120 @@ extension File.System.Metadata.Timestamps.Test.Unit {
 
     @Test("Get timestamps of file")
     func getTimestampsOfFile() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            let empty: [UInt8] = []
+            try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let timestamps = try File.System.Metadata.Timestamps(at: filePath)
+            let timestamps = try File.System.Metadata.Timestamps(at: filePath)
 
-        // Timestamps should be positive (i.e., after Unix epoch)
-        #expect(timestamps.accessTime.secondsSinceEpoch > 0)
-        #expect(timestamps.modificationTime.secondsSinceEpoch > 0)
+            // Timestamps should be positive (i.e., after Unix epoch)
+            #expect(timestamps.accessTime.secondsSinceEpoch > 0)
+            #expect(timestamps.modificationTime.secondsSinceEpoch > 0)
+        }
     }
 
     @Test("Modification time updates on file write")
     func modificationTimeUpdatesOnWrite() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            let empty: [UInt8] = []
+            try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
+            let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
 
-        // Wait a small amount and write to the file
-        usleep(100_000)  // 100ms
-        try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
+            // Wait a small amount and write to the file
+            usleep(100_000)  // 100ms
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
 
-        let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
+            let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
 
-        #expect(
-            afterWrite.modificationTime.secondsSinceEpoch
-                >= beforeWrite.modificationTime.secondsSinceEpoch
-        )
+            #expect(
+                afterWrite.modificationTime.secondsSinceEpoch
+                    >= beforeWrite.modificationTime.secondsSinceEpoch
+            )
+        }
     }
 
     // MARK: - Set Timestamps
 
     @Test("Set timestamps of file")
     func setTimestampsOfFile() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            let empty: [UInt8] = []
+            try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-        let filePath = try File.Path(path)
+            // Set to a specific time (Jan 1, 2020 00:00:00 UTC)
+            let targetTime = Time(__unchecked: (), secondsSinceEpoch: 1_577_836_800, nanoseconds: 0)
+            let timestamps = File.System.Metadata.Timestamps(
+                accessTime: targetTime,
+                modificationTime: targetTime,
+                changeTime: targetTime
+            )
 
-        // Set to a specific time (Jan 1, 2020 00:00:00 UTC)
-        let targetTime = Time(__unchecked: (), secondsSinceEpoch: 1_577_836_800, nanoseconds: 0)
-        let timestamps = File.System.Metadata.Timestamps(
-            accessTime: targetTime,
-            modificationTime: targetTime,
-            changeTime: targetTime
-        )
+            try File.System.Metadata.Timestamps.set(timestamps, at: filePath)
 
-        try File.System.Metadata.Timestamps.set(timestamps, at: filePath)
-
-        let readBack = try File.System.Metadata.Timestamps(at: filePath)
-        #expect(readBack.accessTime.secondsSinceEpoch == targetTime.secondsSinceEpoch)
-        #expect(readBack.modificationTime.secondsSinceEpoch == targetTime.secondsSinceEpoch)
+            let readBack = try File.System.Metadata.Timestamps(at: filePath)
+            #expect(readBack.accessTime.secondsSinceEpoch == targetTime.secondsSinceEpoch)
+            #expect(readBack.modificationTime.secondsSinceEpoch == targetTime.secondsSinceEpoch)
+        }
     }
 
     @Test("Set different access and modification times")
     func setDifferentTimes() throws {
-        let path = try createTempFile()
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            let empty: [UInt8] = []
+            try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-        let filePath = try File.Path(path)
+            // Jan 1, 2020
+            let accessTime = Time(__unchecked: (), secondsSinceEpoch: 1_577_836_800, nanoseconds: 0)
+            // Jan 1, 2021
+            let modTime = Time(__unchecked: (), secondsSinceEpoch: 1_609_459_200, nanoseconds: 0)
 
-        let accessTime = Time(__unchecked: (), secondsSinceEpoch: 1_577_836_800, nanoseconds: 0)  // Jan 1, 2020
-        let modTime = Time(__unchecked: (), secondsSinceEpoch: 1_609_459_200, nanoseconds: 0)  // Jan 1, 2021
+            let timestamps = File.System.Metadata.Timestamps(
+                accessTime: accessTime,
+                modificationTime: modTime,
+                changeTime: modTime
+            )
 
-        let timestamps = File.System.Metadata.Timestamps(
-            accessTime: accessTime,
-            modificationTime: modTime,
-            changeTime: modTime
-        )
+            try File.System.Metadata.Timestamps.set(timestamps, at: filePath)
 
-        try File.System.Metadata.Timestamps.set(timestamps, at: filePath)
-
-        let readBack = try File.System.Metadata.Timestamps(at: filePath)
-        #expect(readBack.accessTime.secondsSinceEpoch == accessTime.secondsSinceEpoch)
-        #expect(readBack.modificationTime.secondsSinceEpoch == modTime.secondsSinceEpoch)
+            let readBack = try File.System.Metadata.Timestamps(at: filePath)
+            #expect(readBack.accessTime.secondsSinceEpoch == accessTime.secondsSinceEpoch)
+            #expect(readBack.modificationTime.secondsSinceEpoch == modTime.secondsSinceEpoch)
+        }
     }
 
     // MARK: - Error Cases
 
     @Test("Get timestamps of non-existent file throws pathNotFound")
     func getTimestampsOfNonExistentFileThrows() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let path = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "non-existent.txt")
 
-        #expect(throws: File.System.Metadata.Timestamps.Error.pathNotFound(path)) {
-            _ = try File.System.Metadata.Timestamps(at: path)
+            #expect(throws: File.System.Metadata.Timestamps.Error.pathNotFound(path)) {
+                _ = try File.System.Metadata.Timestamps(at: path)
+            }
         }
     }
 
     @Test("Set timestamps of non-existent file throws pathNotFound")
     func setTimestampsOfNonExistentFileThrows() throws {
-        let nonExistent = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let path = try File.Path(nonExistent)
+        try File.Directory.temporary { dir in
+            let path = File.Path(dir.path, appending: "non-existent.txt")
 
-        let testTime = Time(__unchecked: (), secondsSinceEpoch: 1_702_900_000, nanoseconds: 0)
-        let timestamps = File.System.Metadata.Timestamps(
-            accessTime: testTime,
-            modificationTime: testTime,
-            changeTime: testTime
-        )
+            let testTime = Time(__unchecked: (), secondsSinceEpoch: 1_702_900_000, nanoseconds: 0)
+            let timestamps = File.System.Metadata.Timestamps(
+                accessTime: testTime,
+                modificationTime: testTime,
+                changeTime: testTime
+            )
 
-        #expect(throws: File.System.Metadata.Timestamps.Error.pathNotFound(path)) {
-            try File.System.Metadata.Timestamps.set(timestamps, at: path)
+            #expect(throws: File.System.Metadata.Timestamps.Error.pathNotFound(path)) {
+                try File.System.Metadata.Timestamps.set(timestamps, at: path)
+            }
         }
     }
 

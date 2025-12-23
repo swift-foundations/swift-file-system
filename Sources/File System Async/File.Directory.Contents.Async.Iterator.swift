@@ -37,15 +37,15 @@ extension File.Directory.Contents.Async {
             case finished
         }
 
-        private let path: File.Path
+        private let directory: File.Directory
         private let io: File.IO.Executor
         private var state: State = .unopened
         private var buffer: [Element] = []
         private var cursor: Int = 0
         internal let batchSize: Int
 
-        init(path: File.Path, io: File.IO.Executor, batchSize: Int = 64) {
-            self.path = path
+        init(directory: File.Directory, io: File.IO.Executor, batchSize: Int = 64) {
+            self.directory = directory
             self.io = io
             self.batchSize = batchSize
         }
@@ -56,7 +56,7 @@ extension File.Directory.Contents.Async {
             #if DEBUG
                 if case .open = state {
                     print(
-                        "Warning: Contents.Async.Iterator deallocated without terminate() for path: \(path)"
+                        "Warning: Contents.Async.Iterator deallocated without terminate() for directory: \(directory)"
                     )
                 }
             #endif
@@ -98,8 +98,9 @@ extension File.Directory.Contents.Async {
         private func open() async throws(File.IO.Error<File.Directory.Iterator.Error>) {
             // INVARIANT: IteratorBox only touched inside io.run
             // Explicit typed throws in closure signature for proper inference
-            let openOperation: @Sendable () throws(File.Directory.Iterator.Error) -> Box = { [path] () throws(File.Directory.Iterator.Error) -> Box in
-                try Box(File.Directory.Iterator.open(at: path))
+            let openOperation: @Sendable () throws(File.Directory.Iterator.Error) -> Box = {
+                [directory] () throws(File.Directory.Iterator.Error) -> Box in
+                try Box(File.Directory.Iterator.open(at: directory))
             }
             let box = try await io.run(openOperation)
             state = .open(box)
@@ -116,9 +117,13 @@ extension File.Directory.Contents.Async {
                 batch.reserveCapacity(batchSize)
                 for _ in 0..<batchSize {
                     // withValue returns nil if box is closed, next() returns nil at EOF
-                    guard let maybeEntry = try box.withValue({ (iter: inout File.Directory.Iterator) throws(File.Directory.Iterator.Error) in
-                        try iter.next()
-                    }),
+                    guard
+                        let maybeEntry = try box.withValue({
+                            (
+                                iter: inout File.Directory.Iterator
+                            ) throws(File.Directory.Iterator.Error) in
+                            try iter.next()
+                        }),
                         let entry = maybeEntry
                     else { break }
                     batch.append(entry)
@@ -138,20 +143,12 @@ extension File.Directory.Contents.Async {
                     await closeBox(box)
                     state = .finished
                 }
-            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+            } catch {
                 // Cleanup and rethrow
                 // INVARIANT: IteratorBox only touched inside io.run
                 await closeBox(box)
                 state = .finished
                 throw error
-            } catch is CancellationError {
-                await closeBox(box)
-                state = .finished
-                throw .cancelled
-            } catch {
-                await closeBox(box)
-                state = .finished
-                throw .operation(.readFailed(errno: 0, message: "Unknown error: \(error)"))
             }
         }
 

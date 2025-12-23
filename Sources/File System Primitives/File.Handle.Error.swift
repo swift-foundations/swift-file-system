@@ -14,7 +14,7 @@ extension File.Handle {
         case isDirectory(File.Path)
         case invalidHandle
         case alreadyClosed
-        case seekFailed(errno: Int32, message: String)
+        case seekFailed(offset: Int64, origin: File.Handle.Seek.Origin, errno: Int32, message: String)
         case readFailed(errno: Int32, message: String)
         case writeFailed(errno: Int32, message: String)
         case closeFailed(errno: Int32, message: String)
@@ -39,8 +39,8 @@ extension File.Handle.Error: CustomStringConvertible {
             return "Invalid file handle"
         case .alreadyClosed:
             return "Handle already closed"
-        case .seekFailed(let errno, let message):
-            return "Seek failed: \(message) (errno=\(errno))"
+        case .seekFailed(let offset, let origin, let errno, let message):
+            return "Seek to \(offset) from \(origin) failed: \(message) (errno=\(errno))"
         case .readFailed(let errno, let message):
             return "Read failed: \(message) (errno=\(errno))"
         case .writeFailed(let errno, let message):

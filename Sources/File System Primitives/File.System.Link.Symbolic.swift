@@ -41,7 +41,10 @@ extension File.System.Link.Symbolic {
     ///   - path: The path where the symlink will be created.
     ///   - target: The path the symlink will point to.
     /// - Throws: `File.System.Link.Symbolic.Error` on failure.
-    public static func create(at path: File.Path, pointingTo target: File.Path) throws(File.System.Link.Symbolic.Error) {
+    public static func create(
+        at path: File.Path,
+        pointingTo target: File.Path
+    ) throws(File.System.Link.Symbolic.Error) {
         #if os(Windows)
             try _createWindows(at: path, pointingTo: target)
         #else

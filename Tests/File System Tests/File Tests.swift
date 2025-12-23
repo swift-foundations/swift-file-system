@@ -37,7 +37,7 @@ extension File.Test.Unit {
 
     @Test("init from path")
     func initFromPath() throws {
-        let path = try File.Path("/tmp/test.txt")
+        let path = File.Path("/tmp/test.txt")
         let file = File(path)
         #expect(file.path == path)
     }

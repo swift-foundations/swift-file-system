@@ -39,7 +39,9 @@ extension File {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Read.Full.Error>` on failure.
-    public func read<S: StringProtocol>(as type: S.Type) async throws(File.IO.Error<File.System.Read.Full.Error>) -> S {
+    public func read<S: StringProtocol>(
+        as type: S.Type
+    ) async throws(File.IO.Error<File.System.Read.Full.Error>) -> S {
         let bytes = try await File.System.Read.Full.read(from: path)
         return S(decoding: bytes, as: UTF8.self)
     }
@@ -132,7 +134,8 @@ extension File {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
-    public func append(_ bytes: [UInt8]) async throws(File.IO.Error<File.System.Write.Append.Error>) {
+    public func append(_ bytes: [UInt8]) async throws(File.IO.Error<File.System.Write.Append.Error>)
+    {
         try await File.System.Write.Append.append(bytes, to: path)
     }
 
@@ -148,7 +151,8 @@ extension File {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
-    public func append(_ string: String) async throws(File.IO.Error<File.System.Write.Append.Error>) {
+    public func append(_ string: String) async throws(File.IO.Error<File.System.Write.Append.Error>)
+    {
         try await append(Array(string.utf8))
     }
 }
@@ -185,7 +189,8 @@ extension File {
     public func write<Chunks: Sequence & Sendable>(
         streaming chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
-    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>) where Chunks.Element == [UInt8] {
+    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>)
+    where Chunks.Element == [UInt8] {
         try await File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
 
@@ -211,9 +216,9 @@ extension File {
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// - Returns: Self for chaining.
-    /// - Throws: `File.Error` on failure.
+    /// - Throws: `File.Handle.Error` on failure.
     @discardableResult
-    public func touch() throws(File.Error) -> Self {
+    public func touch() throws(File.Handle.Error) -> Self {
         // Opening with .create and readWrite mode will create the file if it doesn't exist,
         // or update its access/modification times if it does.
         try File.Handle.open(path, options: [.create]).readWrite { _ in }
@@ -223,9 +228,9 @@ extension File {
     /// Creates an empty file or updates its timestamp if it exists.
     ///
     /// Async variant.
-    /// - Throws: `File.Error` on failure.
+    /// - Throws: `File.Handle.Error` on failure.
     @discardableResult
-    public func touch() async throws(File.Error) -> Self {
+    public func touch() async throws(File.Handle.Error) -> Self {
         try File.Handle.open(path, options: [.create]).readWrite { _ in }
         return self
     }
@@ -302,7 +307,9 @@ extension File {
     ///
     /// - Parameter options: Delete options (e.g., recursive for directories).
     /// - Throws: `File.System.Delete.Error` on failure.
-    public func delete(options: File.System.Delete.Options = .init()) throws(File.System.Delete.Error) {
+    public func delete(
+        options: File.System.Delete.Options = .init()
+    ) throws(File.System.Delete.Error) {
         try File.System.Delete.delete(at: path, options: options)
     }
 
@@ -310,7 +317,9 @@ extension File {
     ///
     /// Async variant.
     /// - Throws: `File.IO.Error<File.System.Delete.Error>` on failure.
-    public func delete(options: File.System.Delete.Options = .init()) async throws(File.IO.Error<File.System.Delete.Error>) {
+    public func delete(
+        options: File.System.Delete.Options = .init()
+    ) async throws(File.IO.Error<File.System.Delete.Error>) {
         try await File.System.Delete.delete(at: path, options: options)
     }
 

@@ -100,7 +100,8 @@ extension File.System.Write.Atomic {
         to path: File.Path,
         options: Options = Options()
     ) throws(File.System.Write.Atomic.Error) {
-        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(File.System.Write.Atomic.Error) in
+        try S.withSerializedBytes(value) {
+            (span: borrowing Span<UInt8>) throws(File.System.Write.Atomic.Error) in
             try write(span, to: path, options: options)
         }
     }

@@ -157,7 +157,7 @@ extension File.Path.Component.Test.Unit {
 
     @Test("Component can be appended to path")
     func componentAppendedToPath() throws {
-        let path = try File.Path("/usr/local")
+        let path = File.Path("/usr/local")
         let component: File.Path.Component = try .init("bin")
         let newPath = File.Path(path, appending: component)
         #expect(newPath.string == "/usr/local/bin")
@@ -165,7 +165,7 @@ extension File.Path.Component.Test.Unit {
 
     @Test("Path lastComponent returns component")
     func pathLastComponentReturnsComponent() throws {
-        let path = try File.Path("/usr/local/bin")
+        let path = File.Path("/usr/local/bin")
         let lastComp = path.lastComponent
         #expect(lastComp?.string == "bin")
     }

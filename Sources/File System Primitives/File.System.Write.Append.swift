@@ -69,7 +69,8 @@ extension File.System.Write.Append {
         _ value: S,
         to path: File.Path
     ) throws(File.System.Write.Append.Error) {
-        try S.withSerializedBytes(value) { (span: borrowing Span<UInt8>) throws(File.System.Write.Append.Error) in
+        try S.withSerializedBytes(value) {
+            (span: borrowing Span<UInt8>) throws(File.System.Write.Append.Error) in
             try append(span, to: path)
         }
     }

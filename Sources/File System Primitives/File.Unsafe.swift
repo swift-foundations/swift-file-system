@@ -7,5 +7,6 @@
 
 extension File {
     /// Namespace for unsafe utility types.
-    package enum Unsafe {}
+    @usableFromInline
+    internal enum Unsafe {}
 }

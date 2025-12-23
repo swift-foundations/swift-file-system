@@ -7,6 +7,7 @@
 
 import StandardsTestSupport
 import Testing
+import File_System_Test_Support
 
 @testable import File_System_Primitives
 
@@ -16,146 +17,112 @@ extension File.System.Link.Hard {
 
 extension File.System.Link.Hard.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    /// Writes bytes in-place using a file handle (doesn't replace the file).
-    /// This is important for hard link tests where we need to preserve the inode.
-    private func writeBytesInPlace(_ bytes: [UInt8], to path: File.Path) throws {
-        var handle = try File.Handle.open(path, mode: .write, options: [.truncate])
-        try handle.write(bytes.span)
-        try handle.close()
-    }
-
-    private func createTempFile(content: [UInt8] = [1, 2, 3]) throws -> String {
-        let path = "/tmp/hardlink-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Create Hard Link
 
     @Test("Create hard link to file")
     func createHardLinkToFile() throws {
-        let existingPath = try createTempFile(content: [1, 2, 3])
-        let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(existingPath)
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let existingPath = File.Path(dir.path, appending: "source.bin")
+            let linkPath = File.Path(dir.path, appending: "link.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: existingPath)
+
+            try File.System.Link.Hard.create(at: linkPath, to: existingPath)
+
+            #expect(File.System.Stat.exists(at: linkPath))
+
+            // Both files should have same content
+            let existingData = try File.System.Read.Full.read(from: existingPath)
+            let linkData = try File.System.Read.Full.read(from: linkPath)
+            #expect(existingData == linkData)
         }
-
-        let existing = try File.Path(existingPath)
-        let link = try File.Path(linkPath)
-
-        try File.System.Link.Hard.create(at: link, to: existing)
-
-        #expect(File.System.Stat.exists(at: try File.Path(linkPath)))
-
-        // Both files should have same content
-        let existingData = try File.System.Read.Full.read(from: try File.Path(existingPath))
-        let linkData = try File.System.Read.Full.read(from: try File.Path(linkPath))
-        #expect(existingData == linkData)
     }
 
     @Test("Hard link shares inode with original")
     func hardLinkSharesInode() throws {
-        let existingPath = try createTempFile(content: [1, 2, 3])
-        let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(existingPath)
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let existingPath = File.Path(dir.path, appending: "source.bin")
+            let linkPath = File.Path(dir.path, appending: "link.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: existingPath)
+
+            try File.System.Link.Hard.create(at: linkPath, to: existingPath)
+
+            // Get inode numbers using our stat API
+            let existingInfo = try File.System.Stat.info(at: existingPath)
+            let linkInfo = try File.System.Stat.info(at: linkPath)
+
+            #expect(existingInfo.inode == linkInfo.inode)
         }
-
-        let existing = try File.Path(existingPath)
-        let link = try File.Path(linkPath)
-
-        try File.System.Link.Hard.create(at: link, to: existing)
-
-        // Get inode numbers using our stat API
-        let existingInfo = try File.System.Stat.info(at: try File.Path(existingPath))
-        let linkInfo = try File.System.Stat.info(at: try File.Path(linkPath))
-
-        #expect(existingInfo.inode == linkInfo.inode)
     }
 
     @Test("Modifying hard link modifies original")
     func modifyingHardLinkModifiesOriginal() throws {
-        let existingPath = try createTempFile(content: [1, 2, 3])
-        let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(existingPath)
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let existingPath = File.Path(dir.path, appending: "source.bin")
+            let linkPath = File.Path(dir.path, appending: "link.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: existingPath)
+
+            try File.System.Link.Hard.create(at: linkPath, to: existingPath)
+
+            // Modify through the link using in-place write (not atomic write which replaces the file)
+            var handle = try File.Handle.open(linkPath, mode: .write, options: [.truncate])
+            try handle.write([10, 20, 30].span)
+            try handle.close()
+
+            // Original should also be modified (same inode)
+            let originalData = try File.System.Read.Full.read(from: existingPath)
+            #expect(originalData == [10, 20, 30])
         }
-
-        let existing = try File.Path(existingPath)
-        let link = try File.Path(linkPath)
-
-        try File.System.Link.Hard.create(at: link, to: existing)
-
-        // Modify through the link using in-place write (not atomic write which replaces the file)
-        try writeBytesInPlace([10, 20, 30], to: try File.Path(linkPath))
-
-        // Original should also be modified (same inode)
-        let originalData = try File.System.Read.Full.read(from: try File.Path(existingPath))
-        #expect(originalData == [10, 20, 30])
     }
 
     @Test("Deleting original does not delete hard link")
     func deletingOriginalDoesNotDeleteHardLink() throws {
-        let existingPath = try createTempFile(content: [1, 2, 3])
-        let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
-        defer {
-            cleanup(linkPath)
+        try File.Directory.temporary { dir in
+            let existingPath = File.Path(dir.path, appending: "source.bin")
+            let linkPath = File.Path(dir.path, appending: "link.bin")
+
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: existingPath)
+
+            try File.System.Link.Hard.create(at: linkPath, to: existingPath)
+
+            // Delete original
+            try File.System.Delete.delete(at: existingPath)
+
+            // Hard link should still exist and have the data
+            #expect(File.System.Stat.exists(at: linkPath))
+            let data = try File.System.Read.Full.read(from: linkPath)
+            #expect(data == [1, 2, 3])
         }
-
-        let existing = try File.Path(existingPath)
-        let link = try File.Path(linkPath)
-
-        try File.System.Link.Hard.create(at: link, to: existing)
-
-        // Delete original
-        try File.System.Delete.delete(at: try File.Path(existingPath))
-
-        // Hard link should still exist and have the data
-        #expect(File.System.Stat.exists(at: try File.Path(linkPath)))
-        let data = try File.System.Read.Full.read(from: try File.Path(linkPath))
-        #expect(data == [1, 2, 3])
     }
 
     // MARK: - Error Cases
 
     @Test("Create hard link to non-existent file throws sourceNotFound")
     func createHardLinkToNonExistentThrows() throws {
-        let existingPath = "/tmp/non-existent-\(Int.random(in: 0..<Int.max))"
-        let linkPath = "/tmp/hardlink-\(Int.random(in: 0..<Int.max))"
+        try File.Directory.temporary { dir in
+            let existingPath = File.Path(dir.path, appending: "non-existent.bin")
+            let linkPath = File.Path(dir.path, appending: "link.bin")
 
-        let existing = try File.Path(existingPath)
-        let link = try File.Path(linkPath)
-
-        #expect(throws: File.System.Link.Hard.Error.sourceNotFound(existing)) {
-            try File.System.Link.Hard.create(at: link, to: existing)
+            #expect(throws: File.System.Link.Hard.Error.sourceNotFound(existingPath)) {
+                try File.System.Link.Hard.create(at: linkPath, to: existingPath)
+            }
         }
     }
 
     @Test("Create hard link at existing path throws alreadyExists")
     func createHardLinkAtExistingPathThrows() throws {
-        let existingPath = try createTempFile()
-        let linkPath = try createTempFile()
-        defer {
-            cleanup(existingPath)
-            cleanup(linkPath)
-        }
+        try File.Directory.temporary { dir in
+            let existingPath = File.Path(dir.path, appending: "source.bin")
+            let linkPath = File.Path(dir.path, appending: "link.bin")
 
-        let existing = try File.Path(existingPath)
-        let link = try File.Path(linkPath)
+            try File.System.Write.Atomic.write([1, 2, 3].span, to: existingPath)
+            try File.System.Write.Atomic.write([4, 5, 6].span, to: linkPath)
 
-        #expect(throws: File.System.Link.Hard.Error.alreadyExists(link)) {
-            try File.System.Link.Hard.create(at: link, to: existing)
+            #expect(throws: File.System.Link.Hard.Error.alreadyExists(linkPath)) {
+                try File.System.Link.Hard.create(at: linkPath, to: existingPath)
+            }
         }
     }
 
@@ -163,36 +130,36 @@ extension File.System.Link.Hard.Test.Unit {
 
     @Test("sourceNotFound error description")
     func sourceNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing")
+        let path = File.Path("/tmp/missing")
         let error = File.System.Link.Hard.Error.sourceNotFound(path)
         #expect(error.description.contains("Source not found"))
     }
 
     @Test("permissionDenied error description")
     func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret")
+        let path = File.Path("/root/secret")
         let error = File.System.Link.Hard.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("alreadyExists error description")
     func alreadyExistsErrorDescription() throws {
-        let path = try File.Path("/tmp/existing")
+        let path = File.Path("/tmp/existing")
         let error = File.System.Link.Hard.Error.alreadyExists(path)
         #expect(error.description.contains("already exists"))
     }
 
     @Test("crossDevice error description")
     func crossDeviceErrorDescription() throws {
-        let source = try File.Path("/tmp/source")
-        let dest = try File.Path("/var/dest")
+        let source = File.Path("/tmp/source")
+        let dest = File.Path("/var/dest")
         let error = File.System.Link.Hard.Error.crossDevice(source: source, destination: dest)
         #expect(error.description.contains("Cross-device"))
     }
 
     @Test("isDirectory error description")
     func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
+        let path = File.Path("/tmp")
         let error = File.System.Link.Hard.Error.isDirectory(path)
         #expect(error.description.contains("Cannot create hard link to directory"))
     }
@@ -210,8 +177,8 @@ extension File.System.Link.Hard.Test.Unit {
 
     @Test("Errors are equatable")
     func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
+        let path1 = File.Path("/tmp/a")
+        let path2 = File.Path("/tmp/a")
 
         #expect(
             File.System.Link.Hard.Error.sourceNotFound(path1)

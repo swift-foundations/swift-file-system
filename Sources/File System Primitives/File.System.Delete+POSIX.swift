@@ -18,7 +18,10 @@
 
     extension File.System.Delete {
         /// Deletes a file or directory using POSIX APIs.
-        internal static func _deletePOSIX(at path: File.Path, options: Options) throws(File.System.Delete.Error) {
+        internal static func _deletePOSIX(
+            at path: File.Path,
+            options: Options
+        ) throws(File.System.Delete.Error) {
             // First, stat the path to determine what it is
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
@@ -45,7 +48,9 @@
         }
 
         /// Recursively deletes a directory and all its contents.
-        private static func _deleteDirectoryRecursive(at path: File.Path) throws(File.System.Delete.Error) {
+        private static func _deleteDirectoryRecursive(
+            at path: File.Path
+        ) throws(File.System.Delete.Error) {
             // Open directory
             guard let dir = opendir(path.string) else {
                 throw _mapErrno(errno, path: path)

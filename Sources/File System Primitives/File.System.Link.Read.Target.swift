@@ -40,7 +40,9 @@ extension File.System.Link.Read.Target {
     /// - Parameter path: The path to the symbolic link.
     /// - Returns: The target path that the symlink points to.
     /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-    public static func target(of path: File.Path) throws(File.System.Link.Read.Target.Error) -> File.Path {
+    public static func target(
+        of path: File.Path
+    ) throws(File.System.Link.Read.Target.Error) -> File.Path {
         #if os(Windows)
             return try _targetWindows(of: path)
         #else
@@ -54,7 +56,9 @@ extension File.System.Link.Read.Target {
 
 #if !os(Windows)
     extension File.System.Link.Read.Target {
-        internal static func _targetPOSIX(of path: File.Path) throws(File.System.Link.Read.Target.Error) -> File.Path {
+        internal static func _targetPOSIX(
+            of path: File.Path
+        ) throws(File.System.Link.Read.Target.Error) -> File.Path {
             // First check if it's a symlink
             var statBuf = stat()
             guard lstat(path.string, &statBuf) == 0 else {
@@ -110,7 +114,9 @@ extension File.System.Link.Read.Target {
 
 #if os(Windows)
     extension File.System.Link.Read.Target {
-        internal static func _targetWindows(of path: File.Path) throws(File.System.Link.Read.Target.Error) -> File.Path {
+        internal static func _targetWindows(
+            of path: File.Path
+        ) throws(File.System.Link.Read.Target.Error) -> File.Path {
             // Check if it's a reparse point (symlink)
             let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)

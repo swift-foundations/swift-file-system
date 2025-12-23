@@ -16,8 +16,8 @@ extension File.System.Write.Atomic.Error {
 
 extension File.System.Write.Atomic.Error.Test.Unit {
     @Test("Error.parent - missing")
-    func errorParentMissing() throws {
-        let path = try File.Path("/nonexistent/parent")
+    func errorParentMissing() {
+        let path: File.Path = "/nonexistent/parent"
         let parentError = File.System.Parent.Check.Error.missing(path: path)
         let error = File.System.Write.Atomic.Error.parent(parentError)
 
@@ -31,8 +31,8 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     }
 
     @Test("Error.parent - notDirectory")
-    func errorParentNotDirectory() throws {
-        let path = try File.Path("/tmp/file.txt")
+    func errorParentNotDirectory() {
+        let path: File.Path = "/tmp/file.txt"
         let parentError = File.System.Parent.Check.Error.notDirectory(path: path)
         let error = File.System.Write.Atomic.Error.parent(parentError)
 
@@ -46,8 +46,8 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     }
 
     @Test("Error.parent - accessDenied")
-    func errorParentAccessDenied() throws {
-        let path = try File.Path("/protected")
+    func errorParentAccessDenied() {
+        let path: File.Path = "/protected"
         let parentError = File.System.Parent.Check.Error.accessDenied(path: path)
         let error = File.System.Write.Atomic.Error.parent(parentError)
 
@@ -61,8 +61,8 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     }
 
     @Test("Error.destinationExists")
-    func errorDestinationExists() throws {
-        let path = try File.Path("/tmp/existing.txt")
+    func errorDestinationExists() {
+        let path: File.Path = "/tmp/existing.txt"
         let error = File.System.Write.Atomic.Error.destinationExists(path: path)
 
         if case .destinationExists(let p) = error {
@@ -117,9 +117,9 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     }
 
     @Test("Error.renameFailed")
-    func errorRenameFailed() throws {
-        let from = try File.Path("/tmp/temp.txt")
-        let to = try File.Path("/tmp/dest.txt")
+    func errorRenameFailed() {
+        let from: File.Path = "/tmp/temp.txt"
+        let to: File.Path = "/tmp/dest.txt"
         let code = File.System.Error.Code.posix(18)
         let error = File.System.Write.Atomic.Error.renameFailed(
             from: from,
@@ -159,8 +159,8 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     }
 
     @Test("Error is Equatable")
-    func errorIsEquatable() throws {
-        let path = try File.Path("/test")
+    func errorIsEquatable() {
+        let path: File.Path = "/test"
         let parentError1 = File.System.Parent.Check.Error.missing(path: path)
         let parentError2 = File.System.Parent.Check.Error.notDirectory(path: path)
         let error1 = File.System.Write.Atomic.Error.parent(parentError1)
@@ -172,8 +172,8 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     }
 
     @Test("Error is Sendable")
-    func errorIsSendable() throws {
-        let path = try File.Path("/test")
+    func errorIsSendable() {
+        let path: File.Path = "/test"
         let parentError = File.System.Parent.Check.Error.missing(path: path)
         let error: File.System.Write.Atomic.Error = .parent(parentError)
         Task {
@@ -203,8 +203,8 @@ extension File.System.Write.Atomic.Error.Test.EdgeCase {
     }
 
     @Test("Error.directorySyncFailedAfterCommit")
-    func errorDirectorySyncFailedAfterCommit() throws {
-        let path = try File.Path("/tmp/committed.txt")
+    func errorDirectorySyncFailedAfterCommit() {
+        let path: File.Path = "/tmp/committed.txt"
         let code = File.System.Error.Code.posix(5)
         let error = File.System.Write.Atomic.Error.directorySyncFailedAfterCommit(
             path: path,

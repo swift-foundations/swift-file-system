@@ -17,7 +17,7 @@ extension File.System.Write.Streaming.Error {
 extension File.System.Write.Streaming.Error.Test.Unit {
     @Test("parent error - missing")
     func parentMissingCase() throws {
-        let path = try File.Path("/nonexistent/parent")
+        let path = File.Path("/nonexistent/parent")
         let parentError = File.System.Parent.Check.Error.missing(path: path)
         let error = File.System.Write.Streaming.Error.parent(parentError)
 
@@ -30,7 +30,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("parent error - notDirectory")
     func parentNotDirectoryCase() throws {
-        let path = try File.Path("/some/file")
+        let path = File.Path("/some/file")
         let parentError = File.System.Parent.Check.Error.notDirectory(path: path)
         let error = File.System.Write.Streaming.Error.parent(parentError)
 
@@ -43,7 +43,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("parent error - accessDenied")
     func parentAccessDeniedCase() throws {
-        let path = try File.Path("/protected/dir")
+        let path = File.Path("/protected/dir")
         let parentError = File.System.Parent.Check.Error.accessDenied(path: path)
         let error = File.System.Write.Streaming.Error.parent(parentError)
 
@@ -124,8 +124,8 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("renameFailed case")
     func renameFailedCase() throws {
-        let from = try File.Path("/tmp/temp.txt")
-        let to = try File.Path("/tmp/final.txt")
+        let from = File.Path("/tmp/temp.txt")
+        let to = File.Path("/tmp/final.txt")
         let error = File.System.Write.Streaming.Error.renameFailed(
             from: from,
             to: to,
@@ -145,7 +145,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("destinationExists case")
     func destinationExistsCase() throws {
-        let path = try File.Path("/tmp/existing.txt")
+        let path = File.Path("/tmp/existing.txt")
         let error = File.System.Write.Streaming.Error.destinationExists(path: path)
 
         if case .destinationExists(let p) = error {
@@ -157,7 +157,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test("directorySyncFailed case")
     func directorySyncFailedCase() throws {
-        let path = try File.Path("/tmp")
+        let path = File.Path("/tmp")
         let error = File.System.Write.Streaming.Error.directorySyncFailed(
             path: path,
             errno: 5,
@@ -219,7 +219,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     @Test("Error conforms to Swift.Error")
     func errorConformsToSwiftError() throws {
         let path = File.Path("/tmp/test.txt")
-        let error: Swift.Error = File.System.Write.Streaming.Error.destinationExists(path: path)
+        let error: any Swift.Error = File.System.Write.Streaming.Error.destinationExists(path: path)
         #expect(error is File.System.Write.Streaming.Error)
     }
 }
@@ -241,7 +241,7 @@ extension File.System.Write.Streaming.Error.Test.EdgeCase {
 
     @Test("description for parent error")
     func descriptionParentError() throws {
-        let path = try File.Path("/nonexistent/parent")
+        let path = File.Path("/nonexistent/parent")
         let parentError = File.System.Parent.Check.Error.missing(path: path)
         let error = File.System.Write.Streaming.Error.parent(parentError)
         #expect(error.description.contains("Parent directory"))

@@ -61,7 +61,8 @@
             }
         }
 
-        private static func createParent(at path: File.Path) throws(File.System.Parent.Check.Error) {
+        private static func createParent(at path: File.Path) throws(File.System.Parent.Check.Error)
+        {
             do {
                 try File.System.Create.Directory.create(
                     at: path,

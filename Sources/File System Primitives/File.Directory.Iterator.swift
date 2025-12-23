@@ -85,11 +85,13 @@ extension File.Directory.Iterator {
     /// - Parameter path: The path to the directory.
     /// - Returns: An iterator for the directory.
     /// - Throws: `File.Directory.Iterator.Error` on failure.
-    public static func open(at path: File.Path) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
+    public static func open(
+        at directory: File.Directory
+    ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
         #if os(Windows)
-            return try _openWindows(at: path)
+        return try _openWindows(at: directory.path)
         #else
-            return try _openPOSIX(at: path)
+        return try _openPOSIX(at: directory.path)
         #endif
     }
 
@@ -135,8 +137,9 @@ extension File.Directory.Iterator {
 
 #if canImport(Darwin)
     extension File.Directory.Iterator {
-        private static func _openPOSIX(at path: File.Path) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator
-        {
+        private static func _openPOSIX(
+            at path: File.Path
+        ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
@@ -157,7 +160,9 @@ extension File.Directory.Iterator {
             )
         }
 
-        private mutating func _nextPOSIX() throws(File.Directory.Iterator.Error) -> File.Directory.Entry? {
+        private mutating func _nextPOSIX() throws(File.Directory.Iterator.Error) -> File.Directory
+            .Entry?
+        {
             guard let dir = _dir else {
                 return nil
             }
@@ -237,8 +242,9 @@ extension File.Directory.Iterator {
     }
 #elseif canImport(Glibc)
     extension File.Directory.Iterator {
-        private static func _openPOSIX(at path: File.Path) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator
-        {
+        private static func _openPOSIX(
+            at path: File.Path
+        ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
@@ -259,7 +265,9 @@ extension File.Directory.Iterator {
             )
         }
 
-        private mutating func _nextPOSIX() throws(File.Directory.Iterator.Error) -> File.Directory.Entry? {
+        private mutating func _nextPOSIX() throws(File.Directory.Iterator.Error) -> File.Directory
+            .Entry?
+        {
             guard let dir = _dir else {
                 return nil
             }
@@ -327,8 +335,9 @@ extension File.Directory.Iterator {
 
 #elseif canImport(Musl)
     extension File.Directory.Iterator {
-        private static func _openPOSIX(at path: File.Path) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator
-        {
+        private static func _openPOSIX(
+            at path: File.Path
+        ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
@@ -349,7 +358,9 @@ extension File.Directory.Iterator {
             )
         }
 
-        private mutating func _nextPOSIX() throws(File.Directory.Iterator.Error) -> File.Directory.Entry? {
+        private mutating func _nextPOSIX() throws(File.Directory.Iterator.Error) -> File.Directory
+            .Entry?
+        {
             guard let dir = _dir else {
                 return nil
             }
@@ -457,7 +468,9 @@ extension File.Directory.Iterator {
             )
         }
 
-        private mutating func _nextWindows() throws(File.Directory.Iterator.Error) -> File.Directory.Entry? {
+        private mutating func _nextWindows() throws(File.Directory.Iterator.Error) -> File.Directory
+            .Entry?
+        {
             guard let handle = _handle, handle != INVALID_HANDLE_VALUE, _hasMore else {
                 return nil
             }

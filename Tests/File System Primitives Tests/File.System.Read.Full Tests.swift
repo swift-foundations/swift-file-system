@@ -17,132 +17,105 @@ extension File.System.Read.Full {
 
 extension File.System.Read.Full.Test.Unit {
 
-    // MARK: - Test Fixtures
-
-    private func createTempFile(content: [UInt8]) throws -> String {
-        let path = "/tmp/read-test-\(Int.random(in: 0..<Int.max)).bin"
-        try File.System.Write.Atomic.write(content.span, to: File.Path(path))
-        return path
-    }
-
-    private func createTempFile(string: String) throws -> String {
-        let path = "/tmp/read-test-\(Int.random(in: 0..<Int.max)).txt"
-        try File.System.Write.Atomic.write(Array(string.utf8).span, to: File.Path(path))
-        return path
-    }
-
-    private func createTempDirectory() throws -> String {
-        let path = "/tmp/read-test-dir-\(Int.random(in: 0..<Int.max))"
-        try File.System.Create.Directory.create(at: try File.Path(path))
-        return path
-    }
-
-    private func cleanup(_ path: String) {
-        if let filePath = try? File.Path(path) {
-            try? File.System.Delete.delete(at: filePath, options: .init(recursive: true))
-        }
-    }
-
     // MARK: - Basic read
 
     @Test("Read small file")
     func readSmallFile() throws {
         let content: [UInt8] = [72, 101, 108, 108, 111]  // "Hello"
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent == content)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent == content)
+        }
     }
 
     @Test("Read empty file")
     func readEmptyFile() throws {
-        let path = try createTempFile(content: [])
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "empty.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent.isEmpty)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent.isEmpty)
+        }
     }
 
     @Test("Read file with text content")
     func readFileWithTextContent() throws {
         let text = "Hello, World!"
-        let path = try createTempFile(string: text)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "test.txt")
+            try File.System.Write.Atomic.write(Array(text.utf8).span, to: filePath)
 
-        let readString = String(
-            decoding: try File.System.Read.Full.read(from: File.Path(path)),
-            as: UTF8.self
-        )
-
-        #expect(readString == text)
+            let readString = String(
+                decoding: try File.System.Read.Full.read(from: filePath),
+                as: UTF8.self
+            )
+            #expect(readString == text)
+        }
     }
 
     @Test("Read binary data")
     func readBinaryData() throws {
         // Binary content including null bytes and non-printable characters
         let content: [UInt8] = [0x00, 0x01, 0xFF, 0xFE, 0x7F, 0x80]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "binary.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent == content)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent == content)
+        }
     }
 
     @Test("Read larger file")
     func readLargerFile() throws {
         // Create a 64KB file
         let content = [UInt8](repeating: 0xAB, count: 64 * 1024)
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "large.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent.count == 64 * 1024)
-        #expect(readContent == content)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent.count == 64 * 1024)
+            #expect(readContent == content)
+        }
     }
 
     @Test("Read file with various byte values")
     func readFileWithVariousByteValues() throws {
         // All possible byte values
         let content = (0...255).map { UInt8($0) }
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "bytes.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent == content)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent == content)
+        }
     }
 
     // MARK: - Error cases
 
     @Test("Read non-existing file throws pathNotFound")
     func readNonExistingFile() throws {
-        let path = "/tmp/non-existing-\(Int.random(in: 0..<Int.max)).txt"
-        let filePath = try File.Path(path)
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "non-existing.txt")
 
-        #expect(throws: File.System.Read.Full.Error.self) {
-            try File.System.Read.Full.read(from: filePath)
+            #expect(throws: File.System.Read.Full.Error.self) {
+                try File.System.Read.Full.read(from: filePath)
+            }
         }
     }
 
     @Test("Read directory throws isDirectory")
     func readDirectory() throws {
-        let path = try createTempDirectory()
-        defer { cleanup(path) }
-
-        let filePath = try File.Path(path)
-
-        #expect(throws: File.System.Read.Full.Error.self) {
-            try File.System.Read.Full.read(from: filePath)
+        try File.Directory.temporary { dir in
+            #expect(throws: File.System.Read.Full.Error.self) {
+                try File.System.Read.Full.read(from: dir.path)
+            }
         }
     }
 
@@ -151,46 +124,46 @@ extension File.System.Read.Full.Test.Unit {
     @Test("Async read file")
     func asyncReadFile() async throws {
         let content: [UInt8] = [1, 2, 3, 4, 5]
-        let path = try createTempFile(content: content)
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "async.bin")
+            try File.System.Write.Atomic.write(content.span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try await File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent == content)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent == content)
+        }
     }
 
     @Test("Async read empty file")
     func asyncReadEmptyFile() async throws {
-        let path = try createTempFile(content: [])
-        defer { cleanup(path) }
+        try File.Directory.temporary { dir in
+            let filePath = File.Path(dir.path, appending: "async-empty.bin")
+            try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-        let filePath = try File.Path(path)
-        let readContent = try await File.System.Read.Full.read(from: filePath)
-
-        #expect(readContent.isEmpty)
+            let readContent = try File.System.Read.Full.read(from: filePath)
+            #expect(readContent.isEmpty)
+        }
     }
 
     // MARK: - Error descriptions
 
     @Test("pathNotFound error description")
-    func pathNotFoundErrorDescription() throws {
-        let path = try File.Path("/tmp/missing.txt")
+    func pathNotFoundErrorDescription() {
+        let path: File.Path = "/tmp/missing.txt"
         let error = File.System.Read.Full.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
         #expect(error.description.contains("/tmp/missing.txt"))
     }
 
     @Test("permissionDenied error description")
-    func permissionDeniedErrorDescription() throws {
-        let path = try File.Path("/root/secret.txt")
+    func permissionDeniedErrorDescription() {
+        let path: File.Path = "/root/secret.txt"
         let error = File.System.Read.Full.Error.permissionDenied(path)
         #expect(error.description.contains("Permission denied"))
     }
 
     @Test("isDirectory error description")
-    func isDirectoryErrorDescription() throws {
-        let path = try File.Path("/tmp")
+    func isDirectoryErrorDescription() {
+        let path: File.Path = "/tmp"
         let error = File.System.Read.Full.Error.isDirectory(path)
         #expect(error.description.contains("Is a directory"))
     }
@@ -212,10 +185,10 @@ extension File.System.Read.Full.Test.Unit {
     // MARK: - Error Equatable
 
     @Test("Errors are equatable")
-    func errorsAreEquatable() throws {
-        let path1 = try File.Path("/tmp/a")
-        let path2 = try File.Path("/tmp/a")
-        let path3 = try File.Path("/tmp/b")
+    func errorsAreEquatable() {
+        let path1: File.Path = "/tmp/a"
+        let path2: File.Path = "/tmp/a"
+        let path3: File.Path = "/tmp/b"
 
         #expect(
             File.System.Read.Full.Error.pathNotFound(path1)
@@ -244,7 +217,7 @@ extension File.System.Read.Full.Test.Performance {
     func systemRead1MB() throws {
         let td = try File.Directory.Temporary.system
         let filePath = File.Path(
-            td,
+            td.path,
             appending: "perf_sysread_\(Int.random(in: 0..<Int.max)).bin"
         )
 

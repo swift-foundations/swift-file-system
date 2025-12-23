@@ -27,14 +27,16 @@ extension File.Directory {
 extension File.Directory.Contents {
     /// Lists the contents of a directory.
     ///
-    /// - Parameter path: The path to the directory.
+    /// - Parameter directory: The directory to list.
     /// - Returns: An array of directory entries.
     /// - Throws: `File.Directory.Contents.Error` on failure.
-    public static func list(at path: File.Path) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
+    public static func list(
+        at directory: File.Directory
+    ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
         #if os(Windows)
-            return try _listWindows(at: path)
+            return try _listWindows(at: directory)
         #else
-            return try _listPOSIX(at: path)
+            return try _listPOSIX(at: directory.path)
         #endif
     }
 }
@@ -43,8 +45,9 @@ extension File.Directory.Contents {
 
 #if !os(Windows)
     extension File.Directory.Contents {
-        internal static func _listPOSIX(at path: File.Path) throws(File.Directory.Contents.Error) -> [File.Directory.Entry]
-        {
+        internal static func _listPOSIX(
+            at path: File.Path
+        ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
             // Verify it's a directory
             var statBuf = stat()
             guard stat(path.string, &statBuf) == 0 else {
@@ -172,9 +175,10 @@ extension File.Directory.Contents {
 #if os(Windows)
     extension File.Directory.Contents {
         package static func _listWindows(
-            at path: File.Path
+            at directory: File.Directory
         ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
             // Verify it's a directory
+            let path = directory.path
             let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }

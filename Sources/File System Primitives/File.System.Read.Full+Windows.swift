@@ -11,7 +11,9 @@
 
     extension File.System.Read.Full {
         /// Reads file contents using Windows APIs.
-        internal static func _readWindows(from path: File.Path) throws(File.System.Read.Full.Error) -> [UInt8] {
+        internal static func _readWindows(
+            from path: File.Path
+        ) throws(File.System.Read.Full.Error) -> [UInt8] {
             // Open file for reading
             let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(

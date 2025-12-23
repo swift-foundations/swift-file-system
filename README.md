@@ -8,11 +8,13 @@ Type-safe file system operations for Swift with kernel-assisted I/O and async st
 
 - [Why swift-file-system?](#why-swift-file-system)
 - [Overview](#overview)
+- [Design Principles](#design-principles)
 - [Design Guarantees](#design-guarantees)
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Usage Examples](#usage-examples)
+- [Testing Your Code](#testing-your-code)
 - [Performance](#performance)
 - [Architecture](#architecture)
 - [Platform Support](#platform-support)
@@ -34,12 +36,21 @@ Foundation's `FileManager` and `URL` APIs are designed for simplicity, not perfo
 | **Thread pool starvation** | Blocking I/O starves cooperative pool | Dedicated executor option isolates I/O |
 | **Concurrency safety** | Requires manual synchronization | `Sendable` throughout, actor-isolated state |
 | **Symlink handling** | Implicit, inconsistent | Explicit `followSymlinks` option everywhere |
+| **Error handling** | Untyped throws, catch-all required | Typed throws with precise error types |
 
 If you need predictable async behavior, kernel-level optimizations, or fine-grained durability control, this library provides what Foundation cannot.
 
 ## Overview
 
 swift-file-system provides a modern Swift interface for file system operations with focus on performance, safety, and async-first design. Built on POSIX and Windows APIs with platform-specific optimizations like APFS cloning on macOS and `copy_file_range`/`sendfile` on Linux.
+
+## Design Principles
+
+- **Typed throws**: Every function declares its error type. Catch precisely, not broadly.
+- **Nested types**: API reads naturally: `File.Directory.Contents.Async`, not `FileDirectoryContentsAsync`.
+- **Foundation-free**: No URL, no Data, no String bridging.
+- **Pull-based async**: Bounded memory via batched iteration. No unbounded queues.
+- **Sync and async parity**: Same method names, Swift picks based on context.
 
 ## Design Guarantees
 
@@ -77,7 +88,7 @@ Add swift-file-system to your Package.swift:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/coenttb/swift-file-system.git", from: "0.1.0")
+    .package(url: "https://github.com/coenttb/swift-file-system.git", from: "0.4.0")
 ]
 ```
 
@@ -297,10 +308,9 @@ let options = File.Directory.Walk.Options(
     maxDepth: 5
 )
 
-for entry in try File.Directory.Walk(at: rootPath, options: options) {
-    if entry.type == .regular && entry.name.hasSuffix(".swift") {
-        print("Found Swift file: \(entry.path)")
-    }
+for entry in try File.Directory.Walk(at: rootPath, options: options)
+where entry.type == .regular && entry.name.hasSuffix(".swift") {
+    print("Found Swift file: \(entry.path)")
 }
 ```
 
@@ -316,6 +326,33 @@ for try await entry in File.Directory.entries(at: path, io: io) { ... }
 
 // Explicit executors must be shut down when done
 await io.shutdown()
+```
+
+## Testing Your Code
+
+Add the test support library to your test target:
+
+```swift
+.testTarget(
+    name: "YourTests",
+    dependencies: [
+        .product(name: "File System", package: "swift-file-system"),
+        .product(name: "File System Test Support", package: "swift-file-system"),
+    ]
+)
+```
+
+Use `Temporary.Scope` for automatic cleanup:
+
+```swift
+import File_System_Test_Support
+
+try File.Directory.temporary { dir in
+    // dir is a File.Path to a fresh temp directory
+    let testFile = File(dir, appending: "test.txt")
+    try testFile.write("test data")
+    // directory automatically deleted when closure exits
+}
 ```
 
 ## Performance
@@ -428,8 +465,7 @@ Your results will vary based on hardware, filesystem, and workload characteristi
 
 ### I/O Executor
 
-- **Cooperative mode** (default): Uses `Task.detached`, shares Swift's cooperative pool
-- **Dedicated mode**: Per-worker `DispatchQueue`, isolates blocking I/O
+- **Dedicated thread pool**: Blocking I/O runs on separate threads, never starves Swift's cooperative pool
 - **Backpressure**: Bounded queue with suspension when full
 - **Graceful shutdown**: Completes in-flight work, fails pending jobs
 

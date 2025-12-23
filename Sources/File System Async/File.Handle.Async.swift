@@ -103,15 +103,17 @@ extension File.Handle {
         /// - Parameter destination: The buffer to read into.
         /// - Returns: Number of bytes read (0 at EOF).
         /// - Important: The buffer must remain valid until this call returns.
-        public func read(into destination: UnsafeMutableRawBufferPointer) async throws(File.IO.Error<File.Handle.Error>) -> Int {
+        public func read(
+            into destination: UnsafeMutableRawBufferPointer
+        ) async throws(File.IO.Error<File.Handle.Error>) -> Int {
             guard !isClosed else {
                 throw .operation(.invalidHandle)
             }
-            
+
             struct Buffer: @unchecked Swift.Sendable {
                 let pointer: UnsafeMutableRawBufferPointer
             }
-            
+
             // Wrap for Sendable - safe because buffer used synchronously in io.run
             let buffer = Buffer(pointer: destination)
             let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Int = { handle in
@@ -128,7 +130,8 @@ extension File.Handle {
             guard !isClosed else {
                 throw .operation(.invalidHandle)
             }
-            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> [UInt8] = { handle in
+            let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> [UInt8] = {
+                handle in
                 try handle.read(count: count)
             }
             return try await io.withHandle(id, body)

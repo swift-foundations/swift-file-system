@@ -220,7 +220,9 @@ extension File.Handle {
     /// - Parameter buffer: Destination buffer. Must remain valid for duration of call.
     /// - Returns: Number of bytes read (0 at EOF).
     /// - Note: May return fewer bytes than buffer size (partial read).
-    public mutating func read(into buffer: UnsafeMutableRawBufferPointer) throws(File.Handle.Error) -> Int {
+    public mutating func read(
+        into buffer: UnsafeMutableRawBufferPointer
+    ) throws(File.Handle.Error) -> Int {
         guard _descriptor.isValid else { throw .invalidHandle }
         guard !buffer.isEmpty else { return 0 }
 
@@ -382,7 +384,7 @@ extension File.Handle {
 
             guard _ok(SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence))
             else {
-                throw .seekFailed(errno: Int32(GetLastError()), message: "SetFilePointerEx failed")
+                throw .seekFailed(offset: offset, origin: origin, errno: Int32(GetLastError()), message: "SetFilePointerEx failed")
             }
             return newPosition.QuadPart
         #else
@@ -395,7 +397,7 @@ extension File.Handle {
 
             let result = lseek(_descriptor.rawValue, off_t(offset), whence)
             guard result >= 0 else {
-                throw .seekFailed(errno: errno, message: String(cString: strerror(errno)))
+                throw .seekFailed(offset: offset, origin: origin, errno: errno, message: String(cString: strerror(errno)))
             }
             return Int64(result)
         #endif

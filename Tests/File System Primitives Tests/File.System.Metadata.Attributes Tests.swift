@@ -29,7 +29,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 extension File.System.Metadata.Attributes.Test.Unit {
     @Test("Error.pathNotFound")
     func errorPathNotFound() throws {
-        let path = try File.Path("/nonexistent")
+        let path = File.Path("/nonexistent")
         let error = File.System.Metadata.Attributes.Error.pathNotFound(path)
 
         if case .pathNotFound(let p) = error {
@@ -41,7 +41,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 
     @Test("Error.permissionDenied")
     func errorPermissionDenied() throws {
-        let path = try File.Path("/protected")
+        let path = File.Path("/protected")
         let error = File.System.Metadata.Attributes.Error.permissionDenied(path)
 
         if case .permissionDenied(let p) = error {
@@ -53,7 +53,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 
     @Test("Error.attributeNotFound")
     func errorAttributeNotFound() throws {
-        let path = try File.Path("/tmp/file.txt")
+        let path = File.Path("/tmp/file.txt")
         let error = File.System.Metadata.Attributes.Error.attributeNotFound(
             name: "user.custom",
             path: path
@@ -69,7 +69,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 
     @Test("Error.notSupported")
     func errorNotSupported() throws {
-        let path = try File.Path("/tmp/file.txt")
+        let path = File.Path("/tmp/file.txt")
         let error = File.System.Metadata.Attributes.Error.notSupported(path)
 
         if case .notSupported(let p) = error {
@@ -96,7 +96,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 
     @Test("Error is Equatable")
     func errorIsEquatable() throws {
-        let path = try File.Path("/test")
+        let path = File.Path("/test")
         let error1 = File.System.Metadata.Attributes.Error.pathNotFound(path)
         let error2 = File.System.Metadata.Attributes.Error.pathNotFound(path)
         let error3 = File.System.Metadata.Attributes.Error.permissionDenied(path)
@@ -107,7 +107,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 
     @Test("Error is Sendable")
     func errorIsSendable() throws {
-        let path = try File.Path("/test")
+        let path = File.Path("/test")
         let error: File.System.Metadata.Attributes.Error = .pathNotFound(path)
 
         // Verify Sendable conformance by using in async context
@@ -122,7 +122,7 @@ extension File.System.Metadata.Attributes.Test.Unit {
 extension File.System.Metadata.Attributes.Test.EdgeCase {
     @Test("Error with empty attribute name")
     func errorWithEmptyAttributeName() throws {
-        let path = try File.Path("/tmp/file.txt")
+        let path = File.Path("/tmp/file.txt")
         let error = File.System.Metadata.Attributes.Error.attributeNotFound(
             name: "",
             path: path
@@ -137,7 +137,7 @@ extension File.System.Metadata.Attributes.Test.EdgeCase {
 
     @Test("Error with unicode attribute name")
     func errorWithUnicodeAttributeName() throws {
-        let path = try File.Path("/tmp/file.txt")
+        let path = File.Path("/tmp/file.txt")
         let error = File.System.Metadata.Attributes.Error.attributeNotFound(
             name: "user.日本語",
             path: path
