@@ -296,7 +296,7 @@ extension File.Directory.Walk.Undecodable.Context {
 
             switch policy {
             case .skip:
-                #expect(true)
+                #expect(Bool(true))
             default:
                 Issue.record("Expected skip")
             }

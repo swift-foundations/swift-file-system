@@ -150,7 +150,7 @@ extension File.Directory.Walk {
             let policy = options.onUndecodable(context)
             switch policy {
             case .skip:
-                #expect(true)
+                #expect(Bool(true))
             default:
                 Issue.record("Expected default policy to be .skip")
             }
@@ -170,7 +170,7 @@ extension File.Directory.Walk {
             let policy = options.onUndecodable(context)
             switch policy {
             case .emit:
-                #expect(true)
+                #expect(Bool(true))
             default:
                 Issue.record("Expected policy to be .emit")
             }
@@ -190,7 +190,7 @@ extension File.Directory.Walk {
             let policy = options.onUndecodable(context)
             switch policy {
             case .stopAndThrow:
-                #expect(true)
+                #expect(Bool(true))
             default:
                 Issue.record("Expected policy to be .stopAndThrow")
             }
@@ -219,7 +219,7 @@ extension File.Directory.Walk {
             )
             switch options.onUndecodable(shallowFile) {
             case .skip:
-                #expect(true)
+                #expect(Bool(true))
             default:
                 Issue.record("Expected skip for shallow file")
             }
@@ -233,7 +233,7 @@ extension File.Directory.Walk {
             )
             switch options.onUndecodable(deepDir) {
             case .stopAndThrow:
-                #expect(true)
+                #expect(Bool(true))
             default:
                 Issue.record("Expected stopAndThrow for deep directory")
             }

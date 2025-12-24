@@ -33,7 +33,7 @@ extension File.Directory.Walk.Undecodable {
                 .Context.self
 
             // If this compiles, the namespace structure is correct
-            #expect(true)
+            #expect(Bool(true))
         }
 
         @Test("Policy type is accessible through Undecodable namespace")

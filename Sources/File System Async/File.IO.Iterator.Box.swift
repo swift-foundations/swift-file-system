@@ -35,19 +35,22 @@ extension File.IO.Iterator {
         }
 
         deinit {
-            // Per plan: "allowed to print debug warning, but must not spawn tasks
-            // or perform best-effort cleanup"
+            guard let ptr = storage else { return }
+
             #if DEBUG
-                if storage != nil {
-                    print(
-                        """
-                        Warning: File.IO.Iterator.Box deallocated without close().
-                        This violates the io.run-only invariant.
-                        Use terminate() on the owning iterator for deterministic cleanup.
-                        """
-                    )
-                }
+                print(
+                    """
+                    Warning: File.IO.Iterator.Box deallocated without close().
+                    Call terminate() on the owning iterator for deterministic cleanup.
+                    Falling back to synchronous cleanup in deinit.
+                    """
+                )
             #endif
+
+            // Best-effort cleanup to prevent resource leaks in production.
+            // The iterator's deinit will close the underlying directory handle.
+            ptr.deinitialize(count: 1)
+            ptr.deallocate()
         }
 
         package var hasValue: Bool { storage != nil }

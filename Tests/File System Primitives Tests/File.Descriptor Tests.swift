@@ -352,7 +352,7 @@ extension File.Descriptor.Test.Unit {
     func errorTooManyOpenFiles() {
         let error = File.Descriptor.Error.tooManyOpenFiles
         if case .tooManyOpenFiles = error {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected tooManyOpenFiles")
         }
@@ -362,7 +362,7 @@ extension File.Descriptor.Test.Unit {
     func errorInvalidDescriptor() {
         let error = File.Descriptor.Error.invalidDescriptor
         if case .invalidDescriptor = error {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected invalidDescriptor")
         }
@@ -405,7 +405,7 @@ extension File.Descriptor.Test.Unit {
     func errorAlreadyClosed() {
         let error = File.Descriptor.Error.alreadyClosed
         if case .alreadyClosed = error {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected alreadyClosed")
         }
