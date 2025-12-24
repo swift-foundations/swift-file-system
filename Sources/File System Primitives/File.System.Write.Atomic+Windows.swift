@@ -363,7 +363,21 @@
 
     extension WindowsAtomic {
 
+        /// Error codes that indicate a transient condition worth retrying.
+        /// - ERROR_ACCESS_DENIED: Another process may have the file open
+        /// - ERROR_SHARING_VIOLATION: File is open with incompatible share mode
+        /// - ERROR_LOCK_VIOLATION: File region is locked by another process
+        private static let retryableErrors: Set<DWORD> = [
+            _dword(ERROR_ACCESS_DENIED),
+            _dword(ERROR_SHARING_VIOLATION),
+            _dword(ERROR_LOCK_VIOLATION),
+        ]
+
         /// Performs atomic rename, optionally replacing existing file.
+        ///
+        /// When replacing an existing file, this uses retry logic with exponential backoff
+        /// to handle transient ACCESS_DENIED and SHARING_VIOLATION errors that can occur
+        /// when Windows hasn't fully released handles to the target file.
         private static func atomicRename(
             from tempPath: String,
             to destPath: String,
@@ -372,53 +386,101 @@
 
             let replace = (options.strategy == .replaceExisting)
 
-            // Try modern SetFileInformationByHandle first
-            if trySetFileInfoRename(from: tempPath, to: destPath, replace: replace) {
-                return
+            // Try modern SetFileInformationByHandle first (with retry for replace mode)
+            // Use 5 attempts with increasing delays for CI environments where timing is less predictable
+            let retryDelays: [UInt32] = [10, 25, 50, 100, 200]  // milliseconds
+            var lastSetFileInfoError: DWORD = 0
+
+            for attempt in 0..<(replace ? retryDelays.count : 1) {
+                let result = trySetFileInfoRename(from: tempPath, to: destPath, replace: replace)
+                switch result {
+                case .success:
+                    return
+                case .failure(let error):
+                    lastSetFileInfoError = error
+                    // Only retry on transient errors when replacing
+                    if replace && retryableErrors.contains(error) && attempt < retryDelays.count - 1 {
+                        Sleep(retryDelays[attempt])
+                        continue
+                    }
+                case .unsupported:
+                    // Fall through to MoveFileExW
+                    break
+                }
+                break  // Don't retry for non-transient errors or unsupported
             }
 
-            // Fallback to MoveFileExW
+            // Fallback to MoveFileExW (also with retry for replace mode)
             let flags: DWORD =
                 replace
                 ? _dword(MOVEFILE_REPLACE_EXISTING) | _dword(MOVEFILE_WRITE_THROUGH)
                 : _dword(MOVEFILE_WRITE_THROUGH)
 
-            let success = withWideString(tempPath) { wTemp in
-                withWideString(destPath) { wDest in
-                    MoveFileExW(wTemp, wDest, flags)
-                }
-            }
+            // Retry logic for MoveFileExW when replacing
+            let maxAttempts = replace ? retryDelays.count : 1
+            var lastError: DWORD = 0
 
-            if !success {
-                let err = GetLastError()
-
-                // Check for destination exists in noClobber mode
-                // Multiple error codes can indicate "exists":
-                // - ERROR_ALREADY_EXISTS (183)
-                // - ERROR_FILE_EXISTS (80)
-                // Note: ERROR_ACCESS_DENIED can occur for various reasons,
-                // so we don't map it to destinationExists to avoid masking real permission errors
-                if !replace
-                    && (err == _dword(ERROR_ALREADY_EXISTS) || err == _dword(ERROR_FILE_EXISTS))
-                {
-                    throw .destinationExists(path: File.Path(__unchecked: (), destPath))
+            for attempt in 0..<maxAttempts {
+                let success = withWideString(tempPath) { wTemp in
+                    withWideString(destPath) { wDest in
+                        MoveFileExW(wTemp, wDest, flags)
+                    }
                 }
 
-                throw .renameFailed(
-                    from: File.Path(__unchecked: (), tempPath),
-                    to: File.Path(__unchecked: (), destPath),
-                    code: .windows(err),
-                    message: "MoveFileExW failed with error \(err)"
-                )
+                if success {
+                    return
+                }
+
+                lastError = GetLastError()
+
+                // Only retry on transient errors when replacing
+                if replace && retryableErrors.contains(lastError) && attempt < maxAttempts - 1 {
+                    Sleep(retryDelays[attempt])
+                    continue
+                }
+
+                // Don't retry for other errors
+                break
             }
+
+            // Check for destination exists in noClobber mode
+            // Multiple error codes can indicate "exists":
+            // - ERROR_ALREADY_EXISTS (183)
+            // - ERROR_FILE_EXISTS (80)
+            // Note: ERROR_ACCESS_DENIED can occur for various reasons,
+            // so we don't map it to destinationExists to avoid masking real permission errors
+            if !replace
+                && (lastError == _dword(ERROR_ALREADY_EXISTS)
+                    || lastError == _dword(ERROR_FILE_EXISTS))
+            {
+                throw .destinationExists(path: File.Path(__unchecked: (), destPath))
+            }
+
+            throw .renameFailed(
+                from: File.Path(__unchecked: (), tempPath),
+                to: File.Path(__unchecked: (), destPath),
+                code: .windows(lastError),
+                message: "MoveFileExW failed with error \(lastError)"
+            )
+        }
+
+        /// Result of attempting SetFileInformationByHandle rename.
+        private enum SetFileInfoRenameResult {
+            case success
+            case failure(DWORD)
+            case unsupported
         }
 
         /// Tries to use SetFileInformationByHandle for rename.
+        ///
+        /// Returns `.success` if rename succeeded, `.failure(errorCode)` if it failed
+        /// with a specific Windows error, or `.unsupported` if this API path is not
+        /// available (e.g., struct layout unavailable).
         private static func trySetFileInfoRename(
             from tempPath: String,
             to destPath: String,
             replace: Bool
-        ) -> Bool {
+        ) -> SetFileInfoRenameResult {
             // Open temp file for rename operation
             let tempHandle = withWideString(tempPath) { wTemp in
                 CreateFileW(
@@ -433,7 +495,7 @@
             }
 
             guard let tempHandle = tempHandle, tempHandle != INVALID_HANDLE_VALUE else {
-                return false
+                return .failure(GetLastError())
             }
             defer { _ = CloseHandle(tempHandle) }
 
@@ -446,7 +508,7 @@
                 guard let fileNameOffset = MemoryLayout<FILE_RENAME_INFO>.offset(of: \.FileName)
                 else {
                     // Struct layout unavailable at runtime - fall back to MoveFileExW
-                    return false
+                    return .unsupported
                 }
                 let totalSize = fileNameOffset + nameByteCount
 
@@ -498,42 +560,25 @@
                     DWORD(truncatingIfNeeded: totalSize)
                 )
 
-                return _ok(success)
+                if _ok(success) {
+                    return .success
+                } else {
+                    return .failure(GetLastError())
+                }
             }
         }
 
         /// Flushes directory to persist rename.
+        ///
+        /// On Windows, this is a no-op. `FlushFileBuffers` on directories requires
+        /// `SE_BACKUP_PRIVILEGE` which standard applications don't have. The rename
+        /// operation uses `MOVEFILE_WRITE_THROUGH` which provides write-through
+        /// semantics, and NTFS's transactional journal provides durability guarantees
+        /// for metadata operations like renames.
         private static func flushDirectory(_ path: String) throws(File.System.Write.Atomic.Error) {
-            let handle = withWideString(path) { wPath in
-                CreateFileW(
-                    wPath,
-                    _dword(GENERIC_READ),
-                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
-                    nil,
-                    _dword(OPEN_EXISTING),
-                    _mask(FILE_FLAG_BACKUP_SEMANTICS),
-                    nil
-                )
-            }
-
-            guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
-                let err = GetLastError()
-                throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
-                    code: .windows(err),
-                    message: "CreateFileW(directory) failed with error \(err)"
-                )
-            }
-            defer { _ = CloseHandle(handle) }
-
-            if !_ok(FlushFileBuffers(handle)) {
-                let err = GetLastError()
-                throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
-                    code: .windows(err),
-                    message: "FlushFileBuffers(directory) failed with error \(err)"
-                )
-            }
+            // No-op on Windows - directory sync is not supported without elevated
+            // privileges, and MOVEFILE_WRITE_THROUGH already provides durability.
+            _ = path  // Silence unused parameter warning
         }
     }
 

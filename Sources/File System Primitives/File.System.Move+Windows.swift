@@ -17,7 +17,7 @@
             options: Options
         ) throws(File.System.Move.Error) {
             // Check if source exists
-            let srcAttrs = source.string.withCString(encodedAs: UTF16.self) { wpath in
+            let srcAttrs = String(source).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -26,7 +26,7 @@
             }
 
             // Check destination
-            let dstAttrs = destination.string.withCString(encodedAs: UTF16.self) { wpath in
+            let dstAttrs = String(destination).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -40,8 +40,8 @@
                 flags |= _dword(MOVEFILE_REPLACE_EXISTING)
             }
 
-            let success = source.string.withCString(encodedAs: UTF16.self) { wsrc in
-                destination.string.withCString(encodedAs: UTF16.self) { wdst in
+            let success = String(source).withCString(encodedAs: UTF16.self) { wsrc in
+                String(destination).withCString(encodedAs: UTF16.self) { wdst in
                     MoveFileExW(wsrc, wdst, flags)
                 }
             }

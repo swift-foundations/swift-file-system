@@ -50,7 +50,7 @@ extension File.Directory.Contents {
         ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
             // Verify it's a directory
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -59,7 +59,7 @@ extension File.Directory.Contents {
             }
 
             // Open directory
-            guard let dir = opendir(path.string) else {
+            guard let dir = opendir(String(path)) else {
                 throw _mapErrno(errno, path: path)
             }
             defer { closedir(dir) }
@@ -114,7 +114,7 @@ extension File.Directory.Contents {
                             type: .other
                         ).pathIfValid {
                             var entryStat = stat()
-                            if lstat(entryPath.string, &entryStat) == 0 {
+                            if lstat(String(entryPath), &entryStat) == 0 {
                                 switch entryStat.st_mode & S_IFMT {
                                 case S_IFREG:
                                     entryType = .file
@@ -179,7 +179,7 @@ extension File.Directory.Contents {
         ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
             // Verify it's a directory
             let path = directory.path
-            let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let attrs = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -193,7 +193,7 @@ extension File.Directory.Contents {
 
             var entries: [File.Directory.Entry] = []
             var findData = WIN32_FIND_DATAW()
-            let searchPath = path.string + "\\*"
+            let searchPath = String(path) + "\\*"
 
             let handle = searchPath.withCString(encodedAs: UTF16.self) { wpath in
                 FindFirstFileW(wpath, &findData)

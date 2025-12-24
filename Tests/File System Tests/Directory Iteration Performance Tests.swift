@@ -6,6 +6,8 @@
 //
 //  Regression tests for directory iteration performance.
 //  These tests compare sync iteration APIs to establish baseline performance.
+//
+//  Note: Skipped on Windows CI to avoid resource exhaustion.
 
 import Clocks
 import File_System_Test_Support
@@ -16,6 +18,8 @@ import Testing
 import TestingPerformance
 
 @testable import File_System
+
+#if os(macOS) || os(Linux)
 
 /// Performance regression tests for directory iteration.
 /// Compares different sync iteration strategies to isolate overhead sources.
@@ -229,3 +233,5 @@ final class DirectoryIterationPerformanceTests {
         }
     }
 }
+
+#endif

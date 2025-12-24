@@ -108,7 +108,7 @@ extension File.System.Create.File.Test.EdgeCase {
         let error = File.System.Create.File.Error.alreadyExists(path)
 
         if case .alreadyExists(let p) = error {
-            #expect(p.string == "/")
+            #expect(p == "/")
         } else {
             Issue.record("Expected alreadyExists error")
         }

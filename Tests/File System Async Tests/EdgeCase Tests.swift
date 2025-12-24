@@ -30,7 +30,7 @@ extension File.IO.Test.EdgeCase {
             let io = File.IO.Executor()
 
             // Run some work first
-            let path = try File.Path("\(dir.path.string)/test-file")
+            let path = try File.Path("\(String(dir.path))/test-file")
             _ = try await io.run {
                 let handle = try File.Handle.open(
                     path,
@@ -78,7 +78,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create 100 files
             for i in 0..<100 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(i).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -101,7 +101,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create initial files
             for i in 0..<10 {
-                let filePath = try File.Path("\(dir.path.string)/initial-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/initial-\(i).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -115,7 +115,7 @@ extension File.IO.Test.EdgeCase {
                     // Add new files during iteration (may or may not be seen)
                     if count == 5 {
                         let newPath = try File.Path(
-                            "\(dir.path.string)/added-during-\(Int.random(in: 0..<Int.max)).txt"
+                            "\(String(dir.path))/added-during-\(Int.random(in: 0..<Int.max)).txt"
                         )
                         let handle = try File.Handle.open(newPath, mode: .write, options: [.create, .closeOnExec])
                         try handle.close()
@@ -157,7 +157,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create many files
             for i in 0..<50 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(i).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -185,7 +185,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create files
             for i in 0..<20 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(i).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -233,13 +233,13 @@ extension File.IO.Test.EdgeCase {
             // Create 10 levels of nesting
             var currentPath = dir.path
             for i in 0..<10 {
-                let subPath = try File.Path("\(currentPath.string)/level-\(i)")
+                let subPath = currentPath / "level-\(i)"
                 try File.System.Create.Directory.create(
                     at: subPath,
                     options: .init(createIntermediates: true)
                 )
                 // Add a file at each level
-                let filePath = try File.Path("\(subPath.string)/file.txt")
+                let filePath = subPath / "file.txt"
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
                 currentPath = subPath
@@ -259,77 +259,80 @@ extension File.IO.Test.EdgeCase {
         }
     }
 
-    @Test("Walk with symlink cycle - followSymlinks=false")
-    func walkSymlinkCycleNoFollow() async throws {
-        try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+    #if !os(Windows)
+        // Windows handles symlinks and symlink cycles differently - these tests use POSIX symlink semantics
+        @Test("Walk with symlink cycle - followSymlinks=false")
+        func walkSymlinkCycleNoFollow() async throws {
+            try await File.Directory.temporary { dir in
+                let io = File.IO.Executor()
 
-            // Create subdirectory
-            let subPath = try File.Path("\(dir.path.string)/subdir")
-            try File.System.Create.Directory.create(at: subPath)
+                // Create subdirectory
+                let subPath = dir.path / "subdir"
+                try File.System.Create.Directory.create(at: subPath)
 
-            // Create symlink to parent (cycle)
-            let linkPath = try File.Path("\(subPath.string)/parent-link")
-            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: dir.path)
+                // Create symlink to parent (cycle)
+                let linkPath = subPath / "parent-link"
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: dir.path)
 
-            // Walk without following symlinks - should complete fine
-            var count = 0
-            let walk = File.Directory.Async(io: io).walk(
-                at: dir,
-                options: .init(followSymlinks: false)
-            )
-            let iterator = walk.makeAsyncIterator()
-            while try await iterator.next() != nil {
-                count += 1
-            }
-            await iterator.terminate()
-
-            // Should see: subdir + parent-link = 2
-            #expect(count == 2)
-            await io.shutdown()
-        }
-    }
-
-    @Test("Walk with symlink cycle - followSymlinks=true detects cycle")
-    func walkSymlinkCycleWithFollow() async throws {
-        try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
-
-            // Create subdirectory
-            let subPath = try File.Path("\(dir.path.string)/subdir")
-            try File.System.Create.Directory.create(at: subPath)
-
-            // Create symlink to parent (cycle)
-            let linkPath = try File.Path("\(subPath.string)/parent-link")
-            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: dir.path)
-
-            // Create a file so we can verify walk works
-            let filePath = try File.Path("\(dir.path.string)/file.txt")
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
-            try handle.close()
-
-            // Walk with following symlinks - cycle detection should prevent infinite loop
-            var count = 0
-            let walk = File.Directory.Async(io: io).walk(
-                at: dir,
-                options: .init(followSymlinks: true)
-            )
-            let iterator = walk.makeAsyncIterator()
-            while try await iterator.next() != nil {
-                count += 1
-                // Safety valve - if cycle detection fails, abort
-                if count > 100 {
-                    Issue.record("Cycle detection failed - infinite loop detected")
-                    break
+                // Walk without following symlinks - should complete fine
+                var count = 0
+                let walk = File.Directory.Async(io: io).walk(
+                    at: dir,
+                    options: .init(followSymlinks: false)
+                )
+                let iterator = walk.makeAsyncIterator()
+                while try await iterator.next() != nil {
+                    count += 1
                 }
-            }
-            await iterator.terminate()
+                await iterator.terminate()
 
-            // Should complete without infinite loop
-            #expect(count <= 10)  // Reasonable upper bound
-            await io.shutdown()
+                // Should see: subdir + parent-link = 2
+                #expect(count == 2)
+                await io.shutdown()
+            }
         }
-    }
+
+        @Test("Walk with symlink cycle - followSymlinks=true detects cycle")
+        func walkSymlinkCycleWithFollow() async throws {
+            try await File.Directory.temporary { dir in
+                let io = File.IO.Executor()
+
+                // Create subdirectory
+                let subPath = dir.path / "subdir"
+                try File.System.Create.Directory.create(at: subPath)
+
+                // Create symlink to parent (cycle)
+                let linkPath = subPath / "parent-link"
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: dir.path)
+
+                // Create a file so we can verify walk works
+                let filePath = dir.path / "file.txt"
+                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
+                try handle.close()
+
+                // Walk with following symlinks - cycle detection should prevent infinite loop
+                var count = 0
+                let walk = File.Directory.Async(io: io).walk(
+                    at: dir,
+                    options: .init(followSymlinks: true)
+                )
+                let iterator = walk.makeAsyncIterator()
+                while try await iterator.next() != nil {
+                    count += 1
+                    // Safety valve - if cycle detection fails, abort
+                    if count > 100 {
+                        Issue.record("Cycle detection failed - infinite loop detected")
+                        break
+                    }
+                }
+                await iterator.terminate()
+
+                // Should complete without infinite loop
+                #expect(count <= 10)  // Reasonable upper bound
+                await io.shutdown()
+            }
+        }
+    #endif
 
     @Test("Walk non-existent directory fails")
     func walkNonExistent() async throws {
@@ -359,20 +362,20 @@ extension File.IO.Test.EdgeCase {
             let io = File.IO.Executor()
 
             // Create regular file
-            let filePath = try File.Path("\(dir.path.string)/file.txt")
+            let filePath = dir.path / "file.txt"
             let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
 
             // Create subdirectory
-            let subPath = try File.Path("\(dir.path.string)/subdir")
+            let subPath = dir.path / "subdir"
             try File.System.Create.Directory.create(at: subPath)
 
             // Create symlink to file
-            let linkPath = try File.Path("\(dir.path.string)/link")
+            let linkPath = dir.path / "link"
             try File.System.Link.Symbolic.create(at: linkPath, pointingTo: filePath)
 
             // Create file in subdir
-            let subFilePath = try File.Path("\(subPath.string)/nested.txt")
+            let subFilePath = subPath / "nested.txt"
             var subHandle = try File.Handle.open(subFilePath, mode: .write, options: [.create, .closeOnExec])
             try subHandle.close()
 
@@ -402,7 +405,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/empty-file")
+            let path = try File.Path("\(String(dir.path))/empty-file")
             let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
 
@@ -422,7 +425,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/small-file")
+            let path = try File.Path("\(String(dir.path))/small-file")
             let data: [UInt8] = [1, 2, 3, 4, 5]
             var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.write(data.span)
@@ -447,7 +450,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/tiny-chunks-file")
+            let path = try File.Path("\(String(dir.path))/tiny-chunks-file")
             let data: [UInt8] = Array(0..<100)
             var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.write(data.span)
@@ -494,7 +497,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/large-file")
+            let path = try File.Path("\(String(dir.path))/large-file")
             // Create larger file
             let data: [UInt8] = Array(repeating: 42, count: 10000)
             var handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
@@ -530,7 +533,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create many files
             for i in 0..<100 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(i).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -580,13 +583,13 @@ extension File.IO.Test.EdgeCase {
 
             // Create some structure
             for i in 0..<5 {
-                let subPath = try File.Path("\(dir.path.string)/dir-\(i)")
+                let subPath = dir.path / "dir-\(i)"
                 try File.System.Create.Directory.create(
                     at: subPath,
                     options: .init(createIntermediates: true)
                 )
                 for j in 0..<10 {
-                    let filePath = try File.Path("\(subPath.string)/file-\(j).txt")
+                    let filePath = subPath / "file-\(j).txt"
                     let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                     try handle.close()
                 }
@@ -637,7 +640,7 @@ extension File.IO.Test.EdgeCase {
             // Create enough files to span multiple batches (batchSize = 64)
             // Create 200 files to ensure we're mid-batch when we cancel
             for i in 0..<200 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(padded(i, width: 3)).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(padded(i, width: 3)).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -691,14 +694,14 @@ extension File.IO.Test.EdgeCase {
 
             // Create structure with enough entries to span multiple batches
             for i in 0..<10 {
-                let subPath = try File.Path("\(dir.path.string)/dir-\(i)")
+                let subPath = dir.path / "dir-\(i)"
                 try File.System.Create.Directory.create(
                     at: subPath,
                     options: .init(createIntermediates: true)
                 )
                 // 20 files per directory = 200 files + 10 dirs = 210 entries total
                 for j in 0..<20 {
-                    let filePath = try File.Path("\(subPath.string)/file-\(j).txt")
+                    let filePath = subPath / "file-\(j).txt"
                     let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                     try handle.close()
                 }
@@ -754,7 +757,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create many files to test backpressure
             for i in 0..<500 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(padded(i, width: 4)).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(padded(i, width: 4)).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -792,7 +795,7 @@ extension File.IO.Test.EdgeCase {
             // Create 1500 files to verify batching works correctly with large directories
             let fileCount = 1500
             for i in 0..<fileCount {
-                let filePath = try File.Path("\(dir.path.string)/file-\(padded(i, width: 4)).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(padded(i, width: 4)).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -816,15 +819,13 @@ extension File.IO.Test.EdgeCase {
             // Create structure with 1000+ entries
             // 25 directories with 40 files each = 1000 files + 25 dirs = 1025 entries
             for i in 0..<25 {
-                let subPath = try File.Path("\(dir.path.string)/dir-\(padded(i, width: 2))")
+                let subPath = dir.path / "dir-\(padded(i, width: 2))"
                 try File.System.Create.Directory.create(
                     at: subPath,
                     options: .init(createIntermediates: true)
                 )
                 for j in 0..<40 {
-                    let filePath = try File.Path(
-                        "\(subPath.string)/file-\(padded(j, width: 2)).txt"
-                    )
+                    let filePath = subPath / "file-\(padded(j, width: 2)).txt"
                     let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                     try handle.close()
                 }
@@ -850,7 +851,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create files
             for i in 0..<100 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(i).txt")
                 let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .closeOnExec])
                 try handle.close()
             }
@@ -879,7 +880,7 @@ extension File.IO.Test.EdgeCase {
 
             // Delete some files during iteration
             for i in 50..<75 {
-                let filePath = try File.Path("\(dir.path.string)/file-\(i).txt")
+                let filePath = try File.Path("\(String(dir.path))/file-\(i).txt")
                 try? File.System.Delete.delete(at: filePath)
             }
 
@@ -899,7 +900,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/double-close-file")
+            let path = try File.Path("\(String(dir.path))/double-close-file")
 
             let handle = try await File.Handle.Async.open(
                 path,
@@ -920,7 +921,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/read-after-close-file")
+            let path = try File.Path("\(String(dir.path))/read-after-close-file")
             let data: [UInt8] = [1, 2, 3, 4, 5]
             var writeHandle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try writeHandle.write(data.span)
@@ -954,27 +955,30 @@ extension File.IO.Test.EdgeCase {
         await io.shutdown()
     }
 
-    @Test("Async stat on symlink")
-    func asyncStatSymlink() async throws {
-        try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+    #if !os(Windows)
+        // Windows stat doesn't follow symlinks the same way as POSIX
+        @Test("Async stat on symlink")
+        func asyncStatSymlink() async throws {
+            try await File.Directory.temporary { dir in
+                let io = File.IO.Executor()
 
-            let target = try File.Path("\(dir.path.string)/target")
-            let link = try File.Path("\(dir.path.string)/link")
+                let target = try File.Path("\(String(dir.path))/target")
+                let link = try File.Path("\(String(dir.path))/link")
 
-            var handle = try File.Handle.open(target, mode: .write, options: [.create, .closeOnExec])
-            try handle.write([1, 2, 3].span)
-            try handle.close()
-            try File.System.Link.Symbolic.create(at: link, pointingTo: target)
+                var handle = try File.Handle.open(target, mode: .write, options: [.create, .closeOnExec])
+                try handle.write([1, 2, 3].span)
+                try handle.close()
+                try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
-            let info = try await io.run { try File.System.Stat.info(at: link) }
+                let info = try await io.run { try File.System.Stat.info(at: link) }
 
-            // stat follows symlinks
-            #expect(info.type == .regular)
-            #expect(info.size == 3)
-            await io.shutdown()
+                // stat follows symlinks
+                #expect(info.type == .regular)
+                #expect(info.size == 3)
+                await io.shutdown()
+            }
         }
-    }
+    #endif
 
     // MARK: - Concurrent Operations
 
@@ -986,7 +990,7 @@ extension File.IO.Test.EdgeCase {
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for i in 0..<50 {
                     group.addTask {
-                        let path = try File.Path("\(dir.path.string)/concurrent-\(i)")
+                        let path = try File.Path("\(String(dir.path))/concurrent-\(i)")
 
                         var handle = try File.Handle.open(
                             path,
@@ -1013,7 +1017,7 @@ extension File.IO.Test.EdgeCase {
         try await File.Directory.temporary { dir in
             let io = File.IO.Executor()
 
-            let path = try File.Path("\(dir.path.string)/concurrent-read-file")
+            let path = try File.Path("\(String(dir.path))/concurrent-read-file")
 
             // Create file with known content
             let data: [UInt8] = Array(0..<255)

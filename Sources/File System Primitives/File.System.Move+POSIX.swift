@@ -24,13 +24,13 @@
         ) throws(File.System.Move.Error) {
             // Check if source exists
             var sourceStat = stat()
-            guard stat(source.string, &sourceStat) == 0 else {
+            guard stat(String(source), &sourceStat) == 0 else {
                 throw _mapErrno(errno, source: source, destination: destination)
             }
 
             // Check if destination exists
             var destStat = stat()
-            let destExists = stat(destination.string, &destStat) == 0
+            let destExists = stat(String(destination), &destStat) == 0
 
             if destExists && !options.overwrite {
                 throw .destinationExists(destination)
@@ -43,7 +43,7 @@
             }
 
             // Try rename first (atomic, same device)
-            if rename(source.string, destination.string) == 0 {
+            if rename(String(source), String(destination)) == 0 {
                 return
             }
 
@@ -90,7 +90,7 @@
             }
 
             // Delete source
-            if unlink(source.string) != 0 {
+            if unlink(String(source)) != 0 {
                 // Source was copied but couldn't be deleted - log but don't fail
                 // The move semantically succeeded (data is at destination)
             }

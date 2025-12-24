@@ -222,7 +222,11 @@ extension File.Descriptor.Test.Unit {
 
                 let origValid = original.isValid
                 let dupValid = duplicate.isValid
-                let different = original.rawValue != duplicate.rawValue
+                #if os(Windows)
+                    let different = original.rawHandle != duplicate.rawHandle
+                #else
+                    let different = original.rawValue != duplicate.rawValue
+                #endif
 
                 try duplicate.close()
 

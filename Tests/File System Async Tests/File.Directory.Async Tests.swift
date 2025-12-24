@@ -49,15 +49,15 @@ extension File.Directory.Async.Test.Unit {
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(dir.path.string + "/file1.txt")
+                    to: dir.path / "file1.txt"
                 )
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(dir.path.string + "/file2.txt")
+                    to: dir.path / "file2.txt"
                 )
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(dir.path.string + "/file3.txt")
+                    to: dir.path / "file3.txt"
                 )
 
                 let walk = File.Directory.Async(io: io).walk(at: dir)
@@ -65,7 +65,7 @@ extension File.Directory.Async.Test.Unit {
                 var paths: [String] = []
 
                 while let path = try await iterator.next() {
-                    paths.append(path.string)
+                    paths.append(String(path))
                 }
                 await iterator.terminate()
 
@@ -91,28 +91,28 @@ extension File.Directory.Async.Test.Unit {
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(dir.path.string + "/file1.txt")
+                    to: dir.path / "file1.txt"
                 )
 
-                let sub1 = try File.Path(dir.path.string + "/subdir1")
+                let sub1 = dir.path / "subdir1"
                 try await File.System.Create.Directory.create(at: sub1)
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(sub1.string + "/file2.txt")
+                    to: sub1 / "file2.txt"
                 )
 
-                let subsub = try File.Path(sub1.string + "/subsubdir")
+                let subsub = sub1 / "subsubdir"
                 try await File.System.Create.Directory.create(at: subsub)
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(subsub.string + "/file3.txt")
+                    to: subsub / "file3.txt"
                 )
 
-                let sub2 = try File.Path(dir.path.string + "/subdir2")
+                let sub2 = dir.path / "subdir2"
                 try await File.System.Create.Directory.create(at: sub2)
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(sub2.string + "/file4.txt")
+                    to: sub2 / "file4.txt"
                 )
 
                 let walk = File.Directory.Async(io: io).walk(at: dir)
@@ -120,20 +120,20 @@ extension File.Directory.Async.Test.Unit {
                 var paths: Set<String> = []
 
                 while let path = try await iterator.next() {
-                    paths.insert(path.string)
+                    paths.insert(String(path))
                 }
                 await iterator.terminate()
 
                 // Should find: subdir1, file2.txt, subsubdir, file3.txt, subdir2, file4.txt, file1.txt
                 // (7 entries total)
                 #expect(paths.count == 7)
-                #expect(paths.contains(dir.path.string + "/file1.txt"))
-                #expect(paths.contains(dir.path.string + "/subdir1"))
-                #expect(paths.contains(dir.path.string + "/subdir1/file2.txt"))
-                #expect(paths.contains(dir.path.string + "/subdir1/subsubdir"))
-                #expect(paths.contains(dir.path.string + "/subdir1/subsubdir/file3.txt"))
-                #expect(paths.contains(dir.path.string + "/subdir2"))
-                #expect(paths.contains(dir.path.string + "/subdir2/file4.txt"))
+                #expect(paths.contains(String(dir.path / "file1.txt")))
+                #expect(paths.contains(String(dir.path / "subdir1")))
+                #expect(paths.contains(String(dir.path / "subdir1" / "file2.txt")))
+                #expect(paths.contains(String(dir.path / "subdir1" / "subsubdir")))
+                #expect(paths.contains(String(dir.path / "subdir1" / "subsubdir" / "file3.txt")))
+                #expect(paths.contains(String(dir.path / "subdir2")))
+                #expect(paths.contains(String(dir.path / "subdir2" / "file4.txt")))
                 await io.shutdown()
             }
         }
@@ -167,12 +167,12 @@ extension File.Directory.Async.Test.Unit {
 
                 // Create 10 subdirs, each with 10 files
                 for i in 0..<10 {
-                    let sub = try File.Path(dir.path.string + "/dir\(i)")
+                    let sub = dir.path / "dir\(i)"
                     try await File.System.Create.Directory.create(at: sub)
                     for j in 0..<10 {
                         try File.System.Write.Atomic.write(
                             Array("".utf8).span,
-                            to: try File.Path(sub.string + "/file\(j).txt")
+                            to: sub / "file\(j).txt"
                         )
                     }
                 }
@@ -198,11 +198,11 @@ extension File.Directory.Async.Test.Unit {
                 let io = File.IO.Executor()
 
                 for i in 0..<5 {
-                    let sub = try File.Path(dir.path.string + "/dir\(i)")
+                    let sub = dir.path / "dir\(i)"
                     try await File.System.Create.Directory.create(at: sub)
                     try File.System.Write.Atomic.write(
                         Array("".utf8).span,
-                        to: try File.Path(sub.string + "/file.txt")
+                        to: sub / "file.txt"
                     )
                 }
 
@@ -252,15 +252,15 @@ extension File.Directory.Async.Test.Unit {
 
                 try File.System.Write.Atomic.write(
                     Array("hello".utf8).span,
-                    to: try File.Path(dir.path.string + "/file1.txt")
+                    to: dir.path / "file1.txt"
                 )
                 try File.System.Write.Atomic.write(
                     Array("world".utf8).span,
-                    to: try File.Path(dir.path.string + "/file2.txt")
+                    to: dir.path / "file2.txt"
                 )
                 try File.System.Write.Atomic.write(
                     Array("test".utf8).span,
-                    to: try File.Path(dir.path.string + "/file3.txt")
+                    to: dir.path / "file3.txt"
                 )
 
                 let entries = File.Directory.Async(io: io).entries(at: dir)
@@ -287,10 +287,10 @@ extension File.Directory.Async.Test.Unit {
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(dir.path.string + "/file.txt")
+                    to: dir.path / "file.txt"
                 )
-                try await File.System.Create.Directory.create(at: try File.Path(dir.path.string + "/subdir1"))
-                try await File.System.Create.Directory.create(at: try File.Path(dir.path.string + "/subdir2"))
+                try await File.System.Create.Directory.create(at: dir.path / "subdir1")
+                try await File.System.Create.Directory.create(at: dir.path / "subdir2")
 
                 let entries = File.Directory.Async(io: io).entries(at: dir)
                 var files: [String] = []
@@ -346,7 +346,7 @@ extension File.Directory.Async.Test.Unit {
                 for i in 0..<100 {
                     try File.System.Write.Atomic.write(
                         Array("".utf8).span,
-                        to: try File.Path(dir.path.string + "/file\(i).txt")
+                        to: dir.path / "file\(i).txt"
                     )
                 }
 
@@ -375,7 +375,7 @@ extension File.Directory.Async.Test.Unit {
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
-                    to: try File.Path(dir.path.string + "/test.txt")
+                    to: dir.path / "test.txt"
                 )
 
                 let entries = File.Directory.Async(io: io).entries(at: dir)
@@ -386,7 +386,7 @@ extension File.Directory.Async.Test.Unit {
                 }
 
                 #expect(foundEntry != nil)
-                #expect(foundEntry?.pathIfValid?.string == dir.path.string + "/test.txt")
+                #expect(foundEntry?.pathIfValid == dir.path / "test.txt")
                 await io.shutdown()
             }
         }
@@ -404,12 +404,12 @@ extension File.Directory.Async.Test.Unit {
 
                 // Create nested structure
                 for i in 0..<5 {
-                    let sub = try File.Path(dir.path.string + "/dir\(i)")
+                    let sub = dir.path / "dir\(i)"
                     try await File.System.Create.Directory.create(at: sub)
                     for j in 0..<5 {
                         try File.System.Write.Atomic.write(
                             Array("".utf8).span,
-                            to: try File.Path(sub.string + "/file\(j).txt")
+                            to: sub / "file\(j).txt"
                         )
                     }
                 }
@@ -441,7 +441,7 @@ extension File.Directory.Async.Test.Unit {
                 for i in 0..<10 {
                     try File.System.Write.Atomic.write(
                         Array("".utf8).span,
-                        to: try File.Path(dir.path.string + "/file\(i).txt")
+                        to: dir.path / "file\(i).txt"
                     )
                 }
 
@@ -471,7 +471,7 @@ extension File.Directory.Async.Test.Unit {
                 for i in 0..<10 {
                     try File.System.Write.Atomic.write(
                         Array("".utf8).span,
-                        to: try File.Path(dir.path.string + "/file\(i).txt")
+                        to: dir.path / "file\(i).txt"
                     )
                 }
 
@@ -521,7 +521,7 @@ extension File.Directory.Async.Test.Unit {
                 for i in 0..<10 {
                     try File.System.Write.Atomic.write(
                         Array("".utf8).span,
-                        to: try File.Path(dir.path.string + "/file\(i).txt")
+                        to: dir.path / "file\(i).txt"
                     )
                 }
 
@@ -551,7 +551,7 @@ extension File.Directory.Async.Test.Unit {
                 for i in 0..<100 {
                     try File.System.Write.Atomic.write(
                         Array("".utf8).span,
-                        to: try File.Path(dir.path.string + "/file\(i).txt")
+                        to: dir.path / "file\(i).txt"
                     )
                 }
 

@@ -6,6 +6,9 @@
 //
 //  Performance benchmarks for async directory iteration.
 //  Compares pull-based async iteration against sync baseline.
+//
+//  Note: These heavy benchmarks are skipped on Windows CI to avoid
+//  resource exhaustion issues on the GitHub Actions runner.
 
 import Clocks
 import File_System_Test_Support
@@ -17,12 +20,13 @@ import Testing
 @testable import File_System
 @testable import File_System_Async
 
+#if os(macOS) || os(Linux)
+
 /// Performance benchmarks for async directory iteration.
 /// Measures pull-based async iterator performance vs sync baseline.
 @Suite(.serialized)
 final class DirectoryAsyncIterationPerformanceTests2 {
     let testDir1000Files: File.Directory
-    let io: File.IO.Executor
 
     init() throws {
         let td = try File.Directory.Temporary.system
@@ -42,12 +46,9 @@ final class DirectoryAsyncIterationPerformanceTests2 {
             let filePath = File.Path(testDir1000Files.path, appending: "file_\(i).txt")
             try File.System.Write.Atomic.write(fileData.span, to: filePath, options: writeOptions)
         }
-
-        self.io = File.IO.Executor()
     }
 
     deinit {
-        Task { [io] in await io.shutdown() }
         try? File.System.Delete.delete(at: testDir1000Files.path, options: .init(recursive: true))
     }
 
@@ -55,6 +56,7 @@ final class DirectoryAsyncIterationPerformanceTests2 {
 
     @Test("Batch size 64 - 1000 files × 100 loops (async)")
     func batchSize64() async throws {
+        let io = File.IO.Executor()
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
         let clock = Time.Clock.Continuous()
@@ -78,10 +80,13 @@ final class DirectoryAsyncIterationPerformanceTests2 {
         )
         print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        await io.shutdown()
     }
 
     @Test("Batch size 128 - 1000 files × 100 loops (async)")
     func batchSize128() async throws {
+        let io = File.IO.Executor()
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
         let clock = Time.Clock.Continuous()
@@ -105,10 +110,13 @@ final class DirectoryAsyncIterationPerformanceTests2 {
         )
         print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        await io.shutdown()
     }
 
     @Test("Batch size 256 - 1000 files × 100 loops (async)")
     func batchSize256() async throws {
+        let io = File.IO.Executor()
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
         let clock = Time.Clock.Continuous()
@@ -132,12 +140,15 @@ final class DirectoryAsyncIterationPerformanceTests2 {
         )
         print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        await io.shutdown()
     }
 
     // MARK: - Default Batch Size (Public API)
 
     @Test("Pull-based async iteration (default batch) - 1000 files × 100 loops (async)")
     func pullBasedAsyncDefaultBatch() async throws {
+        let io = File.IO.Executor()
         let dir = File.Directory.Async(io: io)
         let loopCount = 100
         let clock = Time.Clock.Continuous()
@@ -162,12 +173,15 @@ final class DirectoryAsyncIterationPerformanceTests2 {
         print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
         print("Target: < 1000 ns/file")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        await io.shutdown()
     }
 
     // MARK: - Comparison with Sync Baseline
 
     @Test("Sync vs Async comparison - 1000 files × 100 loops (async)")
     func syncVsAsyncComparison() async throws {
+        let io = File.IO.Executor()
         let loopCount = 100
         let totalFiles = loopCount * 1000
 
@@ -213,5 +227,9 @@ final class DirectoryAsyncIterationPerformanceTests2 {
         print("Async: \(asyncPerFileNs.formatted(.number.precision(1))) ns/file")
         print("Overhead: \(overhead.formatted(.number.precision(1)))×")
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+        await io.shutdown()
     }
 }
+
+#endif

@@ -81,19 +81,24 @@ extension File.System.Stat.Test.Unit {
         }
     }
 
-    @Test("lstatInfo returns symbolicLink type for symlink")
-    func lstatInfoReturnsSymlinkForSymlink() throws {
-        try File.Directory.temporary { dir in
-            let targetPath = File.Path(dir.path, appending: "target.txt")
-            let linkPath = File.Path(dir.path, appending: "link")
+    // Note: Symlink tests are in platform-specific test files.
+    // Windows symlink creation requires Developer Mode or admin privileges,
+    // which CI runners typically don't have.
+    #if !os(Windows)
+        @Test("lstatInfo returns symbolicLink type for symlink")
+        func lstatInfoReturnsSymlinkForSymlink() throws {
+            try File.Directory.temporary { dir in
+                let targetPath = File.Path(dir.path, appending: "target.txt")
+                let linkPath = File.Path(dir.path, appending: "link")
 
-            try File.System.Write.Atomic.write(Array("test".utf8).span, to: targetPath)
-            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
+                try File.System.Write.Atomic.write(Array("test".utf8).span, to: targetPath)
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-            let info = try File.System.Stat.lstatInfo(at: linkPath)
-            #expect(info.type == .symbolicLink)
+                let info = try File.System.Stat.lstatInfo(at: linkPath)
+                #expect(info.type == .symbolicLink)
+            }
         }
-    }
+    #endif
 
     @Test("lstatInfo returns regular type for file (not symlink)")
     func lstatInfoReturnsRegularForFile() throws {
@@ -143,21 +148,25 @@ extension File.System.Stat.Test.Unit {
         }
     }
 
-    @Test("info returns correct type for symlink")
-    func infoReturnsCorrectTypeForSymlink() throws {
-        try File.Directory.temporary { dir in
-            let targetPath = File.Path(dir.path, appending: "target.txt")
-            let linkPath = File.Path(dir.path, appending: "link")
+    #if !os(Windows)
+        // Windows symlink behavior differs from POSIX - it may not follow symlinks the same way
 
-            try File.System.Write.Atomic.write(Array("test".utf8).span, to: targetPath)
-            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
+        @Test("info returns correct type for symlink")
+        func infoReturnsCorrectTypeForSymlink() throws {
+            try File.Directory.temporary { dir in
+                let targetPath = File.Path(dir.path, appending: "target.txt")
+                let linkPath = File.Path(dir.path, appending: "link")
 
-            let info = try File.System.Stat.info(at: linkPath)
+                try File.System.Write.Atomic.write(Array("test".utf8).span, to: targetPath)
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-            // info() follows symlinks by default, so it should return the target type
-            #expect(info.type == .regular)
+                let info = try File.System.Stat.info(at: linkPath)
+
+                // info() follows symlinks by default, so it should return the target type
+                #expect(info.type == .regular)
+            }
         }
-    }
+    #endif
 
     // MARK: - Async variants
 
@@ -208,66 +217,70 @@ extension File.System.Stat.Test.Unit {
 
     // MARK: - lstatInfo() tests
 
-    @Test("lstatInfo returns symbolicLink type for symlink")
-    func lstatInfoReturnsSymlinkType() throws {
-        try File.Directory.temporary { dir in
-            let targetPath = File.Path(dir.path, appending: "target.txt")
-            let linkPath = File.Path(dir.path, appending: "link")
+    #if !os(Windows)
+        // Windows symlink semantics differ from POSIX - stat/lstat may not distinguish the same way
 
-            // Create target file using our API
-            var handle = try File.Handle.open(
-                targetPath,
-                mode: .write,
-                options: [.create, .closeOnExec]
-            )
-            try handle.write(Array("test".utf8).span)
-            try handle.close()
+        @Test("lstatInfo returns symbolicLink type for symlink")
+        func lstatInfoReturnsSymlinkType() throws {
+            try File.Directory.temporary { dir in
+                let targetPath = File.Path(dir.path, appending: "target.txt")
+                let linkPath = File.Path(dir.path, appending: "link")
 
-            // Create symlink using our API
-            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
+                // Create target file using our API
+                var handle = try File.Handle.open(
+                    targetPath,
+                    mode: .write,
+                    options: [.create, .closeOnExec]
+                )
+                try handle.write(Array("test".utf8).span)
+                try handle.close()
 
-            // lstatInfo should return symbolicLink type (doesn't follow)
-            let lstatInfo = try File.System.Stat.lstatInfo(at: linkPath)
-            #expect(lstatInfo.type == .symbolicLink)
+                // Create symlink using our API
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-            // info should return regular type (follows symlink)
-            let statInfo = try File.System.Stat.info(at: linkPath)
-            #expect(statInfo.type == .regular)
+                // lstatInfo should return symbolicLink type (doesn't follow)
+                let lstatInfo = try File.System.Stat.lstatInfo(at: linkPath)
+                #expect(lstatInfo.type == .symbolicLink)
+
+                // info should return regular type (follows symlink)
+                let statInfo = try File.System.Stat.info(at: linkPath)
+                #expect(statInfo.type == .regular)
+            }
         }
-    }
 
-    @Test("lstatInfo returns different inode than info for symlink")
-    func lstatInfoReturnsDifferentInodeForSymlink() throws {
-        try File.Directory.temporary { dir in
-            let targetPath = File.Path(dir.path, appending: "target.txt")
-            let linkPath = File.Path(dir.path, appending: "link")
+        @Test("lstatInfo returns different inode than info for symlink")
+        func lstatInfoReturnsDifferentInodeForSymlink() throws {
+            try File.Directory.temporary { dir in
+                let targetPath = File.Path(dir.path, appending: "target.txt")
+                let linkPath = File.Path(dir.path, appending: "link")
 
-            // Create target file using our API
-            var handle = try File.Handle.open(
-                targetPath,
-                mode: .write,
-                options: [.create, .closeOnExec]
-            )
-            try handle.write(Array("test".utf8).span)
-            try handle.close()
+                // Create target file using our API
+                var handle = try File.Handle.open(
+                    targetPath,
+                    mode: .write,
+                    options: [.create, .closeOnExec]
+                )
+                try handle.write(Array("test".utf8).span)
+                try handle.close()
 
-            // Create symlink using our API
-            try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
+                // Create symlink using our API
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-            // lstatInfo returns the symlink's own inode
-            let lstatInfo = try File.System.Stat.lstatInfo(at: linkPath)
+                // lstatInfo returns the symlink's own inode
+                let lstatInfo = try File.System.Stat.lstatInfo(at: linkPath)
 
-            // info on symlink follows to target, should have same inode as target
-            let statInfo = try File.System.Stat.info(at: linkPath)
-            let targetInfo = try File.System.Stat.info(at: targetPath)
+                // info on symlink follows to target, should have same inode as target
+                let statInfo = try File.System.Stat.info(at: linkPath)
+                let targetInfo = try File.System.Stat.info(at: targetPath)
 
-            // The symlink has its own inode, different from the target
-            #expect(lstatInfo.inode != targetInfo.inode)
+                // The symlink has its own inode, different from the target
+                #expect(lstatInfo.inode != targetInfo.inode)
 
-            // info() on symlink should return the target's inode
-            #expect(statInfo.inode == targetInfo.inode)
+                // info() on symlink should return the target's inode
+                #expect(statInfo.inode == targetInfo.inode)
+            }
         }
-    }
+    #endif
 
     @Test("lstatInfo same as info for regular file")
     func lstatInfoSameAsInfoForRegularFile() throws {

@@ -29,7 +29,8 @@ extension File.Directory.Test.Unit {
     @Test("init from string")
     func initFromString() throws {
         let dir = try File.Directory("/tmp/test")
-        #expect(dir.description == "/tmp/test")
+        let expected: File.Path = "/tmp/test"
+        #expect(dir.description == String(expected))
     }
 
     // Removed: init from string literal test - File.Directory intentionally does not conform to ExpressibleByStringLiteral
@@ -191,7 +192,7 @@ extension File.Directory.Test.Unit {
         let dir = try File.Directory("/tmp/mydir")
         let file = dir["readme.txt"]
 
-        #expect(file.path.string == "/tmp/mydir/readme.txt")
+        #expect(file.path == "/tmp/mydir/readme.txt")
     }
 
     @Test("subscript chain works")
@@ -209,8 +210,8 @@ extension File.Directory.Test.Unit {
     func subdirectoryReturnsDirectoryInstance() throws {
         let dir = try File.Directory("/tmp/mydir")
         let subdir = dir.subdirectory("nested")
-
-        #expect(subdir.description == "/tmp/mydir/nested")
+        let expected: File.Path = "/tmp/mydir/nested"
+        #expect(subdir.description == String(expected))
     }
 
     // MARK: - Path Navigation
@@ -221,7 +222,7 @@ extension File.Directory.Test.Unit {
         let parent = dir.parent
 
         #expect(parent != nil)
-        #expect(parent?.path.string == "/tmp/parent")
+        #expect(parent?.path == "/tmp/parent")
     }
 
     @Test("name returns directory name")
@@ -234,14 +235,14 @@ extension File.Directory.Test.Unit {
     func appendingReturnsNewInstance() throws {
         let dir = try File.Directory("/tmp")
         let result = dir.appending("subdir")
-        #expect(result.path.string == "/tmp/subdir")
+        #expect(result.path == "/tmp/subdir")
     }
 
     @Test("/ operator appends path")
     func slashOperatorAppendsPath() throws {
         let dir = try File.Directory("/tmp")
         let result = dir / "subdir" / "nested"
-        #expect(result.path.string == "/tmp/subdir/nested")
+        #expect(result.path == "/tmp/subdir/nested")
     }
 
     // MARK: - Hashable & Equatable
@@ -273,12 +274,14 @@ extension File.Directory.Test.Unit {
     @Test("description returns path string")
     func descriptionReturnsPathString() throws {
         let dir = try File.Directory("/tmp/test")
-        #expect(dir.description == "/tmp/test")
+        let expected: File.Path = "/tmp/test"
+        #expect(dir.description == String(expected))
     }
 
     @Test("debugDescription returns formatted string")
     func debugDescriptionReturnsFormatted() throws {
         let dir = try File.Directory("/tmp/test")
-        #expect(dir.debugDescription == #"File.Directory("/tmp/test")"#)
+        let p: File.Path = "/tmp/test"
+        #expect(dir.debugDescription == "File.Directory(\(String(p).debugDescription))")
     }
 }

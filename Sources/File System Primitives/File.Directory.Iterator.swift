@@ -142,7 +142,7 @@ extension File.Directory.Iterator {
         ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -150,7 +150,7 @@ extension File.Directory.Iterator {
                 throw .notADirectory(path)
             }
 
-            guard let dir = opendir(path.string) else {
+            guard let dir = opendir(String(path)) else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -193,7 +193,7 @@ extension File.Directory.Iterator {
                         type: .other
                     ).pathIfValid {
                         var entryStat = stat()
-                        if lstat(entryPath.string, &entryStat) == 0 {
+                        if lstat(String(entryPath), &entryStat) == 0 {
                             switch entryStat.st_mode & S_IFMT {
                             case S_IFREG:
                                 entryType = .file
@@ -247,7 +247,7 @@ extension File.Directory.Iterator {
         ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -255,7 +255,7 @@ extension File.Directory.Iterator {
                 throw .notADirectory(path)
             }
 
-            guard let dir = Glibc.opendir(path.string) else {
+            guard let dir = Glibc.opendir(String(path)) else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -288,7 +288,7 @@ extension File.Directory.Iterator {
                     type: .other
                 ).pathIfValid {
                     var entryStat = stat()
-                    if Glibc.lstat(entryPath.string, &entryStat) == 0 {
+                    if Glibc.lstat(String(entryPath), &entryStat) == 0 {
                         switch entryStat.st_mode & S_IFMT {
                         case S_IFREG:
                             entryType = .file
@@ -340,7 +340,7 @@ extension File.Directory.Iterator {
         ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -348,7 +348,7 @@ extension File.Directory.Iterator {
                 throw .notADirectory(path)
             }
 
-            guard let dir = Musl.opendir(path.string) else {
+            guard let dir = Musl.opendir(String(path)) else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -381,7 +381,7 @@ extension File.Directory.Iterator {
                     type: .other
                 ).pathIfValid {
                     var entryStat = stat()
-                    if Musl.lstat(entryPath.string, &entryStat) == 0 {
+                    if Musl.lstat(String(entryPath), &entryStat) == 0 {
                         switch entryStat.st_mode & S_IFMT {
                         case S_IFREG:
                             entryType = .file
@@ -436,7 +436,7 @@ extension File.Directory.Iterator {
             at path: File.Path
         ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
             // Verify it's a directory
-            let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let attrs = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -450,7 +450,7 @@ extension File.Directory.Iterator {
             }
 
             var findData = WIN32_FIND_DATAW()
-            let searchPath = path.string + "\\*"
+            let searchPath = String(path) + "\\*"
 
             let handle = searchPath.withCString(encodedAs: UTF16.self) { wpath in
                 FindFirstFileW(wpath, &findData)
@@ -500,13 +500,16 @@ extension File.Directory.Iterator {
                 }
 
                 // Determine type from SNAPSHOT attributes (not current _findData)
+                // CRITICAL: Check REPARSE_POINT before DIRECTORY because symlinks
+                // to directories have BOTH attributes set. If we check directory first,
+                // we'd incorrectly recurse into symlinks when followSymlinks=false.
                 let entryType: File.Directory.Entry.Kind
-                if (attributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                if (attributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
+                    // Reparse points (symlinks, junctions, mount points) classified as symlinks
+                    // to prevent incorrect recursion during directory walks
+                    entryType = .symbolicLink
+                } else if (attributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (attributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                    // Conservative classification: reparse points include junctions,
-                    // mount points, OneDrive placeholders, etc. - not just symlinks
-                    entryType = .other
                 } else {
                     entryType = .file
                 }

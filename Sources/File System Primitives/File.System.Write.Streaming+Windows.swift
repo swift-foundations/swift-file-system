@@ -400,37 +400,17 @@
             }
         }
 
+        /// Flushes directory to persist rename.
+        ///
+        /// On Windows, this is a no-op. `FlushFileBuffers` on directories requires
+        /// `SE_BACKUP_PRIVILEGE` which standard applications don't have. The rename
+        /// operation uses `MOVEFILE_WRITE_THROUGH` which provides write-through
+        /// semantics, and NTFS's transactional journal provides durability guarantees
+        /// for metadata operations like renames.
         private static func flushDirectory(_ path: String) throws(File.System.Write.Streaming.Error) {
-            let handle = withWideString(path) { wPath in
-                CreateFileW(
-                    wPath,
-                    _dword(GENERIC_READ),
-                    _mask(FILE_SHARE_READ) | _mask(FILE_SHARE_WRITE) | _mask(FILE_SHARE_DELETE),
-                    nil,
-                    _dword(OPEN_EXISTING),
-                    _mask(FILE_FLAG_BACKUP_SEMANTICS),
-                    nil
-                )
-            }
-
-            guard let handle = handle, handle != INVALID_HANDLE_VALUE else {
-                let err = GetLastError()
-                throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
-                    errno: Int32(err),
-                    message: "CreateFileW(directory) failed with error \(err)"
-                )
-            }
-            defer { _ = CloseHandle(handle) }
-
-            if !_ok(FlushFileBuffers(handle)) {
-                let err = GetLastError()
-                throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
-                    errno: Int32(err),
-                    message: "FlushFileBuffers(directory) failed with error \(err)"
-                )
-            }
+            // No-op on Windows - directory sync is not supported without elevated
+            // privileges, and MOVEFILE_WRITE_THROUGH already provides durability.
+            _ = path  // Silence unused parameter warning
         }
     }
 

@@ -18,7 +18,7 @@
             if options.createIntermediates {
                 try _createIntermediates(at: path)
             } else {
-                let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
+                let success = String(path).withCString(encodedAs: UTF16.self) { wpath in
                     CreateDirectoryW(wpath, nil)
                 }
                 guard _ok(success) else {
@@ -32,7 +32,7 @@
             at path: File.Path
         ) throws(File.System.Create.Directory.Error) {
             // Check if directory already exists
-            let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let attrs = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -46,7 +46,7 @@
             }
 
             // Try to create parent directory first
-            let pathString = path.string
+            let pathString = String(path)
             if let lastSlash = pathString.lastIndex(where: { $0 == "/" || $0 == "\\" }),
                 lastSlash != pathString.startIndex
             {
@@ -59,7 +59,7 @@
             }
 
             // Now create this directory
-            let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let success = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 CreateDirectoryW(wpath, nil)
             }
 
@@ -67,7 +67,7 @@
                 let error = GetLastError()
                 // Check if it was created by another process/thread in the meantime
                 if error == _dword(ERROR_ALREADY_EXISTS) {
-                    let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
+                    let attrs = String(path).withCString(encodedAs: UTF16.self) { wpath in
                         GetFileAttributesW(wpath)
                     }
                     if attrs != INVALID_FILE_ATTRIBUTES

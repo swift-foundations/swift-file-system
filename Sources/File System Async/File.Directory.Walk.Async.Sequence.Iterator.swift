@@ -185,6 +185,20 @@ extension File.Directory.Walk.Async.Sequence {
                 return
             }
 
+            // Mark this directory as visited for cycle detection.
+            // This ensures that if a symlink points back to this directory,
+            // we detect the cycle even for the root directory.
+            if options.followSymlinks {
+                if let dirInode = await getInode(dir.path, io: io, followSymlinks: true) {
+                    let isNewVisit = await state.markVisited(dirInode)
+                    if !isNewVisit {
+                        // Already visited - this is a cycle, skip this directory
+                        await state.decrementActive()
+                        return
+                    }
+                }
+            }
+
             // Open iterator
             let boxResult: Result<Box, ChannelError> = await {
                 do {
@@ -309,9 +323,12 @@ extension File.Directory.Walk.Async.Sequence {
                         if entry.type == .directory {
                             shouldRecurse = true
                         } else if options.followSymlinks && entry.type == .symbolicLink {
-                            // Get inode for cycle detection
-                            if let inode = await getInode(entryPath, io: io) {
-                                shouldRecurse = await state.markVisited(inode)
+                            // Get the TARGET's inode for cycle detection.
+                            // We use followSymlinks: true to get the target's identity,
+                            // so if this symlink points to an already-visited directory,
+                            // we detect the cycle and don't recurse.
+                            if let targetInode = await getInode(entryPath, io: io, followSymlinks: true) {
+                                shouldRecurse = await state.markVisited(targetInode)
                             } else {
                                 shouldRecurse = false
                             }
@@ -344,14 +361,26 @@ extension File.Directory.Walk.Async.Sequence {
             await state.decrementActive()
         }
 
+        /// Gets the inode of a path for cycle detection.
+        ///
+        /// When detecting cycles for symlink following, we need the TARGET's inode
+        /// (using stat which follows symlinks), not the symlink's own inode.
+        /// This ensures that different symlinks pointing to the same directory
+        /// are correctly detected as cycles.
         private static func getInode(
             _ path: File.Path,
-            io: File.IO.Executor
+            io: File.IO.Executor,
+            followSymlinks: Bool
         ) async -> File.Directory.Walk.Async.Inode.Key? {
             do {
                 return try await io.run {
-                    // Use lstat to get the symlink's own inode, not its target's
-                    let info = try File.System.Stat.lstatInfo(at: path)
+                    // Use stat (follows symlinks) when we're about to follow a symlink
+                    // to detect if the target has already been visited.
+                    // Use lstat when we just need the entry's own inode.
+                    let info =
+                        followSymlinks
+                        ? try File.System.Stat.info(at: path)
+                        : try File.System.Stat.lstatInfo(at: path)
                     return File.Directory.Walk.Async.Inode.Key(
                         device: info.deviceId,
                         inode: info.inode

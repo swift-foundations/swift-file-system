@@ -17,7 +17,7 @@
             options: Options
         ) throws(File.System.Copy.Error) {
             // Check if source exists and is not a directory
-            let srcAttrs = source.string.withCString(encodedAs: UTF16.self) { wpath in
+            let srcAttrs = String(source).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -30,7 +30,7 @@
             }
 
             // Check destination
-            let dstAttrs = destination.string.withCString(encodedAs: UTF16.self) { wpath in
+            let dstAttrs = String(destination).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -42,8 +42,8 @@
             // failIfExists: true means fail if destination exists
             let failIfExists: Bool = !options.overwrite
 
-            let success = source.string.withCString(encodedAs: UTF16.self) { wsrc in
-                destination.string.withCString(encodedAs: UTF16.self) { wdst in
+            let success = String(source).withCString(encodedAs: UTF16.self) { wsrc in
+                String(destination).withCString(encodedAs: UTF16.self) { wdst in
                     CopyFileW(wsrc, wdst, failIfExists)
                 }
             }

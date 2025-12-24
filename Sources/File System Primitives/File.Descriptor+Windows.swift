@@ -24,14 +24,24 @@
             var creationDisposition: DWORD = _dword(OPEN_EXISTING)
             var flagsAndAttributes: DWORD = _mask(FILE_ATTRIBUTE_NORMAL)
 
-            // Set access mode
+            // Set access mode - handle append in each relevant mode
+            // GENERIC_WRITE includes FILE_WRITE_DATA which defeats append semantics,
+            // so for append we use FILE_APPEND_DATA exclusively (not combined with GENERIC_WRITE)
             switch mode {
             case .read:
                 desiredAccess = _dword(GENERIC_READ)
             case .write:
-                desiredAccess = _dword(GENERIC_WRITE)
+                if options.contains(.append) {
+                    desiredAccess = _mask(FILE_APPEND_DATA)
+                } else {
+                    desiredAccess = _dword(GENERIC_WRITE)
+                }
             case .readWrite:
-                desiredAccess = _dword(GENERIC_READ) | _dword(GENERIC_WRITE)
+                if options.contains(.append) {
+                    desiredAccess = _dword(GENERIC_READ) | _mask(FILE_APPEND_DATA)
+                } else {
+                    desiredAccess = _dword(GENERIC_READ) | _dword(GENERIC_WRITE)
+                }
             }
 
             // Set creation disposition based on options
@@ -47,17 +57,12 @@
                 creationDisposition = _dword(TRUNCATE_EXISTING)
             }
 
-            // Append mode - combine with existing access, don't clobber
-            if options.contains(.append) {
-                desiredAccess |= _mask(FILE_APPEND_DATA)
-            }
-
             // No follow symlinks
             if options.contains(.noFollow) {
                 flagsAndAttributes |= _mask(FILE_FLAG_OPEN_REPARSE_POINT)
             }
 
-            let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let handle = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
                     desiredAccess,

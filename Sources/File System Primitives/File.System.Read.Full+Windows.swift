@@ -15,7 +15,7 @@
             from path: File.Path
         ) throws(File.System.Read.Full.Error) -> [UInt8] {
             // Open file for reading
-            let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let handle = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
                     _dword(GENERIC_READ),

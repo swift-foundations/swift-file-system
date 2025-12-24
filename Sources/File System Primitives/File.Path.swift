@@ -162,6 +162,7 @@ extension File.Path {
 
 extension File.Path {
     /// The string representation of this path.
+    @available(*, deprecated, message: "Use String(path) instead")
     @inlinable
     public var string: String {
         _path.string

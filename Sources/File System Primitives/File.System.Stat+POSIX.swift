@@ -24,7 +24,7 @@
         ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
             var statBuf = stat()
 
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -39,7 +39,7 @@
         ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
             var statBuf = stat()
 
-            guard lstat(path.string, &statBuf) == 0 else {
+            guard lstat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -48,13 +48,13 @@
 
         /// Checks if path exists using POSIX access.
         internal static func _existsPOSIX(at path: File.Path) -> Bool {
-            access(path.string, F_OK) == 0
+            access(String(path), F_OK) == 0
         }
 
         /// Checks if path is a symlink using POSIX lstat.
         internal static func _isSymlinkPOSIX(at path: File.Path) -> Bool {
             var statBuf = stat()
-            guard lstat(path.string, &statBuf) == 0 else {
+            guard lstat(String(path), &statBuf) == 0 else {
                 return false
             }
             return (statBuf.st_mode & S_IFMT) == S_IFLNK

@@ -31,9 +31,9 @@
             var sourceStat = stat()
             let statResult: Int32
             if options.followSymlinks {
-                statResult = stat(source.string, &sourceStat)
+                statResult = stat(String(source), &sourceStat)
             } else {
-                statResult = lstat(source.string, &sourceStat)
+                statResult = lstat(String(source), &sourceStat)
             }
 
             guard statResult == 0 else {
@@ -50,7 +50,7 @@
 
             // Check if destination exists (use lstat to detect symlinks)
             var destStat = stat()
-            let destExists = lstat(destination.string, &destStat) == 0
+            let destExists = lstat(String(destination), &destStat) == 0
 
             if destExists {
                 if !options.overwrite {
@@ -62,7 +62,7 @@
                 }
                 // Unlink destination before copy to replace directory entry
                 // This is critical: without this, writing to a symlink writes through to target
-                _ = unlink(destination.string)
+                _ = unlink(String(destination))
             }
 
             // Handle symlink copying when followSymlinks=false
@@ -83,7 +83,7 @@
             #endif
 
             // Open source for reading
-            let srcFd = open(source.string, O_RDONLY)
+            let srcFd = open(String(source), O_RDONLY)
             guard srcFd >= 0 else {
                 throw _mapErrno(errno, source: source, destination: destination)
             }
@@ -93,7 +93,7 @@
             let dstFlags: Int32 = O_WRONLY | O_CREAT | O_TRUNC
             // When copyAttributes is true, preserve source permissions; otherwise use default (0o666 modified by umask)
             let dstMode: mode_t = options.copyAttributes ? (sourceStat.st_mode & 0o7777) : 0o666
-            let dstFd = open(destination.string, dstFlags, dstMode)
+            let dstFd = open(String(destination), dstFlags, dstMode)
             guard dstFd >= 0 else {
                 throw _mapErrno(errno, source: source, destination: destination)
             }
@@ -102,7 +102,7 @@
             defer {
                 _ = close(dstFd)
                 if !success {
-                    _ = unlink(destination.string)
+                    _ = unlink(String(destination))
                 }
             }
 
@@ -229,7 +229,7 @@
         ) throws(File.System.Copy.Error) {
             // Read the symlink target
             var buffer = [CChar](repeating: 0, count: Int(PATH_MAX) + 1)
-            let len = readlink(source.string, &buffer, buffer.count - 1)
+            let len = readlink(String(source), &buffer, buffer.count - 1)
             guard len >= 0 else {
                 throw _mapErrno(errno, source: source, destination: destination)
             }
@@ -237,7 +237,7 @@
             let target = buffer.prefix(len).withUnsafeBufferPointer { ptr in
                 String(decoding: UnsafeRawBufferPointer(ptr), as: UTF8.self)
             }
-            guard symlink(target, destination.string) == 0 else {
+            guard symlink(target, String(destination)) == 0 else {
                 throw _mapErrno(errno, source: source, destination: destination)
             }
         }
@@ -267,8 +267,8 @@
                 // because clone always preserves metadata regardless of COPYFILE_DATA flag
                 if options.copyAttributes {
                     if copyfile(
-                        source.string,
-                        destination.string,
+                        String(source),
+                        String(destination),
                         nil,
                         flags | copyfile_flags_t(COPYFILE_CLONE_FORCE)
                     ) == 0 {
@@ -277,7 +277,7 @@
                 }
 
                 // Fall back to full kernel copy (COPYFILE_DATA or COPYFILE_ALL)
-                if copyfile(source.string, destination.string, nil, flags) == 0 {
+                if copyfile(String(source), String(destination), nil, flags) == 0 {
                     return true
                 }
 

@@ -616,7 +616,7 @@ extension File.IO {
             }
 
             // Capture path string for Sendable closure
-            let pathString = path.string
+            let pathString = String(path)
 
             // Open on lane (blocking operation)
             let result: Result<PlatformWriteContext, File.System.Write.Streaming.Error>

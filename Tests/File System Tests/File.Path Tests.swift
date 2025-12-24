@@ -22,21 +22,21 @@ extension File.Path.Test.Unit {
     func withExtensionSetsExtension() {
         let path: File.Path = "/tmp/data.json"
         let result = path.with(.extension, "txt")
-        #expect(result.string == "/tmp/data.txt")
+        #expect(result == "/tmp/data.txt")
     }
 
     @Test("with extension replaces existing extension")
     func withExtensionReplacesExtension() {
         let path: File.Path = "/tmp/file.tar.gz"
         let result = path.with(.extension, "bz2")
-        #expect(result.string == "/tmp/file.tar.bz2")
+        #expect(result == "/tmp/file.tar.bz2")
     }
 
     @Test("with extension on file without extension")
     func withExtensionOnNoExtension() {
         let path: File.Path = "/tmp/Makefile"
         let result = path.with(.extension, "bak")
-        #expect(result.string == "/tmp/Makefile.bak")
+        #expect(result == "/tmp/Makefile.bak")
     }
 
     // MARK: - with(.lastComponent)
@@ -45,14 +45,14 @@ extension File.Path.Test.Unit {
     func withLastComponentReplacesFilename() {
         let path: File.Path = "/tmp/data.json"
         let result = path.with(.lastComponent, "config.yaml")
-        #expect(result.string == "/tmp/config.yaml")
+        #expect(result == "/tmp/config.yaml")
     }
 
     @Test("with lastComponent on nested path")
     func withLastComponentOnNestedPath() {
         let path: File.Path = "/usr/local/bin/swift"
         let result = path.with(.lastComponent, "swiftc")
-        #expect(result.string == "/usr/local/bin/swiftc")
+        #expect(result == "/usr/local/bin/swiftc")
     }
 
     // MARK: - removing(.extension)
@@ -61,21 +61,21 @@ extension File.Path.Test.Unit {
     func removingExtensionRemovesExtension() {
         let path: File.Path = "/tmp/data.json"
         let result = path.removing(.extension)
-        #expect(result.string == "/tmp/data")
+        #expect(result == "/tmp/data")
     }
 
     @Test("removing extension on file without extension")
     func removingExtensionOnNoExtension() {
         let path: File.Path = "/tmp/Makefile"
         let result = path.removing(.extension)
-        #expect(result.string == "/tmp/Makefile")
+        #expect(result == "/tmp/Makefile")
     }
 
     @Test("removing extension on double extension")
     func removingExtensionOnDoubleExtension() {
         let path: File.Path = "/tmp/file.tar.gz"
         let result = path.removing(.extension)
-        #expect(result.string == "/tmp/file.tar")
+        #expect(result == "/tmp/file.tar")
     }
 
     // MARK: - removing(.lastComponent)
@@ -84,7 +84,7 @@ extension File.Path.Test.Unit {
     func removingLastComponentReturnsParent() {
         let path: File.Path = "/tmp/subdir/file.txt"
         let result = path.removing(.lastComponent)
-        #expect(result.string == "/tmp/subdir")
+        #expect(result == "/tmp/subdir")
     }
 
     // MARK: - components
@@ -157,7 +157,7 @@ extension File.Path.Test.Unit {
         let path: File.Path = "/usr/local/bin/swift"
         let base: File.Path = "/usr/local"
         let result = path.relative(to: base)
-        #expect(result?.string == "bin/swift")
+        #expect(result == "bin/swift")
     }
 
     @Test("relative returns nil when not a prefix")
@@ -178,6 +178,6 @@ extension File.Path.Test.Unit {
         let path: File.Path = "/usr/local"
         let base: File.Path = "/usr"
         let result = path.relative(to: base)
-        #expect(result?.string == "local")
+        #expect(result == "local")
     }
 }

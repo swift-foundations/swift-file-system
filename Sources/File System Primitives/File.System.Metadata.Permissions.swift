@@ -92,7 +92,7 @@ extension File.System.Metadata.Permissions {
             self = .defaultFile
         #else
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw Self._mapErrno(errno, path: path)
             }
             self.init(rawValue: UInt16(statBuf.st_mode & 0o7777))
@@ -117,7 +117,7 @@ extension File.System.Metadata.Permissions {
             // Windows doesn't have POSIX permissions - this is a no-op
             return
         #else
-            guard chmod(path.string, mode_t(permissions.rawValue)) == 0 else {
+            guard chmod(String(path), mode_t(permissions.rawValue)) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
         #endif

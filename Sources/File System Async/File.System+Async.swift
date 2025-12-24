@@ -51,7 +51,7 @@ extension File.System.Write.Streaming {
         ) async throws where Chunks.Element == [UInt8] {
             // Phase 1: Open
             let context = try await io.run {
-                try POSIXStreaming.openForStreaming(path: path.string, options: options)
+                try POSIXStreaming.openForStreaming(path: String(path), options: options)
             }
 
             do {
@@ -132,7 +132,7 @@ extension File.System.Write.Streaming {
         ) async throws where Chunks.Element == [UInt8] {
             // Phase 1: Open
             let context = try await io.run {
-                try WindowsStreaming.openForStreaming(path: path.string, options: options)
+                try WindowsStreaming.openForStreaming(path: String(path), options: options)
             }
 
             do {

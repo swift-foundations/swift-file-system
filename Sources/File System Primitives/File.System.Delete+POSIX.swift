@@ -24,7 +24,7 @@
         ) throws(File.System.Delete.Error) {
             // First, stat the path to determine what it is
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -35,13 +35,13 @@
                     try _deleteDirectoryRecursive(at: path)
                 } else {
                     // Try to remove empty directory
-                    guard rmdir(path.string) == 0 else {
+                    guard rmdir(String(path)) == 0 else {
                         throw _mapErrno(errno, path: path)
                     }
                 }
             } else {
                 // Remove file
-                guard unlink(path.string) == 0 else {
+                guard unlink(String(path)) == 0 else {
                     throw _mapErrno(errno, path: path)
                 }
             }
@@ -52,7 +52,7 @@
             at path: File.Path
         ) throws(File.System.Delete.Error) {
             // Open directory
-            guard let dir = opendir(path.string) else {
+            guard let dir = opendir(String(path)) else {
                 throw _mapErrno(errno, path: path)
             }
             defer { closedir(dir) }
@@ -77,7 +77,7 @@
 
                 // Stat to determine type
                 var childStat = stat()
-                guard stat(childPath.string, &childStat) == 0 else {
+                guard stat(String(childPath), &childStat) == 0 else {
                     throw _mapErrno(errno, path: childPath)
                 }
 
@@ -86,14 +86,14 @@
                     try _deleteDirectoryRecursive(at: childPath)
                 } else {
                     // Delete file
-                    guard unlink(childPath.string) == 0 else {
+                    guard unlink(String(childPath)) == 0 else {
                         throw _mapErrno(errno, path: childPath)
                     }
                 }
             }
 
             // Now delete the empty directory
-            guard rmdir(path.string) == 0 else {
+            guard rmdir(String(path)) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
         }

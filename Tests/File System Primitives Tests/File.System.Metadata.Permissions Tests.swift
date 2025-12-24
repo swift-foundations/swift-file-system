@@ -104,74 +104,80 @@ extension File.System.Metadata.Permissions.Test.Unit {
         }
     }
 
-    @Test("Set permissions of file")
-    func setPermissionsOfFile() throws {
-        try File.Directory.temporary { dir in
-            let filePath = File.Path(dir.path, appending: "test.txt")
-            try File.System.Write.Atomic.write([], to: filePath)
+    #if !os(Windows)
+        // Unix-style permission set/get tests are skipped on Windows because
+        // Windows uses ACLs rather than Unix mode bits, and chmod semantics
+        // don't map cleanly to Windows security model.
 
-            let newPerms: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite, .groupRead]
+        @Test("Set permissions of file")
+        func setPermissionsOfFile() throws {
+            try File.Directory.temporary { dir in
+                let filePath = File.Path(dir.path, appending: "test.txt")
+                try File.System.Write.Atomic.write([], to: filePath)
 
-            try File.System.Metadata.Permissions.set(newPerms, at: filePath)
+                let newPerms: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite, .groupRead]
 
-            let readBack = try File.System.Metadata.Permissions(at: filePath)
-            #expect(readBack.contains(.ownerRead))
-            #expect(readBack.contains(.ownerWrite))
-            #expect(readBack.contains(.groupRead))
-            #expect(!readBack.contains(.groupWrite))
-            #expect(!readBack.contains(.otherRead))
-        }
-    }
+                try File.System.Metadata.Permissions.set(newPerms, at: filePath)
 
-    @Test("Permissions roundtrip")
-    func permissionsRoundtrip() throws {
-        try File.Directory.temporary { dir in
-            let filePath = File.Path(dir.path, appending: "test.txt")
-            try File.System.Write.Atomic.write([], to: filePath)
-
-            let testPerms: File.System.Metadata.Permissions = [
-                .ownerRead, .ownerWrite, .ownerExecute,
-                .groupRead,
-                .otherRead,
-            ]
-
-            try File.System.Metadata.Permissions.set(testPerms, at: filePath)
-            let readBack = try File.System.Metadata.Permissions(at: filePath)
-
-            // Check the permission bits we set
-            #expect(readBack.contains(.ownerRead))
-            #expect(readBack.contains(.ownerWrite))
-            #expect(readBack.contains(.ownerExecute))
-            #expect(readBack.contains(.groupRead))
-            #expect(!readBack.contains(.groupWrite))
-            #expect(readBack.contains(.otherRead))
-            #expect(!readBack.contains(.otherWrite))
-        }
-    }
-
-    // MARK: - Error Cases
-
-    @Test("Get permissions of non-existent file throws pathNotFound")
-    func getPermissionsOfNonExistentFileThrows() throws {
-        try File.Directory.temporary { dir in
-            let nonExistent = File.Path(dir.path, appending: "non-existent-\(Int.random(in: 0..<Int.max))")
-
-            #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(nonExistent)) {
-                _ = try File.System.Metadata.Permissions(at: nonExistent)
+                let readBack = try File.System.Metadata.Permissions(at: filePath)
+                #expect(readBack.contains(.ownerRead))
+                #expect(readBack.contains(.ownerWrite))
+                #expect(readBack.contains(.groupRead))
+                #expect(!readBack.contains(.groupWrite))
+                #expect(!readBack.contains(.otherRead))
             }
         }
-    }
 
-    @Test("Set permissions of non-existent file throws pathNotFound")
-    func setPermissionsOfNonExistentFileThrows() throws {
-        try File.Directory.temporary { dir in
-            let nonExistent = File.Path(dir.path, appending: "non-existent-\(Int.random(in: 0..<Int.max))")
+        @Test("Permissions roundtrip")
+        func permissionsRoundtrip() throws {
+            try File.Directory.temporary { dir in
+                let filePath = File.Path(dir.path, appending: "test.txt")
+                try File.System.Write.Atomic.write([], to: filePath)
 
-            #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(nonExistent)) {
-                try File.System.Metadata.Permissions.set(.defaultFile, at: nonExistent)
+                let testPerms: File.System.Metadata.Permissions = [
+                    .ownerRead, .ownerWrite, .ownerExecute,
+                    .groupRead,
+                    .otherRead,
+                ]
+
+                try File.System.Metadata.Permissions.set(testPerms, at: filePath)
+                let readBack = try File.System.Metadata.Permissions(at: filePath)
+
+                // Check the permission bits we set
+                #expect(readBack.contains(.ownerRead))
+                #expect(readBack.contains(.ownerWrite))
+                #expect(readBack.contains(.ownerExecute))
+                #expect(readBack.contains(.groupRead))
+                #expect(!readBack.contains(.groupWrite))
+                #expect(readBack.contains(.otherRead))
+                #expect(!readBack.contains(.otherWrite))
             }
         }
-    }
+
+        // MARK: - Error Cases
+
+        @Test("Get permissions of non-existent file throws pathNotFound")
+        func getPermissionsOfNonExistentFileThrows() throws {
+            try File.Directory.temporary { dir in
+                let nonExistent = File.Path(dir.path, appending: "non-existent-\(Int.random(in: 0..<Int.max))")
+
+                #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(nonExistent)) {
+                    _ = try File.System.Metadata.Permissions(at: nonExistent)
+                }
+            }
+        }
+
+        @Test("Set permissions of non-existent file throws pathNotFound")
+        func setPermissionsOfNonExistentFileThrows() throws {
+            try File.Directory.temporary { dir in
+                let nonExistent = File.Path(dir.path, appending: "non-existent-\(Int.random(in: 0..<Int.max))")
+
+                #expect(throws: File.System.Metadata.Permissions.Error.pathNotFound(nonExistent)) {
+                    try File.System.Metadata.Permissions.set(.defaultFile, at: nonExistent)
+                }
+            }
+        }
+    #endif
 
     // MARK: - Error Descriptions
 

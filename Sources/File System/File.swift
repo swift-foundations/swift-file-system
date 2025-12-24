@@ -525,7 +525,7 @@ extension File {
 
 extension File: CustomStringConvertible {
     public var description: String {
-        path.string
+        String(path)
     }
 }
 
@@ -533,7 +533,7 @@ extension File: CustomStringConvertible {
 
 extension File: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "File(\(path.string.debugDescription))"
+        "File(\(String(path).debugDescription))"
     }
 }
 

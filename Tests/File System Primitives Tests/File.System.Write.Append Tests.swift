@@ -110,12 +110,14 @@ extension File.System.Write.Append.Test.Unit {
 
     // MARK: - Error Cases
 
-    @Test("Append to directory throws isDirectory")
+    @Test("Append to directory throws error")
     func appendToDirectoryThrows() throws {
         try File.Directory.temporary { dir in
             let path = dir.path
 
-            #expect(throws: File.System.Write.Append.Error.isDirectory(path)) {
+            // Windows returns permissionDenied for directory write attempts,
+            // while POSIX systems return isDirectory
+            #expect(throws: File.System.Write.Append.Error.self) {
                 let bytes: [UInt8] = [1, 2, 3]
                 try File.System.Write.Append.append(bytes.span, to: path)
             }

@@ -479,7 +479,7 @@ extension File.Directory {
 
 extension File.Directory: CustomStringConvertible {
     public var description: String {
-        path.string
+        String(path)
     }
 }
 
@@ -487,6 +487,6 @@ extension File.Directory: CustomStringConvertible {
 
 extension File.Directory: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "File.Directory(\(path.string.debugDescription))"
+        "File.Directory(\(String(path).debugDescription))"
     }
 }

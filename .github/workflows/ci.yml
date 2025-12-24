@@ -96,7 +96,7 @@ jobs:
       - name: Test (Swift 6.2)
         run: swift test -c release
 
-  # Windows validation (build-only, tests skip due to swift-syntax compiler crash)
+  # Windows validation
   windows-latest:
     name: Windows (Swift 6.2)
     runs-on: windows-latest
@@ -119,5 +119,6 @@ jobs:
           key: windows-swift62-spm-v2-${{ hashFiles('Package.swift', 'Package@*.swift') }}
           restore-keys: windows-swift62-spm-
 
-      - name: Build
-        run: swift build -c debug -v
+      # Note: swift test builds automatically
+      - name: Test
+        run: swift test -c debug

@@ -111,7 +111,7 @@ extension File.System.Metadata.Timestamps {
             _ path: File.Path
         ) throws(File.System.Metadata.Timestamps.Error) -> Self {
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
 
@@ -182,7 +182,7 @@ extension File.System.Metadata.Timestamps {
             times[1].tv_sec = time_t(timestamps.modificationTime.secondsSinceEpoch)
             times[1].tv_nsec = Int(timestamps.modificationTime.totalNanoseconds)
 
-            guard utimensat(AT_FDCWD, path.string, &times, 0) == 0 else {
+            guard utimensat(AT_FDCWD, String(path), &times, 0) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
         }
@@ -213,7 +213,7 @@ extension File.System.Metadata.Timestamps {
         internal static func _getWindows(
             _ path: File.Path
         ) throws(File.System.Metadata.Timestamps.Error) -> Self {
-            let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let handle = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
                     _mask(FILE_READ_ATTRIBUTES),
@@ -254,7 +254,7 @@ extension File.System.Metadata.Timestamps {
             _ timestamps: Self,
             at path: File.Path
         ) throws(File.System.Metadata.Timestamps.Error) {
-            let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let handle = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
                     _mask(FILE_WRITE_ATTRIBUTES),
