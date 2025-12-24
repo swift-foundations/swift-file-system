@@ -376,7 +376,7 @@ extension File.IO.Test.EdgeCase {
 
             // Create file in subdir
             let subFilePath = subPath / "nested.txt"
-            var subHandle = try File.Handle.open(subFilePath, mode: .write, options: [.create, .closeOnExec])
+            let subHandle = try File.Handle.open(subFilePath, mode: .write, options: [.create, .closeOnExec])
             try subHandle.close()
 
             var paths: [String] = []

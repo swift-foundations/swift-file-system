@@ -10,7 +10,7 @@
 #elseif canImport(Glibc)
     import Glibc
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.IO {

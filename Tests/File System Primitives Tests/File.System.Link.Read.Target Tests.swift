@@ -35,7 +35,7 @@ extension File.System.Link.Read.Target.Test.Unit {
                 )
 
                 let target = try File.System.Link.Read.Target.target(of: linkPath)
-                #expect(target.string == String(targetPath))
+                #expect(String(target) == String(targetPath))
             }
         }
 
@@ -52,7 +52,7 @@ extension File.System.Link.Read.Target.Test.Unit {
                 )
 
                 let target = try File.System.Link.Read.Target.target(of: linkPath)
-                #expect(target.string == String(targetPath))
+                #expect(String(target) == String(targetPath))
             }
         }
 
@@ -68,7 +68,7 @@ extension File.System.Link.Read.Target.Test.Unit {
                 )
 
                 let target = try File.System.Link.Read.Target.target(of: linkPath)
-                #expect(target.string == String(targetPath))
+                #expect(String(target) == String(targetPath))
             }
         }
 
@@ -85,7 +85,7 @@ extension File.System.Link.Read.Target.Test.Unit {
                 )
 
                 let target = try File.System.Link.Read.Target.target(of: linkPath)
-                #expect(target.string == "target.txt")
+                #expect(String(target) == "target.txt")
             }
         }
     #endif

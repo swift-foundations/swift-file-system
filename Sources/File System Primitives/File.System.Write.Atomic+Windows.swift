@@ -389,7 +389,7 @@
             // Try modern SetFileInformationByHandle first (with retry for replace mode)
             // Use 5 attempts with increasing delays for CI environments where timing is less predictable
             let retryDelays: [UInt32] = [10, 25, 50, 100, 200]  // milliseconds
-            var lastSetFileInfoError: DWORD = 0
+            var _lastSetFileInfoError: DWORD = 0
 
             for attempt in 0..<(replace ? retryDelays.count : 1) {
                 let result = trySetFileInfoRename(from: tempPath, to: destPath, replace: replace)
@@ -397,7 +397,7 @@
                 case .success:
                     return
                 case .failure(let error):
-                    lastSetFileInfoError = error
+                    _lastSetFileInfoError = error
                     // Only retry on transient errors when replacing
                     if replace && retryableErrors.contains(error) && attempt < retryDelays.count - 1 {
                         Sleep(retryDelays[attempt])

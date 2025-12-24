@@ -27,6 +27,24 @@ extension File.Directory {
 }
 
 extension File.Directory.Temporary {
+    #if os(Windows)
+        /// Gets an environment variable using Windows API.
+        private static func getEnvironmentVariable(_ name: String) -> String? {
+            name.withCString(encodedAs: UTF16.self) { wName in
+                // First call to get required buffer size
+                let requiredSize = GetEnvironmentVariableW(wName, nil, 0)
+                guard requiredSize > 0 else { return nil }
+
+                // Allocate buffer and get the value
+                var buffer = [WCHAR](repeating: 0, count: Int(requiredSize))
+                let written = GetEnvironmentVariableW(wName, &buffer, requiredSize)
+                guard written > 0 && written < requiredSize else { return nil }
+
+                return String(decodingCString: buffer, as: UTF16.self)
+            }
+        }
+    #endif
+
     /// Returns the system temp directory path.
     ///
     /// Uses platform-appropriate environment variables:
@@ -36,10 +54,10 @@ extension File.Directory.Temporary {
         get throws {
             let path: String
             #if os(Windows)
-                if let ptr = getenv("TEMP") {
-                    path = String(cString: ptr)
-                } else if let ptr = getenv("TMP") {
-                    path = String(cString: ptr)
+                if let temp = getEnvironmentVariable("TEMP") {
+                    path = temp
+                } else if let tmp = getEnvironmentVariable("TMP") {
+                    path = tmp
                 } else {
                     path = "C:\\Temp"
                 }

@@ -432,7 +432,7 @@ extension File.System.Copy.Test.Unit {
                         // Create large file inline
                         let chunkSize = 1024 * 1024  // 1MB chunks
                         let chunk = Data(repeating: 0xAB, count: chunkSize)
-                        FileManager.default.createFile(atPath: String(sourcePath), contents: nil)
+                        _ = FileManager.default.createFile(atPath: String(sourcePath), contents: nil)
                         let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: String(sourcePath)))
                         defer { try? fileHandle.close() }
                         for _ in 0..<100 {
@@ -468,7 +468,7 @@ extension File.System.Copy.Test.Unit {
                         // Create large file inline
                         let chunkSize = 1024 * 1024  // 1MB chunks
                         let chunk = Data(repeating: 0xAB, count: chunkSize)
-                        FileManager.default.createFile(atPath: String(sourcePath), contents: nil)
+                        _ = FileManager.default.createFile(atPath: String(sourcePath), contents: nil)
                         let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: String(sourcePath)))
                         defer { try? fileHandle.close() }
                         for _ in 0..<500 {

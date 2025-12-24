@@ -14,7 +14,7 @@
     import Musl
     import CFileSystemShims
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.Directory {

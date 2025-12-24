@@ -171,8 +171,8 @@ extension File.System.Stat.Test.Unit {
     // MARK: - Async variants
 
     @Test("async exists works")
-    func asyncExists() async throws {
-        try await File.Directory.temporary { dir in
+    func asyncExists() throws {
+        try File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "test.txt")
             try File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
 
@@ -182,8 +182,8 @@ extension File.System.Stat.Test.Unit {
     }
 
     @Test("async info returns regular type for file")
-    func asyncInfo() async throws {
-        try await File.Directory.temporary { dir in
+    func asyncInfo() throws {
+        try File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "test.txt")
             try File.System.Write.Atomic.write(Array("test".utf8).span, to: filePath)
 
