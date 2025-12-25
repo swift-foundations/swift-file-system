@@ -69,18 +69,9 @@ extension File.IO {
         ///
         /// - Parameter lane: The lane for executing blocking operations.
         public init(lane: IO.Blocking.Lane) {
-            // Create pool with file-specific teardown that closes on the lane
             self.pool = IO.Executor.Pool<File.Handle>(
                 lane: lane,
-                teardown: { address in
-                    // Close the file descriptor on the lane (blocking I/O)
-                    // Uses consume(at:) to move resource out and close it
-                    _ = try? await lane.run(deadline: nil) {
-                        IO.Executor.Slot.Container<File.Handle>.consume(at: address.pointer) {
-                            try? $0.close()
-                        }
-                    }
-                }
+                teardown: .onLane(lane) { try? $0.close() }
             )
             self.isDefaultExecutor = false
         }
@@ -98,13 +89,7 @@ extension File.IO {
             self.pool = IO.Executor.Pool<File.Handle>(
                 lane: lane,
                 policy: options.policy,
-                teardown: { address in
-                    _ = try? await lane.run(deadline: nil) {
-                        IO.Executor.Slot.Container<File.Handle>.consume(at: address.pointer) {
-                            try? $0.close()
-                        }
-                    }
-                }
+                teardown: .onLane(lane) { try? $0.close() }
             )
             self.isDefaultExecutor = false
         }
@@ -115,13 +100,7 @@ extension File.IO {
             self.pool = IO.Executor.Pool<File.Handle>(
                 lane: lane,
                 policy: options.policy,
-                teardown: { address in
-                    _ = try? await lane.run(deadline: nil) {
-                        IO.Executor.Slot.Container<File.Handle>.consume(at: address.pointer) {
-                            try? $0.close()
-                        }
-                    }
-                }
+                teardown: .onLane(lane) { try? $0.close() }
             )
             self.isDefaultExecutor = true
         }
