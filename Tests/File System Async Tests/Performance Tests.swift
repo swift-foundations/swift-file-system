@@ -18,6 +18,7 @@
 
 import File_System_Primitives
 import File_System_Test_Support
+import IO
 import StandardsTestSupport
 import Testing
 import TestingPerformance

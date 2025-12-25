@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
+import IO
+
 // Platform-specific write context typealias.
 // Both POSIXStreaming.Write.Context and WindowsStreaming.Write.Context are @unchecked Sendable.
 #if os(Windows)

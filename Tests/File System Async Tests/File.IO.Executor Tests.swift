@@ -8,6 +8,7 @@
 import Clocks
 import File_System
 import File_System_Test_Support
+import IO
 import StandardLibraryExtensions
 import StandardsTestSupport
 import Testing
@@ -138,27 +139,28 @@ extension File.IO.Executor.Test.Unit {
         #expect(result == 42)
     }
     
-    // MARK: - Configuration
-    
-    @Test("Configuration default values")
-    func configurationDefaults() {
-        let config = File.IO.Configuration()
-        #expect(config.workers == File.IO.Configuration.defaultWorkerCount)
-        #expect(config.queueLimit == 10_000)
+    // MARK: - Options (via swift-io's Threads.Options)
+
+    @Test("Options default values")
+    func optionsDefaults() {
+        let options = IO.Blocking.Threads.Options()
+        // Default workers is processor count
+        #expect(options.workers >= 1)
+        #expect(options.queueLimit == 256)  // swift-io default
     }
-    
-    @Test("Configuration custom values")
-    func configurationCustom() {
-        let config = File.IO.Configuration(workers: 4, queueLimit: 100)
-        #expect(config.workers == 4)
-        #expect(config.queueLimit == 100)
+
+    @Test("Options custom values")
+    func optionsCustom() {
+        let options = IO.Blocking.Threads.Options(workers: 4, queueLimit: 100)
+        #expect(options.workers == 4)
+        #expect(options.queueLimit == 100)
     }
-    
-    @Test("Configuration enforces minimum values")
-    func configurationMinimums() {
-        let config = File.IO.Configuration(workers: 0, queueLimit: 0)
-        #expect(config.workers >= 1)
-        #expect(config.queueLimit >= 1)
+
+    @Test("Options enforces minimum values")
+    func optionsMinimums() {
+        let options = IO.Blocking.Threads.Options(workers: 0, queueLimit: 0)
+        #expect(options.workers >= 1)
+        #expect(options.queueLimit >= 1)
     }
     
 }

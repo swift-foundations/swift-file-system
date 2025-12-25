@@ -33,6 +33,9 @@ extension File {
     /// handle.close()
     /// ```
     /// A non-Sendable owning handle. For cross-task usage, move into an actor.
+    ///
+    /// File.Handle is intentionally NOT Sendable. The executor pool manages
+    /// concurrent access through actor isolation and the slot pattern.
     public struct Handle: ~Copyable {
         /// The underlying file descriptor.
         private var _descriptor: File.Descriptor

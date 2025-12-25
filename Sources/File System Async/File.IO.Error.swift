@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 22/12/2025.
 //
 
+public import IO
+
 extension File.IO {
     /// Generic error type for async File I/O operations.
     ///
@@ -37,7 +39,7 @@ extension File.IO {
         case executor(File.IO.Executor.Error)
 
         /// Lane infrastructure errors.
-        case lane(File.IO.Blocking.Lane.Failure)
+        case lane(IO.Blocking.Failure)
 
         /// The operation was cancelled.
         case cancelled
