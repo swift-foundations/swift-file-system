@@ -129,7 +129,9 @@ extension File.IO {
         // MARK: - Pool Delegation
 
         /// The lane for executing blocking operations.
-        public var lane: IO.Blocking.Lane {
+        ///
+        /// This is `nonisolated` because `Lane` is Sendable and immutable after init.
+        public nonisolated var lane: IO.Blocking.Lane {
             pool.lane
         }
 
@@ -178,7 +180,11 @@ extension File.IO {
             guard !isDefaultExecutor else { return }
 
             // Clean up streaming writes
-            for (id, entry) in writes {
+            // Snapshot before iterating to avoid "mutated while being enumerated" trap
+            let writeEntries = Array(writes)
+            writes.removeAll(keepingCapacity: false)
+
+            for (_, entry) in writeEntries {
                 if let ctx = entry.context {
                     _ = try? await lane.run(deadline: nil) {
                         #if os(Windows)
@@ -188,7 +194,6 @@ extension File.IO {
                         #endif
                     }
                 }
-                writes.removeValue(forKey: id)
             }
 
             // Shutdown the pool (handles teardown via closure)
