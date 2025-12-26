@@ -22,7 +22,7 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
         .package(url: "https://github.com/apple/swift-nio", from: "2.70.0"),
         .package(url: "https://github.com/swift-standards/swift-time-standard", from: "0.1.0"),
-        .package(path: "../swift-io"),  // Local path for development
+        .package(url: "https://github.com/coenttb/swift-io", from: "0.1.0"),
     ],
     targets: [
         .target(

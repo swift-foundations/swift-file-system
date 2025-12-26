@@ -36,13 +36,6 @@ extension File.IO.Executor {
     public enum Handle {}
 }
 
-extension File.IO.Executor.Handle {
-    /// Waiters queue for serializing access to handles.
-    ///
-    /// This is `IO.Handle.Waiters` from swift-io.
-    public typealias Waiters = IO.Handle.Waiters
-}
-
 extension File.IO.Executor.Transaction {
     /// Typed error for transaction operations.
     ///
@@ -83,4 +76,3 @@ extension File.IO.Blocking {
     /// This is `IO.Blocking.Threads` from swift-io.
     public typealias Threads = IO.Blocking.Threads
 }
-

@@ -74,6 +74,47 @@ extension File.IO.Executor.Write {
         }
     }
 
-    /// Reuse the same Waiters implementation as Handle.
-    typealias Waiters = File.IO.Executor.Handle.Waiters
+    /// Simple FIFO waiter queue for serializing write operations.
+    struct Waiters: Sendable {
+        private var nextToken: UInt64 = 0
+        private var queue: [(token: UInt64, continuation: CheckedContinuation<Void, Never>)] = []
+
+        init() {}
+
+        /// Generates a unique token for a waiter.
+        mutating func generateToken() -> UInt64 {
+            let token = nextToken
+            nextToken += 1
+            return token
+        }
+
+        /// Enqueues a waiter with its token and continuation.
+        mutating func enqueue(token: UInt64, continuation: CheckedContinuation<Void, Never>) -> Bool {
+            queue.append((token: token, continuation: continuation))
+            return true
+        }
+
+        /// Cancels a waiter by token, returning its continuation if found.
+        mutating func cancel(token: UInt64) -> CheckedContinuation<Void, Never>? {
+            guard let index = queue.firstIndex(where: { $0.token == token }) else {
+                return nil
+            }
+            return queue.remove(at: index).continuation
+        }
+
+        /// Resumes the next waiter in FIFO order.
+        mutating func resumeNext() {
+            guard !queue.isEmpty else { return }
+            queue.removeFirst().continuation.resume()
+        }
+
+        /// Resumes all waiters.
+        mutating func resumeAll() {
+            let all = queue
+            queue.removeAll()
+            for entry in all {
+                entry.continuation.resume()
+            }
+        }
+    }
 }

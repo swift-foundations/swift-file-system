@@ -88,7 +88,6 @@ extension File.IO {
             let lane = IO.Blocking.Lane.threads(options)
             self.pool = IO.Executor.Pool<File.Handle>(
                 lane: lane,
-                policy: options.policy,
                 teardown: .onLane(lane) { try? $0.close() }
             )
             self.isDefaultExecutor = false
@@ -99,7 +98,6 @@ extension File.IO {
             let lane = IO.Blocking.Lane.threads(options)
             self.pool = IO.Executor.Pool<File.Handle>(
                 lane: lane,
-                policy: options.policy,
                 teardown: .onLane(lane) { try? $0.close() }
             )
             self.isDefaultExecutor = true
