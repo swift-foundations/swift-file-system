@@ -359,6 +359,207 @@ extension File.Handle {
         }
     }
 
+    // MARK: - Positional Write (Internal)
+
+    /// Writes bytes at an absolute file offset using pwrite(2) / WriteFile+OVERLAPPED.
+    ///
+    /// This is an internal primitive for positional writes. Unlike `write(_:)`, this
+    /// does not use or update the file's current position.
+    ///
+    /// - Parameters:
+    ///   - buffer: The bytes to write.
+    ///   - offset: Absolute file offset to write at.
+    /// - Returns: Number of bytes written (single syscall, may be partial).
+    /// - Throws: `File.Handle.Error` on failure.
+    ///
+    /// ## ESPIPE Policy
+    /// - If offset == 0 and ESPIPE: falls back to sequential write(2)
+    /// - If offset > 0 and ESPIPE: throws error (positional write not supported)
+    ///
+    /// ## Partial Writes
+    /// Returns bytes written from single syscall. Caller must loop for full write.
+    @usableFromInline
+    internal mutating func _pwrite(
+        _ buffer: UnsafeRawBufferPointer,
+        at offset: Int64
+    ) throws(File.Handle.Error) -> Int {
+        guard _descriptor.isValid else { throw .invalidHandle }
+        guard !buffer.isEmpty else { return 0 }
+        guard let base = buffer.baseAddress else { return 0 }
+
+        #if os(Windows)
+            guard let handle = _descriptor.rawHandle else { throw .invalidHandle }
+
+            var overlapped = OVERLAPPED()
+            overlapped.Offset = DWORD(truncatingIfNeeded: UInt64(bitPattern: offset) & 0xFFFF_FFFF)
+            overlapped.OffsetHigh = DWORD(truncatingIfNeeded: UInt64(bitPattern: offset) >> 32)
+
+            var bytesWritten: DWORD = 0
+            let success = WriteFile(
+                handle,
+                base,
+                DWORD(truncatingIfNeeded: buffer.count),
+                &bytesWritten,
+                &overlapped
+            )
+
+            guard _ok(success) else {
+                let error = GetLastError()
+                // ERROR_INVALID_PARAMETER may indicate non-seekable handle
+                if error == ERROR_INVALID_PARAMETER && offset > 0 {
+                    throw .seekFailed(
+                        offset: offset,
+                        origin: .start,
+                        errno: Int32(error),
+                        message: "Positional write not supported on this handle"
+                    )
+                }
+                throw .writeFailed(errno: Int32(error), message: "WriteFile with OVERLAPPED failed")
+            }
+
+            return Int(bytesWritten)
+
+        #elseif canImport(Darwin)
+            while true {
+                let result = Darwin.pwrite(_descriptor.rawValue, base, buffer.count, off_t(offset))
+
+                if result >= 0 {
+                    return result
+                }
+
+                let e = errno
+                if e == EINTR { continue }
+
+                // ESPIPE: not a seekable file (pipe, socket, etc.)
+                if e == ESPIPE {
+                    if offset == 0 {
+                        // Fallback to sequential write for offset 0
+                        return try _writeSequentialFallback(base: base, count: buffer.count)
+                    } else {
+                        throw .seekFailed(
+                            offset: offset,
+                            origin: .start,
+                            errno: e,
+                            message: "pwrite not supported on this file type at non-zero offset"
+                        )
+                    }
+                }
+
+                throw .writeFailed(errno: e, message: String(cString: strerror(e)))
+            }
+
+        #elseif canImport(Glibc)
+            while true {
+                let result = Glibc.pwrite(_descriptor.rawValue, base, buffer.count, off_t(offset))
+
+                if result >= 0 {
+                    return result
+                }
+
+                let e = errno
+                if e == EINTR { continue }
+
+                if e == ESPIPE {
+                    if offset == 0 {
+                        return try _writeSequentialFallback(base: base, count: buffer.count)
+                    } else {
+                        throw .seekFailed(
+                            offset: offset,
+                            origin: .start,
+                            errno: e,
+                            message: "pwrite not supported on this file type at non-zero offset"
+                        )
+                    }
+                }
+
+                throw .writeFailed(errno: e, message: String(cString: strerror(e)))
+            }
+
+        #elseif canImport(Musl)
+            while true {
+                let result = Musl.pwrite(_descriptor.rawValue, base, buffer.count, off_t(offset))
+
+                if result >= 0 {
+                    return result
+                }
+
+                let e = errno
+                if e == EINTR { continue }
+
+                if e == ESPIPE {
+                    if offset == 0 {
+                        return try _writeSequentialFallback(base: base, count: buffer.count)
+                    } else {
+                        throw .seekFailed(
+                            offset: offset,
+                            origin: .start,
+                            errno: e,
+                            message: "pwrite not supported on this file type at non-zero offset"
+                        )
+                    }
+                }
+
+                throw .writeFailed(errno: e, message: String(cString: strerror(e)))
+            }
+        #endif
+    }
+
+    #if !os(Windows)
+    /// Fallback to sequential write when pwrite fails with ESPIPE at offset 0.
+    @usableFromInline
+    internal mutating func _writeSequentialFallback(
+        base: UnsafeRawPointer,
+        count: Int
+    ) throws(File.Handle.Error) -> Int {
+        #if canImport(Darwin)
+        let result = Darwin.write(_descriptor.rawValue, base, count)
+        #elseif canImport(Glibc)
+        let result = Glibc.write(_descriptor.rawValue, base, count)
+        #elseif canImport(Musl)
+        let result = Musl.write(_descriptor.rawValue, base, count)
+        #endif
+
+        if result >= 0 { return result }
+
+        let e = errno
+        if e == EINTR { return 0 } // Let caller retry
+        throw .writeFailed(errno: e, message: String(cString: strerror(e)))
+    }
+    #endif
+
+    /// Writes all bytes at an absolute file offset, looping for partial writes.
+    ///
+    /// This is a convenience wrapper around `_pwrite` that ensures all bytes are written.
+    ///
+    /// - Parameters:
+    ///   - buffer: The bytes to write.
+    ///   - offset: Absolute file offset to start writing at.
+    /// - Throws: `File.Handle.Error` on failure.
+    @usableFromInline
+    internal mutating func _pwriteAll(
+        _ buffer: UnsafeRawBufferPointer,
+        at offset: Int64
+    ) throws(File.Handle.Error) {
+        guard !buffer.isEmpty else { return }
+
+        var totalWritten = 0
+        var currentOffset = offset
+
+        while totalWritten < buffer.count {
+            let remaining = UnsafeRawBufferPointer(
+                start: buffer.baseAddress?.advanced(by: totalWritten),
+                count: buffer.count - totalWritten
+            )
+            let written = try _pwrite(remaining, at: currentOffset)
+            if written == 0 {
+                // Should not happen for regular files, but guard against infinite loop
+                throw .writeFailed(errno: 0, message: "pwrite returned 0 bytes written")
+            }
+            totalWritten += written
+            currentOffset += Int64(written)
+        }
+    }
+
     /// Seeks to a position in the file.
     ///
     /// - Parameters:

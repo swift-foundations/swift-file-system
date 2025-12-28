@@ -44,6 +44,10 @@ extension File.Directory.Walk.Async {
     ///
     /// ## Bounded Concurrency
     /// Concurrent directory reads are bounded by `maxConcurrency`.
+    ///
+    /// ## Fast Path
+    /// When `maxConcurrency == 1` and `followSymlinks == false`, uses an optimized
+    /// single-threaded traversal (fts on POSIX) that avoids TaskGroup/actor overhead.
     public struct Sequence: AsyncSequence, Sendable {
         public typealias Element = File.Path
 
@@ -51,8 +55,80 @@ extension File.Directory.Walk.Async {
         let options: Options
         let fs: File.System.Async
 
-        public func makeAsyncIterator() -> Iterator {
-            Iterator.make(root: root, options: options, fs: fs)
+        /// Returns an iterator using either fast-path or concurrent walker.
+        ///
+        /// Fast-path is selected when:
+        /// - `maxConcurrency == 1`
+        /// - `followSymlinks == false`
+        public func makeAsyncIterator() -> Strategy.Iterator {
+            if FastPath.canUse(options: options) {
+                return Strategy.Iterator(
+                    .fastPath(FastPath.makeSequence(root: root, options: options, fs: fs))
+                )
+            } else {
+                return Strategy.Iterator(
+                    .concurrent(Sequence.Iterator.make(root: root, options: options, fs: fs))
+                )
+            }
+        }
+    }
+
+    /// Namespace for strategy-based iteration.
+    public enum Strategy {
+        /// Concrete iterator for the current traversal strategy.
+        typealias Concurrent = Sequence.Iterator
+
+        fileprivate enum Kind {
+            case fastPath(AsyncThrowingStream<File.Path, any Error>)
+            case concurrent(Concurrent)
+        }
+
+        fileprivate enum State {
+            case fastPath(AsyncThrowingStream<File.Path, any Error>.AsyncIterator)
+            case concurrent(Concurrent)
+        }
+
+        /// Iterator that wraps either fast-path or concurrent implementation.
+        public final class Iterator: AsyncIteratorProtocol {
+            public typealias Element = File.Path
+
+            private var state: State
+
+            fileprivate init(_ kind: Kind) {
+                switch kind {
+                case .fastPath(let stream):
+                    self.state = .fastPath(stream.makeAsyncIterator())
+                case .concurrent(let iterator):
+                    self.state = .concurrent(iterator)
+                }
+            }
+
+            public func next() async throws -> File.Path? {
+                switch state {
+                case .fastPath(var iterator):
+                    let result = try await iterator.next()
+                    // Update state with mutated iterator
+                    state = .fastPath(iterator)
+                    return result
+                case .concurrent(let iterator):
+                    // Iterator is a class, so mutation is handled internally
+                    return try await iterator.next()
+                }
+            }
+
+            /// Explicitly terminate the walk and wait for cleanup to complete.
+            ///
+            /// For the fast-path, this is a no-op (stream handles cancellation).
+            /// For concurrent walks, this waits for the producer to finish.
+            public func terminate() async {
+                switch state {
+                case .fastPath:
+                    // Fast-path uses AsyncThrowingStream with onTermination handler
+                    break
+                case .concurrent(let iterator):
+                    await iterator.terminate()
+                }
+            }
         }
     }
 }
