@@ -1,16 +1,16 @@
 //
-//  File.IO.Iterator.Box.swift
+//  File.Iterator.Box.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-extension File.IO {
+extension File {
     /// Namespace for iterator-related types.
     package enum Iterator {}
 }
 
-extension File.IO.Iterator {
+extension File.Iterator {
     /// A heap-allocated box for non-copyable iterators.
     ///
     /// ## Design
@@ -18,9 +18,9 @@ extension File.IO.Iterator {
     /// to be used across async boundaries by boxing them on the heap.
     ///
     /// ## Safety Invariant (for @unchecked Sendable)
-    /// - Only accessed from within `io.run` closures (single-threaded access)
+    /// - Only accessed from within `fs.run` closures (single-threaded access)
     /// - Never accessed concurrently
-    /// - Caller ensures sequential access pattern via executor serialization
+    /// - Caller ensures sequential access pattern via lane serialization
     ///
     /// ## Lifecycle Contract
     /// Callers MUST call `close(_:)` before the box is deallocated.
@@ -40,7 +40,7 @@ extension File.IO.Iterator {
             #if DEBUG
                 print(
                     """
-                    Warning: File.IO.Iterator.Box deallocated without close().
+                    Warning: File.Iterator.Box deallocated without close().
                     Call terminate() on the owning iterator for deterministic cleanup.
                     Falling back to synchronous cleanup in deinit.
                     """

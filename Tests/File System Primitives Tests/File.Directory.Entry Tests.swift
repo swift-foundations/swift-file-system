@@ -177,7 +177,7 @@ extension File.Directory.Entry {
             }.value
 
             #expect(String(result.0) == "file.txt")
-            #expect(result.1?.string == "/tmp/file.txt")
+            #expect(result.1.map(String.init) == "/tmp/file.txt")
             #expect(result.2 == .file)
         }
 

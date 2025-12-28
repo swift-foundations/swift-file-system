@@ -1,5 +1,5 @@
 //
-//  File.IO.Executor Tests.swift
+//  File.System.Async Tests.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
@@ -22,19 +22,19 @@ import Testing
     import Musl
 #endif
 
-extension File.IO.Executor {
+extension File.System.Async {
     #TestSuites
 }
 
 #if os(macOS) || os(Linux)
 
-    extension File.IO.Executor.Test.Unit {
+    extension File.System.Async.Test.Unit {
 
         // MARK: - Basic Execution
 
         @Test("Execute simple operation")
         func executeSimple() async throws {
-            let executor = File.IO.Executor()
+            let executor = File.System.Async()
             let result = try await executor.run { 42 }
             #expect(result == 42)
             await executor.shutdown()
@@ -42,7 +42,7 @@ extension File.IO.Executor {
 
         @Test("Execute throwing operation")
         func executeThrowing() async throws {
-            let executor = File.IO.Executor()
+            let executor = File.System.Async()
 
             struct TestError: Error, Equatable {}
 
@@ -50,9 +50,9 @@ extension File.IO.Executor {
                 try await executor.run { () throws(TestError) in throw TestError() }
                 Issue.record("Expected error to be thrown")
             } catch {
-                // error is File.IO.Error<TestError>
-                guard case .operation(let inner) = error else {
-                    Issue.record("Expected .operation case, got \(error)")
+                // error is IO.Lifecycle.Error<IO.Error<TestError>>
+                guard case .failure(.operation(let inner)) = error else {
+                    Issue.record("Expected .failure(.operation) case, got \(error)")
                     return
                 }
                 #expect(inner == TestError())
@@ -62,7 +62,7 @@ extension File.IO.Executor {
 
         @Test("Execute multiple operations")
         func executeMultiple() async throws {
-            let executor = File.IO.Executor()
+            let executor = File.System.Async()
 
             let results = try await withThrowingTaskGroup(of: Int.self) { group in
                 for i in 0..<10 {
@@ -85,16 +85,16 @@ extension File.IO.Executor {
 
         @Test("Run after shutdown throws")
         func runAfterShutdown() async throws {
-            let executor = File.IO.Executor()
+            let executor = File.System.Async()
             await executor.shutdown()
 
             do {
                 _ = try await executor.run { 42 }
                 Issue.record("Expected error to be thrown")
             } catch {
-                // error is File.IO.Error<Never>
-                guard case .executor(.shutdownInProgress) = error else {
-                    Issue.record("Expected .executor(.shutdownInProgress), got \(error)")
+                // error is IO.Lifecycle.Error<IO.Error<Never>>
+                guard case .lifecycle(.shutdownInProgress) = error else {
+                    Issue.record("Expected .lifecycle(.shutdownInProgress), got \(error)")
                     return
                 }
                 // Success - got expected error
@@ -103,14 +103,14 @@ extension File.IO.Executor {
 
         @Test("Shutdown is idempotent")
         func shutdownIdempotent() async throws {
-            let executor = File.IO.Executor()
+            let executor = File.System.Async()
             await executor.shutdown()
             await executor.shutdown()  // Should not hang or crash
         }
 
         @Test("In-flight jobs complete during shutdown")
         func inFlightCompletesDuringShutdown() async throws {
-            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 1))
+            let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 1))
             let started = ManagedAtomic(false)
             let completed = ManagedAtomic(false)
 
@@ -144,35 +144,35 @@ extension File.IO.Executor {
 
         @Test("Configuration default values")
         func configurationDefaults() {
-            let config = File.IO.Configuration()
-            #expect(config.workers == File.IO.Configuration.defaultWorkerCount)
-            #expect(config.queueLimit == 10_000)
+            let config = IO.Blocking.Threads.Options()
+            #expect(config.workers >= 1)  // Default is processor count
+            #expect(config.queueLimit == 256)
         }
 
         @Test("Configuration custom values")
         func configurationCustom() {
-            let config = File.IO.Configuration(workers: 4, queueLimit: 100)
+            let config = IO.Blocking.Threads.Options(workers: 4, queueLimit: 100)
             #expect(config.workers == 4)
             #expect(config.queueLimit == 100)
         }
 
         @Test("Configuration enforces minimum values")
         func configurationMinimums() {
-            let config = File.IO.Configuration(workers: 0, queueLimit: 0)
+            let config = IO.Blocking.Threads.Options(workers: 0, queueLimit: 0)
             #expect(config.workers >= 1)
             #expect(config.queueLimit >= 1)
         }
 
     }
 
-    extension File.IO.Executor.Test.EdgeCase {
+    extension File.System.Async.Test.EdgeCase {
 
         @Test("Multiple dedicated executors don't oversubscribe")
         func multipleDedicatedExecutorsNoOversubscription() async throws {
             // Create 3 executors with 2 workers each
-            let executor1 = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
-            let executor2 = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
-            let executor3 = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
+            let executor1 = File.System.Async(IO.Blocking.Threads.Options(workers: 2))
+            let executor2 = File.System.Async(IO.Blocking.Threads.Options(workers: 2))
+            let executor3 = File.System.Async(IO.Blocking.Threads.Options(workers: 2))
 
             // Track concurrent execution
             let concurrentCount = ManagedAtomic(0)
@@ -225,7 +225,7 @@ extension File.IO.Executor {
 
         @Test("Dedicated pool handles blocking operations without affecting cooperative pool")
         func dedicatedPoolBlockingIsolation() async throws {
-            let dedicatedExecutor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
+            let dedicatedExecutor = File.System.Async(IO.Blocking.Threads.Options(workers: 2))
 
             // Track that cooperative work completes while dedicated is blocked
             let dedicatedStarted = ManagedAtomic(false)
@@ -267,7 +267,7 @@ extension File.IO.Executor {
 
         @Test("Dedicated pool shutdown is clean with no hanging threads")
         func dedicatedPoolCleanShutdown() async throws {
-            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 4))
+            let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 4))
 
             // Submit and complete some work
             try await withThrowingTaskGroup(of: Int.self) { group in
@@ -295,7 +295,7 @@ extension File.IO.Executor {
         @Test("Worker count is respected - only N jobs run concurrently")
         func workerCountRespected() async throws {
             let workerCount = 2
-            let executor = File.IO.Executor(
+            let executor = File.System.Async(
                 .init(workers: workerCount)
             )
 
@@ -361,7 +361,7 @@ extension File.IO.Executor {
 
         @Test("Queue limit is enforced")
         func queueLimitEnforced() async throws {
-            let executor = File.IO.Executor(
+            let executor = File.System.Async(
                 .init(
                     workers: 1,
                     queueLimit: 5
@@ -424,7 +424,7 @@ extension File.IO.Executor {
 
         @Test("Thread pool handles exceptions without corruption")
         func dedicatedPoolExceptionHandling() async throws {
-            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 2))
+            let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 2))
 
             struct TestError: Error, Equatable {}
 
@@ -472,7 +472,7 @@ extension File.IO.Executor {
 
         @Test("Dedicated pool stress test - many concurrent jobs")
         func dedicatedPoolStressTest() async throws {
-            let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 4))
+            let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 4))
 
             let jobCount = 100
             let results = try await withThrowingTaskGroup(of: Int.self) { group in

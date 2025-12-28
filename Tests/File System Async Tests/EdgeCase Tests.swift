@@ -14,24 +14,24 @@ import Testing
 
 // Note: File.IO #TestSuites declared in Support/Test.swift
 
-extension File.IO.Test.EdgeCase {
+extension File.System.Async.Test.EdgeCase {
     // MARK: - Executor Edge Cases
 
     @Test("Executor shutdown during idle")
     func executorShutdownIdle() async throws {
-        let io = File.IO.Executor()
-        await io.shutdown()
+        let fs = File.System.Async()
+        await fs.shutdown()
         // Should complete without hanging
     }
 
     @Test("Multiple shutdown calls are safe")
     func multipleShutdown() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Run some work first
             let path = try File.Path("\(String(dir.path))/test-file")
-            _ = try await io.run {
+            _ = try await fs.run {
                 let handle = try File.Handle.open(
                     path,
                     mode: .write,
@@ -41,19 +41,19 @@ extension File.IO.Test.EdgeCase {
             }
 
             // Multiple shutdowns should be safe
-            await io.shutdown()
-            await io.shutdown()
-            await io.shutdown()
+            await fs.shutdown()
+            await fs.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Work after shutdown fails gracefully")
     func workAfterShutdown() async throws {
-        let io = File.IO.Executor()
-        await io.shutdown()
+        let fs = File.System.Async()
+        await fs.shutdown()
 
         do {
-            _ = try await io.run { 42 }
+            _ = try await fs.run { 42 }
             Issue.record("Expected error after shutdown")
         } catch {
             // Expected - executor is shut down
@@ -63,9 +63,9 @@ extension File.IO.Test.EdgeCase {
     @Test("Rapid executor creation and shutdown")
     func rapidExecutorLifecycle() async throws {
         for _ in 0..<20 {
-            let io = File.IO.Executor()
-            _ = try await io.run { 1 + 1 }
-            await io.shutdown()
+            let fs = File.System.Async()
+            _ = try await fs.run { 1 + 1 }
+            await fs.shutdown()
         }
     }
 
@@ -74,7 +74,7 @@ extension File.IO.Test.EdgeCase {
     @Test("Iterate directory with many files")
     func manyFiles() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create 100 files
             for i in 0..<100 {
@@ -84,20 +84,20 @@ extension File.IO.Test.EdgeCase {
             }
 
             var count = 0
-            let entries = File.Directory.Async(io: io).entries(at: dir)
+            let entries = File.Directory.Async(fs: fs).entries(at: dir)
             for try await _ in entries {
                 count += 1
             }
 
             #expect(count == 100)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Iterate directory that gets modified during iteration")
     func directoryModifiedDuringIteration() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create initial files
             for i in 0..<10 {
@@ -107,7 +107,7 @@ extension File.IO.Test.EdgeCase {
             }
 
             var count = 0
-            let entries = File.Directory.Async(io: io).entries(at: dir)
+            let entries = File.Directory.Async(fs: fs).entries(at: dir)
             let iterator = entries.makeAsyncIterator()
             do {
                 while let entry = try await iterator.next() {
@@ -130,30 +130,30 @@ extension File.IO.Test.EdgeCase {
 
             // Should have iterated at least the original 10
             #expect(count >= 10)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Iterate empty directory")
     func emptyDirectory() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             var count = 0
-            let entries = File.Directory.Async(io: io).entries(at: dir)
+            let entries = File.Directory.Async(fs: fs).entries(at: dir)
             for try await _ in entries {
                 count += 1
             }
 
             #expect(count == 0)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Break from iteration early")
     func breakEarly() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create many files
             for i in 0..<50 {
@@ -163,7 +163,7 @@ extension File.IO.Test.EdgeCase {
             }
 
             var count = 0
-            let entries = File.Directory.Async(io: io).entries(at: dir)
+            let entries = File.Directory.Async(fs: fs).entries(at: dir)
             let iterator = entries.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -174,14 +174,14 @@ extension File.IO.Test.EdgeCase {
             await iterator.terminate()
 
             #expect(count == 5)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Multiple iterators on same directory")
     func multipleIterators() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create files
             for i in 0..<20 {
@@ -196,7 +196,7 @@ extension File.IO.Test.EdgeCase {
                 for _ in 0..<2 {
                     group.addTask {
                         var c = 0
-                        let entries = File.Directory.Async(io: io).entries(at: dir)
+                        let entries = File.Directory.Async(fs: fs).entries(at: dir)
                         let iterator = entries.makeAsyncIterator()
                         do {
                             while try await iterator.next() != nil { c += 1 }
@@ -219,7 +219,7 @@ extension File.IO.Test.EdgeCase {
             for count in counts {
                 #expect(count == 20)
             }
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -228,7 +228,7 @@ extension File.IO.Test.EdgeCase {
     @Test("Walk deeply nested directory")
     func walkDeeplyNested() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create 10 levels of nesting
             var currentPath = dir.path
@@ -246,7 +246,7 @@ extension File.IO.Test.EdgeCase {
             }
 
             var count = 0
-            let walk = File.Directory.Async(io: io).walk(at: dir)
+            let walk = File.Directory.Async(fs: fs).walk(at: dir)
             let iterator = walk.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -255,7 +255,7 @@ extension File.IO.Test.EdgeCase {
 
             // 10 directories + 10 files = 20 entries
             #expect(count == 20)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -264,7 +264,7 @@ extension File.IO.Test.EdgeCase {
         @Test("Walk with symlink cycle - followSymlinks=false")
         func walkSymlinkCycleNoFollow() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create subdirectory
                 let subPath = dir.path / "subdir"
@@ -276,7 +276,7 @@ extension File.IO.Test.EdgeCase {
 
                 // Walk without following symlinks - should complete fine
                 var count = 0
-                let walk = File.Directory.Async(io: io).walk(
+                let walk = File.Directory.Async(fs: fs).walk(
                     at: dir,
                     options: .init(followSymlinks: false)
                 )
@@ -288,14 +288,14 @@ extension File.IO.Test.EdgeCase {
 
                 // Should see: subdir + parent-link = 2
                 #expect(count == 2)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk with symlink cycle - followSymlinks=true detects cycle")
         func walkSymlinkCycleWithFollow() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create subdirectory
                 let subPath = dir.path / "subdir"
@@ -312,7 +312,7 @@ extension File.IO.Test.EdgeCase {
 
                 // Walk with following symlinks - cycle detection should prevent infinite loop
                 var count = 0
-                let walk = File.Directory.Async(io: io).walk(
+                let walk = File.Directory.Async(fs: fs).walk(
                     at: dir,
                     options: .init(followSymlinks: true)
                 )
@@ -329,18 +329,18 @@ extension File.IO.Test.EdgeCase {
 
                 // Should complete without infinite loop
                 #expect(count <= 10)  // Reasonable upper bound
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
     #endif
 
     @Test("Walk non-existent directory fails")
     func walkNonExistent() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
-        let walk = File.Directory.Async(io: io).walk(at: File.Directory(path))
+        let walk = File.Directory.Async(fs: fs).walk(at: File.Directory(path))
         let iterator = walk.makeAsyncIterator()
 
         do {
@@ -353,13 +353,13 @@ extension File.IO.Test.EdgeCase {
             await iterator.terminate()
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     @Test("Walk directory with mixed file types")
     func walkMixedTypes() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create regular file
             let filePath = dir.path / "file.txt"
@@ -380,7 +380,7 @@ extension File.IO.Test.EdgeCase {
             try subHandle.close()
 
             var paths: [String] = []
-            let walk = File.Directory.Async(io: io).walk(at: dir)
+            let walk = File.Directory.Async(fs: fs).walk(at: dir)
             let iterator = walk.makeAsyncIterator()
             while let path = try await iterator.next() {
                 if let component = path.lastComponent {
@@ -394,7 +394,7 @@ extension File.IO.Test.EdgeCase {
             #expect(paths.contains("subdir"))
             #expect(paths.contains("link"))
             #expect(paths.contains("nested.txt"))
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -403,27 +403,27 @@ extension File.IO.Test.EdgeCase {
     @Test("Stream empty file")
     func streamEmptyFile() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/empty-file")
             let handle = try File.Handle.open(path, mode: .write, options: [.create, .closeOnExec])
             try handle.close()
 
             var chunks: [[UInt8]] = []
-            let stream = File.System.Read.Async(io: io).bytes(from: path)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path)
             for try await chunk in stream {
                 chunks.append(chunk)
             }
 
             #expect(chunks.isEmpty)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Stream file smaller than chunk size")
     func streamSmallFile() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/small-file")
             let data: [UInt8] = [1, 2, 3, 4, 5]
@@ -432,7 +432,7 @@ extension File.IO.Test.EdgeCase {
             try handle.close()
 
             var allBytes: [UInt8] = []
-            let stream = File.System.Read.Async(io: io).bytes(
+            let stream = File.System.Read.Async(fs: fs).bytes(
                 from: path,
                 options: .init(chunkSize: 1024)
             )
@@ -441,14 +441,14 @@ extension File.IO.Test.EdgeCase {
             }
 
             #expect(allBytes == data)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Stream file with very small chunk size")
     func streamTinyChunks() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/tiny-chunks-file")
             let data: [UInt8] = Array(0..<100)
@@ -458,7 +458,7 @@ extension File.IO.Test.EdgeCase {
 
             var chunkCount = 0
             var allBytes: [UInt8] = []
-            let stream = File.System.Read.Async(io: io).bytes(from: path, options: .init(chunkSize: 1))
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path, options: .init(chunkSize: 1))
             for try await chunk in stream {
                 chunkCount += 1
                 allBytes.append(contentsOf: chunk)
@@ -466,17 +466,17 @@ extension File.IO.Test.EdgeCase {
 
             #expect(chunkCount == 100)
             #expect(allBytes == data)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Stream non-existent file fails")
     func streamNonExistent() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
-        let stream = File.System.Read.Async(io: io).bytes(from: path)
+        let stream = File.System.Read.Async(fs: fs).bytes(from: path)
         let iterator = stream.makeAsyncIterator()
 
         do {
@@ -489,13 +489,13 @@ extension File.IO.Test.EdgeCase {
             await iterator.terminate()
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     @Test("Break from stream early")
     func breakFromStreamEarly() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/large-file")
             // Create larger file
@@ -505,7 +505,7 @@ extension File.IO.Test.EdgeCase {
             try handle.close()
 
             var bytesRead = 0
-            let stream = File.System.Read.Async(io: io).bytes(
+            let stream = File.System.Read.Async(fs: fs).bytes(
                 from: path,
                 options: .init(chunkSize: 100)
             )
@@ -520,7 +520,7 @@ extension File.IO.Test.EdgeCase {
 
             #expect(bytesRead >= 500)
             #expect(bytesRead < 10000)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -529,7 +529,7 @@ extension File.IO.Test.EdgeCase {
     @Test("Cancel during directory iteration")
     func cancelDuringIteration() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create many files
             for i in 0..<100 {
@@ -540,7 +540,7 @@ extension File.IO.Test.EdgeCase {
 
             let task = Task {
                 var count = 0
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 do {
                     while try await iterator.next() != nil {
@@ -564,22 +564,22 @@ extension File.IO.Test.EdgeCase {
                 // May complete before cancellation
             } catch is CancellationError {
                 // Expected - raw cancellation from Task.checkCancellation
-            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+            } catch let error as IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>> {
                 // Expected - wrapped cancellation from iterator
-                guard case .cancelled = error else {
-                    Issue.record("Expected .cancelled, got \(error)")
+                guard case .failure(.cancelled) = error else {
+                    Issue.record("Expected .failure(.cancelled), got \(error)")
                     return
                 }
             }
 
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Cancel during walk")
     func cancelDuringWalk() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create some structure
             for i in 0..<5 {
@@ -597,7 +597,7 @@ extension File.IO.Test.EdgeCase {
 
             let task = Task {
                 var count = 0
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 do {
                     while try await iterator.next() != nil {
@@ -620,22 +620,22 @@ extension File.IO.Test.EdgeCase {
                 _ = try await task.value
             } catch is CancellationError {
                 // Expected - raw cancellation from Task.checkCancellation
-            } catch let error as File.IO.Error<File.Directory.Walk.Error> {
+            } catch let error as IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>> {
                 // Expected - wrapped cancellation from walk iterator
-                guard case .cancelled = error else {
-                    Issue.record("Expected .cancelled, got \(error)")
+                guard case .failure(.cancelled) = error else {
+                    Issue.record("Expected .failure(.cancelled), got \(error)")
                     return
                 }
             }
 
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Cancellation within batch - directory entries")
     func cancellationWithinBatch() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create enough files to span multiple batches (batchSize = 64)
             // Create 200 files to ensure we're mid-batch when we cancel
@@ -647,7 +647,7 @@ extension File.IO.Test.EdgeCase {
 
             let task = Task {
                 var count = 0
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 do {
                     while try await iterator.next() != nil {
@@ -675,22 +675,22 @@ extension File.IO.Test.EdgeCase {
                 #expect(count <= 200)
             } catch is CancellationError {
                 // Expected - raw cancellation from Task.checkCancellation
-            } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+            } catch let error as IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>> {
                 // Expected - wrapped cancellation from iterator
-                guard case .cancelled = error else {
-                    Issue.record("Expected .cancelled, got \(error)")
+                guard case .failure(.cancelled) = error else {
+                    Issue.record("Expected .failure(.cancelled), got \(error)")
                     return
                 }
             }
 
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Cancellation within batch - directory walk")
     func cancellationWithinBatchWalk() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create structure with enough entries to span multiple batches
             for i in 0..<10 {
@@ -709,7 +709,7 @@ extension File.IO.Test.EdgeCase {
 
             let task = Task {
                 var count = 0
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 do {
                     while try await iterator.next() != nil {
@@ -736,15 +736,15 @@ extension File.IO.Test.EdgeCase {
                 #expect(count <= 210)
             } catch is CancellationError {
                 // Expected - raw cancellation from Task.checkCancellation
-            } catch let error as File.IO.Error<File.Directory.Walk.Error> {
+            } catch let error as IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>> {
                 // Expected - wrapped cancellation from walk iterator
-                guard case .cancelled = error else {
-                    Issue.record("Expected .cancelled, got \(error)")
+                guard case .failure(.cancelled) = error else {
+                    Issue.record("Expected .failure(.cancelled), got \(error)")
                     return
                 }
             }
 
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -753,7 +753,7 @@ extension File.IO.Test.EdgeCase {
     @Test("Backpressure respected with slow consumer")
     func backpressureRespectedSlowConsumer() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create many files to test backpressure
             for i in 0..<500 {
@@ -763,7 +763,7 @@ extension File.IO.Test.EdgeCase {
             }
 
             var processedCount = 0
-            let entries = File.Directory.Async(io: io).entries(at: dir)
+            let entries = File.Directory.Async(fs: fs).entries(at: dir)
             let iterator = entries.makeAsyncIterator()
 
             // Consume slowly to verify producer doesn't accumulate unbounded batches
@@ -783,14 +783,14 @@ extension File.IO.Test.EdgeCase {
             #expect(processedCount == 500)
             // If backpressure wasn't working, memory would grow unboundedly
             // The AsyncThrowingChannel with 1-element buffer ensures bounded memory
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Large directory iteration completes - 1000+ files")
     func largeDirectoryIteration() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create 1500 files to verify batching works correctly with large directories
             let fileCount = 1500
@@ -801,20 +801,20 @@ extension File.IO.Test.EdgeCase {
             }
 
             var count = 0
-            let entries = File.Directory.Async(io: io).entries(at: dir)
+            let entries = File.Directory.Async(fs: fs).entries(at: dir)
             for try await _ in entries {
                 count += 1
             }
 
             #expect(count == fileCount)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Large walk completes - 1000+ entries")
     func largeWalkIteration() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create structure with 1000+ entries
             // 25 directories with 40 files each = 1000 files + 25 dirs = 1025 entries
@@ -832,7 +832,7 @@ extension File.IO.Test.EdgeCase {
             }
 
             var count = 0
-            let walk = File.Directory.Async(io: io).walk(at: dir)
+            let walk = File.Directory.Async(fs: fs).walk(at: dir)
             let iterator = walk.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -840,14 +840,14 @@ extension File.IO.Test.EdgeCase {
             await iterator.terminate()
 
             #expect(count == 1025)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Directory deleted during iteration")
     func directoryDeletedDuringIteration() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             // Create files
             for i in 0..<100 {
@@ -858,7 +858,7 @@ extension File.IO.Test.EdgeCase {
 
             let task = Task {
                 var count = 0
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 do {
                     while try await iterator.next() != nil {
@@ -889,7 +889,7 @@ extension File.IO.Test.EdgeCase {
             // Just verify it doesn't crash or hang
             #expect(count >= 0)
             #expect(count <= 100)
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -898,7 +898,7 @@ extension File.IO.Test.EdgeCase {
     @Test("Async handle double close")
     func asyncHandleDoubleClose() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/double-close-file")
 
@@ -906,20 +906,20 @@ extension File.IO.Test.EdgeCase {
                 path,
                 mode: .write,
                 options: [.create, .closeOnExec],
-                io: io
+                fs: fs
             )
 
             try await handle.close()
             // Second close should be safe
             try await handle.close()
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Read from async handle after close fails")
     func readAfterClose() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/read-after-close-file")
             let data: [UInt8] = [1, 2, 3, 4, 5]
@@ -927,7 +927,7 @@ extension File.IO.Test.EdgeCase {
             try writeHandle.write(data.span)
             try writeHandle.close()
 
-            let handle = try await File.Handle.Async.open(path, mode: .read, io: io)
+            let handle = try await File.Handle.Async.open(path, mode: .read, fs: fs)
 
             try await handle.close()
 
@@ -937,7 +937,7 @@ extension File.IO.Test.EdgeCase {
             } catch {
                 // Expected
             }
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
@@ -945,14 +945,14 @@ extension File.IO.Test.EdgeCase {
 
     @Test("Async exists on non-existent path")
     func asyncExistsNonExistent() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         let path = try File.Path("/tmp/non-existent-\(Int.random(in: 0..<Int.max))")
 
-        let exists = try await io.run { File.System.Stat.exists(at: path) }
+        let exists = try await fs.run { File.System.Stat.exists(at: path) }
 
         #expect(!exists)
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     #if !os(Windows)
@@ -960,7 +960,7 @@ extension File.IO.Test.EdgeCase {
         @Test("Async stat on symlink")
         func asyncStatSymlink() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 let target = try File.Path("\(String(dir.path))/target")
                 let link = try File.Path("\(String(dir.path))/link")
@@ -970,12 +970,12 @@ extension File.IO.Test.EdgeCase {
                 try handle.close()
                 try File.System.Link.Symbolic.create(at: link, pointingTo: target)
 
-                let info = try await io.run { try File.System.Stat.info(at: link) }
+                let info = try await fs.run { try File.System.Stat.info(at: link) }
 
                 // stat follows symlinks
                 #expect(info.type == .regular)
                 #expect(info.size == 3)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
     #endif
@@ -985,7 +985,7 @@ extension File.IO.Test.EdgeCase {
     @Test("Many concurrent file operations")
     func manyConcurrentOps() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             try await withThrowingTaskGroup(of: Void.self) { group in
                 for i in 0..<50 {
@@ -1008,14 +1008,14 @@ extension File.IO.Test.EdgeCase {
 
                 try await group.waitForAll()
             }
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 
     @Test("Concurrent reads of same file")
     func concurrentReadsOfSameFile() async throws {
         try await File.Directory.temporary { dir in
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("\(String(dir.path))/concurrent-read-file")
 
@@ -1030,7 +1030,7 @@ extension File.IO.Test.EdgeCase {
                 for _ in 0..<10 {
                     group.addTask {
                         var allBytes: [UInt8] = []
-                        let stream = File.System.Read.Async(io: io).bytes(from: path)
+                        let stream = File.System.Read.Async(fs: fs).bytes(from: path)
                         for try await chunk in stream {
                             allBytes.append(contentsOf: chunk)
                         }
@@ -1042,7 +1042,7 @@ extension File.IO.Test.EdgeCase {
                     #expect(result == data)
                 }
             }
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 

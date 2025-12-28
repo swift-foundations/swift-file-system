@@ -29,7 +29,7 @@ extension File.Directory.Async {
         at root: File.Directory,
         options: File.Directory.Walk.Async.Options = .init()
     ) -> File.Directory.Walk.Async.Sequence {
-        File.Directory.Walk.Async.Sequence(root: root, options: options, io: io)
+        File.Directory.Walk.Async.Sequence(root: root, options: options, fs: fs)
     }
 }
 
@@ -49,10 +49,10 @@ extension File.Directory.Walk.Async {
 
         let root: File.Directory
         let options: Options
-        let io: File.IO.Executor
+        let fs: File.System.Async
 
         public func makeAsyncIterator() -> Iterator {
-            Iterator.make(root: root, options: options, io: io)
+            Iterator.make(root: root, options: options, fs: fs)
         }
     }
 }

@@ -21,6 +21,7 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-incits-4-1986", from: "0.7.1"),
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
         .package(url: "https://github.com/swift-standards/swift-time-standard", from: "0.1.0"),
+        .package(path: "../swift-io"),
     ],
     targets: [
         .target(
@@ -78,6 +79,7 @@ let package = Package(
             dependencies: [
                 "File System Primitives",
                 .product(name: "AsyncAlgorithms", package: "swift-async-algorithms-fork"),
+                .product(name: "IO", package: "swift-io"),
             ]
         ),
         .testTarget(

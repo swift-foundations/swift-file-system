@@ -56,8 +56,8 @@ import Testing
 
         @Test("Batch size 64 - 1000 files × 100 loops (async)")
         func batchSize64() async throws {
-            let io = File.IO.Executor()
-            let dir = File.Directory.Async(io: io)
+            let fs = File.System.Async()
+            let dir = File.Directory.Async(fs: fs)
             let loopCount = 100
             let clock = Time.Clock.Continuous()
             let start = clock.now
@@ -81,13 +81,13 @@ import Testing
             print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-            await io.shutdown()
+            await fs.shutdown()
         }
 
         @Test("Batch size 128 - 1000 files × 100 loops (async)")
         func batchSize128() async throws {
-            let io = File.IO.Executor()
-            let dir = File.Directory.Async(io: io)
+            let fs = File.System.Async()
+            let dir = File.Directory.Async(fs: fs)
             let loopCount = 100
             let clock = Time.Clock.Continuous()
             let start = clock.now
@@ -111,13 +111,13 @@ import Testing
             print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-            await io.shutdown()
+            await fs.shutdown()
         }
 
         @Test("Batch size 256 - 1000 files × 100 loops (async)")
         func batchSize256() async throws {
-            let io = File.IO.Executor()
-            let dir = File.Directory.Async(io: io)
+            let fs = File.System.Async()
+            let dir = File.Directory.Async(fs: fs)
             let loopCount = 100
             let clock = Time.Clock.Continuous()
             let start = clock.now
@@ -141,15 +141,15 @@ import Testing
             print("Per-file: \(perFileNs.formatted(.number.precision(1))) ns")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-            await io.shutdown()
+            await fs.shutdown()
         }
 
         // MARK: - Default Batch Size (Public API)
 
         @Test("Pull-based async iteration (default batch) - 1000 files × 100 loops (async)")
         func pullBasedAsyncDefaultBatch() async throws {
-            let io = File.IO.Executor()
-            let dir = File.Directory.Async(io: io)
+            let fs = File.System.Async()
+            let dir = File.Directory.Async(fs: fs)
             let loopCount = 100
             let clock = Time.Clock.Continuous()
             let start = clock.now
@@ -174,14 +174,14 @@ import Testing
             print("Target: < 1000 ns/file")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-            await io.shutdown()
+            await fs.shutdown()
         }
 
         // MARK: - Comparison with Sync Baseline
 
         @Test("Sync vs Async comparison - 1000 files × 100 loops (async)")
         func syncVsAsyncComparison() async throws {
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
             let loopCount = 100
             let totalFiles = loopCount * 1000
 
@@ -205,7 +205,7 @@ import Testing
             let syncPerFileNs = (syncElapsed / Double(totalFiles)) * 1_000_000_000
 
             // Async
-            let dir = File.Directory.Async(io: io)
+            let dir = File.Directory.Async(fs: fs)
             let asyncClock = Time.Clock.Continuous()
             let asyncStart = asyncClock.now
             for _ in 0..<loopCount {
@@ -228,7 +228,7 @@ import Testing
             print("Overhead: \(overhead.formatted(.number.precision(1)))×")
             print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-            await io.shutdown()
+            await fs.shutdown()
         }
     }
 

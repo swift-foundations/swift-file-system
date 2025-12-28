@@ -20,10 +20,10 @@ extension File.Directory {
     /// Creates the directory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Create.Directory.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Create.Directory.Error>` on failure.
     public func create(
         recursive: Bool = false
-    ) async throws(File.IO.Error<File.System.Create.Directory.Error>) {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Create.Directory.Error>>) {
         let options = File.System.Create.Directory.Options(createIntermediates: recursive)
         try await File.System.Create.Directory.create(at: path, options: options)
     }
@@ -40,10 +40,10 @@ extension File.Directory {
     /// Deletes the directory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Delete.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Delete.Error>` on failure.
     public func delete(
         recursive: Bool = false
-    ) async throws(File.IO.Error<File.System.Delete.Error>) {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
         let options = File.System.Delete.Options(recursive: recursive)
         try await File.System.Delete.delete(at: path, options: options)
     }
@@ -84,12 +84,12 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Returns: A `File.Directory` representing the copy at the destination.
-    /// - Throws: `File.IO.Error<File.System.Copy.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Copy.Error>` on failure.
     @discardableResult
     public func copy(
         to destination: File.Path,
         options: File.System.Copy.Options = .init()
-    ) async throws(File.IO.Error<File.System.Copy.Error>) -> File.Directory {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File.Directory {
         try await File.System.Copy.copy(from: path, to: destination, options: options)
         return File.Directory(destination)
     }
@@ -98,12 +98,12 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Returns: The destination `File.Directory`.
-    /// - Throws: `File.IO.Error<File.System.Copy.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Copy.Error>` on failure.
     @discardableResult
     public func copy(
         to destination: File.Directory,
         options: File.System.Copy.Options = .init()
-    ) async throws(File.IO.Error<File.System.Copy.Error>) -> File.Directory {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File.Directory {
         try await File.System.Copy.copy(from: path, to: destination.path, options: options)
         return destination
     }
@@ -144,12 +144,12 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Returns: The destination `File.Directory`.
-    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func move(
         to destination: File.Path,
         options: File.System.Move.Options = .init()
-    ) async throws(File.IO.Error<File.System.Move.Error>) -> File.Directory {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File.Directory {
         try await File.System.Move.move(from: path, to: destination, options: options)
         return File.Directory(destination)
     }
@@ -158,12 +158,12 @@ extension File.Directory {
     ///
     /// Async variant.
     /// - Returns: The destination `File.Directory`.
-    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func move(
         to destination: File.Directory,
         options: File.System.Move.Options = .init()
-    ) async throws(File.IO.Error<File.System.Move.Error>) -> File.Directory {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File.Directory {
         try await File.System.Move.move(from: path, to: destination.path, options: options)
         return destination
     }
@@ -191,14 +191,14 @@ extension File.Directory {
     /// Renames the directory within the same parent directory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func rename(
         to newName: String,
         options: File.System.Move.Options = .init()
-    ) async throws(File.IO.Error<File.System.Move.Error>) -> File.Directory {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File.Directory {
         guard let parent = path.parent else {
-            throw .operation(.sourceNotFound(path))
+            throw .failure(.operation(.sourceNotFound(path)))
         }
         let destination = parent.appending(newName)
         try await File.System.Move.move(from: path, to: destination, options: options)
@@ -261,8 +261,8 @@ extension File.Directory {
     /// Returns the contents of the directory.
     ///
     /// Async variant. Use `entries()` for true streaming iteration.
-    /// - Throws: `File.IO.Error<File.Directory.Contents.Error>` on failure.
-    public func contents() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File
+    /// - Throws: `IO.Error<File.Directory.Contents.Error>` on failure.
+    public func contents() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>) -> [File
         .Directory.Entry]
     {
         try await File.Directory.Contents.list(at: self)
@@ -281,8 +281,8 @@ extension File.Directory {
     /// Returns all files in the directory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.Directory.Contents.Error>` on failure.
-    public func files() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File] {
+    /// - Throws: `IO.Error<File.Directory.Contents.Error>` on failure.
+    public func files() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>) -> [File] {
         try await contents()
             .filter { $0.type == .file }
             .compactMap { $0.pathIfValid.map { File($0) } }
@@ -301,8 +301,8 @@ extension File.Directory {
     /// Returns all subdirectories in the directory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.Directory.Contents.Error>` on failure.
-    public func subdirectories() async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File
+    /// - Throws: `IO.Error<File.Directory.Contents.Error>` on failure.
+    public func subdirectories() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>) -> [File
         .Directory]
     {
         try await contents()
@@ -338,10 +338,10 @@ extension File.Directory {
     /// Recursively walks the directory tree and returns all entries.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.Directory.Walk.Error>` on failure.
+    /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
     public func walk(
         options: File.Directory.Walk.Options = .init()
-    ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File.Directory.Entry] {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File.Directory.Entry] {
         try await File.Directory.Walk.walk(at: self, options: options)
     }
 
@@ -361,10 +361,10 @@ extension File.Directory {
     /// Recursively walks the directory tree and returns all files.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.Directory.Walk.Error>` on failure.
+    /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
     public func walkFiles(
         options: File.Directory.Walk.Options = .init()
-    ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File] {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File] {
         try await walk(options: options)
             .filter { $0.type == .file }
             .compactMap { $0.pathIfValid.map { File($0) } }
@@ -386,10 +386,10 @@ extension File.Directory {
     /// Recursively walks the directory tree and returns all subdirectories.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.Directory.Walk.Error>` on failure.
+    /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
     public func walkDirectories(
         options: File.Directory.Walk.Options = .init()
-    ) async throws(File.IO.Error<File.Directory.Walk.Error>) -> [File.Directory] {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File.Directory] {
         try await walk(options: options)
             .filter { $0.type == .directory }
             .compactMap { $0.pathIfValid.map { File.Directory($0) } }

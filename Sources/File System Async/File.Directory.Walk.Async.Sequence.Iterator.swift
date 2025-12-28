@@ -14,8 +14,8 @@ extension File.Directory.Walk.Async.Sequence {
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
-        private typealias Box = File.IO.Iterator.Box<File.Directory.Iterator>
-        private typealias ChannelError = File.IO.Error<File.Directory.Walk.Error>
+        private typealias Box = File.Iterator.Box<File.Directory.Iterator>
+        private typealias ChannelError = IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>
 
         private let channel: AsyncThrowingChannel<Element, ChannelError>
         private var channelIterator: AsyncThrowingChannel<Element, ChannelError>.AsyncIterator
@@ -35,7 +35,7 @@ extension File.Directory.Walk.Async.Sequence {
         static func make(
             root: File.Directory,
             options: File.Directory.Walk.Async.Options,
-            io: File.IO.Executor
+            fs: File.System.Async
         ) -> Iterator {
             let channel = AsyncThrowingChannel<Element, ChannelError>()
             let iterator = Iterator(
@@ -46,9 +46,9 @@ extension File.Directory.Walk.Async.Sequence {
             // Capture only Sendable values, not self
             let root = root
             let options = options
-            let io = io
+            let fs = fs
             iterator.producerTask = Task {
-                await Self.runWalk(root: root, options: options, io: io, channel: channel)
+                await Self.runWalk(root: root, options: options, fs: fs, channel: channel)
             }
 
             return iterator
@@ -58,28 +58,27 @@ extension File.Directory.Walk.Async.Sequence {
             producerTask?.cancel()
         }
 
-        public func next() async throws(File.IO.Error<File.Directory.Walk.Error>) -> Element? {
+        public func next() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> Element? {
             guard !isFinished else { return nil }
 
+            // Check cancellation without throwing (avoids mixing throw types)
+            if Task.isCancelled {
+                isFinished = true
+                producerTask?.cancel()
+                throw .failure(.cancelled)
+            }
+
+            // Pure typed throws from channel - no cast needed
             do {
-                try Task.checkCancellation()
                 let result = try await channelIterator.next()
                 if result == nil {
                     isFinished = true
                 }
                 return result
-            } catch let error as File.IO.Error<File.Directory.Walk.Error> {
-                isFinished = true
-                producerTask?.cancel()
-                throw error
-            } catch is CancellationError {
-                isFinished = true
-                producerTask?.cancel()
-                throw .cancelled
             } catch {
                 isFinished = true
                 producerTask?.cancel()
-                throw .operation(.walkFailed(errno: 0, message: "Unknown error: \(error)"))
+                throw error
             }
         }
 
@@ -100,7 +99,7 @@ extension File.Directory.Walk.Async.Sequence {
         private static func runWalk(
             root: File.Directory,
             options: File.Directory.Walk.Async.Options,
-            io: File.IO.Executor,
+            fs: File.System.Async,
             channel: AsyncThrowingChannel<Element, ChannelError>
         ) async {
             let state = File.Directory.Walk.Async.State(maxConcurrency: options.maxConcurrency)
@@ -144,7 +143,7 @@ extension File.Directory.Walk.Async.Sequence {
                             dir,
                             depth: depth,
                             options: options,
-                            io: io,
+                            fs: fs,
                             state: state,
                             authority: authority,
                             channel: channel
@@ -174,7 +173,7 @@ extension File.Directory.Walk.Async.Sequence {
             _ dir: File.Directory,
             depth: Int,
             options: File.Directory.Walk.Async.Options,
-            io: File.IO.Executor,
+            fs: File.System.Async,
             state: File.Directory.Walk.Async.State,
             authority: File.Directory.Walk.Async.Completion.Authority,
             channel: AsyncThrowingChannel<Element, ChannelError>
@@ -189,7 +188,7 @@ extension File.Directory.Walk.Async.Sequence {
             // This ensures that if a symlink points back to this directory,
             // we detect the cycle even for the root directory.
             if options.followSymlinks {
-                if let dirInode = await getInode(dir.path, io: io, followSymlinks: true) {
+                if let dirInode = await getInode(dir.path, fs: fs, followSymlinks: true) {
                     let isNewVisit = await state.markVisited(dirInode)
                     if !isNewVisit {
                         // Already visited - this is a cycle, skip this directory
@@ -200,34 +199,34 @@ extension File.Directory.Walk.Async.Sequence {
             }
 
             // Open iterator
-            let boxResult: Result<Box, ChannelError> = await {
-                do {
-                    let box = try await io.run {
-                        let iterator = try File.Directory.Iterator.open(at: dir)
-                        return Box(iterator)
-                    }
-                    return .success(box)
-                } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
-                    // Map iterator error to walk error
-                    return .failure(
-                        error.mapOperation { iteratorError in
-                            switch iteratorError {
-                            case .pathNotFound(let p): return .pathNotFound(p)
-                            case .permissionDenied(let p): return .permissionDenied(p)
-                            case .notADirectory(let p): return .notADirectory(p)
-                            case .readFailed(let errno, let msg):
-                                return .walkFailed(errno: errno, message: msg)
-                            }
-                        }
-                    )
-                } catch is CancellationError {
-                    return .failure(.cancelled)
-                } catch {
-                    return .failure(
-                        .operation(.walkFailed(errno: 0, message: "Open failed: \(error)"))
-                    )
+            let boxResult: Result<Box, ChannelError>
+            do {
+                let box = try await fs.run { () throws(File.Directory.Iterator.Error) in
+                    let iterator = try File.Directory.Iterator.open(at: dir)
+                    return Box(iterator)
                 }
-            }()
+                boxResult = .success(box)
+            } catch {
+                // error is typed as IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>>
+                // Map iterator error to walk error
+                let walkError: ChannelError
+                switch error {
+                case .lifecycle(let lifecycle):
+                    walkError = .lifecycle(lifecycle)
+                case .failure(let ioError):
+                    let mapped: IO.Error<File.Directory.Walk.Error> = ioError.mapOperation { iteratorError in
+                        switch iteratorError {
+                        case .pathNotFound(let p): return .pathNotFound(p)
+                        case .permissionDenied(let p): return .permissionDenied(p)
+                        case .notADirectory(let p): return .notADirectory(p)
+                        case .readFailed(let errno, let msg):
+                            return .walkFailed(errno: errno, message: msg)
+                        }
+                    }
+                    walkError = .failure(mapped)
+                }
+                boxResult = .failure(walkError)
+            }
 
             guard case .success(let box) = boxResult else {
                 if case .failure(let error) = boxResult {
@@ -239,7 +238,7 @@ extension File.Directory.Walk.Async.Sequence {
 
             // Helper to close box - must be called before returning
             @Sendable func closeBox() async {
-                _ = try? await io.run { box.close { $0.close() } }
+                _ = try? await fs.run { box.close { $0.close() } }
             }
 
             // Iterate directory with batching to reduce executor overhead
@@ -258,7 +257,7 @@ extension File.Directory.Walk.Async.Sequence {
                     }
 
                     // Read batch of entries via single io.run call
-                    let batch: [File.Directory.Entry] = try await io.run {
+                    let batch: [File.Directory.Entry] = try await fs.run {
                         () throws(File.Directory.Iterator.Error) in
                         var entries: [File.Directory.Entry] = []
                         entries.reserveCapacity(batchSize)
@@ -304,12 +303,12 @@ extension File.Directory.Walk.Async.Sequence {
                                 continue
                             case .stopAndThrow:
                                 await authority.fail(
-                                    with: .operation(
+                                    with: .failure(.operation(
                                         .undecodableEntry(
                                             parent: entry.parent,
                                             name: entry.name
                                         )
-                                    )
+                                    ))
                                 )
                             }
                             continue
@@ -327,7 +326,7 @@ extension File.Directory.Walk.Async.Sequence {
                             // We use followSymlinks: true to get the target's identity,
                             // so if this symlink points to an already-visited directory,
                             // we detect the cycle and don't recurse.
-                            if let targetInode = await getInode(entryPath, io: io, followSymlinks: true) {
+                            if let targetInode = await getInode(entryPath, fs: fs, followSymlinks: true) {
                                 shouldRecurse = await state.markVisited(targetInode)
                             } else {
                                 shouldRecurse = false
@@ -343,15 +342,21 @@ extension File.Directory.Walk.Async.Sequence {
                     }
                 }
             } catch {
-                let walkError: File.IO.Error<File.Directory.Walk.Error> = error.mapOperation {
-                    iteratorError in
-                    switch iteratorError {
-                    case .pathNotFound(let p): return .pathNotFound(p)
-                    case .permissionDenied(let p): return .permissionDenied(p)
-                    case .notADirectory(let p): return .notADirectory(p)
-                    case .readFailed(let errno, let msg):
-                        return .walkFailed(errno: errno, message: msg)
+                let walkError: IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>
+                switch error {
+                case .lifecycle(let lifecycle):
+                    walkError = .lifecycle(lifecycle)
+                case .failure(let ioError):
+                    let mapped: IO.Error<File.Directory.Walk.Error> = ioError.mapOperation { iteratorError in
+                        switch iteratorError {
+                        case .pathNotFound(let p): return .pathNotFound(p)
+                        case .permissionDenied(let p): return .permissionDenied(p)
+                        case .notADirectory(let p): return .notADirectory(p)
+                        case .readFailed(let errno, let msg):
+                            return .walkFailed(errno: errno, message: msg)
+                        }
                     }
+                    walkError = .failure(mapped)
                 }
                 await authority.fail(with: walkError)
             }
@@ -369,11 +374,11 @@ extension File.Directory.Walk.Async.Sequence {
         /// are correctly detected as cycles.
         private static func getInode(
             _ path: File.Path,
-            io: File.IO.Executor,
+            fs: File.System.Async,
             followSymlinks: Bool
         ) async -> File.Directory.Walk.Async.Inode.Key? {
             do {
-                return try await io.run {
+                return try await fs.run {
                     // Use stat (follows symlinks) when we're about to follow a symlink
                     // to detect if the target has already been visited.
                     // Use lstat when we just need the entry's own inode.

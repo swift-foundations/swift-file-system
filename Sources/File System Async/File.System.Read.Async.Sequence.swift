@@ -31,7 +31,7 @@ extension File.System.Read.Async {
         from path: File.Path,
         options: File.System.Read.Async.Options = .init()
     ) -> File.System.Read.Async.Sequence {
-        File.System.Read.Async.Sequence(path: path, chunkSize: options.chunkSize, io: io)
+        File.System.Read.Async.Sequence(path: path, chunkSize: options.chunkSize, fs: fs)
     }
 }
 
@@ -55,10 +55,10 @@ extension File.System.Read.Async {
 
         let path: File.Path
         let chunkSize: Int
-        let io: File.IO.Executor
+        let fs: File.System.Async
 
         public func makeAsyncIterator() -> Iterator {
-            Iterator.make(path: path, chunkSize: chunkSize, io: io)
+            Iterator.make(path: path, chunkSize: chunkSize, fs: fs)
         }
     }
 }

@@ -13,7 +13,7 @@ extension File.Directory.Walk.Async.Completion {
     actor Authority {
         enum State {
             case running
-            case failed(File.IO.Error<File.Directory.Walk.Error>)
+            case failed(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>)
             case cancelled
             case finished
         }
@@ -26,7 +26,7 @@ extension File.Directory.Walk.Async.Completion {
         }
 
         /// Attempt to transition to failed. First error wins.
-        func fail(with error: File.IO.Error<File.Directory.Walk.Error>) {
+        func fail(with error: IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) {
             guard case .running = state else { return }
             state = .failed(error)
         }

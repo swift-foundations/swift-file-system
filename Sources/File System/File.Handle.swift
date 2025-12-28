@@ -127,7 +127,7 @@ extension File.Handle.Async {
     /// Get the current position.
     ///
     /// - Returns: The current file position.
-    public func position() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
+    public func position() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Int64 {
         try await seek(to: 0, from: .current)
     }
 
@@ -135,7 +135,7 @@ extension File.Handle.Async {
     ///
     /// - Returns: The new position (always 0).
     @discardableResult
-    public func rewind() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
+    public func rewind() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Int64 {
         try await seek(to: 0, from: .start)
     }
 
@@ -143,7 +143,7 @@ extension File.Handle.Async {
     ///
     /// - Returns: The new position (file size).
     @discardableResult
-    public func seekToEnd() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
+    public func seekToEnd() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Int64 {
         try await seek(to: 0, from: .end)
     }
 }

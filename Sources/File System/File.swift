@@ -19,8 +19,8 @@ extension File {
     /// Reads the entire file contents into memory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Read.Full.Error>` on failure.
-    public func read() async throws(File.IO.Error<File.System.Read.Full.Error>) -> [UInt8] {
+    /// - Throws: `IO.Error<File.System.Read.Full.Error>` on failure.
+    public func read() async throws(IO.Lifecycle.Error<IO.Error<File.System.Read.Full.Error>>) -> [UInt8] {
         try await File.System.Read.Full.read(from: path)
     }
 
@@ -38,10 +38,10 @@ extension File {
     /// Reads the file contents as a UTF-8 string.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Read.Full.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Read.Full.Error>` on failure.
     public func read<S: StringProtocol>(
         as type: S.Type
-    ) async throws(File.IO.Error<File.System.Read.Full.Error>) -> S {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Read.Full.Error>>) -> S {
         let bytes = try await File.System.Read.Full.read(from: path)
         return S(decoding: bytes, as: UTF8.self)
     }
@@ -66,11 +66,11 @@ extension File {
     /// Writes bytes to the file atomically.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Write.Atomic.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Write.Atomic.Error>` on failure.
     public func write(
         _ bytes: [UInt8],
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) {
         try await File.System.Write.Atomic.write(bytes, to: path, options: options)
     }
 
@@ -90,11 +90,11 @@ extension File {
     /// Writes a string to the file atomically (UTF-8 encoded).
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Write.Atomic.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Write.Atomic.Error>` on failure.
     public func write(
         _ string: String,
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) {
         try await write(Array(string.utf8), options: options)
     }
 
@@ -114,11 +114,11 @@ extension File {
     /// Writes bytes from a sequence to the file atomically.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Write.Atomic.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Write.Atomic.Error>` on failure.
     public func write<S: Sequence>(
         contentsOf bytes: S,
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws(File.IO.Error<File.System.Write.Atomic.Error>) where S.Element == UInt8 {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) where S.Element == UInt8 {
         try await write(Array(bytes), options: options)
     }
 
@@ -133,8 +133,8 @@ extension File {
     /// Appends bytes to the file.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
-    public func append(_ bytes: [UInt8]) async throws(File.IO.Error<File.System.Write.Append.Error>) {
+    /// - Throws: `IO.Error<File.System.Write.Append.Error>` on failure.
+    public func append(_ bytes: [UInt8]) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>) {
         try await File.System.Write.Append.append(bytes, to: path)
     }
 
@@ -149,8 +149,8 @@ extension File {
     /// Appends a string to the file (UTF-8 encoded).
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Write.Append.Error>` on failure.
-    public func append(_ string: String) async throws(File.IO.Error<File.System.Write.Append.Error>) {
+    /// - Throws: `IO.Error<File.System.Write.Append.Error>` on failure.
+    public func append(_ string: String) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>) {
         try await append(Array(string.utf8))
     }
 }
@@ -183,11 +183,11 @@ extension File {
     /// - Parameters:
     ///   - chunks: Sequence of owned byte arrays to write.
     ///   - options: Streaming write options.
-    /// - Throws: `File.IO.Error<File.System.Write.Streaming.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Write.Streaming.Error>` on failure.
     public func write<Chunks: Sequence & Sendable>(
         streaming chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
-    ) async throws(File.IO.Error<File.System.Write.Streaming.Error>)
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>)
     where Chunks.Element == [UInt8] {
         try await File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
@@ -314,10 +314,10 @@ extension File {
     /// Deletes the file.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Delete.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Delete.Error>` on failure.
     public func delete(
         options: File.System.Delete.Options = .init()
-    ) async throws(File.IO.Error<File.System.Delete.Error>) {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
         try await File.System.Delete.delete(at: path, options: options)
     }
 
@@ -357,12 +357,12 @@ extension File {
     ///
     /// Async variant.
     /// - Returns: A `File` representing the copy at the destination.
-    /// - Throws: `File.IO.Error<File.System.Copy.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Copy.Error>` on failure.
     @discardableResult
     public func copy(
         to destination: File.Path,
         options: File.System.Copy.Options = .init()
-    ) async throws(File.IO.Error<File.System.Copy.Error>) -> File {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File {
         try await File.System.Copy.copy(from: path, to: destination, options: options)
         return File(destination)
     }
@@ -371,12 +371,12 @@ extension File {
     ///
     /// Async variant.
     /// - Returns: The destination `File`.
-    /// - Throws: `File.IO.Error<File.System.Copy.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Copy.Error>` on failure.
     @discardableResult
     public func copy(
         to destination: File,
         options: File.System.Copy.Options = .init()
-    ) async throws(File.IO.Error<File.System.Copy.Error>) -> File {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File {
         try await File.System.Copy.copy(from: path, to: destination.path, options: options)
         return destination
     }
@@ -417,12 +417,12 @@ extension File {
     ///
     /// Async variant.
     /// - Returns: The destination `File`.
-    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func move(
         to destination: File.Path,
         options: File.System.Move.Options = .init()
-    ) async throws(File.IO.Error<File.System.Move.Error>) -> File {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File {
         try await File.System.Move.move(from: path, to: destination, options: options)
         return File(destination)
     }
@@ -431,12 +431,12 @@ extension File {
     ///
     /// Async variant.
     /// - Returns: The destination `File`.
-    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func move(
         to destination: File,
         options: File.System.Move.Options = .init()
-    ) async throws(File.IO.Error<File.System.Move.Error>) -> File {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File {
         try await File.System.Move.move(from: path, to: destination.path, options: options)
         return destination
     }
@@ -464,14 +464,14 @@ extension File {
     /// Renames the file within the same directory.
     ///
     /// Async variant.
-    /// - Throws: `File.IO.Error<File.System.Move.Error>` on failure.
+    /// - Throws: `IO.Error<File.System.Move.Error>` on failure.
     @discardableResult
     public func rename(
         to newName: String,
         options: File.System.Move.Options = .init()
-    ) async throws(File.IO.Error<File.System.Move.Error>) -> File {
+    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File {
         guard let parent = path.parent else {
-            throw .operation(.sourceNotFound(path))
+            throw .failure(.operation(.sourceNotFound(path)))
         }
         let destination = parent.appending(newName)
         try await File.System.Move.move(from: path, to: destination, options: options)

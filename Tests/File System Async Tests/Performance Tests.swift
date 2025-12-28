@@ -34,7 +34,7 @@ import TestingPerformance
 
 // Note: File.IO #TestSuites declared in Support/Test.swift
 
-extension File.IO.Test.Performance {
+extension File.System.Async.Test.Performance {
 
     // MARK: - Executor Performance
 
@@ -70,7 +70,7 @@ extension File.IO.Test.Performance {
                 .timed(iterations: 5, warmup: 1)
             )
             func jobSubmissionThroughput() async throws {
-                let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 8))
+                let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 8))
 
                 await withTaskGroup(of: Int.self) { group in
                     for i in 0..<1000 {
@@ -92,7 +92,7 @@ extension File.IO.Test.Performance {
 
             @Test("Sequential job execution", .timed(iterations: 20, warmup: 3))
             func sequentialJobExecution() async throws {
-                let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 8))
+                let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 8))
 
                 for i in 0..<50 {
                     let result = try await executor.run { i * 2 }
@@ -106,7 +106,7 @@ extension File.IO.Test.Performance {
             func executorStartupLatency() async throws {
                 // INTENTIONALLY creates executor inside timed region
                 // to measure first-job latency including worker startup
-                let executor = File.IO.Executor()
+                let executor = File.System.Async()
 
                 let result = try await executor.run { 42 }
                 #expect(result == 42)
@@ -116,7 +116,7 @@ extension File.IO.Test.Performance {
 
             @Test("Concurrent job completion", .timed(iterations: 5, warmup: 1))
             func concurrentJobCompletion() async throws {
-                let executor = File.IO.Executor(File.IO.Blocking.Threads.Options(workers: 8))
+                let executor = File.System.Async(IO.Blocking.Threads.Options(workers: 8))
                 let fd = self.statFd
 
                 await withTaskGroup(of: Bool.self) { group in
@@ -171,28 +171,28 @@ extension File.IO.Test.Performance {
 
         @Test("Handle registration and destruction", .timed(iterations: 20, warmup: 3))
         func handleRegistrationDestruction() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             for _ in 0..<20 {
-                let handleId = try await executor.openFile(filePath, mode: .read)
-                try await executor.destroyHandle(handleId)
+                let handleId = try await executor.open(filePath, mode: .read)
+                try await executor.close(handleId)
             }
         }
 
         @Test("withHandle access pattern", .timed(iterations: 20, warmup: 3))
         func withHandleAccess() async throws {
-            let executor = File.IO.Executor.default
-            let handleId = try await executor.openFile(filePath, mode: .read)
+            let executor = File.System.Async.async
+            let handleId = try await executor.open(filePath, mode: .read)
 
             // 50 withHandle accesses
             for _ in 0..<50 {
-                let bytes: [UInt8] = try await executor.withHandle(handleId) { handle in
+                let bytes: [UInt8] = try await executor.transaction(handleId) { handle in
                     try handle.seek(to: 0)
                     return try handle.read(count: 100)
                 }
                 #expect(bytes.count == 100)
             }
 
-            try await executor.destroyHandle(handleId)
+            try await executor.close(handleId)
         }
     }
 
@@ -289,8 +289,8 @@ extension File.IO.Test.Performance {
             .timed(iterations: 50, warmup: 5, trackAllocations: false)
         )
         func asyncDirectoryContents() async throws {
-            let executor = File.IO.Executor.default
-            let entries = try await File.Directory.Async(io: executor).contents(
+            let executor = File.System.Async.async
+            let entries = try await File.Directory.Async(fs: executor).contents(
                 at: File.Directory(testDir100Files)
             )
             #expect(entries.count == 100)
@@ -301,9 +301,9 @@ extension File.IO.Test.Performance {
             .timed(iterations: 50, warmup: 5, trackAllocations: false)
         )
         func directoryEntriesStreaming() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             var count = 0
-            for try await _ in File.Directory.Async(io: executor).entries(at: File.Directory(testDir100Files)) {
+            for try await _ in File.Directory.Async(fs: executor).entries(at: File.Directory(testDir100Files)) {
                 count += 1
             }
             #expect(count == 100)
@@ -314,9 +314,9 @@ extension File.IO.Test.Performance {
             .timed(iterations: 20, warmup: 3, trackAllocations: false)
         )
         func directoryWalkShallow() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             var count = 0
-            let walk = File.Directory.Async(io: executor).walk(at: File.Directory(testDirShallowTree))
+            let walk = File.Directory.Async(fs: executor).walk(at: File.Directory(testDirShallowTree))
             let iterator = walk.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -330,9 +330,9 @@ extension File.IO.Test.Performance {
             .timed(iterations: 20, warmup: 3, trackAllocations: false)
         )
         func directoryWalkDeep() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             var count = 0
-            let walk = File.Directory.Async(io: executor).walk(at: File.Directory(testDirDeepTree))
+            let walk = File.Directory.Async(fs: executor).walk(at: File.Directory(testDirDeepTree))
             let iterator = walk.makeAsyncIterator()
             while try await iterator.next() != nil {
                 count += 1
@@ -379,8 +379,8 @@ extension File.IO.Test.Performance {
             .timed(iterations: 5, warmup: 1, trackAllocations: false)
         )
         func stream1MBFile() async throws {
-            let executor = File.IO.Executor.default
-            let stream = File.System.Read.Async(io: executor)
+            let executor = File.System.Async.async
+            let stream = File.System.Read.Async(fs: executor)
             var totalBytes = 0
             for try await chunk in stream.bytes(from: file1MB) {
                 totalBytes += chunk.count
@@ -393,8 +393,8 @@ extension File.IO.Test.Performance {
             .timed(iterations: 5, warmup: 1, trackAllocations: false)
         )
         func stream1MBSmallChunks() async throws {
-            let executor = File.IO.Executor.default
-            let stream = File.System.Read.Async(io: executor)
+            let executor = File.System.Async.async
+            let stream = File.System.Read.Async(fs: executor)
             let options = File.System.Read.Async.Options(chunkSize: 4096)
             var totalBytes = 0
             var chunkCount = 0
@@ -408,8 +408,8 @@ extension File.IO.Test.Performance {
 
         @Test("Early termination streaming", .timed(iterations: 20, warmup: 3))
         func earlyTermination() async throws {
-            let executor = File.IO.Executor.default
-            let stream = File.System.Read.Async(io: executor)
+            let executor = File.System.Async.async
+            let stream = File.System.Read.Async(fs: executor)
             var bytesRead = 0
 
             for try await chunk in stream.bytes(from: file5MB) {
@@ -465,7 +465,7 @@ extension File.IO.Test.Performance {
 
         @Test("Async stat operations", .timed(iterations: 20, warmup: 3))
         func asyncStatOperations() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             let path = statFile
             // 50 stat operations on pre-created file
             for _ in 0..<50 {
@@ -476,7 +476,7 @@ extension File.IO.Test.Performance {
 
         @Test("Async file copy (1MB)", .timed(iterations: 5, warmup: 1))
         func asyncFileCopy() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             let source = copySource
             let destPath = File.Path(
                 copyDestDir,
@@ -533,7 +533,7 @@ extension File.IO.Test.Performance {
             .timed(iterations: 5, warmup: 1, trackAllocations: false)
         )
         func concurrentFileReads() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             await withTaskGroup(of: Int.self) { group in
                 for path in self.filePaths {
                     group.addTask {
@@ -558,7 +558,7 @@ extension File.IO.Test.Performance {
 
         @Test("Mixed read/write operations", .timed(iterations: 5, warmup: 1))
         func mixedReadWriteOperations() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             let testDir = self.testDir
             await withTaskGroup(of: Bool.self) { group in
                 for i in 0..<20 {
@@ -619,7 +619,7 @@ extension File.IO.Test.Performance {
 
         @Test("Executor job execution", .timed(iterations: 5))
         func executorJobExecution() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             for i in 0..<100 {
                 let result = try await executor.run { i * 2 }
                 #expect(result == i * 2)
@@ -631,8 +631,8 @@ extension File.IO.Test.Performance {
             .timed(iterations: 3, maxAllocations: 5_000_000)
         )
         func streamingMemoryBounded() async throws {
-            let executor = File.IO.Executor.default
-            let stream = File.System.Read.Async(io: executor)
+            let executor = File.System.Async.async
+            let stream = File.System.Read.Async(fs: executor)
 
             var totalBytes = 0
             for try await chunk in stream.bytes(from: streamFile) {
@@ -643,10 +643,10 @@ extension File.IO.Test.Performance {
 
         @Test("Handle registry cleanup", .timed(iterations: 5))
         func handleRegistryCleanup() async throws {
-            let executor = File.IO.Executor.default
+            let executor = File.System.Async.async
             for _ in 0..<50 {
-                let handleId = try await executor.openFile(testFile, mode: .read)
-                try await executor.destroyHandle(handleId)
+                let handleId = try await executor.open(testFile, mode: .read)
+                try await executor.close(handleId)
             }
         }
     }

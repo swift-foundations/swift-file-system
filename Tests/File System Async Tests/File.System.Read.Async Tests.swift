@@ -22,13 +22,13 @@ extension File.System.Read.Async.Test.Unit {
 
     @Test("Stream empty file")
     func streamEmptyFile() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             let path = File.Path(dir.path, appending: "empty.bin")
             try File.System.Write.Atomic.write([UInt8]().span, to: path)
 
-            let stream = File.System.Read.Async(io: io).bytes(from: path)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path)
             var count = 0
 
             for try await _ in stream {
@@ -38,19 +38,19 @@ extension File.System.Read.Async.Test.Unit {
             #expect(count == 0)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     @Test("Stream small file")
     func streamSmallFile() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             let path = File.Path(dir.path, appending: "small.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
 
-            let stream = File.System.Read.Async(io: io).bytes(from: path)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path)
             var allBytes: [UInt8] = []
 
             for try await chunk in stream {
@@ -60,12 +60,12 @@ extension File.System.Read.Async.Test.Unit {
             #expect(allBytes == content)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     @Test("Stream large file in chunks")
     func streamLargeFileInChunks() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             // Create 1MB file
@@ -75,7 +75,7 @@ extension File.System.Read.Async.Test.Unit {
             try File.System.Write.Atomic.write(content.span, to: path)
 
             // Stream with 64KB chunks (default)
-            let stream = File.System.Read.Async(io: io).bytes(from: path)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path)
             var totalBytes = 0
             var chunkCount = 0
 
@@ -89,12 +89,12 @@ extension File.System.Read.Async.Test.Unit {
             #expect(chunkCount >= 16)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     @Test("Stream with custom chunk size")
     func streamWithCustomChunkSize() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             // Create 1000 byte file
@@ -104,7 +104,7 @@ extension File.System.Read.Async.Test.Unit {
 
             // Stream with 100 byte chunks
             let options = File.System.Read.Async.Options(chunkSize: 100)
-            let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path, options: options)
 
             var chunkSizes: [Int] = []
             for try await chunk in stream {
@@ -118,12 +118,12 @@ extension File.System.Read.Async.Test.Unit {
             }
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     @Test("Last chunk may be smaller")
     func lastChunkMayBeSmaller() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             // Create 150 byte file
@@ -133,7 +133,7 @@ extension File.System.Read.Async.Test.Unit {
 
             // Stream with 100 byte chunks
             let options = File.System.Read.Async.Options(chunkSize: 100)
-            let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path, options: options)
 
             var chunkSizes: [Int] = []
             for try await chunk in stream {
@@ -146,19 +146,19 @@ extension File.System.Read.Async.Test.Unit {
             #expect(chunkSizes[1] == 50)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     // MARK: - Error Handling
 
     @Test("Stream non-existent file throws")
     func streamNonExistentThrows() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             let path = File.Path(dir.path, appending: "nonexistent.bin")
 
-            let stream = File.System.Read.Async(io: io).bytes(from: path)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path)
             let iterator = stream.makeAsyncIterator()
 
             do {
@@ -171,14 +171,14 @@ extension File.System.Read.Async.Test.Unit {
             }
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     // MARK: - Termination
 
     @Test("Terminate stops streaming")
     func terminateStopsStreaming() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             // Create 10KB file
@@ -188,7 +188,7 @@ extension File.System.Read.Async.Test.Unit {
 
             // Stream with 1KB chunks
             let options = File.System.Read.Async.Options(chunkSize: 1024)
-            let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path, options: options)
             let iterator = stream.makeAsyncIterator()
             var count = 0
 
@@ -205,14 +205,14 @@ extension File.System.Read.Async.Test.Unit {
             #expect(afterTerminate == nil)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     // MARK: - Break from Loop
 
     @Test("Breaking from loop cleans up resources")
     func breakFromLoopCleansUp() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             // Create 10KB file
@@ -222,7 +222,7 @@ extension File.System.Read.Async.Test.Unit {
 
             // Stream with 1KB chunks
             let options = File.System.Read.Async.Options(chunkSize: 1024)
-            let stream = File.System.Read.Async(io: io).bytes(from: path, options: options)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path, options: options)
             let iterator = stream.makeAsyncIterator()
             var count = 0
 
@@ -237,14 +237,14 @@ extension File.System.Read.Async.Test.Unit {
             #expect(count == 3)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 
     // MARK: - Data Integrity
 
     @Test("Streamed content matches original")
     func streamedContentMatchesOriginal() async throws {
-        let io = File.IO.Executor()
+        let fs = File.System.Async()
 
         try await File.Directory.temporary { dir in
             // Create file with varied content
@@ -255,7 +255,7 @@ extension File.System.Read.Async.Test.Unit {
             let path = File.Path(dir.path, appending: "integrity.bin")
             try File.System.Write.Atomic.write(content.span, to: path)
 
-            let stream = File.System.Read.Async(io: io).bytes(from: path)
+            let stream = File.System.Read.Async(fs: fs).bytes(from: path)
             var allBytes: [UInt8] = []
 
             for try await chunk in stream {
@@ -265,6 +265,6 @@ extension File.System.Read.Async.Test.Unit {
             #expect(allBytes == content)
         }
 
-        await io.shutdown()
+        await fs.shutdown()
     }
 }

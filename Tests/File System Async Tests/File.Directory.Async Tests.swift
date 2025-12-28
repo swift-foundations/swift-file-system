@@ -26,9 +26,9 @@ extension File.Directory.Async.Test.Unit {
         @Test("Walk empty directory")
         func emptyDirectory() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 var count = 0
 
@@ -38,14 +38,14 @@ extension File.Directory.Async.Test.Unit {
                 await iterator.terminate()
 
                 #expect(count == 0)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk directory with files")
         func directoryWithFiles() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
@@ -60,7 +60,7 @@ extension File.Directory.Async.Test.Unit {
                     to: dir.path / "file3.txt"
                 )
 
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 var paths: [String] = []
 
@@ -70,14 +70,14 @@ extension File.Directory.Async.Test.Unit {
                 await iterator.terminate()
 
                 #expect(paths.count == 3)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk directory recursively")
         func directoryRecursively() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create structure:
                 // dir/
@@ -115,7 +115,7 @@ extension File.Directory.Async.Test.Unit {
                     to: sub2 / "file4.txt"
                 )
 
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 var paths: Set<String> = []
 
@@ -134,17 +134,17 @@ extension File.Directory.Async.Test.Unit {
                 #expect(paths.contains(String(dir.path / "subdir1" / "subsubdir" / "file3.txt")))
                 #expect(paths.contains(String(dir.path / "subdir2")))
                 #expect(paths.contains(String(dir.path / "subdir2" / "file4.txt")))
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk non-existent directory throws")
         func nonExistentThrows() async throws {
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max))")
 
-            let walk = File.Directory.Async(io: io).walk(at: File.Directory(path))
+            let walk = File.Directory.Async(fs: fs).walk(at: File.Directory(path))
             let iterator = walk.makeAsyncIterator()
 
             do {
@@ -152,18 +152,18 @@ extension File.Directory.Async.Test.Unit {
                     Issue.record("Should throw before yielding")
                 }
                 await iterator.terminate()
-                await io.shutdown()
+                await fs.shutdown()
             } catch {
                 // Expected - should throw
                 await iterator.terminate()
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk large directory tree")
         func largeTree() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create 10 subdirs, each with 10 files
                 for i in 0..<10 {
@@ -177,7 +177,7 @@ extension File.Directory.Async.Test.Unit {
                     }
                 }
 
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 var count = 0
 
@@ -188,14 +188,14 @@ extension File.Directory.Async.Test.Unit {
 
                 // 10 subdirs + 100 files = 110 entries
                 #expect(count == 110)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk with custom concurrency")
         func withCustomConcurrency() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 for i in 0..<5 {
                     let sub = dir.path / "dir\(i)"
@@ -207,7 +207,7 @@ extension File.Directory.Async.Test.Unit {
                 }
 
                 let options = File.Directory.Walk.Async.Options(maxConcurrency: 2)
-                let walk = File.Directory.Async(io: io).walk(at: dir, options: options)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir, options: options)
                 let iterator = walk.makeAsyncIterator()
                 var count = 0
 
@@ -218,7 +218,7 @@ extension File.Directory.Async.Test.Unit {
 
                 // 5 subdirs + 5 files = 10 entries
                 #expect(count == 10)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
     }
@@ -231,9 +231,9 @@ extension File.Directory.Async.Test.Unit {
         @Test("Entries stream empty directory")
         func emptyDirectory() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 var count = 0
 
                 for try await _ in entries {
@@ -241,14 +241,14 @@ extension File.Directory.Async.Test.Unit {
                 }
 
                 #expect(count == 0)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries stream directory with files")
         func directoryWithFiles() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 try File.System.Write.Atomic.write(
                     Array("hello".utf8).span,
@@ -263,7 +263,7 @@ extension File.Directory.Async.Test.Unit {
                     to: dir.path / "file3.txt"
                 )
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 var names: [String] = []
 
                 for try await entry in entries {
@@ -276,14 +276,14 @@ extension File.Directory.Async.Test.Unit {
                 #expect(names.contains("file1.txt"))
                 #expect(names.contains("file2.txt"))
                 #expect(names.contains("file3.txt"))
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries stream directory with subdirectories")
         func directoryWithSubdirs() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
@@ -292,7 +292,7 @@ extension File.Directory.Async.Test.Unit {
                 try await File.System.Create.Directory.create(at: dir.path / "subdir1")
                 try await File.System.Create.Directory.create(at: dir.path / "subdir2")
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 var files: [String] = []
                 var dirs: [String] = []
 
@@ -311,17 +311,17 @@ extension File.Directory.Async.Test.Unit {
                 #expect(dirs.count == 2)
                 #expect(dirs.contains("subdir1"))
                 #expect(dirs.contains("subdir2"))
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries non-existent directory throws")
         func nonExistentThrows() async throws {
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let path = try File.Path("/tmp/nonexistent-\(Int.random(in: 0..<Int.max))")
 
-            let entries = File.Directory.Async(io: io).entries(at: File.Directory(path))
+            let entries = File.Directory.Async(fs: fs).entries(at: File.Directory(path))
             let iterator = entries.makeAsyncIterator()
 
             do {
@@ -329,18 +329,18 @@ extension File.Directory.Async.Test.Unit {
                     Issue.record("Should throw before yielding")
                 }
                 await iterator.terminate()
-                await io.shutdown()
+                await fs.shutdown()
             } catch {
                 // Expected - should throw
                 await iterator.terminate()
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries stream large directory")
         func largeDirectory() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create 100 files
                 for i in 0..<100 {
@@ -350,7 +350,7 @@ extension File.Directory.Async.Test.Unit {
                     )
                 }
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 var count = 0
 
                 for try await _ in entries {
@@ -358,7 +358,7 @@ extension File.Directory.Async.Test.Unit {
                 }
 
                 #expect(count == 100)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
     }
@@ -371,14 +371,14 @@ extension File.Directory.Async.Test.Unit {
         @Test("Entries entry has correct path")
         func hasCorrectPath() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 try File.System.Write.Atomic.write(
                     Array("".utf8).span,
                     to: dir.path / "test.txt"
                 )
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 var foundEntry: File.Directory.Entry?
 
                 for try await entry in entries {
@@ -387,7 +387,7 @@ extension File.Directory.Async.Test.Unit {
 
                 #expect(foundEntry != nil)
                 #expect(foundEntry?.pathIfValid == dir.path / "test.txt")
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
     }
@@ -400,7 +400,7 @@ extension File.Directory.Async.Test.Unit {
         @Test("Walk terminate stops iteration")
         func walkTerminateStops() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create nested structure
                 for i in 0..<5 {
@@ -414,7 +414,7 @@ extension File.Directory.Async.Test.Unit {
                     }
                 }
 
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 var count = 0
 
@@ -429,14 +429,14 @@ extension File.Directory.Async.Test.Unit {
                 // After termination, next() should return nil
                 let afterTerminate = try await iterator.next()
                 #expect(afterTerminate == nil)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Walk break from loop cleans up")
         func walkBreakCleansUp() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 for i in 0..<10 {
                     try File.System.Write.Atomic.write(
@@ -445,7 +445,7 @@ extension File.Directory.Async.Test.Unit {
                     )
                 }
 
-                let walk = File.Directory.Async(io: io).walk(at: dir)
+                let walk = File.Directory.Async(fs: fs).walk(at: dir)
                 let iterator = walk.makeAsyncIterator()
                 var count = 0
 
@@ -458,14 +458,14 @@ extension File.Directory.Async.Test.Unit {
                 await iterator.terminate()
 
                 #expect(count == 5)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries terminate stops iteration")
         func entriesTerminateStops() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create many files
                 for i in 0..<10 {
@@ -475,7 +475,7 @@ extension File.Directory.Async.Test.Unit {
                     )
                 }
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 var count = 0
 
@@ -490,16 +490,16 @@ extension File.Directory.Async.Test.Unit {
                 // After termination, next() should return nil
                 let afterTerminate = try await iterator.next()
                 #expect(afterTerminate == nil)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries terminate is idempotent")
         func entriesTerminateIsIdempotent() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
 
                 // Terminate multiple times - should not crash
@@ -509,14 +509,14 @@ extension File.Directory.Async.Test.Unit {
 
                 let result = try await iterator.next()
                 #expect(result == nil)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries break from loop cleans up")
         func entriesBreakCleansUp() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 for i in 0..<10 {
                     try File.System.Write.Atomic.write(
@@ -525,7 +525,7 @@ extension File.Directory.Async.Test.Unit {
                     )
                 }
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
                 let iterator = entries.makeAsyncIterator()
                 var count = 0
 
@@ -538,14 +538,14 @@ extension File.Directory.Async.Test.Unit {
                 await iterator.terminate()
 
                 #expect(count == 3)
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
 
         @Test("Entries cancellation cleans up")
         func entriesCancellationCleansUp() async throws {
             try await File.Directory.temporary { dir in
-                let io = File.IO.Executor()
+                let fs = File.System.Async()
 
                 // Create many files to ensure iteration takes time
                 for i in 0..<100 {
@@ -555,7 +555,7 @@ extension File.Directory.Async.Test.Unit {
                     )
                 }
 
-                let entries = File.Directory.Async(io: io).entries(at: dir)
+                let entries = File.Directory.Async(fs: fs).entries(at: dir)
 
                 // Start iteration in a task we can cancel
                 let task = Task {
@@ -585,15 +585,15 @@ extension File.Directory.Async.Test.Unit {
                     #expect(count <= 100)
                 } catch is CancellationError {
                     // Expected - raw cancellation
-                } catch let error as File.IO.Error<File.Directory.Iterator.Error> {
+                } catch let error as IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>> {
                     // Expected - wrapped cancellation from iterator
-                    guard case .cancelled = error else {
-                        Issue.record("Expected .cancelled, got \(error)")
-                        await io.shutdown()
+                    guard case .failure(.cancelled) = error else {
+                        Issue.record("Expected .failure(.cancelled), got \(error)")
+                        await fs.shutdown()
                         return
                     }
                 }
-                await io.shutdown()
+                await fs.shutdown()
             }
         }
     }
