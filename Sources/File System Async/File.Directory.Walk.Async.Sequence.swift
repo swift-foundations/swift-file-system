@@ -6,6 +6,7 @@
 //
 
 import AsyncAlgorithms
+import Synchronization
 
 // MARK: - Walk API
 
@@ -104,6 +105,7 @@ extension File.Directory.Walk.Async {
             public typealias Element = File.Path
 
             private var state: State
+            private let _isTerminated = Atomic<Bool>(false)
 
             fileprivate init(_ kind: Kind) {
                 switch kind {
@@ -115,28 +117,39 @@ extension File.Directory.Walk.Async {
             }
 
             public func next() async throws -> File.Path? {
+                // Check termination before awaiting
+                guard !_isTerminated.load(ordering: .acquiring) else { return nil }
+
                 switch state {
                 case .fastPath(var iterator):
                     let result = try await iterator.next()
                     // Update state with mutated iterator
                     state = .fastPath(iterator)
+
+                    // TERMINATION BARRIER: check again after await
+                    if _isTerminated.load(ordering: .acquiring) { return nil }
+
                     return result
                 case .concurrent(let iterator):
-                    // Iterator is a class, so mutation is handled internally
+                    // Concurrent iterator has its own termination handling
                     return try await iterator.next()
                 }
             }
 
             /// Explicitly terminate the walk and wait for cleanup to complete.
             ///
-            /// For the fast-path, this is a no-op (stream handles cancellation).
-            /// For concurrent walks, this waits for the producer to finish.
+            /// After this returns, subsequent calls to `next()` will return `nil`.
+            /// For concurrent walks, this also waits for the producer to finish.
             public func terminate() async {
+                // Set termination flag first - this ensures next() returns nil
+                _isTerminated.store(true, ordering: .releasing)
+
                 switch state {
                 case .fastPath:
-                    // Fast-path uses AsyncThrowingStream with onTermination handler
+                    // Fast-path: flag is sufficient, stream will be abandoned
                     break
                 case .concurrent(let iterator):
+                    // Also terminate the underlying concurrent iterator
                     await iterator.terminate()
                 }
             }

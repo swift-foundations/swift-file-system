@@ -6,6 +6,7 @@
 //
 
 import AsyncAlgorithms
+import Synchronization
 
 extension File.Directory.Walk.Async.Sequence {
     /// The async iterator for directory walk.
@@ -20,7 +21,7 @@ extension File.Directory.Walk.Async.Sequence {
         private let channel: AsyncThrowingChannel<Element, ChannelError>
         private var channelIterator: AsyncThrowingChannel<Element, ChannelError>.AsyncIterator
         private var producerTask: Task<Void, Never>?
-        private var isFinished = false
+        private let _isFinished = Atomic<Bool>(false)
 
         private init(
             channel: AsyncThrowingChannel<Element, ChannelError>,
@@ -59,11 +60,11 @@ extension File.Directory.Walk.Async.Sequence {
         }
 
         public func next() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> Element? {
-            guard !isFinished else { return nil }
+            guard !_isFinished.load(ordering: .acquiring) else { return nil }
 
             // Check cancellation without throwing (avoids mixing throw types)
             if Task.isCancelled {
-                isFinished = true
+                _isFinished.store(true, ordering: .releasing)
                 producerTask?.cancel()
                 throw .failure(.cancelled)
             }
@@ -71,12 +72,18 @@ extension File.Directory.Walk.Async.Sequence {
             // Pure typed throws from channel - no cast needed
             do {
                 let result = try await channelIterator.next()
+
+                // TERMINATION BARRIER:
+                // If terminate() raced while we were suspended, discard any buffered element.
+                // This ensures "terminate stops iteration" is honored even if elements were queued.
+                if _isFinished.load(ordering: .acquiring) { return nil }
+
                 if result == nil {
-                    isFinished = true
+                    _isFinished.store(true, ordering: .releasing)
                 }
                 return result
             } catch {
-                isFinished = true
+                _isFinished.store(true, ordering: .releasing)
                 producerTask?.cancel()
                 throw error
             }
@@ -87,10 +94,16 @@ extension File.Directory.Walk.Async.Sequence {
         /// This is a barrier: after `await terminate()` returns, all resources
         /// have been released. Safe to call `io.shutdown()` afterward.
         public func terminate() async {
-            guard !isFinished else { return }
-            isFinished = true
+            // Atomically check and set finished flag
+            let (exchanged, _) = _isFinished.compareExchange(
+                expected: false,
+                desired: true,
+                ordering: .acquiringAndReleasing
+            )
+            guard exchanged else { return }
+
             producerTask?.cancel()
-            channel.finish()  // Consumer's next() returns nil immediately
+            channel.finish()  // Signals channel completion
             _ = await producerTask?.value  // Barrier: wait for producer cleanup
         }
 
