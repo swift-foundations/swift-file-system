@@ -390,6 +390,19 @@ extension File.Handle {
         #if os(Windows)
             guard let handle = _descriptor.rawHandle else { throw .invalidHandle }
 
+            // Save current file position (pwrite must not change it)
+            var savedPosition: LARGE_INTEGER = LARGE_INTEGER()
+            var zero: LARGE_INTEGER = LARGE_INTEGER()
+            guard SetFilePointerEx(handle, zero, &savedPosition, DWORD(FILE_CURRENT)) else {
+                let error = GetLastError()
+                throw .seekFailed(
+                    offset: 0,
+                    origin: .current,
+                    errno: Int32(error),
+                    message: "Failed to get current file position"
+                )
+            }
+
             var overlapped = OVERLAPPED()
             overlapped.Offset = DWORD(truncatingIfNeeded: UInt64(bitPattern: offset) & 0xFFFF_FFFF)
             overlapped.OffsetHigh = DWORD(truncatingIfNeeded: UInt64(bitPattern: offset) >> 32)
@@ -405,6 +418,8 @@ extension File.Handle {
 
             guard _ok(success) else {
                 let error = GetLastError()
+                // Restore position before throwing
+                _ = SetFilePointerEx(handle, savedPosition, nil, DWORD(FILE_BEGIN))
                 // ERROR_INVALID_PARAMETER may indicate non-seekable handle
                 if error == ERROR_INVALID_PARAMETER && offset > 0 {
                     throw .seekFailed(
@@ -415,6 +430,17 @@ extension File.Handle {
                     )
                 }
                 throw .writeFailed(errno: Int32(error), message: "WriteFile with OVERLAPPED failed")
+            }
+
+            // Restore original file position (pwrite semantics)
+            guard SetFilePointerEx(handle, savedPosition, nil, DWORD(FILE_BEGIN)) else {
+                let error = GetLastError()
+                throw .seekFailed(
+                    offset: savedPosition.QuadPart,
+                    origin: .start,
+                    errno: Int32(error),
+                    message: "Failed to restore file position after pwrite"
+                )
             }
 
             return Int(bytesWritten)

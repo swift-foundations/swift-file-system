@@ -213,13 +213,16 @@ extension File.Directory.Contents {
                 }
 
                 // Determine type (path computed lazily via Entry.path())
+                // IMPORTANT: Check reparse point FIRST because directory symlinks have
+                // both FILE_ATTRIBUTE_DIRECTORY and FILE_ATTRIBUTE_REPARSE_POINT set.
+                // Checking directory first would incorrectly classify symlinks as directories.
                 let entryType: File.Directory.Entry.Kind
-                if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
+                if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
+                    // Reparse points (symlinks, junctions, mount points) classified as symlinks
+                    // to prevent incorrect recursion during directory walks
+                    entryType = .symbolicLink
+                } else if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_DIRECTORY)) != 0 {
                     entryType = .directory
-                } else if (findData.dwFileAttributes & _mask(FILE_ATTRIBUTE_REPARSE_POINT)) != 0 {
-                    // Conservative classification: reparse points include junctions,
-                    // mount points, OneDrive placeholders, etc. - not just symlinks
-                    entryType = .other
                 } else {
                     entryType = .file
                 }
