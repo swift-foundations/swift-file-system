@@ -22,6 +22,7 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
         .package(url: "https://github.com/swift-standards/swift-time-standard", from: "0.1.0"),
         .package(url: "https://github.com/coenttb/swift-io.git", from: "0.2.0"),
+        .package(url: "https://github.com/apple/swift-nio", from: "2.70.0"),
     ],
     targets: [
         .target(
@@ -72,6 +73,20 @@ let package = Package(
                 .product(name: "Clocks", package: "swift-time-standard"),
                 .product(name: "Formatting", package: "swift-standards"),
                 .product(name: "StandardLibraryExtensions", package: "swift-standards"),
+            ]
+        ),
+        .testTarget(
+            name: "File System Benchmarks",
+            dependencies: [
+                "File System",
+                "File System Async",
+                "File System Test Support",
+                .product(name: "StandardsTestSupport", package: "swift-standards"),
+                .product(name: "Clocks", package: "swift-time-standard"),
+                .product(name: "Formatting", package: "swift-standards"),
+                .product(name: "StandardLibraryExtensions", package: "swift-standards"),
+                .product(name: "NIOCore", package: "swift-nio"),
+                .product(name: "_NIOFileSystem", package: "swift-nio"),
             ]
         ),
         .target(

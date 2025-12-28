@@ -417,10 +417,10 @@ extension NIOComparison.Test.Performance {
             .timed(iterations: 3, warmup: 1, trackAllocations: false)
         )
         func swiftFileSystemChunked() async throws {
-            let io = File.IO.Executor()
+            let fs = File.System.Async()
 
             let options = File.System.Read.Async.Options(chunkSize: 64 * 1024)
-            let stream = File.System.Read.Async(io: io).bytes(from: Self.fixture.file100MB, options: options)
+            let stream = File.System.Read.bytes(from: Self.fixture.file100MB, options: options, fs: fs)
 
             var totalBytes = 0
             for try await chunk in stream {
@@ -428,7 +428,7 @@ extension NIOComparison.Test.Performance {
             }
             #expect(totalBytes == 100 * 1024 * 1024)
 
-            await io.shutdown()  // Deterministic shutdown, awaited
+            await fs.shutdown()
         }
 
         @Test(
