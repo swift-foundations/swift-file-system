@@ -15,138 +15,138 @@
             // MARK: - Generic Sequence API
 
             static func write<Chunks: Sequence>(
-            _ chunks: Chunks,
-            to path: borrowing String,
-            options: borrowing File.System.Write.Streaming.Options
-        ) throws(File.System.Write.Streaming.Error)
-        where Chunks.Element == [UInt8] {
+                _ chunks: Chunks,
+                to path: borrowing String,
+                options: borrowing File.System.Write.Streaming.Options
+            ) throws(File.System.Write.Streaming.Error)
+            where Chunks.Element == [UInt8] {
 
-            let resolvedPath = normalizePath(path)
-            let parent = parentDirectory(of: resolvedPath)
-            try verifyOrCreateParentDirectory(
-                parent,
-                createIntermediates: options.createIntermediates
-            )
-
-            switch options.commit {
-            case .atomic(let atomicOptions):
-                try writeAtomic(chunks, to: resolvedPath, parent: parent, options: atomicOptions)
-            case .direct(let directOptions):
-                try writeDirect(chunks, to: resolvedPath, options: directOptions)
-            }
-        }
-
-        // MARK: - Atomic Write
-
-        private static func writeAtomic<Chunks: Sequence>(
-            _ chunks: Chunks,
-            to resolvedPath: String,
-            parent: String,
-            options: File.System.Write.Streaming.Atomic.Options
-        ) throws(File.System.Write.Streaming.Error)
-        where Chunks.Element == [UInt8] {
-
-            // noClobber semantics are enforced by MoveFileExW without
-            // MOVEFILE_REPLACE_EXISTING. We do NOT pre-check existence here
-            // because that would be semantically wrong: noClobber means "don't
-            // overwrite if file exists at publish time", not "fail if file exists
-            // at start time". A pre-check could cause incorrect early failure if
-            // the file is removed between check and publish.
-
-            let tempPath = generateTempPath(in: parent, for: resolvedPath)
-            let handle = try createFile(at: tempPath, exclusive: true)
-
-            var handleClosed = false
-            var renamed = false
-
-            defer {
-                if !handleClosed { _ = CloseHandle(handle) }
-                if !renamed { _ = deleteFile(tempPath) }
-            }
-
-            // Write all chunks
-            for chunk in chunks {
-                try writeAll(chunk.span, to: handle, path: resolvedPath)
-            }
-
-            try flushFile(handle, durability: options.durability)
-
-            guard _ok(CloseHandle(handle)) else {
-                throw .closeFailed(
-                    errno: Int32(GetLastError()),
-                    message: "CloseHandle failed"
+                let resolvedPath = normalizePath(path)
+                let parent = parentDirectory(of: resolvedPath)
+                try verifyOrCreateParentDirectory(
+                    parent,
+                    createIntermediates: options.createIntermediates
                 )
-            }
-            handleClosed = true
 
-            // Use appropriate rename based on strategy
-            switch options.strategy {
-            case .replaceExisting:
-                try atomicRename(from: tempPath, to: resolvedPath)
-            case .noClobber:
-                try atomicRenameNoClobber(from: tempPath, to: resolvedPath)
+                switch options.commit {
+                case .atomic(let atomicOptions):
+                    try writeAtomic(chunks, to: resolvedPath, parent: parent, options: atomicOptions)
+                case .direct(let directOptions):
+                    try writeDirect(chunks, to: resolvedPath, options: directOptions)
+                }
             }
-            renamed = true
 
-            // Directory sync after publish - only for .full durability.
-            // Directory sync is a metadata persistence step, so it should NOT be
-            // performed for .dataOnly (which explicitly states "metadata may not
-            // be persisted").
-            if options.durability == .full {
-                do {
-                    try flushDirectory(parent)
-                } catch let syncError {
-                    // Extract errno from the sync error for the after-commit error
-                    if case .directorySyncFailed(let path, let e, let msg) = syncError {
-                        throw .directorySyncFailedAfterCommit(
-                            path: path,
-                            errno: e,
-                            message: msg
-                        )
+            // MARK: - Atomic Write
+
+            private static func writeAtomic<Chunks: Sequence>(
+                _ chunks: Chunks,
+                to resolvedPath: String,
+                parent: String,
+                options: File.System.Write.Streaming.Atomic.Options
+            ) throws(File.System.Write.Streaming.Error)
+            where Chunks.Element == [UInt8] {
+
+                // noClobber semantics are enforced by MoveFileExW without
+                // MOVEFILE_REPLACE_EXISTING. We do NOT pre-check existence here
+                // because that would be semantically wrong: noClobber means "don't
+                // overwrite if file exists at publish time", not "fail if file exists
+                // at start time". A pre-check could cause incorrect early failure if
+                // the file is removed between check and publish.
+
+                let tempPath = generateTempPath(in: parent, for: resolvedPath)
+                let handle = try createFile(at: tempPath, exclusive: true)
+
+                var handleClosed = false
+                var renamed = false
+
+                defer {
+                    if !handleClosed { _ = CloseHandle(handle) }
+                    if !renamed { _ = deleteFile(tempPath) }
+                }
+
+                // Write all chunks
+                for chunk in chunks {
+                    try writeAll(chunk.span, to: handle, path: resolvedPath)
+                }
+
+                try flushFile(handle, durability: options.durability)
+
+                guard _ok(CloseHandle(handle)) else {
+                    throw .closeFailed(
+                        errno: Int32(GetLastError()),
+                        message: "CloseHandle failed"
+                    )
+                }
+                handleClosed = true
+
+                // Use appropriate rename based on strategy
+                switch options.strategy {
+                case .replaceExisting:
+                    try atomicRename(from: tempPath, to: resolvedPath)
+                case .noClobber:
+                    try atomicRenameNoClobber(from: tempPath, to: resolvedPath)
+                }
+                renamed = true
+
+                // Directory sync after publish - only for .full durability.
+                // Directory sync is a metadata persistence step, so it should NOT be
+                // performed for .dataOnly (which explicitly states "metadata may not
+                // be persisted").
+                if options.durability == .full {
+                    do {
+                        try flushDirectory(parent)
+                    } catch let syncError {
+                        // Extract errno from the sync error for the after-commit error
+                        if case .directorySyncFailed(let path, let e, let msg) = syncError {
+                            throw .directorySyncFailedAfterCommit(
+                                path: path,
+                                errno: e,
+                                message: msg
+                            )
+                        }
+                        throw syncError
                     }
-                    throw syncError
-                }
-            }
-        }
-
-        // MARK: - Direct Write
-
-        private static func writeDirect<Chunks: Sequence>(
-            _ chunks: Chunks,
-            to resolvedPath: String,
-            options: File.System.Write.Streaming.Direct.Options
-        ) throws(File.System.Write.Streaming.Error)
-        where Chunks.Element == [UInt8] {
-
-            if case .create = options.strategy {
-                if fileExists(resolvedPath) {
-                    throw .destinationExists(path: File.Path(__unchecked: (), resolvedPath))
                 }
             }
 
-            let handle = try createFile(at: resolvedPath, exclusive: options.strategy == .create)
+            // MARK: - Direct Write
 
-            var handleClosed = false
+            private static func writeDirect<Chunks: Sequence>(
+                _ chunks: Chunks,
+                to resolvedPath: String,
+                options: File.System.Write.Streaming.Direct.Options
+            ) throws(File.System.Write.Streaming.Error)
+            where Chunks.Element == [UInt8] {
 
-            defer {
-                if !handleClosed { _ = CloseHandle(handle) }
+                if case .create = options.strategy {
+                    if fileExists(resolvedPath) {
+                        throw .destinationExists(path: File.Path(__unchecked: (), resolvedPath))
+                    }
+                }
+
+                let handle = try createFile(at: resolvedPath, exclusive: options.strategy == .create)
+
+                var handleClosed = false
+
+                defer {
+                    if !handleClosed { _ = CloseHandle(handle) }
+                }
+
+                // Write all chunks
+                for chunk in chunks {
+                    try writeAll(chunk.span, to: handle, path: resolvedPath)
+                }
+
+                try flushFile(handle, durability: options.durability)
+
+                guard _ok(CloseHandle(handle)) else {
+                    throw .closeFailed(
+                        errno: Int32(GetLastError()),
+                        message: "CloseHandle failed"
+                    )
+                }
+                handleClosed = true
             }
-
-            // Write all chunks
-            for chunk in chunks {
-                try writeAll(chunk.span, to: handle, path: resolvedPath)
-            }
-
-            try flushFile(handle, durability: options.durability)
-
-            guard _ok(CloseHandle(handle)) else {
-                throw .closeFailed(
-                    errno: Int32(GetLastError()),
-                    message: "CloseHandle failed"
-                )
-            }
-            handleClosed = true
-        }
         }
     }
 

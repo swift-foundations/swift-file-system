@@ -551,7 +551,7 @@ extension File {
     /// try file.link.hard(to: existingPath)
     ///
     /// // Read the target of a symlink
-    /// let target = try file.link.readTarget()
+    /// let target = try file.link.target.path
     /// ```
     public var link: Link {
         Link(path: path)
@@ -608,20 +608,38 @@ extension File {
 
         // MARK: - Read Target
 
-        /// Reads the target of this symbolic link.
+        /// Namespace for reading symlink target.
         ///
-        /// - Returns: The target path that this symlink points to.
-        /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-        public func readTarget() throws(File.System.Link.Read.Target.Error) -> File.Path {
-            try File.System.Link.Read.Target.target(of: path)
-        }
+        /// ## Usage
+        /// ```swift
+        /// let targetPath = try link.target.path
+        /// let targetFile = try link.target.file
+        /// ```
+        public var target: Target { Target(link: self) }
 
-        /// Reads the target of this symbolic link as a file.
-        ///
-        /// - Returns: The target file that this symlink points to.
-        /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-        public func readTarget() throws(File.System.Link.Read.Target.Error) -> File {
-            File(try File.System.Link.Read.Target.target(of: path))
+        /// Target reading namespace.
+        public struct Target: Sendable {
+            let link: Link
+
+            /// Reads the target of this symbolic link.
+            ///
+            /// - Returns: The target path that this symlink points to.
+            /// - Throws: `File.System.Link.Read.Target.Error` on failure.
+            public var path: File.Path {
+                get throws(File.System.Link.Read.Target.Error) {
+                    try File.System.Link.Read.Target.target(of: link.path)
+                }
+            }
+
+            /// Reads the target of this symbolic link as a file.
+            ///
+            /// - Returns: The target file that this symlink points to.
+            /// - Throws: `File.System.Link.Read.Target.Error` on failure.
+            public var file: File {
+                get throws(File.System.Link.Read.Target.Error) {
+                    File(try File.System.Link.Read.Target.target(of: link.path))
+                }
+            }
         }
     }
 }

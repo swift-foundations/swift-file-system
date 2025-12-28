@@ -208,7 +208,7 @@ extension File.System {
             let filePath = try File.Path(path)
             var handle = try File.Handle.open(
                 filePath,
-                mode: .readWrite,
+                mode: [.read, .write],
                 options: [.create, .closeOnExec]
             )
 
@@ -287,7 +287,7 @@ extension File.System {
             let filePath = try File.Path(path)
             var handle = try File.Handle.open(
                 filePath,
-                mode: .readWrite,
+                mode: [.read, .write],
                 options: [.create, .closeOnExec]
             )
 
@@ -447,7 +447,7 @@ extension File.System {
             // Create and write with first handle
             var handle1 = try File.Handle.open(
                 filePath,
-                mode: .readWrite,
+                mode: [.read, .write],
                 options: [.create, .closeOnExec]
             )
             let data: [UInt8] = [1, 2, 3, 4, 5]
@@ -478,7 +478,7 @@ extension File.System {
             let filePath = try File.Path(path)
             var handle = try File.Handle.open(
                 filePath,
-                mode: .readWrite,
+                mode: [.read, .write],
                 options: [.create, .closeOnExec]
             )
 
@@ -507,7 +507,7 @@ extension File.System {
             let filePath = try File.Path(path)
             var handle = try File.Handle.open(
                 filePath,
-                mode: .readWrite,
+                mode: [.read, .write],
                 options: [.create, .closeOnExec]
             )
 

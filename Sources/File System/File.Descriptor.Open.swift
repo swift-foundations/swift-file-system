@@ -114,7 +114,7 @@ extension File.Descriptor {
         public func readWrite<Result>(
             _ body: (inout File.Descriptor) throws -> Result
         ) throws -> Result {
-            try File.Descriptor.withOpen(path, mode: .readWrite, options: options, body: body)
+            try File.Descriptor.withOpen(path, mode: [.read, .write], options: options, body: body)
         }
     }
 

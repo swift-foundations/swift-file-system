@@ -9,38 +9,30 @@ import Binary
 
 extension File.Handle {
     /// The mode in which a file handle was opened.
-    public enum Mode: Sendable {
-        /// Read-only access.
-        case read
-        /// Write-only access.
-        case write
-        /// Read and write access.
-        case readWrite
-        /// Append-only access.
-        case append
-    }
-}
+    ///
+    /// This is an OptionSet allowing combinations:
+    /// - `.read` - read-only access
+    /// - `.write` - write-only access
+    /// - `[.read, .write]` - read and write access
+    /// - `.append` - append-only access (writes go to end)
+    /// - `[.read, .append]` - read anywhere, append writes
+    public struct Mode: OptionSet, Sendable {
+        public let rawValue: UInt8
 
-// MARK: - RawRepresentable
-
-extension File.Handle.Mode: RawRepresentable {
-    public var rawValue: UInt8 {
-        switch self {
-        case .read: return 0
-        case .write: return 1
-        case .readWrite: return 2
-        case .append: return 3
+        public init(rawValue: UInt8) {
+            self.rawValue = rawValue
         }
-    }
 
-    public init?(rawValue: UInt8) {
-        switch rawValue {
-        case 0: self = .read
-        case 1: self = .write
-        case 2: self = .readWrite
-        case 3: self = .append
-        default: return nil
-        }
+        /// Read access.
+        public static let read = Mode(rawValue: 1 << 0)
+
+        /// Write access.
+        public static let write = Mode(rawValue: 1 << 1)
+
+        /// Append access (writes go to end of file).
+        ///
+        /// Can be combined with `.read` for read-anywhere, append-writes mode.
+        public static let append = Mode(rawValue: 1 << 2)
     }
 }
 

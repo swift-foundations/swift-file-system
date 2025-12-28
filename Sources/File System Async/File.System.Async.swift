@@ -274,95 +274,112 @@ extension File.System.Async {
 // MARK: - Streaming Write Operations
 
 extension File.System.Async {
-    /// Open a streaming write to the specified path.
-    ///
-    /// Returns an ID for subsequent `streamingWriteChunk`, `streamingWriteCommit`,
-    /// and `streamingWriteAbort` calls.
-    ///
-    /// - Parameters:
-    ///   - path: The destination path.
-    ///   - options: Streaming write options.
-    /// - Returns: An `IO.Handle.ID` for subsequent operations.
-    public func streamingWriteOpen(
-        to path: File.Path,
-        options: File.System.Write.Streaming.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) -> IO.Handle.ID {
-        let pathString = String(path)
+    /// Namespace for streaming write operations.
+    public var streaming: Streaming { Streaming(fs: self) }
 
-        return try await writes.register {
-            () throws(File.System.Write.Streaming.Error) -> File.Write.Streaming in
-            #if os(Windows)
-                let context = try File.System.Write.Streaming.Windows.open(path: pathString, options: options)
-            #else
-                let context = try File.System.Write.Streaming.POSIX.open(path: pathString, options: options)
-            #endif
-            return File.Write.Streaming(context: context, path: path, options: options)
-        }
-    }
+    /// Streaming write operations namespace.
+    ///
+    /// Provides multi-phase streaming writes with backpressure and cancellation support.
+    ///
+    /// ## Usage
+    /// ```swift
+    /// let id = try await fs.streaming.open(to: path)
+    /// try await fs.streaming.write(chunk: bytes, to: id)
+    /// try await fs.streaming.commit(id)
+    /// ```
+    public struct Streaming: Sendable {
+        let fs: File.System.Async
 
-    /// Write a chunk of bytes to a streaming write.
-    ///
-    /// Chunks are written in order. Concurrent calls serialize automatically.
-    ///
-    /// - Parameters:
-    ///   - id: The write handle ID from `streamingWriteOpen`.
-    ///   - data: The bytes to write.
-    public func streamingWriteChunk(
-        _ id: IO.Handle.ID,
-        data bytes: [UInt8]
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) {
-        try await writes.withHandle(id) {
-            (resource: inout File.Write.Streaming) throws(File.System.Write.Streaming.Error) in
-            guard resource.state == .open else {
-                throw File.System.Write.Streaming.Error.invalidState
+        /// Open a streaming write to the specified path.
+        ///
+        /// Returns an ID for subsequent `write(chunk:to:)`, `commit(_:)`,
+        /// and `abort(_:)` calls.
+        ///
+        /// - Parameters:
+        ///   - path: The destination path.
+        ///   - options: Streaming write options.
+        /// - Returns: An `IO.Handle.ID` for subsequent operations.
+        public func open(
+            to path: File.Path,
+            options: File.System.Write.Streaming.Options = .init()
+        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) -> IO.Handle.ID {
+            let pathString = String(path)
+
+            return try await fs.writes.register {
+                () throws(File.System.Write.Streaming.Error) -> File.Write.Streaming in
+                #if os(Windows)
+                    let context = try File.System.Write.Streaming.Windows.open(path: pathString, options: options)
+                #else
+                    let context = try File.System.Write.Streaming.POSIX.open(path: pathString, options: options)
+                #endif
+                return File.Write.Streaming(context: context, path: path, options: options)
             }
-            #if os(Windows)
-                try File.System.Write.Streaming.Windows.write(chunk: bytes.span, to: resource.context)
-            #else
-                try File.System.Write.Streaming.POSIX.write(chunk: bytes.span, to: resource.context)
-            #endif
         }
-    }
 
-    /// Commit a streaming write, making it durable.
-    ///
-    /// After this call, the write ID is no longer valid.
-    ///
-    /// - Parameter id: The write handle ID from `streamingWriteOpen`.
-    public func streamingWriteCommit(
-        _ id: IO.Handle.ID
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) {
-        try await writes.withHandle(id) {
-            (resource: inout File.Write.Streaming) throws(File.System.Write.Streaming.Error) in
-            guard resource.state == .open else {
-                throw File.System.Write.Streaming.Error.invalidState
+        /// Write a chunk of bytes to a streaming write.
+        ///
+        /// Chunks are written in order. Concurrent calls serialize automatically.
+        ///
+        /// - Parameters:
+        ///   - bytes: The bytes to write.
+        ///   - id: The write handle ID from `open(to:options:)`.
+        public func write(
+            chunk bytes: [UInt8],
+            to id: IO.Handle.ID
+        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) {
+            try await fs.writes.withHandle(id) {
+                (resource: inout File.Write.Streaming) throws(File.System.Write.Streaming.Error) in
+                guard resource.state == .open else {
+                    throw File.System.Write.Streaming.Error.invalidState
+                }
+                #if os(Windows)
+                    try File.System.Write.Streaming.Windows.write(chunk: bytes.span, to: resource.context)
+                #else
+                    try File.System.Write.Streaming.POSIX.write(chunk: bytes.span, to: resource.context)
+                #endif
             }
-            resource.state = .committing
-            #if os(Windows)
-                try File.System.Write.Streaming.Windows.commit(resource.context)
-            #else
-                try File.System.Write.Streaming.POSIX.commit(resource.context)
-            #endif
-            resource.state = .closed
         }
-        try? await writes.destroy(id)
-    }
 
-    /// Abort a streaming write, cleaning up the temporary file.
-    ///
-    /// This is idempotent. After this call, the write ID is no longer valid.
-    ///
-    /// - Parameter id: The write handle ID from `streamingWriteOpen`.
-    public func streamingWriteAbort(_ id: IO.Handle.ID) async {
-        do {
-            try await writes.withHandle(id) {
-                (resource: inout File.Write.Streaming) in
-                resource.state = .aborting
+        /// Commit a streaming write, making it durable.
+        ///
+        /// After this call, the write ID is no longer valid.
+        ///
+        /// - Parameter id: The write handle ID from `open(to:options:)`.
+        public func commit(
+            _ id: IO.Handle.ID
+        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) {
+            try await fs.writes.withHandle(id) {
+                (resource: inout File.Write.Streaming) throws(File.System.Write.Streaming.Error) in
+                guard resource.state == .open else {
+                    throw File.System.Write.Streaming.Error.invalidState
+                }
+                resource.state = .committing
+                #if os(Windows)
+                    try File.System.Write.Streaming.Windows.commit(resource.context)
+                #else
+                    try File.System.Write.Streaming.POSIX.commit(resource.context)
+                #endif
+                resource.state = .closed
             }
-        } catch {
-            // Transaction failed - resource may already be gone
+            try? await fs.writes.destroy(id)
         }
 
-        try? await writes.destroy(id)
+        /// Abort a streaming write, cleaning up the temporary file.
+        ///
+        /// This is idempotent. After this call, the write ID is no longer valid.
+        ///
+        /// - Parameter id: The write handle ID from `open(to:options:)`.
+        public func abort(_ id: IO.Handle.ID) async {
+            do {
+                try await fs.writes.withHandle(id) {
+                    (resource: inout File.Write.Streaming) in
+                    resource.state = .aborting
+                }
+            } catch {
+                // Transaction failed - resource may already be gone
+            }
+
+            try? await fs.writes.destroy(id)
+        }
     }
 }

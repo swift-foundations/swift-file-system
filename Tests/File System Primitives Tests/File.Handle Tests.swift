@@ -55,11 +55,11 @@ extension File.Handle.Test.Unit {
             let filePath = File.Path(dir.path, appending: "test.bin")
             try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
 
-            let handle = try File.Handle.open(filePath, mode: .readWrite)
+            let handle = try File.Handle.open(filePath, mode: [.read, .write])
             let isValid = handle.isValid
             let mode = handle.mode
             #expect(isValid)
-            #expect(mode == .readWrite)
+            #expect(mode == [.read, .write])
             try handle.close()
         }
     }

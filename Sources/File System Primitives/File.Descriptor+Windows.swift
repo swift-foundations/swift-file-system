@@ -27,21 +27,24 @@
             // Set access mode - handle append in each relevant mode
             // GENERIC_WRITE includes FILE_WRITE_DATA which defeats append semantics,
             // so for append we use FILE_APPEND_DATA exclusively (not combined with GENERIC_WRITE)
-            switch mode {
-            case .read:
-                desiredAccess = _dword(GENERIC_READ)
-            case .write:
-                if options.contains(.append) {
-                    desiredAccess = _mask(FILE_APPEND_DATA)
-                } else {
-                    desiredAccess = _dword(GENERIC_WRITE)
-                }
-            case .readWrite:
-                if options.contains(.append) {
+            let hasRead = mode.contains(.read)
+            let hasWrite = mode.contains(.write)
+            let hasAppend = options.contains(.append)
+
+            if hasRead && hasWrite {
+                if hasAppend {
                     desiredAccess = _dword(GENERIC_READ) | _mask(FILE_APPEND_DATA)
                 } else {
                     desiredAccess = _dword(GENERIC_READ) | _dword(GENERIC_WRITE)
                 }
+            } else if hasWrite {
+                if hasAppend {
+                    desiredAccess = _mask(FILE_APPEND_DATA)
+                } else {
+                    desiredAccess = _dword(GENERIC_WRITE)
+                }
+            } else {
+                desiredAccess = _dword(GENERIC_READ)
             }
 
             // Set creation disposition based on options

@@ -123,7 +123,7 @@ extension File.Handle {
         public func readWrite<Result>(
             _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
         ) throws(File.Handle.Error) -> Result {
-            try File.Handle.withOpen(path, mode: .readWrite, options: options, body: body)
+            try File.Handle.withOpen(path, mode: [.read, .write], options: options, body: body)
         }
     }
 

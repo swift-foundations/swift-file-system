@@ -26,7 +26,7 @@ extension File {
     ///
     /// ## Example
     /// ```swift
-    /// var handle = try File.Handle.open(path, mode: .readWrite)
+    /// var handle = try File.Handle.open(path, mode: [.read, .write])
     /// try handle.write(bytes)
     /// try handle.seek(to: 0)
     /// let data = try handle.read(count: 100)
@@ -66,18 +66,17 @@ extension File.Handle {
         mode: Mode,
         options: Options = [.closeOnExec]
     ) throws(File.Handle.Error) -> File.Handle {
-        let descriptorMode: File.Descriptor.Mode
+        var descriptorMode: File.Descriptor.Mode = []
         var descriptorOptions: File.Descriptor.Options = []
 
-        switch mode {
-        case .read:
-            descriptorMode = .read
-        case .write:
-            descriptorMode = .write
-        case .readWrite:
-            descriptorMode = .readWrite
-        case .append:
-            descriptorMode = .write
+        // Map Handle.Mode to Descriptor.Mode
+        if mode.contains(.read) {
+            descriptorMode.insert(.read)
+        }
+        if mode.contains(.write) || mode.contains(.append) {
+            descriptorMode.insert(.write)
+        }
+        if mode.contains(.append) {
             descriptorOptions.insert(.append)
         }
 

@@ -345,54 +345,70 @@ extension File.Directory {
         try await File.Directory.Walk.walk(at: self, options: options)
     }
 
-    /// Recursively walks the directory tree and returns all files.
-    ///
-    /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
-    /// - Returns: An array of all files found.
-    /// - Throws: `File.Directory.Walk.Error` on failure.
-    public func walkFiles(
-        options: File.Directory.Walk.Options = .init()
-    ) throws(File.Directory.Walk.Error) -> [File] {
-        try walk(options: options)
-            .filter { $0.type == .file }
-            .compactMap { $0.pathIfValid.map { File($0) } }
-    }
+    // MARK: - Filtered Walk Access
 
-    /// Recursively walks the directory tree and returns all files.
+    /// Namespace for filtered walk operations.
     ///
-    /// Async variant.
-    /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
-    public func walkFiles(
-        options: File.Directory.Walk.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File] {
-        try await walk(options: options)
-            .filter { $0.type == .file }
-            .compactMap { $0.pathIfValid.map { File($0) } }
-    }
+    /// ## Usage
+    /// ```swift
+    /// let files = try directory.walk.files()
+    /// let subdirs = try await directory.walk.directories()
+    /// ```
+    public var walk: WalkFilter { WalkFilter(directory: self) }
 
-    /// Recursively walks the directory tree and returns all subdirectories.
-    ///
-    /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
-    /// - Returns: An array of all directories found.
-    /// - Throws: `File.Directory.Walk.Error` on failure.
-    public func walkDirectories(
-        options: File.Directory.Walk.Options = .init()
-    ) throws(File.Directory.Walk.Error) -> [File.Directory] {
-        try walk(options: options)
-            .filter { $0.type == .directory }
-            .compactMap { $0.pathIfValid.map { File.Directory($0) } }
-    }
+    /// Filtered walk operations namespace.
+    public struct WalkFilter: Sendable {
+        let directory: File.Directory
 
-    /// Recursively walks the directory tree and returns all subdirectories.
-    ///
-    /// Async variant.
-    /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
-    public func walkDirectories(
-        options: File.Directory.Walk.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File.Directory] {
-        try await walk(options: options)
-            .filter { $0.type == .directory }
-            .compactMap { $0.pathIfValid.map { File.Directory($0) } }
+        /// Recursively walks the directory tree and returns all files.
+        ///
+        /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
+        /// - Returns: An array of all files found.
+        /// - Throws: `File.Directory.Walk.Error` on failure.
+        public func files(
+            options: File.Directory.Walk.Options = .init()
+        ) throws(File.Directory.Walk.Error) -> [File] {
+            try directory.walk(options: options)
+                .filter { $0.type == .file }
+                .compactMap { $0.pathIfValid.map { File($0) } }
+        }
+
+        /// Recursively walks the directory tree and returns all files.
+        ///
+        /// Async variant.
+        /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
+        public func files(
+            options: File.Directory.Walk.Options = .init()
+        ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File] {
+            try await directory.walk(options: options)
+                .filter { $0.type == .file }
+                .compactMap { $0.pathIfValid.map { File($0) } }
+        }
+
+        /// Recursively walks the directory tree and returns all subdirectories.
+        ///
+        /// - Parameter options: Walk options (maxDepth, followSymlinks, includeHidden).
+        /// - Returns: An array of all directories found.
+        /// - Throws: `File.Directory.Walk.Error` on failure.
+        public func directories(
+            options: File.Directory.Walk.Options = .init()
+        ) throws(File.Directory.Walk.Error) -> [File.Directory] {
+            try directory.walk(options: options)
+                .filter { $0.type == .directory }
+                .compactMap { $0.pathIfValid.map { File.Directory($0) } }
+        }
+
+        /// Recursively walks the directory tree and returns all subdirectories.
+        ///
+        /// Async variant.
+        /// - Throws: `IO.Error<File.Directory.Walk.Error>` on failure.
+        public func directories(
+            options: File.Directory.Walk.Options = .init()
+        ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File.Directory] {
+            try await directory.walk(options: options)
+                .filter { $0.type == .directory }
+                .compactMap { $0.pathIfValid.map { File.Directory($0) } }
+        }
     }
 }
 

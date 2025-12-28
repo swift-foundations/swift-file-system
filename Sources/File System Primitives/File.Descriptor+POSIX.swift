@@ -26,13 +26,14 @@
             var flags: Int32 = 0
 
             // Set access mode
-            switch mode {
-            case .read:
-                flags |= O_RDONLY
-            case .write:
-                flags |= O_WRONLY
-            case .readWrite:
+            let hasRead = mode.contains(.read)
+            let hasWrite = mode.contains(.write)
+            if hasRead && hasWrite {
                 flags |= O_RDWR
+            } else if hasWrite {
+                flags |= O_WRONLY
+            } else {
+                flags |= O_RDONLY
             }
 
             // Set options

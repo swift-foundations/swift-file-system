@@ -9,34 +9,23 @@ import Binary
 
 extension File.Descriptor {
     /// The mode in which to open a file descriptor.
-    public enum Mode: Sendable {
-        /// Read-only access.
-        case read
-        /// Write-only access.
-        case write
-        /// Read and write access.
-        case readWrite
-    }
-}
+    ///
+    /// This is an OptionSet allowing combinations:
+    /// - `.read` - read-only access
+    /// - `.write` - write-only access
+    /// - `[.read, .write]` - read and write access
+    public struct Mode: OptionSet, Sendable {
+        public let rawValue: UInt8
 
-// MARK: - RawRepresentable
-
-extension File.Descriptor.Mode: RawRepresentable {
-    public var rawValue: UInt8 {
-        switch self {
-        case .read: return 0
-        case .write: return 1
-        case .readWrite: return 2
+        public init(rawValue: UInt8) {
+            self.rawValue = rawValue
         }
-    }
 
-    public init?(rawValue: UInt8) {
-        switch rawValue {
-        case 0: self = .read
-        case 1: self = .write
-        case 2: self = .readWrite
-        default: return nil
-        }
+        /// Read access.
+        public static let read = Mode(rawValue: 1 << 0)
+
+        /// Write access.
+        public static let write = Mode(rawValue: 1 << 1)
     }
 }
 
