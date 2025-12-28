@@ -87,12 +87,32 @@ final class ReadFixture: @unchecked Sendable {
         let file10MB = createFile(name: "10mb.bin", size: 10 * 1024 * 1024)
         let file100MB = createFile(name: "100mb.bin", size: 100 * 1024 * 1024)
 
-        return ReadFixture(
+        let fixture = ReadFixture(
             dir: dir,
             file1MB: file1MB,
             file10MB: file10MB,
             file100MB: file100MB
         )
+
+        // Warmup: trigger lazy initialization in both frameworks
+        // This ensures fair comparison by not counting framework init costs
+        _ = try? File.System.Read.Full.read(from: file1MB)
+
+        // Warmup async infrastructure (File.System.Async and NIO)
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            _ = try? await File.System.Read.Full.read(from: file1MB)
+            if let handle = try? await FileSystem.shared.openFile(
+                forReadingAt: fixture.nioFile1MB,
+                options: .init()
+            ) {
+                try? await handle.close()
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+
+        return fixture
     }()
 
     private init(dir: File.Path, file1MB: File.Path, file10MB: File.Path, file100MB: File.Path) {
