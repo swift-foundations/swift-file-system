@@ -330,8 +330,13 @@
         private static func randomToken(
             length: Int
         ) throws(File.System.Write.Atomic.Error) -> String {
-            // Token length is fixed at 12 bytes
-            precondition(length == 12, "randomToken expects fixed length of 12")
+            guard length == 12 else {
+                throw .randomGenerationFailed(
+                    code: .posix(0),
+                    operation: "randomToken",
+                    message: "randomToken: invalid length (expected 12, got \(length))"
+                )
+            }
 
             // Use error capture pattern to work around typed throws in closures
             var getrandomError: File.System.Write.Atomic.Error? = nil

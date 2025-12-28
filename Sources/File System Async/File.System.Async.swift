@@ -51,7 +51,7 @@ extension File.System {
         public let handles: IO.Executor.Pool<File.Handle>
 
         /// Pool for streaming write resources.
-        public let writes: IO.Executor.Pool<File.Write.Streaming>
+        public let writes: IO.Executor.Pool<File.System.Write.Async>
 
         /// Lane used only for pool construction (private).
         private let lane: IO.Blocking.Lane
@@ -89,7 +89,7 @@ extension File.System {
                 }
             )
 
-            self.writes = IO.Executor.Pool<File.Write.Streaming>(
+            self.writes = IO.Executor.Pool<File.System.Write.Async>(
                 lane: lane,
                 handleWaitersLimit: 64,
                 teardown: .onLane(lane) { resource in
@@ -127,7 +127,7 @@ extension File.System {
                 }
             )
 
-            self.writes = IO.Executor.Pool<File.Write.Streaming>(
+            self.writes = IO.Executor.Pool<File.System.Write.Async>(
                 lane: lane,
                 handleWaitersLimit: 64,
                 teardown: .onLane(lane) { resource in
@@ -161,7 +161,7 @@ extension File.System {
                 }
             )
 
-            self.writes = IO.Executor.Pool<File.Write.Streaming>(
+            self.writes = IO.Executor.Pool<File.System.Write.Async>(
                 lane: lane,
                 handleWaitersLimit: 64,
                 teardown: .onLane(lane) { resource in
@@ -306,13 +306,13 @@ extension File.System.Async {
             let pathString = String(path)
 
             return try await fs.writes.register {
-                () throws(File.System.Write.Streaming.Error) -> File.Write.Streaming in
+                () throws(File.System.Write.Streaming.Error) -> File.System.Write.Async in
                 #if os(Windows)
                     let context = try File.System.Write.Streaming.Windows.open(path: pathString, options: options)
                 #else
                     let context = try File.System.Write.Streaming.POSIX.open(path: pathString, options: options)
                 #endif
-                return File.Write.Streaming(context: context, path: path, options: options)
+                return File.System.Write.Async(context: context, path: path, options: options)
             }
         }
 
@@ -328,7 +328,7 @@ extension File.System.Async {
             to id: IO.Handle.ID
         ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) {
             try await fs.writes.withHandle(id) {
-                (resource: inout File.Write.Streaming) throws(File.System.Write.Streaming.Error) in
+                (resource: inout File.System.Write.Async) throws(File.System.Write.Streaming.Error) in
                 guard resource.state == .open else {
                     throw File.System.Write.Streaming.Error.invalidState
                 }
@@ -349,7 +349,7 @@ extension File.System.Async {
             _ id: IO.Handle.ID
         ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>) {
             try await fs.writes.withHandle(id) {
-                (resource: inout File.Write.Streaming) throws(File.System.Write.Streaming.Error) in
+                (resource: inout File.System.Write.Async) throws(File.System.Write.Streaming.Error) in
                 guard resource.state == .open else {
                     throw File.System.Write.Streaming.Error.invalidState
                 }
@@ -372,7 +372,7 @@ extension File.System.Async {
         public func abort(_ id: IO.Handle.ID) async {
             do {
                 try await fs.writes.withHandle(id) {
-                    (resource: inout File.Write.Streaming) in
+                    (resource: inout File.System.Write.Async) in
                     resource.state = .aborting
                 }
             } catch {

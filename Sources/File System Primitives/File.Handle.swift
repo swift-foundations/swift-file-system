@@ -226,11 +226,14 @@ extension File.Handle {
         guard !buffer.isEmpty else { return 0 }
 
         #if os(Windows)
+            guard let handle = _descriptor.rawHandle else {
+                throw .invalidHandle
+            }
             var bytesRead: DWORD = 0
             guard
                 _ok(
                     ReadFile(
-                        _descriptor.rawHandle!,
+                        handle,
                         buffer.baseAddress,
                         DWORD(truncatingIfNeeded: buffer.count),
                         &bytesRead,
@@ -278,6 +281,9 @@ extension File.Handle {
             guard let base = buffer.baseAddress else { return }
 
             #if os(Windows)
+                guard let handle = _descriptor.rawHandle else {
+                    throw .invalidHandle
+                }
                 // Loop for partial writes - WriteFile may return fewer bytes than requested
                 var totalWritten: Int = 0
                 while totalWritten < count {
@@ -286,7 +292,7 @@ extension File.Handle {
                     let ptr = base.advanced(by: totalWritten)
                     let success = _ok(
                         WriteFile(
-                            _descriptor.rawHandle!,
+                            handle,
                             ptr,
                             DWORD(truncatingIfNeeded: remaining),
                             &written,
@@ -370,6 +376,9 @@ extension File.Handle {
         }
 
         #if os(Windows)
+            guard let handle = _descriptor.rawHandle else {
+                throw .invalidHandle
+            }
             var newPosition: LARGE_INTEGER = LARGE_INTEGER()
             var distance: LARGE_INTEGER = LARGE_INTEGER()
             distance.QuadPart = offset
@@ -381,7 +390,7 @@ extension File.Handle {
             case .end: whence = _dword(FILE_END)
             }
 
-            guard _ok(SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence))
+            guard _ok(SetFilePointerEx(handle, distance, &newPosition, whence))
             else {
                 throw .seekFailed(offset: offset, origin: origin, errno: Int32(GetLastError()), message: "SetFilePointerEx failed")
             }
@@ -411,7 +420,10 @@ extension File.Handle {
         }
 
         #if os(Windows)
-            guard FlushFileBuffers(_descriptor.rawHandle!) else {
+            guard let handle = _descriptor.rawHandle else {
+                throw .invalidHandle
+            }
+            guard FlushFileBuffers(handle) else {
                 throw .writeFailed(errno: Int32(GetLastError()), message: "FlushFileBuffers failed")
             }
         #else

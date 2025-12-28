@@ -17,10 +17,10 @@ extension File.Descriptor {
 
 extension File.Descriptor.Test.Unit {
 
-    // MARK: - withOpen
+    // MARK: - Open API
 
-    @Test("withOpen opens and closes descriptor")
-    func withOpenOpensAndCloses() throws {
+    @Test("open.read opens and closes descriptor")
+    func openReadOpensAndCloses() throws {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5]
             let filePath = File.Path(dir.path, appending: "test-file.bin")
@@ -28,7 +28,7 @@ extension File.Descriptor.Test.Unit {
 
             var wasValid = false
 
-            try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+            try File.Descriptor.open(filePath).read { descriptor in
                 wasValid = descriptor.isValid
             }
 
@@ -36,14 +36,14 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    @Test("withOpen returns closure result")
-    func withOpenReturnsResult() throws {
+    @Test("open returns closure result")
+    func openReturnsResult() throws {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let result = try File.Descriptor.withOpen(filePath, mode: .read) { _ in
+            let result = try File.Descriptor.open(filePath).read { _ in
                 return 42
             }
 
@@ -51,19 +51,19 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    @Test("withOpen closes descriptor after normal completion")
-    func withOpenClosesAfterCompletion() throws {
+    @Test("open closes descriptor after normal completion")
+    func openClosesAfterCompletion() throws {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            // After withOpen completes, the descriptor should be closed
+            // After open completes, the descriptor should be closed
             // We verify this by being able to open it again
-            _ = try File.Descriptor.withOpen(filePath, mode: .read) { _ in }
+            _ = try File.Descriptor.open(filePath).read { _ in }
 
             // If descriptor wasn't closed, this might fail
-            let result = try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+            let result = try File.Descriptor.open(filePath).read { descriptor in
                 descriptor.isValid
             }
 
@@ -71,8 +71,8 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    @Test("withOpen closes descriptor after error")
-    func withOpenClosesAfterError() throws {
+    @Test("open closes descriptor after error")
+    func openClosesAfterError() throws {
         try File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
@@ -81,7 +81,7 @@ extension File.Descriptor.Test.Unit {
 
             // The descriptor should be closed even if the closure throws
             do {
-                try File.Descriptor.withOpen(filePath, mode: .read) { _ in
+                try File.Descriptor.open(filePath).read { _ in
                     throw TestError()
                 }
                 Issue.record("Expected error to be thrown")
@@ -90,33 +90,33 @@ extension File.Descriptor.Test.Unit {
             }
 
             // Verify descriptor was closed by opening successfully again
-            let result = try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+            let result = try File.Descriptor.open(filePath).read { descriptor in
                 descriptor.isValid
             }
             #expect(result == true)
         }
     }
 
-    @Test("withOpen propagates open error")
-    func withOpenPropagatesOpenError() throws {
+    @Test("open propagates open error")
+    func openPropagatesOpenError() throws {
         try File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "non-existent.txt")
 
             #expect(throws: File.Descriptor.Error.self) {
-                try File.Descriptor.withOpen(filePath, mode: .read) { _ in
+                try File.Descriptor.open(filePath).read { _ in
                     // Should never reach here
                 }
             }
         }
     }
 
-    @Test("withOpen with create option creates file")
-    func withOpenCreatesFile() throws {
+    @Test("open with create option creates file")
+    func openCreatesFile() throws {
         try File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "new-file.txt")
             #expect(!File.System.Stat.exists(at: filePath))
 
-            let wasValid = try File.Descriptor.withOpen(filePath, mode: .write, options: [.create]) {
+            let wasValid = try File.Descriptor.open(filePath, options: [.create]).write {
                 descriptor in
                 descriptor.isValid
             }
@@ -126,10 +126,10 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    // MARK: - Async withOpen
+    // MARK: - Async Open
 
-    @Test("async withOpen opens and closes descriptor")
-    func asyncWithOpenOpensAndCloses() async throws {
+    @Test("async open opens and closes descriptor")
+    func asyncOpenOpensAndCloses() async throws {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5]
             let filePath = File.Path(dir.path, appending: "test-file.bin")
@@ -137,7 +137,7 @@ extension File.Descriptor.Test.Unit {
 
             var wasValid = false
 
-            try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+            try File.Descriptor.open(filePath).read { descriptor in
                 wasValid = descriptor.isValid
             }
 
@@ -145,14 +145,14 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    @Test("async withOpen with async body")
-    func asyncWithOpenAsyncBody() async throws {
+    @Test("async open with async body")
+    func asyncOpenAsyncBody() async throws {
         try await File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let result = try await File.Descriptor.withOpen(filePath, mode: .read) {
+            let result = try await File.Descriptor.open(filePath).read {
                 descriptor async throws in
                 // Simulate async work
                 try await Task.sleep(for: .milliseconds(1))
@@ -163,8 +163,8 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    @Test("async withOpen closes after error")
-    func asyncWithOpenClosesAfterError() async throws {
+    @Test("async open closes after error")
+    func asyncOpenClosesAfterError() async throws {
         try await File.Directory.temporary { dir in
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write([UInt8]().span, to: filePath)
@@ -172,7 +172,7 @@ extension File.Descriptor.Test.Unit {
             struct TestError: Error {}
 
             do {
-                try await File.Descriptor.withOpen(filePath, mode: .read) { _ async throws in
+                try await File.Descriptor.open(filePath).read { _ async throws in
                     throw TestError()
                 }
                 Issue.record("Expected error to be thrown")
@@ -181,7 +181,7 @@ extension File.Descriptor.Test.Unit {
             }
 
             // Verify can open again
-            let result = try File.Descriptor.withOpen(filePath, mode: .read) { descriptor in
+            let result = try File.Descriptor.open(filePath).read { descriptor in
                 descriptor.isValid
             }
             #expect(result == true)
@@ -197,7 +197,7 @@ extension File.Descriptor.Test.Unit {
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let wasValid = try File.Descriptor.withOpen(filePath, mode: .read) { original in
+            let wasValid = try File.Descriptor.open(filePath).read { original in
                 let duplicate = try original.duplicated()
                 let valid = duplicate.isValid
                 try duplicate.close()
@@ -214,10 +214,9 @@ extension File.Descriptor.Test.Unit {
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let (originalValid, duplicateValid, differentRawValues) = try File.Descriptor.withOpen(
-                filePath,
-                mode: .read
-            ) { original in
+            let (originalValid, duplicateValid, differentRawValues) = try File.Descriptor.open(
+                filePath
+            ).read { original in
                 let duplicate = try original.duplicated()
 
                 let origValid = original.isValid
@@ -246,7 +245,7 @@ extension File.Descriptor.Test.Unit {
             let filePath = File.Path(dir.path, appending: "test-file.bin")
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let originalStillValid = try File.Descriptor.withOpen(filePath, mode: .read) {
+            let originalStillValid = try File.Descriptor.open(filePath).read {
                 original in
                 let duplicate = try original.duplicated()
                 try duplicate.close()

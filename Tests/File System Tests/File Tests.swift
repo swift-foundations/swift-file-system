@@ -45,9 +45,9 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5]
             let file = dir["test.bin"]
-            try file.write(content)
+            try file.write.atomic(content)
 
-            let result: [UInt8] = try file.read()
+            let result: [UInt8] = try file.read.full()
             #expect(result == content)
         }
     }
@@ -57,9 +57,9 @@ extension File.Test.Unit {
         try await File.Directory.temporary { dir in
             let content: [UInt8] = [10, 20, 30]
             let file = dir["test.bin"]
-            try await file.write(content)
+            try await file.write.atomic(content)
 
-            let result: [UInt8] = try await file.read()
+            let result: [UInt8] = try await file.read.full()
             #expect(result == content)
         }
     }
@@ -69,9 +69,9 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let text = "Hello, File!"
             let file = dir["test.txt"]
-            try file.write(text)
+            try file.write.atomic(text)
 
-            let result = try file.read(as: String.self)
+            let result = try file.read.full(as: String.self)
             #expect(result == text)
         }
     }
@@ -81,9 +81,9 @@ extension File.Test.Unit {
         try await File.Directory.temporary { dir in
             let text = "Async Hello!"
             let file = dir["test.txt"]
-            try await file.write(text)
+            try await file.write.atomic(text)
 
-            let result = try await file.read(as: String.self)
+            let result = try await file.read.full(as: String.self)
             #expect(result == text)
         }
     }
@@ -95,9 +95,9 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
             let content: [UInt8] = [1, 2, 3, 4, 5]
-            try file.write(content)
+            try file.write.atomic(content)
 
-            let readBack: [UInt8] = try file.read()
+            let readBack: [UInt8] = try file.read.full()
             #expect(readBack == content)
         }
     }
@@ -107,9 +107,9 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let file = dir["test.txt"]
             let text = "Hello, World!"
-            try file.write(text)
+            try file.write.atomic(text)
 
-            let readBack = try file.read(as: String.self)
+            let readBack = try file.read.full(as: String.self)
             #expect(readBack == text)
         }
     }
@@ -119,9 +119,9 @@ extension File.Test.Unit {
         try await File.Directory.temporary { dir in
             let file = dir["test.bin"]
             let content: [UInt8] = [10, 20, 30]
-            try await file.write(content)
+            try await file.write.atomic(content)
 
-            let readBack: [UInt8] = try await file.read()
+            let readBack: [UInt8] = try await file.read.full()
             #expect(readBack == content)
         }
     }
@@ -132,9 +132,9 @@ extension File.Test.Unit {
     func existsReturnsTrueForFile() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try file.write([1, 2, 3])
+            try file.write.atomic([1, 2, 3])
 
-            #expect(file.exists == true)
+            #expect(file.stat.exists == true)
         }
     }
 
@@ -142,7 +142,7 @@ extension File.Test.Unit {
     func existsReturnsFalseForNonExisting() throws {
         try File.Directory.temporary { dir in
             let file = dir["non-existing.bin"]
-            #expect(file.exists == false)
+            #expect(file.stat.exists == false)
         }
     }
 
@@ -150,9 +150,9 @@ extension File.Test.Unit {
     func isFileReturnsTrueForFile() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try file.write([1])
+            try file.write.atomic([1])
 
-            #expect(file.isFile == true)
+            #expect(file.stat.isFile == true)
         }
     }
 
@@ -160,9 +160,9 @@ extension File.Test.Unit {
     func isDirectoryReturnsFalseForFile() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try file.write([1])
+            try file.write.atomic([1])
 
-            #expect(file.isDirectory == false)
+            #expect(file.stat.isDirectory == false)
         }
     }
 
@@ -170,9 +170,9 @@ extension File.Test.Unit {
     func isSymlinkReturnsFalseForFile() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try file.write([1])
+            try file.write.atomic([1])
 
-            #expect(file.isSymlink == false)
+            #expect(file.stat.isSymlink == false)
         }
     }
 
@@ -183,9 +183,9 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5]
             let file = dir["test.bin"]
-            try file.write(content)
+            try file.write.atomic(content)
 
-            let info = try file.info
+            let info = try file.stat.info
             #expect(info.size == Int64(content.count))
             #expect(info.type == .regular)
         }
@@ -196,9 +196,9 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             let file = dir["test.bin"]
-            try file.write(content)
+            try file.write.atomic(content)
 
-            let size = try file.size
+            let size = try file.stat.size
             #expect(size == 10)
         }
     }
@@ -207,9 +207,9 @@ extension File.Test.Unit {
     func permissionsReturnsPermissions() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try file.write([1, 2, 3])
+            try file.write.atomic([1, 2, 3])
 
-            let permissions = try file.permissions
+            let permissions = try file.stat.permissions
             // File should be readable by owner at minimum
             #expect(permissions.contains(.ownerRead) == true)
         }
@@ -221,11 +221,11 @@ extension File.Test.Unit {
     func deleteRemovesFile() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try file.write([1, 2, 3])
+            try file.write.atomic([1, 2, 3])
 
-            #expect(file.exists == true)
+            #expect(file.stat.exists == true)
             try file.delete()
-            #expect(file.exists == false)
+            #expect(file.stat.exists == false)
         }
     }
 
@@ -233,11 +233,11 @@ extension File.Test.Unit {
     func deleteAsyncRemovesFile() async throws {
         try await File.Directory.temporary { dir in
             let file = dir["test.bin"]
-            try await file.write([1, 2, 3])
+            try await file.write.atomic([1, 2, 3])
 
-            #expect(file.exists == true)
+            #expect(file.stat.exists == true)
             try await file.delete()
-            #expect(file.exists == false)
+            #expect(file.stat.exists == false)
         }
     }
 
@@ -246,13 +246,13 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let source = dir["source.bin"]
-            try source.write(content)
+            try source.write.atomic(content)
 
             let destPath = dir.path / "dest.bin"
-            try source.copy(to: destPath)
+            try source.copy.to(destPath)
 
             let dest = File(destPath)
-            let readBack: [UInt8] = try dest.read()
+            let readBack: [UInt8] = try dest.read.full()
             #expect(readBack == content)
         }
     }
@@ -262,12 +262,12 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let source = dir["source.bin"]
-            try source.write(content)
+            try source.write.atomic(content)
 
             let dest = dir["dest.bin"]
-            try source.copy(to: dest)
+            try source.copy.to(dest)
 
-            let readBack: [UInt8] = try dest.read()
+            let readBack: [UInt8] = try dest.read.full()
             #expect(readBack == content)
         }
     }
@@ -277,15 +277,15 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let source = dir["source.bin"]
-            try source.write(content)
+            try source.write.atomic(content)
 
             let destPath = dir.path / "dest.bin"
-            try source.move(to: destPath)
+            try source.move.to(destPath)
 
             let dest = File(destPath)
-            #expect(source.exists == false)
-            #expect(dest.exists == true)
-            let readBack: [UInt8] = try dest.read()
+            #expect(source.stat.exists == false)
+            #expect(dest.stat.exists == true)
+            let readBack: [UInt8] = try dest.read.full()
             #expect(readBack == content)
         }
     }
@@ -295,13 +295,13 @@ extension File.Test.Unit {
         try File.Directory.temporary { dir in
             let content: [UInt8] = [1, 2, 3]
             let source = dir["source.bin"]
-            try source.write(content)
+            try source.write.atomic(content)
 
             let dest = dir["dest.bin"]
-            try source.move(to: dest)
+            try source.move.to(dest)
 
-            #expect(source.exists == false)
-            #expect(dest.exists == true)
+            #expect(source.stat.exists == false)
+            #expect(dest.stat.exists == true)
         }
     }
 

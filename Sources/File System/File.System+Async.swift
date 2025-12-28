@@ -336,7 +336,7 @@ extension File.Directory.Walk {
         fs: File.System.Async = .async
     ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Walk.Error>>) -> [File.Directory.Entry] {
         try await fs.run { () throws(File.Directory.Walk.Error) -> [File.Directory.Entry] in
-            try walk(at: directory, options: options)
+            try directory.walk(options: options)
         }
     }
 }

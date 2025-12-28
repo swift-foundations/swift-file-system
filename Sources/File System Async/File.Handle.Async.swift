@@ -109,11 +109,18 @@ extension File.Handle {
                 throw .failure(.operation(.invalidHandle))
             }
 
+            /// A borrowed buffer destination that is safe to pass to the IO executor.
+            ///
+            /// - Invariant: The wrapped pointer must remain valid until `read(into:)` returns.
+            ///   The IO executor does not store this pointer beyond the dynamic extent of
+            ///   the operation.
+            ///
+            /// - Warning: This is an @unchecked Sendable escape hatch. Callers MUST NOT
+            ///   deallocate the underlying buffer until `read(into:)` returns.
             struct Buffer: @unchecked Swift.Sendable {
                 let pointer: UnsafeMutableRawBufferPointer
             }
 
-            // Wrap for Sendable - safe because buffer used synchronously in io.run
             let buffer = Buffer(pointer: destination)
             let body: @Sendable (inout File.Handle) throws(File.Handle.Error) -> Int = { handle in
                 try handle.read(into: buffer.pointer)

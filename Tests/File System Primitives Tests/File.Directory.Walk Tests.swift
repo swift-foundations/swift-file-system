@@ -1,7 +1,6 @@
 //
 //  File.Directory.Walk Tests.swift
 //  swift-file-system
-//
 
 import File_System_Test_Support
 import StandardsTestSupport
@@ -20,7 +19,7 @@ extension File.Directory.Walk {
         @Test("walk empty directory returns empty array")
         func walkEmptyDirectory() throws {
             try File.Directory.temporary { dir in
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.isEmpty)
             }
         }
@@ -36,7 +35,7 @@ extension File.Directory.Walk {
                 let h2 = try File.Handle.open(file2, mode: .write, options: [.create, .closeOnExec])
                 try h2.close()
 
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == 2)
 
                 let names = entries.compactMap { String($0.name) }.sorted()
@@ -55,7 +54,7 @@ extension File.Directory.Walk {
                 let h = try File.Handle.open(file, mode: .write, options: [.create, .closeOnExec])
                 try h.close()
 
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == 2)  // subdir + nested.txt
 
                 let names = entries.compactMap { String($0.name) }.sorted()
@@ -78,12 +77,12 @@ extension File.Directory.Walk {
                 try h.close()
 
                 // maxDepth: 0 should only return immediate children
-                let entries0 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 0))
+                let entries0 = try dir.walk(options: .init(maxDepth: 0))
                 #expect(entries0.count == 1)
                 #expect(String(entries0[0].name) == "a")
 
                 // maxDepth: 1 should return dir/a and dir/a/b
-                let entries1 = try File.Directory.Walk.walk(at: dir, options: .init(maxDepth: 1))
+                let entries1 = try dir.walk(options: .init(maxDepth: 1))
                 #expect(entries1.count == 2)
             }
         }
@@ -100,17 +99,11 @@ extension File.Directory.Walk {
                 try h2.close()
 
                 // includeHidden: true (default)
-                let entriesWithHidden = try File.Directory.Walk.walk(
-                    at: dir,
-                    options: .init(includeHidden: true)
-                )
+                let entriesWithHidden = try dir.walk(options: .init(includeHidden: true))
                 #expect(entriesWithHidden.count == 2)
 
                 // includeHidden: false
-                let entriesWithoutHidden = try File.Directory.Walk.walk(
-                    at: dir,
-                    options: .init(includeHidden: false)
-                )
+                let entriesWithoutHidden = try dir.walk(options: .init(includeHidden: false))
                 #expect(entriesWithoutHidden.count == 1)
                 #expect(String(entriesWithoutHidden[0].name) == "visible.txt")
             }
@@ -324,7 +317,7 @@ extension File.Directory.Walk {
             let nonExistentDir = File.Directory(path)
 
             #expect(throws: File.Directory.Walk.Error.self) {
-                _ = try File.Directory.Walk.walk(at: nonExistentDir)
+                _ = try nonExistentDir.walk()
             }
         }
 
@@ -337,7 +330,7 @@ extension File.Directory.Walk {
 
                 let fileAsDir = File.Directory(filePath)
                 #expect(throws: File.Directory.Walk.Error.self) {
-                    _ = try File.Directory.Walk.walk(at: fileAsDir)
+                    _ = try fileAsDir.walk()
                 }
             }
         }

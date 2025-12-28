@@ -29,17 +29,23 @@ extension File {
     /// }
     /// ```
     public struct Open: Sendable {
-        /// The path to open.
-        public let path: File.Path
-        /// Options for opening.
-        public let options: File.Handle.Options
+        /// The underlying Handle.Open instance.
+        @usableFromInline
+        internal let open: File.Handle.Open
 
         /// Creates an Open instance.
         @usableFromInline
         internal init(path: File.Path, options: File.Handle.Options) {
-            self.path = path
-            self.options = options
+            self.open = File.Handle.Open(path: path, options: options)
         }
+
+        /// The path to open.
+        @inlinable
+        public var path: File.Path { open.path }
+
+        /// Options for opening.
+        @inlinable
+        public var options: File.Handle.Options { open.options }
 
         // MARK: - callAsFunction (Read-only default)
 
@@ -55,7 +61,7 @@ extension File {
         public func callAsFunction<Result>(
             _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
         ) throws(File.Handle.Error) -> Result {
-            try read(body)
+            try open.read(body)
         }
 
         // MARK: - Explicit Read
@@ -69,7 +75,7 @@ extension File {
         public func read<Result>(
             _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
         ) throws(File.Handle.Error) -> Result {
-            try File.Handle.withOpen(path, mode: .read, options: options, body: body)
+            try open.read(body)
         }
 
         // MARK: - Write
@@ -83,7 +89,7 @@ extension File {
         public func write<Result>(
             _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
         ) throws(File.Handle.Error) -> Result {
-            try File.Handle.withOpen(path, mode: .write, options: options, body: body)
+            try open.write(body)
         }
 
         // MARK: - Appending
@@ -97,7 +103,7 @@ extension File {
         public func appending<Result>(
             _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
         ) throws(File.Handle.Error) -> Result {
-            try File.Handle.withOpen(path, mode: .append, options: options, body: body)
+            try open.appending(body)
         }
 
         // MARK: - Read-Write
@@ -111,7 +117,7 @@ extension File {
         public func readWrite<Result>(
             _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
         ) throws(File.Handle.Error) -> Result {
-            try File.Handle.withOpen(path, mode: [.read, .write], options: options, body: body)
+            try open.readWrite(body)
         }
 
         // MARK: - Async Variants
@@ -127,7 +133,7 @@ extension File {
         public func callAsFunction<Result>(
             _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
         ) async throws(File.Handle.Error) -> Result {
-            try await read(body)
+            try await open.read(body)
         }
 
         /// Opens the file for reading and runs an async closure.
@@ -139,7 +145,7 @@ extension File {
         public func read<Result>(
             _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
         ) async throws(File.Handle.Error) -> Result {
-            try await File.Handle.withOpen(path, mode: .read, options: options, body: body)
+            try await open.read(body)
         }
 
         /// Opens the file for writing and runs an async closure.
@@ -151,7 +157,7 @@ extension File {
         public func write<Result>(
             _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
         ) async throws(File.Handle.Error) -> Result {
-            try await File.Handle.withOpen(path, mode: .write, options: options, body: body)
+            try await open.write(body)
         }
 
         /// Opens the file for appending and runs an async closure.
@@ -163,7 +169,7 @@ extension File {
         public func appending<Result>(
             _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
         ) async throws(File.Handle.Error) -> Result {
-            try await File.Handle.withOpen(path, mode: .append, options: options, body: body)
+            try await open.appending(body)
         }
 
         /// Opens the file for reading and writing and runs an async closure.
@@ -175,7 +181,7 @@ extension File {
         public func readWrite<Result>(
             _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
         ) async throws(File.Handle.Error) -> Result {
-            try await File.Handle.withOpen(path, mode: [.read, .write], options: options, body: body)
+            try await open.readWrite(body)
         }
     }
 }

@@ -185,13 +185,16 @@
             in parent: File.Path,
             for dest: File.Path
         ) throws(File.System.Write.Streaming.Error) -> File.Path {
-            // Defensive assertion: verify parent matches dest's actual parent
+            // Defensive check: verify parent matches dest's actual parent
             // This guards against future refactoring that might pass mismatched values
             let destParent = dest.parentOrSelf
-            precondition(
-                String(parent) == String(destParent),
-                "Temp file must be in same directory as destination"
-            )
+            guard parent == destParent else {
+                throw .fileCreationFailed(
+                    path: dest,
+                    errno: 0,
+                    message: "Temp file must be in same directory as destination"
+                )
+            }
 
             let baseName = dest.lastComponent.map { String($0) } ?? ""
             let random = try randomToken(length: 12)
@@ -202,13 +205,18 @@
         private static func randomToken(
             length: Int
         ) throws(File.System.Write.Streaming.Error) -> String {
-            precondition(length == 12, "randomToken expects fixed length of 12")
+            guard length == 12 else {
+                throw .randomGenerationFailed(
+                    errno: 0,
+                    message: "randomToken: invalid length (expected 12, got \(length))"
+                )
+            }
 
             // Use error capture pattern to work around typed throws in closures
             var getrandomError: File.System.Write.Streaming.Error? = nil
 
             let result = withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length) {
-                buffer -> String? in
+                buffer -> String in  // Non-optional: use "" sentinel on error
                 let base = buffer.baseAddress!
 
                 #if canImport(Darwin)
@@ -230,7 +238,7 @@
                                 errno: e,
                                 message: "CSPRNG getrandom syscall failed"
                             )
-                            return nil
+                            return ""  // Sentinel - throw after closure exits
                         }
                     }
                 #endif
@@ -241,7 +249,7 @@
             if let error = getrandomError {
                 throw error
             }
-            return result!
+            return result
         }
     }
 

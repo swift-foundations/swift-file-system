@@ -13,17 +13,12 @@
     typealias PlatformWriteContext = File.System.Write.Streaming.POSIX.Context
 #endif
 
-extension File {
-    /// Namespace for write operations.
-    public enum Write {}
-}
-
-extension File.Write {
+extension File.System.Write {
     /// A streaming write resource managed by IO.Executor.Pool.
     ///
     /// Serialization, cancellation, and backpressure are handled by the Pool.
     /// This type only holds the platform-specific context and state.
-    public struct Streaming: ~Copyable {
+    public struct Async: ~Copyable {
         /// The platform-specific write context.
         var context: PlatformWriteContext
 
@@ -50,7 +45,7 @@ extension File.Write {
     }
 }
 
-extension File.Write.Streaming {
+extension File.System.Write.Async {
     /// State machine for streaming write lifecycle.
     ///
     /// States:
@@ -66,12 +61,4 @@ extension File.Write.Streaming {
         case aborting
         case closed
     }
-}
-
-// MARK: - Backwards Compatibility
-
-extension File {
-    /// Backwards compatibility alias.
-    @available(*, deprecated, renamed: "File.Write.Streaming")
-    public typealias StreamingWrite = File.Write.Streaming
 }
