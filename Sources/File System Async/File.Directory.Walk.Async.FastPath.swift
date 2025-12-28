@@ -94,73 +94,73 @@ extension File.Directory.Walk.Async {
             fs: File.System.Async,
             continuation: AsyncThrowingStream<File.Path, any Error>.Continuation
         ) async {
-            #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
-            await produceFTS(root: root, options: options, fs: fs, continuation: continuation)
+            #if canImport(Darwin)
+                await produceFTS(root: root, options: options, fs: fs, continuation: continuation)
             #else
-            await produceDFS(root: root, options: options, fs: fs, continuation: continuation)
+                await produceDFS(root: root, options: options, fs: fs, continuation: continuation)
             #endif
         }
 
-        #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
-        /// FTS-based producer for POSIX systems.
-        private static func produceFTS(
-            root: File.Directory,
-            options: Options,
-            fs: File.System.Async,
-            continuation: AsyncThrowingStream<File.Path, any Error>.Continuation
-        ) async {
-            do {
-                // Run fts operations on IO executor to avoid blocking
-                try await fs.run {
-                    var walker = try File.Directory.Walk.FTS(path: root.path)
-                    defer { walker.close() }
+        #if canImport(Darwin)
+            /// FTS-based producer for Darwin (macOS/iOS).
+            private static func produceFTS(
+                root: File.Directory,
+                options: Options,
+                fs: File.System.Async,
+                continuation: AsyncThrowingStream<File.Path, any Error>.Continuation
+            ) async {
+                do {
+                    // Run fts operations on IO executor to avoid blocking
+                    try await fs.run {
+                        var walker = try File.Directory.Walk.FTS(path: root.path)
+                        defer { walker.close() }
 
-                    let batchSize = 64
-                    var batch: [File.Path] = []
-                    batch.reserveCapacity(batchSize)
+                        let batchSize = 64
+                        var batch: [File.Path] = []
+                        batch.reserveCapacity(batchSize)
 
-                    while let entry = try walker.next() {
-                        // Check for cancellation
-                        if Task.isCancelled { break }
+                        while let entry = try walker.next() {
+                            // Check for cancellation
+                            if Task.isCancelled { break }
 
-                        // Apply depth filter
-                        if let maxDepth = options.maxDepth {
-                            let relativeDepth = entry.depth
-                            if relativeDepth > maxDepth { continue }
-                        }
+                            // Apply depth filter
+                            if let maxDepth = options.maxDepth {
+                                let relativeDepth = entry.depth
+                                if relativeDepth > maxDepth { continue }
+                            }
 
-                        // Apply hidden filter (dot-prefix convention on Unix-like systems)
-                        if !options.includeHidden {
-                            if let name = entry.path.lastComponent, name.starts(with: 0x2E) {
-                                continue
+                            // Apply hidden filter (dot-prefix convention on Unix-like systems)
+                            if !options.includeHidden {
+                                if let name = entry.path.lastComponent, name.starts(with: 0x2E) {
+                                    continue
+                                }
+                            }
+
+                            batch.append(entry.path)
+
+                            // Yield batch when full (reduces continuation overhead)
+                            if batch.count >= batchSize {
+                                for path in batch {
+                                    continuation.yield(path)
+                                }
+                                batch.removeAll(keepingCapacity: true)
                             }
                         }
 
-                        batch.append(entry.path)
-
-                        // Yield batch when full (reduces continuation overhead)
-                        if batch.count >= batchSize {
-                            for path in batch {
-                                continuation.yield(path)
-                            }
-                            batch.removeAll(keepingCapacity: true)
+                        // Yield remaining entries
+                        for path in batch {
+                            continuation.yield(path)
                         }
                     }
 
-                    // Yield remaining entries
-                    for path in batch {
-                        continuation.yield(path)
-                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
                 }
-
-                continuation.finish()
-            } catch {
-                continuation.finish(throwing: error)
             }
-        }
         #endif
 
-        /// Stack-based DFS producer for Windows and fallback.
+        /// Stack-based DFS producer for Linux, Windows, and other platforms.
         private static func produceDFS(
             root: File.Directory,
             options: Options,

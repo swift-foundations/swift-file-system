@@ -7,7 +7,6 @@
 
 // MARK: - Write Namespace
 
-
 extension File {
     /// Namespace for file write operations.
     ///
@@ -28,7 +27,7 @@ extension File {
     public struct Write: Sendable {
         /// The path to write to.
         public let path: File.Path
-        
+
         /// Creates a Write instance.
         @usableFromInline
         internal init(_ path: File.Path) {
@@ -38,9 +37,9 @@ extension File {
 }
 
 extension File.Write {
-    
+
     // MARK: - Atomic Write (Sync)
-    
+
     /// Writes bytes to the file atomically.
     ///
     /// Uses a temp file + rename strategy for crash safety.
@@ -56,7 +55,7 @@ extension File.Write {
     ) throws(File.System.Write.Atomic.Error) {
         try File.System.Write.Atomic.write(bytes, to: path, options: options)
     }
-    
+
     /// Writes a string to the file atomically (UTF-8 encoded).
     ///
     /// - Parameters:
@@ -70,7 +69,7 @@ extension File.Write {
     ) throws(File.System.Write.Atomic.Error) {
         try atomic(Array(string.utf8), options: options)
     }
-    
+
     /// Writes bytes from a sequence to the file atomically.
     ///
     /// - Parameters:
@@ -84,9 +83,9 @@ extension File.Write {
     ) throws(File.System.Write.Atomic.Error) where S.Element == UInt8 {
         try atomic(Array(bytes), options: options)
     }
-    
+
     // MARK: - Atomic Write (Async)
-    
+
     /// Writes bytes to the file atomically.
     ///
     /// Async variant.
@@ -98,7 +97,7 @@ extension File.Write {
     ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) {
         try await File.System.Write.Atomic.write(bytes, to: path, options: options)
     }
-    
+
     /// Writes a string to the file atomically (UTF-8 encoded).
     ///
     /// Async variant.
@@ -110,7 +109,7 @@ extension File.Write {
     ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) {
         try await atomic(Array(string.utf8), options: options)
     }
-    
+
     /// Writes bytes from a sequence to the file atomically.
     ///
     /// Async variant.
@@ -122,9 +121,9 @@ extension File.Write {
     ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) where S.Element == UInt8 {
         try await atomic(Array(bytes), options: options)
     }
-    
+
     // MARK: - Append (Sync)
-    
+
     /// Appends bytes to the file.
     ///
     /// - Parameter bytes: The bytes to append.
@@ -133,7 +132,7 @@ extension File.Write {
     public func append(_ bytes: [UInt8]) throws(File.System.Write.Append.Error) {
         try File.System.Write.Append.append(bytes.span, to: path)
     }
-    
+
     /// Appends a string to the file (UTF-8 encoded).
     ///
     /// - Parameter string: The string to append.
@@ -142,9 +141,9 @@ extension File.Write {
     public func append(_ string: String) throws(File.System.Write.Append.Error) {
         try append(Array(string.utf8))
     }
-    
+
     // MARK: - Append (Async)
-    
+
     /// Appends bytes to the file.
     ///
     /// Async variant.
@@ -155,7 +154,7 @@ extension File.Write {
     ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>) {
         try await File.System.Write.Append.append(bytes, to: path)
     }
-    
+
     /// Appends a string to the file (UTF-8 encoded).
     ///
     /// Async variant.
@@ -166,9 +165,9 @@ extension File.Write {
     ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>) {
         try await append(Array(string.utf8))
     }
-    
+
     // MARK: - Streaming Write (Sync)
-    
+
     /// Writes chunks to the file using streaming (memory-efficient).
     ///
     /// By default uses atomic mode (temp file + rename) for crash safety.
@@ -184,9 +183,9 @@ extension File.Write {
     ) throws(File.System.Write.Streaming.Error) where Chunks.Element == [UInt8] {
         try File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
-    
+
     // MARK: - Streaming Write (Async)
-    
+
     /// Writes chunks to the file using streaming (memory-efficient).
     ///
     /// Async variant for sync sequences.
@@ -199,7 +198,7 @@ extension File.Write {
     where Chunks.Element == [UInt8] {
         try await File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
-    
+
     /// Writes chunks from an async sequence to the file.
     ///
     /// True streaming implementation - processes chunks as they arrive.
