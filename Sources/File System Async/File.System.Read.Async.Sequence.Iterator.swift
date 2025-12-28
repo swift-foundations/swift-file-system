@@ -14,15 +14,16 @@ extension File.System.Read.Async.Sequence {
     /// This iterator is task-confined. Do not share across Tasks.
     /// The non-Sendable conformance enforces this at compile time.
     public final class Iterator: AsyncIteratorProtocol {
-        private let channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
-        private var channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>.AsyncIterator
+        private typealias ChannelError = IO.Lifecycle.Error<IO.Error<File.Handle.Error>>
+
+        private let channel: AsyncThrowingChannel<Element, ChannelError>
+        private var channelIterator: AsyncThrowingChannel<Element, ChannelError>.AsyncIterator
         private var producerTask: Task<Void, Never>?
         private var isFinished = false
 
         private init(
-            channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>,
-            channelIterator: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
-                .AsyncIterator
+            channel: AsyncThrowingChannel<Element, ChannelError>,
+            channelIterator: AsyncThrowingChannel<Element, ChannelError>.AsyncIterator
         ) {
             self.channel = channel
             self.channelIterator = channelIterator
@@ -30,8 +31,8 @@ extension File.System.Read.Async.Sequence {
 
         /// Factory method to create iterator and start producer.
         /// Uses factory pattern to avoid init-region isolation issues.
-        static func make(path: File.Path, chunkSize: Int, io: File.IO.Executor) -> Iterator {
-            let channel = AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>()
+        static func make(path: File.Path, chunkSize: Int, fs: File.System.Async) -> Iterator {
+            let channel = AsyncThrowingChannel<Element, ChannelError>()
             let iterator = Iterator(
                 channel: channel,
                 channelIterator: channel.makeAsyncIterator()
@@ -40,12 +41,12 @@ extension File.System.Read.Async.Sequence {
             // Capture only Sendable values, not self
             let path = path
             let chunkSize = chunkSize
-            let io = io
+            let fs = fs
             iterator.producerTask = Task {
                 await Self.runProducer(
                     path: path,
                     chunkSize: chunkSize,
-                    io: io,
+                    fs: fs,
                     channel: channel
                 )
             }
@@ -57,28 +58,27 @@ extension File.System.Read.Async.Sequence {
             producerTask?.cancel()
         }
 
-        public func next() async throws(File.IO.Error<File.Handle.Error>) -> Element? {
+        public func next() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Element? {
             guard !isFinished else { return nil }
 
+            // Check cancellation without throwing (avoids mixing throw types)
+            if Task.isCancelled {
+                isFinished = true
+                producerTask?.cancel()
+                throw .failure(.cancelled)
+            }
+
+            // Pure typed throws from channel - no cast needed
             do {
-                try Task.checkCancellation()
                 let result = try await channelIterator.next()
                 if result == nil {
                     isFinished = true
                 }
                 return result
-            } catch let error as File.IO.Error<File.Handle.Error> {
-                isFinished = true
-                producerTask?.cancel()
-                throw error
-            } catch is CancellationError {
-                isFinished = true
-                producerTask?.cancel()
-                throw .cancelled
             } catch {
                 isFinished = true
                 producerTask?.cancel()
-                throw .operation(.readFailed(errno: 0, message: "Unknown error: \(error)"))
+                throw error
             }
         }
 
@@ -99,39 +99,29 @@ extension File.System.Read.Async.Sequence {
         private static func runProducer(
             path: File.Path,
             chunkSize: Int,
-            io: File.IO.Executor,
-            channel: AsyncThrowingChannel<Element, File.IO.Error<File.Handle.Error>>
+            fs: File.System.Async,
+            channel: AsyncThrowingChannel<Element, ChannelError>
         ) async {
-            // Open file and register with executor
-            let handleResult: Result<File.IO.Handle.ID, File.IO.Error<File.Handle.Error>> = await {
-                do {
-                    let id = try await io.openFile(path, mode: .read)
-                    return .success(id)
-                } catch let error as File.IO.Error<File.Handle.Error> {
-                    return .failure(error)
-                } catch is CancellationError {
-                    return .failure(.cancelled)
-                } catch {
-                    return .failure(
-                        .operation(.openFailed(errno: 0, message: "Open failed: \(error)"))
-                    )
-                }
-            }()
-
-            guard case .success(let handleId) = handleResult else {
-                if case .failure(let error) = handleResult {
-                    channel.fail(error)
-                }
+            // Open file and register with pool
+            let handleId: IO.Handle.ID
+            do {
+                handleId = try await fs.open(path, mode: .read)
+            } catch {
+                // error is typed as IO.Lifecycle.Error<IO.Error<File.Handle.Error>>
+                channel.fail(error)
                 return
             }
 
             // Stream chunks
             do {
                 while true {
-                    try Task.checkCancellation()
+                    // Check cancellation without throwing (avoids mixing throw types)
+                    if Task.isCancelled {
+                        break
+                    }
 
                     // Read chunk - allocate inside closure for Sendable safety
-                    let chunk: [UInt8] = try await io.withHandle(handleId) { handle in
+                    let chunk: [UInt8] = try await fs.transaction(handleId) { (handle: inout File.Handle) throws(File.Handle.Error) in
                         try handle.read(count: chunkSize)
                     }
 
@@ -140,30 +130,23 @@ extension File.System.Read.Async.Sequence {
                         break
                     }
 
-                    try Task.checkCancellation()
+                    // Check cancellation before sending
+                    if Task.isCancelled {
+                        break
+                    }
 
                     // Yield owned chunk
                     await channel.send(chunk)
                 }
 
                 // Clean close
-                try? await io.destroyHandle(handleId)
+                try? await fs.close(handleId)
                 channel.finish()
-
-            } catch is CancellationError {
-                // Cancelled - clean up
-                try? await io.destroyHandle(handleId)
-                channel.finish()
-
-            } catch let error as File.IO.Error<File.Handle.Error> {
-                // Error - clean up and propagate
-                try? await io.destroyHandle(handleId)
-                channel.fail(error)
 
             } catch {
-                // Defensive - should not happen with typed executor
-                try? await io.destroyHandle(handleId)
-                channel.fail(.operation(.readFailed(errno: 0, message: "Unknown error: \(error)")))
+                // error is typed as IO.Lifecycle.Error<IO.Error<File.Handle.Error>>
+                try? await fs.close(handleId)
+                channel.fail(error)
             }
         }
     }

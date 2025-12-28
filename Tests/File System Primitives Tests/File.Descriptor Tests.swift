@@ -51,7 +51,7 @@ extension File.Descriptor.Test.Unit {
             let file = dir["test.bin"]
             try File.System.Write.Atomic.write([UInt8]().span, to: file.path)
 
-            let descriptor = try File.Descriptor.open(file.path, mode: .readWrite)
+            let descriptor = try File.Descriptor.open(file.path, mode: [.read, .write])
             let isValid = descriptor.isValid
             #expect(isValid)
             try descriptor.close()
@@ -144,72 +144,72 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    // MARK: - Mode enum
+    // MARK: - Mode OptionSet
 
-    @Test("Mode enum values")
-    func modeEnumValues() {
+    @Test("Mode options are distinct")
+    func modeOptionsDistinct() {
         let read = File.Descriptor.Mode.read
         let write = File.Descriptor.Mode.write
-        let readWrite = File.Descriptor.Mode.readWrite
 
         #expect(read != write)
-        #expect(write != readWrite)
-        #expect(read != readWrite)
+        #expect(read != [.read, .write])
+        #expect(write != [.read, .write])
     }
 
     @Test("Mode rawValue for .read")
     func modeRawValueRead() {
-        #expect(File.Descriptor.Mode.read.rawValue == 0)
+        #expect(File.Descriptor.Mode.read.rawValue == 1)
     }
 
     @Test("Mode rawValue for .write")
     func modeRawValueWrite() {
-        #expect(File.Descriptor.Mode.write.rawValue == 1)
+        #expect(File.Descriptor.Mode.write.rawValue == 2)
     }
 
-    @Test("Mode rawValue for .readWrite")
+    @Test("Mode rawValue for [.read, .write]")
     func modeRawValueReadWrite() {
-        #expect(File.Descriptor.Mode.readWrite.rawValue == 2)
+        let mode: File.Descriptor.Mode = [.read, .write]
+        #expect(mode.rawValue == 3)
     }
 
-    @Test("Mode rawValue round-trip")
-    func modeRawValueRoundTrip() {
-        for mode in [File.Descriptor.Mode.read, .write, .readWrite] {
-            let restored = File.Descriptor.Mode(rawValue: mode.rawValue)
-            #expect(restored == mode)
-        }
+    @Test("Mode contains checks")
+    func modeContainsChecks() {
+        let readWrite: File.Descriptor.Mode = [.read, .write]
+        #expect(readWrite.contains(.read))
+        #expect(readWrite.contains(.write))
     }
 
-    @Test("Mode invalid rawValue returns nil")
-    func modeInvalidRawValue() {
-        #expect(File.Descriptor.Mode(rawValue: 3) == nil)
-        #expect(File.Descriptor.Mode(rawValue: 255) == nil)
+    @Test("Mode empty")
+    func modeEmpty() {
+        let empty: File.Descriptor.Mode = []
+        #expect(empty.isEmpty)
+        #expect(empty.rawValue == 0)
     }
 
     @Test("Mode Binary.Serializable")
     func modeBinarySerialize() {
         var buffer: [UInt8] = []
         File.Descriptor.Mode.serialize(.read, into: &buffer)
-        #expect(buffer == [0])
-
-        buffer = []
-        File.Descriptor.Mode.serialize(.write, into: &buffer)
         #expect(buffer == [1])
 
         buffer = []
-        File.Descriptor.Mode.serialize(.readWrite, into: &buffer)
+        File.Descriptor.Mode.serialize(.write, into: &buffer)
         #expect(buffer == [2])
+
+        buffer = []
+        File.Descriptor.Mode.serialize([.read, .write], into: &buffer)
+        #expect(buffer == [3])
     }
 
     @Test("Mode is Sendable")
     func modeSendable() async {
-        let mode: File.Descriptor.Mode = .readWrite
+        let mode: File.Descriptor.Mode = [.read, .write]
 
         let result = await Task {
             mode
         }.value
 
-        #expect(result == .readWrite)
+        #expect(result == [.read, .write])
     }
 
     // MARK: - Options OptionSet
@@ -352,7 +352,7 @@ extension File.Descriptor.Test.Unit {
     func errorTooManyOpenFiles() {
         let error = File.Descriptor.Error.tooManyOpenFiles
         if case .tooManyOpenFiles = error {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected tooManyOpenFiles")
         }
@@ -362,7 +362,7 @@ extension File.Descriptor.Test.Unit {
     func errorInvalidDescriptor() {
         let error = File.Descriptor.Error.invalidDescriptor
         if case .invalidDescriptor = error {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected invalidDescriptor")
         }
@@ -405,7 +405,7 @@ extension File.Descriptor.Test.Unit {
     func errorAlreadyClosed() {
         let error = File.Descriptor.Error.alreadyClosed
         if case .alreadyClosed = error {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected alreadyClosed")
         }

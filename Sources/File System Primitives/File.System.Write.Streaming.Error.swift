@@ -31,6 +31,16 @@ extension File.System.Write.Streaming {
         /// File exists with complete content, but durability is compromised.
         /// This is an I/O error, not cancellation.
         case directorySyncFailedAfterCommit(path: File.Path, errno: Int32, message: String)
+
+        /// The streaming write is not in a valid state for this operation.
+        ///
+        /// This occurs when trying to write to a closed or committed stream.
+        case invalidState
+
+        /// Random token generation failed.
+        ///
+        /// This is an extremely rare error indicating the kernel CSPRNG failed.
+        case randomGenerationFailed(errno: Int32, message: String)
     }
 }
 
@@ -59,6 +69,10 @@ extension File.System.Write.Streaming.Error: CustomStringConvertible {
             return "Write to '\(path)' completed but durability not guaranteed: \(reason)"
         case .directorySyncFailedAfterCommit(let path, let errno, let message):
             return "Directory sync failed after commit '\(path)': \(message) (errno=\(errno))"
+        case .invalidState:
+            return "Streaming write is not in a valid state for this operation"
+        case .randomGenerationFailed(let errno, let message):
+            return "Random token generation failed: \(message) (errno=\(errno))"
         }
     }
 }

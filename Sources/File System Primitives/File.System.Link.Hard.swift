@@ -12,7 +12,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System.Link {
@@ -64,7 +64,7 @@ extension File.System.Link.Hard {
             at path: File.Path,
             to existing: File.Path
         ) throws(File.System.Link.Hard.Error) {
-            guard link(existing.string, path.string) == 0 else {
+            guard link(String(existing), String(path)) == 0 else {
                 throw _mapErrno(errno, path: path, existing: existing)
             }
         }
@@ -102,8 +102,8 @@ extension File.System.Link.Hard {
             at path: File.Path,
             to existing: File.Path
         ) throws(File.System.Link.Hard.Error) {
-            let success = existing.string.withCString(encodedAs: UTF16.self) { wexisting in
-                path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let success = String(existing).withCString(encodedAs: UTF16.self) { wexisting in
+                String(path).withCString(encodedAs: UTF16.self) { wpath in
                     CreateHardLinkW(wpath, wexisting, nil)
                 }
             }

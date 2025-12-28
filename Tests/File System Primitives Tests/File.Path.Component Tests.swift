@@ -160,7 +160,7 @@ extension File.Path.Component.Test.Unit {
         let path = File.Path("/usr/local")
         let component: File.Path.Component = try .init("bin")
         let newPath = File.Path(path, appending: component)
-        #expect(newPath.string == "/usr/local/bin")
+        #expect(newPath == "/usr/local/bin")
     }
 
     @Test("Path lastComponent returns component")

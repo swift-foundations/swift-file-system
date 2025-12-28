@@ -21,19 +21,18 @@
         /// Verifies that a parent directory exists and is accessible.
         ///
         /// - Parameters:
-        ///   - dir: The path to verify.
+        ///   - path: The path to verify.
         ///   - createIntermediates: If `true`, attempts to create the directory if it doesn't exist.
         /// - Throws: `File.System.Parent.Check.Error` if verification fails.
         static func verify(
-            _ dir: String,
+            _ path: File.Path,
             createIntermediates: Bool
         ) throws(File.System.Parent.Check.Error) {
             var st = stat()
-            let rc = dir.withCString { stat($0, &st) }
+            let rc = path.withCString { stat($0, &st) }
 
             if rc != 0 {
                 let e = errno
-                let path = File.Path(__unchecked: (), dir)
 
                 switch e {
                 case EACCES:
@@ -57,7 +56,7 @@
             }
 
             if (st.st_mode & S_IFMT) != S_IFDIR {
-                throw .notDirectory(path: File.Path(__unchecked: (), dir))
+                throw .notDirectory(path: path)
             }
         }
 

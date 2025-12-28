@@ -29,7 +29,8 @@ extension File.Directory.Test.Unit {
     @Test("init from string")
     func initFromString() throws {
         let dir = try File.Directory("/tmp/test")
-        #expect(dir.description == "/tmp/test")
+        let expected: File.Path = "/tmp/test"
+        #expect(dir.description == String(expected))
     }
 
     // Removed: init from string literal test - File.Directory intentionally does not conform to ExpressibleByStringLiteral
@@ -41,10 +42,10 @@ extension File.Directory.Test.Unit {
         try File.Directory.temporary { dir in
             let testDir = dir.subdirectory("test")
 
-            #expect(testDir.exists == false)
+            #expect(testDir.stat.exists == false)
             try testDir.create()
-            #expect(testDir.exists == true)
-            #expect(testDir.isDirectory == true)
+            #expect(testDir.stat.exists == true)
+            #expect(testDir.stat.isDirectory == true)
         }
     }
 
@@ -53,9 +54,9 @@ extension File.Directory.Test.Unit {
         try File.Directory.temporary { dir in
             let nested = dir.subdirectory("nested").subdirectory("path")
 
-            #expect(nested.exists == false)
-            try nested.create(recursive: true)
-            #expect(nested.exists == true)
+            #expect(nested.stat.exists == false)
+            try nested.create.recursive()
+            #expect(nested.stat.exists == true)
         }
     }
 
@@ -65,7 +66,7 @@ extension File.Directory.Test.Unit {
             let testDir = dir.subdirectory("async-test")
 
             try await testDir.create()
-            #expect(testDir.isDirectory == true)
+            #expect(testDir.stat.isDirectory == true)
         }
     }
 
@@ -75,9 +76,9 @@ extension File.Directory.Test.Unit {
             let testDir = dir.subdirectory("test")
             try testDir.create()
 
-            #expect(testDir.exists == true)
+            #expect(testDir.stat.exists == true)
             try testDir.delete()
-            #expect(testDir.exists == false)
+            #expect(testDir.stat.exists == false)
         }
     }
 
@@ -87,11 +88,11 @@ extension File.Directory.Test.Unit {
             let testDir = dir.subdirectory("test")
             try testDir.create()
             let file = testDir["test.txt"]
-            try file.write("test")
+            try file.write.atomic("test")
 
-            #expect(testDir.exists == true)
-            try testDir.delete(recursive: true)
-            #expect(testDir.exists == false)
+            #expect(testDir.stat.exists == true)
+            try testDir.delete.recursive()
+            #expect(testDir.stat.exists == false)
         }
     }
 
@@ -101,9 +102,9 @@ extension File.Directory.Test.Unit {
             let testDir = dir.subdirectory("test")
             try await testDir.create()
 
-            #expect(testDir.exists == true)
+            #expect(testDir.stat.exists == true)
             try await testDir.delete()
-            #expect(testDir.exists == false)
+            #expect(testDir.stat.exists == false)
         }
     }
 
@@ -112,7 +113,7 @@ extension File.Directory.Test.Unit {
     @Test("exists returns true for existing directory")
     func existsReturnsTrueForDirectory() throws {
         try File.Directory.temporary { dir in
-            #expect(dir.exists == true)
+            #expect(dir.stat.exists == true)
         }
     }
 
@@ -120,41 +121,41 @@ extension File.Directory.Test.Unit {
     func existsReturnsFalseForNonExisting() throws {
         try File.Directory.temporary { dir in
             let nonExisting = dir.subdirectory("non-existing")
-            #expect(nonExisting.exists == false)
+            #expect(nonExisting.stat.exists == false)
         }
     }
 
     @Test("isDirectory returns true for directory")
     func isDirectoryReturnsTrueForDirectory() throws {
         try File.Directory.temporary { dir in
-            #expect(dir.isDirectory == true)
+            #expect(dir.stat.isDirectory == true)
         }
     }
 
     // MARK: - Contents
 
-    @Test("contents returns directory entries")
-    func contentsReturnsEntries() throws {
+    @Test("entries returns directory entries")
+    func entriesReturnsEntries() throws {
         try File.Directory.temporary { dir in
             // Create some files
-            try dir["file1.txt"].write("content1")
-            try dir["file2.txt"].write("content2")
+            try dir["file1.txt"].write.atomic("content1")
+            try dir["file2.txt"].write.atomic("content2")
 
-            let contents = try dir.contents()
-            let names = contents.compactMap { String($0.name) }.sorted()
+            let entries = try dir.entries()
+            let names = entries.compactMap { String($0.name) }.sorted()
 
             #expect(names == ["file1.txt", "file2.txt"])
         }
     }
 
-    @Test("contents async returns directory entries")
-    func contentsAsyncReturnsEntries() async throws {
+    @Test("entries async returns directory entries")
+    func entriesAsyncReturnsEntries() async throws {
         try await File.Directory.temporary { dir in
-            try await dir["test.txt"].write("test")
+            try await dir["test.txt"].write.atomic("test")
 
-            let contents = try await dir.contents()
-            #expect(contents.count == 1)
-            #expect(String(contents[0].name) == "test.txt")
+            let entries = try await dir.entries()
+            #expect(entries.count == 1)
+            #expect(String(entries[0].name) == "test.txt")
         }
     }
 
@@ -162,7 +163,7 @@ extension File.Directory.Test.Unit {
     func filesReturnsOnlyFiles() throws {
         try File.Directory.temporary { dir in
             // Create file and subdirectory
-            try dir["file.txt"].write("content")
+            try dir["file.txt"].write.atomic("content")
             try dir.subdirectory("subdir").create()
 
             let files = try dir.files()
@@ -171,14 +172,14 @@ extension File.Directory.Test.Unit {
         }
     }
 
-    @Test("subdirectories returns only directories")
-    func subdirectoriesReturnsOnlyDirs() throws {
+    @Test("directories returns only directories")
+    func directoriesReturnsOnlyDirs() throws {
         try File.Directory.temporary { dir in
             // Create file and subdirectory
-            try dir["file.txt"].write("content")
+            try dir["file.txt"].write.atomic("content")
             try dir.subdirectory("subdir").create()
 
-            let subdirs = try dir.subdirectories()
+            let subdirs = try dir.directories()
             #expect(subdirs.count == 1)
             #expect(subdirs[0].name == "subdir")
         }
@@ -191,16 +192,16 @@ extension File.Directory.Test.Unit {
         let dir = try File.Directory("/tmp/mydir")
         let file = dir["readme.txt"]
 
-        #expect(file.path.string == "/tmp/mydir/readme.txt")
+        #expect(file.path == "/tmp/mydir/readme.txt")
     }
 
     @Test("subscript chain works")
     func subscriptChainWorks() throws {
         try File.Directory.temporary { dir in
             let file = dir["test.txt"]
-            try file.write("Hello")
+            try file.write.atomic("Hello")
 
-            let readBack = try dir["test.txt"].read(as: String.self)
+            let readBack = try dir["test.txt"].read.full(as: String.self)
             #expect(readBack == "Hello")
         }
     }
@@ -209,8 +210,8 @@ extension File.Directory.Test.Unit {
     func subdirectoryReturnsDirectoryInstance() throws {
         let dir = try File.Directory("/tmp/mydir")
         let subdir = dir.subdirectory("nested")
-
-        #expect(subdir.description == "/tmp/mydir/nested")
+        let expected: File.Path = "/tmp/mydir/nested"
+        #expect(subdir.description == String(expected))
     }
 
     // MARK: - Path Navigation
@@ -221,7 +222,7 @@ extension File.Directory.Test.Unit {
         let parent = dir.parent
 
         #expect(parent != nil)
-        #expect(parent?.path.string == "/tmp/parent")
+        #expect(parent?.path == "/tmp/parent")
     }
 
     @Test("name returns directory name")
@@ -234,14 +235,14 @@ extension File.Directory.Test.Unit {
     func appendingReturnsNewInstance() throws {
         let dir = try File.Directory("/tmp")
         let result = dir.appending("subdir")
-        #expect(result.path.string == "/tmp/subdir")
+        #expect(result.path == "/tmp/subdir")
     }
 
     @Test("/ operator appends path")
     func slashOperatorAppendsPath() throws {
         let dir = try File.Directory("/tmp")
         let result = dir / "subdir" / "nested"
-        #expect(result.path.string == "/tmp/subdir/nested")
+        #expect(result.path == "/tmp/subdir/nested")
     }
 
     // MARK: - Hashable & Equatable
@@ -273,12 +274,14 @@ extension File.Directory.Test.Unit {
     @Test("description returns path string")
     func descriptionReturnsPathString() throws {
         let dir = try File.Directory("/tmp/test")
-        #expect(dir.description == "/tmp/test")
+        let expected: File.Path = "/tmp/test"
+        #expect(dir.description == String(expected))
     }
 
     @Test("debugDescription returns formatted string")
     func debugDescriptionReturnsFormatted() throws {
         let dir = try File.Directory("/tmp/test")
-        #expect(dir.debugDescription == #"File.Directory("/tmp/test")"#)
+        let p: File.Path = "/tmp/test"
+        #expect(dir.debugDescription == "File.Directory(\(String(p).debugDescription))")
     }
 }

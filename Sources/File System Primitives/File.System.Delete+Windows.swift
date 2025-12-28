@@ -16,7 +16,7 @@
             options: Options
         ) throws(File.System.Delete.Error) {
             // Get file attributes to determine type
-            let attrs = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let attrs = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -31,7 +31,7 @@
                     try _deleteDirectoryRecursive(at: path)
                 } else {
                     // Try to remove empty directory
-                    let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
+                    let success = String(path).withCString(encodedAs: UTF16.self) { wpath in
                         RemoveDirectoryW(wpath)
                     }
                     guard _ok(success) else {
@@ -40,7 +40,7 @@
                 }
             } else {
                 // Remove file
-                let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
+                let success = String(path).withCString(encodedAs: UTF16.self) { wpath in
                     DeleteFileW(wpath)
                 }
                 guard _ok(success) else {
@@ -54,7 +54,7 @@
             at path: File.Path
         ) throws(File.System.Delete.Error) {
             var findData = WIN32_FIND_DATAW()
-            let searchPath = path.string + "\\*"
+            let searchPath = String(path) + "\\*"
 
             let handle = searchPath.withCString(encodedAs: UTF16.self) { wpath in
                 FindFirstFileW(wpath, &findData)
@@ -90,7 +90,7 @@
                     try _deleteDirectoryRecursive(at: childPath)
                 } else {
                     // Delete file
-                    let success = childPath.string.withCString(encodedAs: UTF16.self) { wpath in
+                    let success = String(childPath).withCString(encodedAs: UTF16.self) { wpath in
                         DeleteFileW(wpath)
                     }
                     guard _ok(success) else {
@@ -106,7 +106,7 @@
             }
 
             // Now delete the empty directory
-            let success = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let success = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 RemoveDirectoryW(wpath)
             }
             guard _ok(success) else {

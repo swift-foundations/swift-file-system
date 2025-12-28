@@ -37,33 +37,35 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
     // MARK: - Get Ownership
 
-    @Test("Get ownership of file")
-    func getOwnershipOfFile() throws {
-        try File.Directory.temporary { dir in
-            let filePath = File.Path(dir.path, appending: "test.txt")
-            let empty: [UInt8] = []
-            try File.System.Write.Atomic.write(empty.span, to: filePath)
+    #if os(macOS) || os(Linux)
+        @Test("Get ownership of file")
+        func getOwnershipOfFile() throws {
+            try File.Directory.temporary { dir in
+                let filePath = File.Path(dir.path, appending: "test.txt")
+                let empty: [UInt8] = []
+                try File.System.Write.Atomic.write(empty.span, to: filePath)
 
+                let ownership = try File.System.Metadata.Ownership(at: filePath)
+
+                // Current user should own the file
+                #expect(ownership.uid == getuid())
+                // GID inherits from parent directory, not necessarily user's primary group
+                // Verify we get the same value as stat
+                var statBuf = stat()
+                _ = stat(String(filePath), &statBuf)
+                #expect(ownership.gid == statBuf.st_gid)
+            }
+        }
+
+        @Test("Get ownership of system file")
+        func getOwnershipOfSystemFile() throws {
+            // /etc/passwd should be owned by root (uid 0)
+            let filePath = File.Path("/etc/passwd")
             let ownership = try File.System.Metadata.Ownership(at: filePath)
 
-            // Current user should own the file
-            #expect(ownership.uid == getuid())
-            // GID inherits from parent directory, not necessarily user's primary group
-            // Verify we get the same value as stat
-            var statBuf = stat()
-            _ = stat(filePath.string, &statBuf)
-            #expect(ownership.gid == statBuf.st_gid)
+            #expect(ownership.uid == 0)
         }
-    }
-
-    @Test("Get ownership of system file")
-    func getOwnershipOfSystemFile() throws {
-        // /etc/passwd should be owned by root (uid 0)
-        let filePath = File.Path("/etc/passwd")
-        let ownership = try File.System.Metadata.Ownership(at: filePath)
-
-        #expect(ownership.uid == 0)
-    }
+    #endif
 
     // MARK: - Set Ownership (limited tests due to permission requirements)
 
@@ -87,29 +89,33 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
     // MARK: - Error Cases
 
-    @Test("Get ownership of non-existent file throws pathNotFound")
-    func getOwnershipOfNonExistentFileThrows() throws {
-        try File.Directory.temporary { dir in
-            let path = File.Path(dir.path, appending: "non-existent.txt")
+    #if !os(Windows)
+        // Windows doesn't support POSIX uid/gid ownership model
 
-            #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
-                _ = try File.System.Metadata.Ownership(at: path)
+        @Test("Get ownership of non-existent file throws pathNotFound")
+        func getOwnershipOfNonExistentFileThrows() throws {
+            try File.Directory.temporary { dir in
+                let path = File.Path(dir.path, appending: "non-existent.txt")
+
+                #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
+                    _ = try File.System.Metadata.Ownership(at: path)
+                }
             }
         }
-    }
 
-    @Test("Set ownership of non-existent file throws pathNotFound")
-    func setOwnershipOfNonExistentFileThrows() throws {
-        try File.Directory.temporary { dir in
-            let path = File.Path(dir.path, appending: "non-existent.txt")
+        @Test("Set ownership of non-existent file throws pathNotFound")
+        func setOwnershipOfNonExistentFileThrows() throws {
+            try File.Directory.temporary { dir in
+                let path = File.Path(dir.path, appending: "non-existent.txt")
 
-            let ownership = File.System.Metadata.Ownership(uid: 0, gid: 0)
+                let ownership = File.System.Metadata.Ownership(uid: 0, gid: 0)
 
-            #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
-                try File.System.Metadata.Ownership.set(ownership, at: path)
+                #expect(throws: File.System.Metadata.Ownership.Error.pathNotFound(path)) {
+                    try File.System.Metadata.Ownership.set(ownership, at: path)
+                }
             }
         }
-    }
+    #endif
 
     // MARK: - Error Descriptions
 

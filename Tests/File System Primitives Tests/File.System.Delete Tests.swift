@@ -137,7 +137,7 @@ extension File.System.Delete.Test.Unit {
         let path: File.Path = "/tmp/missing.txt"
         let error = File.System.Delete.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
-        #expect(error.description.contains("/tmp/missing.txt"))
+        #expect(error.description.contains(String(path)))
     }
 
     @Test("permissionDenied error description")

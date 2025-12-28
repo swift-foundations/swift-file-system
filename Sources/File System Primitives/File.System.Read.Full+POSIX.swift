@@ -21,7 +21,7 @@
             from path: File.Path
         ) throws(File.System.Read.Full.Error) -> [UInt8] {
             // Open file for reading
-            let fd = open(path.string, O_RDONLY)
+            let fd = open(String(path), O_RDONLY)
             guard fd >= 0 else {
                 throw _mapErrno(errno, path: path)
             }

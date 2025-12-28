@@ -15,11 +15,11 @@ extension File.System.Read {
     /// }
     /// ```
     public struct Async: Sendable {
-        let io: File.IO.Executor
+        let fs: File.System.Async
 
-        /// Creates an async read API with the given executor.
-        public init(io: File.IO.Executor = .default) {
-            self.io = io
+        /// Creates an async read API with the given file system.
+        public init(fs: File.System.Async = .async) {
+            self.fs = fs
         }
     }
 }

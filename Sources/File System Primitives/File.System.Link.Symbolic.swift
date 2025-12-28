@@ -12,7 +12,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System.Link {
@@ -62,7 +62,7 @@ extension File.System.Link.Symbolic {
             at path: File.Path,
             pointingTo target: File.Path
         ) throws(File.System.Link.Symbolic.Error) {
-            guard symlink(target.string, path.string) == 0 else {
+            guard symlink(String(target), String(path)) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
         }
@@ -97,7 +97,7 @@ extension File.System.Link.Symbolic {
             pointingTo target: File.Path
         ) throws(File.System.Link.Symbolic.Error) {
             // Check if target is a directory
-            let targetAttrs = target.string.withCString(encodedAs: UTF16.self) { wpath in
+            let targetAttrs = String(target).withCString(encodedAs: UTF16.self) { wpath in
                 GetFileAttributesW(wpath)
             }
 
@@ -108,8 +108,8 @@ extension File.System.Link.Symbolic {
                 flags |= _dword(SYMBOLIC_LINK_FLAG_DIRECTORY)
             }
 
-            let success = path.string.withCString(encodedAs: UTF16.self) { wlink in
-                target.string.withCString(encodedAs: UTF16.self) { wtarget in
+            let success = String(path).withCString(encodedAs: UTF16.self) { wlink in
+                String(target).withCString(encodedAs: UTF16.self) { wtarget in
                     CreateSymbolicLinkW(wlink, wtarget, flags)
                 }
             }

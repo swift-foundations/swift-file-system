@@ -27,12 +27,12 @@ extension File.Directory.Async {
     /// - Use `iterator.terminate()` for explicit cleanup if needed
     /// - Resources are always cleaned up regardless of exit path
     public func entries(at directory: File.Directory) -> File.Directory.Contents.Async {
-        File.Directory.Contents.Async(directory: directory, io: io, batchSize: 128)
+        File.Directory.Contents.Async(directory: directory, fs: fs, batchSize: 128)
     }
 
     /// Internal: Returns an async sequence with configurable batch size for benchmarking.
     internal func entries(at directory: File.Directory, batchSize: Int) -> File.Directory.Contents.Async {
-        File.Directory.Contents.Async(directory: directory, io: io, batchSize: batchSize)
+        File.Directory.Contents.Async(directory: directory, fs: fs, batchSize: batchSize)
     }
 }
 
@@ -64,11 +64,11 @@ extension File.Directory.Contents {
         public typealias Element = File.Directory.Entry
 
         let directory: File.Directory
-        let io: File.IO.Executor
+        let fs: File.System.Async
         let batchSize: Int
 
         public func makeAsyncIterator() -> Iterator {
-            Iterator(directory: directory, io: io, batchSize: batchSize)
+            Iterator(directory: directory, fs: fs, batchSize: batchSize)
         }
     }
 }

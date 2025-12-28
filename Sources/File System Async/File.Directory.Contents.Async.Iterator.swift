@@ -29,7 +29,7 @@ extension File.Directory.Contents.Async {
     ///   touches IteratorBox directly.
     public final class Iterator: AsyncIteratorProtocol {
         public typealias Element = File.Directory.Entry
-        private typealias Box = File.IO.Iterator.Box<File.Directory.Iterator>
+        private typealias Box = File.Iterator.Box<File.Directory.Iterator>
 
         private enum State {
             case unopened
@@ -38,15 +38,15 @@ extension File.Directory.Contents.Async {
         }
 
         private let directory: File.Directory
-        private let io: File.IO.Executor
+        private let fs: File.System.Async
         private var state: State = .unopened
         private var buffer: [Element] = []
         private var cursor: Int = 0
         internal let batchSize: Int
 
-        init(directory: File.Directory, io: File.IO.Executor, batchSize: Int = 64) {
+        init(directory: File.Directory, fs: File.System.Async, batchSize: Int = 64) {
             self.directory = directory
-            self.io = io
+            self.fs = fs
             self.batchSize = batchSize
         }
 
@@ -62,12 +62,12 @@ extension File.Directory.Contents.Async {
             #endif
         }
 
-        public func next() async throws(File.IO.Error<File.Directory.Iterator.Error>) -> Element? {
+        public func next() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>>) -> Element? {
             // Loop instead of recursion to avoid stack growth
             while true {
                 // Check cancellation before any work
                 if Task.isCancelled {
-                    throw .cancelled
+                    throw .failure(.cancelled)
                 }
 
                 // Return buffered entry if available
@@ -95,20 +95,20 @@ extension File.Directory.Contents.Async {
             }
         }
 
-        private func open() async throws(File.IO.Error<File.Directory.Iterator.Error>) {
+        private func open() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>>) {
             // INVARIANT: IteratorBox only touched inside io.run
             // Explicit typed throws in closure signature for proper inference
             let openOperation: @Sendable () throws(File.Directory.Iterator.Error) -> Box = {
                 [directory] () throws(File.Directory.Iterator.Error) -> Box in
                 try Box(File.Directory.Iterator.open(at: directory))
             }
-            let box = try await io.run(openOperation)
+            let box = try await fs.run(openOperation)
             state = .open(box)
             buffer = []
             cursor = 0
         }
 
-        private func refill(_ box: Box) async throws(File.IO.Error<File.Directory.Iterator.Error>) {
+        private func refill(_ box: Box) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Iterator.Error>>) {
             let batchSize = self.batchSize
 
             // INVARIANT: IteratorBox only touched inside io.run
@@ -132,7 +132,7 @@ extension File.Directory.Contents.Async {
             }
 
             do {
-                let entries = try await io.run(readOperation)
+                let entries = try await fs.run(readOperation)
 
                 buffer = entries
                 cursor = 0
@@ -154,7 +154,7 @@ extension File.Directory.Contents.Async {
 
         private func closeBox(_ box: Box) async {
             // INVARIANT: IteratorBox only touched inside io.run
-            _ = try? await io.run {
+            _ = try? await fs.run {
                 box.close { $0.close() }
             }
         }

@@ -52,82 +52,13 @@ extension File.Handle {
     }
 }
 
-// MARK: - withOpen
-
-extension File.Handle {
-    /// Opens a file, runs a closure, and ensures the handle is closed.
-    ///
-    /// This convenience method handles resource cleanup automatically,
-    /// ensuring the file handle is closed when the closure completes,
-    /// whether normally or by throwing an error.
-    ///
-    /// ## Example
-    /// ```swift
-    /// let content = try File.Handle.withOpen(path, mode: .read) { handle in
-    ///     try handle.read(count: 1024)
-    /// }
-    /// ```
-    ///
-    /// - Parameters:
-    ///   - path: The path to the file.
-    ///   - mode: The access mode.
-    ///   - options: Additional options.
-    ///   - body: A closure that receives an inout handle and returns a result.
-    /// - Returns: The result from the closure.
-    /// - Throws: `File.Handle.Error` on failure.
-    public static func withOpen<Result>(
-        _ path: File.Path,
-        mode: Mode,
-        options: Options = [],
-        body: (inout File.Handle) throws(File.Handle.Error) -> Result
-    ) throws(File.Handle.Error) -> Result {
-        var handle = try open(path, mode: mode, options: options)
-        do {
-            let result = try body(&handle)
-            try? handle.close()
-            return result
-        } catch {
-            try? handle.close()
-            throw error
-        }
-    }
-
-    /// Opens a file, runs an async closure, and ensures the handle is closed.
-    ///
-    /// This is the async variant of `withOpen` for use in async contexts.
-    ///
-    /// - Parameters:
-    ///   - path: The path to the file.
-    ///   - mode: The access mode.
-    ///   - options: Additional options.
-    ///   - body: An async closure that receives an inout handle and returns a result.
-    /// - Returns: The result from the closure.
-    /// - Throws: `File.Handle.Error` on failure.
-    public static func withOpen<Result>(
-        _ path: File.Path,
-        mode: Mode,
-        options: Options = [],
-        body: (inout File.Handle) async throws(File.Handle.Error) -> Result
-    ) async throws(File.Handle.Error) -> Result {
-        var handle = try open(path, mode: mode, options: options)
-        do {
-            let result = try await body(&handle)
-            try? handle.close()
-            return result
-        } catch {
-            try? handle.close()
-            throw error
-        }
-    }
-}
-
 // MARK: - Async Handle Convenience Methods
 
 extension File.Handle.Async {
     /// Get the current position.
     ///
     /// - Returns: The current file position.
-    public func position() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
+    public func position() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Int64 {
         try await seek(to: 0, from: .current)
     }
 
@@ -135,7 +66,7 @@ extension File.Handle.Async {
     ///
     /// - Returns: The new position (always 0).
     @discardableResult
-    public func rewind() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
+    public func rewind() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Int64 {
         try await seek(to: 0, from: .start)
     }
 
@@ -143,7 +74,7 @@ extension File.Handle.Async {
     ///
     /// - Returns: The new position (file size).
     @discardableResult
-    public func seekToEnd() async throws(File.IO.Error<File.Handle.Error>) -> Int64 {
+    public func seekToEnd() async throws(IO.Lifecycle.Error<IO.Error<File.Handle.Error>>) -> Int64 {
         try await seek(to: 0, from: .end)
     }
 }

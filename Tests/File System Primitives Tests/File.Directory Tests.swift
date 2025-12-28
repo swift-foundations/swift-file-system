@@ -25,14 +25,14 @@ extension File.Directory.Test.Unit {
     @Test("init from string")
     func initFromString() throws {
         let dir = try File.Directory("/tmp/mydir")
-        #expect(dir.path.string == "/tmp/mydir")
+        #expect(dir.path == "/tmp/mydir")
     }
 
     @Test("path property returns correct value")
     func pathProperty() throws {
-        let path = File.Path("/usr/local/lib")
+        let path: File.Path = "/usr/local/lib"
         let dir = File.Directory(path)
-        #expect(dir.path.string == "/usr/local/lib")
+        #expect(dir.path == "/usr/local/lib")
     }
 
     @Test("Hashable conformance - equal paths have equal hashes")
@@ -102,9 +102,9 @@ extension File.Directory.Test.Unit {
 extension File.Directory.Test.EdgeCase {
     @Test("Directory with root path")
     func directoryWithRootPath() throws {
-        let path = File.Path("/")
+        let path: File.Path = "/"
         let dir = File.Directory(path)
-        #expect(dir.path.string == "/")
+        #expect(dir.path == "/")
     }
 
     @Test("init from invalid string throws")

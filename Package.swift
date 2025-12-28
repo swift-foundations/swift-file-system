@@ -20,9 +20,8 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-standards", from: "0.19.4"),
         .package(url: "https://github.com/swift-standards/swift-incits-4-1986", from: "0.7.1"),
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
-        .package(url: "https://github.com/apple/swift-nio", from: "2.70.0"),
         .package(url: "https://github.com/swift-standards/swift-time-standard", from: "0.1.0"),
-        .package(url: "https://github.com/coenttb/swift-io", from: "0.1.0"),
+        .package(url: "https://github.com/coenttb/swift-io.git", from: "0.2.0"),
     ],
     targets: [
         .target(
@@ -94,17 +93,6 @@ let package = Package(
                 .product(name: "Formatting", package: "swift-standards"),
                 .product(name: "StandardLibraryExtensions", package: "swift-standards"),
             ]
-        ),
-        .testTarget(
-            name: "File System Benchmarks",
-            dependencies: [
-                "File System",
-                "File System Async",
-                .product(name: "_NIOFileSystem", package: "swift-nio"),
-                .product(name: "NIOCore", package: "swift-nio"),
-                .product(name: "StandardsTestSupport", package: "swift-standards"),
-            ],
-            path: "Tests/File System Benchmarks"
         ),
     ],
     swiftLanguageModes: [.v6]

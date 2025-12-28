@@ -116,7 +116,7 @@ extension File.Path {
 extension File.Path: CustomStringConvertible {
     @inlinable
     public var description: String {
-        string
+        String(self)
     }
 }
 
@@ -124,7 +124,7 @@ extension File.Path: CustomStringConvertible {
 
 extension File.Path: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "File.Path(\(string.debugDescription))"
+        "File.Path(\(String(self).debugDescription))"
     }
 }
 
@@ -133,13 +133,13 @@ extension File.Path: CustomDebugStringConvertible {
 extension File.Path.Component: CustomStringConvertible {
     @inlinable
     public var description: String {
-        string
+        String(self)
     }
 }
 
 extension File.Path.Component: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "File.Path.Component(\(string.debugDescription))"
+        "File.Path.Component(\(String(self).debugDescription))"
     }
 }
 

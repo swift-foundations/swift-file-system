@@ -14,7 +14,7 @@ import Binary
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System.Metadata {
@@ -57,7 +57,7 @@ extension File.System.Metadata.Ownership {
             self.init(uid: 0, gid: 0)
         #else
             var statBuf = stat()
-            guard stat(path.string, &statBuf) == 0 else {
+            guard stat(String(path), &statBuf) == 0 else {
                 throw Self._mapErrno(errno, path: path)
             }
             self.init(uid: statBuf.st_uid, gid: statBuf.st_gid)
@@ -84,7 +84,7 @@ extension File.System.Metadata.Ownership {
             // Windows doesn't support chown - this is a no-op
             return
         #else
-            guard chown(path.string, ownership.uid, ownership.gid) == 0 else {
+            guard chown(String(path), ownership.uid, ownership.gid) == 0 else {
                 throw _mapErrno(errno, path: path)
             }
         #endif

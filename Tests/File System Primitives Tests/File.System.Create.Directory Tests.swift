@@ -141,11 +141,11 @@ extension File.System.Create.Directory.Test.Unit {
     // MARK: - Error descriptions
 
     @Test("alreadyExists error description")
-    func alreadyExistsErrorDescription() throws {
-        let path: File.Path = try .init("/tmp/existing")
+    func alreadyExistsErrorDescription() {
+        let path: File.Path = "/tmp/existing"
         let error = File.System.Create.Directory.Error.alreadyExists(path)
         #expect(error.description.contains("Directory already exists"))
-        #expect(error.description.contains("/tmp/existing"))
+        #expect(error.description.contains(String(path)))
     }
 
     @Test("permissionDenied error description")

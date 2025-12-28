@@ -14,7 +14,7 @@ import Binary
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File {
@@ -26,7 +26,7 @@ extension File {
     ///
     /// ## Example
     /// ```swift
-    /// var handle = try File.Handle.open(path, mode: .readWrite)
+    /// var handle = try File.Handle.open(path, mode: [.read, .write])
     /// try handle.write(bytes)
     /// try handle.seek(to: 0)
     /// let data = try handle.read(count: 100)
@@ -69,18 +69,17 @@ extension File.Handle {
         mode: Mode,
         options: Options = [.closeOnExec]
     ) throws(File.Handle.Error) -> File.Handle {
-        let descriptorMode: File.Descriptor.Mode
+        var descriptorMode: File.Descriptor.Mode = []
         var descriptorOptions: File.Descriptor.Options = []
 
-        switch mode {
-        case .read:
-            descriptorMode = .read
-        case .write:
-            descriptorMode = .write
-        case .readWrite:
-            descriptorMode = .readWrite
-        case .append:
-            descriptorMode = .write
+        // Map Handle.Mode to Descriptor.Mode
+        if mode.contains(.read) {
+            descriptorMode.insert(.read)
+        }
+        if mode.contains(.write) || mode.contains(.append) {
+            descriptorMode.insert(.write)
+        }
+        if mode.contains(.append) {
             descriptorOptions.insert(.append)
         }
 
@@ -230,11 +229,14 @@ extension File.Handle {
         guard !buffer.isEmpty else { return 0 }
 
         #if os(Windows)
+            guard let handle = _descriptor.rawHandle else {
+                throw .invalidHandle
+            }
             var bytesRead: DWORD = 0
             guard
                 _ok(
                     ReadFile(
-                        _descriptor.rawHandle!,
+                        handle,
                         buffer.baseAddress,
                         DWORD(truncatingIfNeeded: buffer.count),
                         &bytesRead,
@@ -282,6 +284,9 @@ extension File.Handle {
             guard let base = buffer.baseAddress else { return }
 
             #if os(Windows)
+                guard let handle = _descriptor.rawHandle else {
+                    throw .invalidHandle
+                }
                 // Loop for partial writes - WriteFile may return fewer bytes than requested
                 var totalWritten: Int = 0
                 while totalWritten < count {
@@ -290,7 +295,7 @@ extension File.Handle {
                     let ptr = base.advanced(by: totalWritten)
                     let success = _ok(
                         WriteFile(
-                            _descriptor.rawHandle!,
+                            handle,
                             ptr,
                             DWORD(truncatingIfNeeded: remaining),
                             &written,
@@ -374,6 +379,9 @@ extension File.Handle {
         }
 
         #if os(Windows)
+            guard let handle = _descriptor.rawHandle else {
+                throw .invalidHandle
+            }
             var newPosition: LARGE_INTEGER = LARGE_INTEGER()
             var distance: LARGE_INTEGER = LARGE_INTEGER()
             distance.QuadPart = offset
@@ -385,7 +393,7 @@ extension File.Handle {
             case .end: whence = _dword(FILE_END)
             }
 
-            guard _ok(SetFilePointerEx(_descriptor.rawHandle!, distance, &newPosition, whence))
+            guard _ok(SetFilePointerEx(handle, distance, &newPosition, whence))
             else {
                 throw .seekFailed(offset: offset, origin: origin, errno: Int32(GetLastError()), message: "SetFilePointerEx failed")
             }
@@ -415,7 +423,10 @@ extension File.Handle {
         }
 
         #if os(Windows)
-            guard FlushFileBuffers(_descriptor.rawHandle!) else {
+            guard let handle = _descriptor.rawHandle else {
+                throw .invalidHandle
+            }
+            guard FlushFileBuffers(handle) else {
                 throw .writeFailed(errno: Int32(GetLastError()), message: "FlushFileBuffers failed")
             }
         #else

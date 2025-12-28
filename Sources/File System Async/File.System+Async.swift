@@ -32,12 +32,12 @@ extension File.System.Write.Streaming {
         _ chunks: Chunks,
         to path: File.Path,
         options: Options = .init(),
-        io: File.IO.Executor = .default
+        fs: File.System.Async = .async
     ) async throws where Chunks.Element == [UInt8] {
         #if os(Windows)
-            try await writeAsyncStreamWindows(chunks, to: path, options: options, io: io)
+            try await writeAsyncStreamWindows(chunks, to: path, options: options, fs: fs)
         #else
-            try await writeAsyncStreamPOSIX(chunks, to: path, options: options, io: io)
+            try await writeAsyncStreamPOSIX(chunks, to: path, options: options, fs: fs)
         #endif
     }
 
@@ -47,11 +47,11 @@ extension File.System.Write.Streaming {
             _ chunks: Chunks,
             to path: File.Path,
             options: Options,
-            io: File.IO.Executor
+            fs: File.System.Async
         ) async throws where Chunks.Element == [UInt8] {
             // Phase 1: Open
-            let context = try await io.run {
-                try POSIXStreaming.openForStreaming(path: path.string, options: options)
+            let context = try await fs.run {
+                try POSIX.open(path: String(path), options: options)
             }
 
             do {
@@ -70,18 +70,18 @@ extension File.System.Write.Streaming {
                             let bufferToWrite = consume coalescingBuffer
                             coalescingBuffer = []
                             coalescingBuffer.reserveCapacity(targetSize)
-                            try await io.run {
+                            try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try POSIXStreaming.writeChunk(span, to: context)
+                                    try POSIX.write(chunk: span, to: context)
                                 }
                             }
                         }
                         let chunkToWrite = chunk
-                        try await io.run {
+                        try await fs.run {
                             try chunkToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
-                                try POSIXStreaming.writeChunk(span, to: context)
+                                try POSIX.write(chunk: span, to: context)
                             }
                         }
                     } else {
@@ -90,10 +90,10 @@ extension File.System.Write.Streaming {
                             let bufferToWrite = consume coalescingBuffer
                             coalescingBuffer = []
                             coalescingBuffer.reserveCapacity(targetSize)
-                            try await io.run {
+                            try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try POSIXStreaming.writeChunk(span, to: context)
+                                    try POSIX.write(chunk: span, to: context)
                                 }
                             }
                         }
@@ -103,20 +103,20 @@ extension File.System.Write.Streaming {
                 // Flush remaining
                 if !coalescingBuffer.isEmpty {
                     let bufferToWrite = consume coalescingBuffer
-                    try await io.run {
+                    try await fs.run {
                         try bufferToWrite.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
-                            try POSIXStreaming.writeChunk(span, to: context)
+                            try POSIX.write(chunk: span, to: context)
                         }
                     }
                 }
 
                 // Phase 3: Commit
-                try await io.run { try POSIXStreaming.commit(context) }
+                try await fs.run { try POSIX.commit(context) }
 
             } catch {
                 // Cleanup on any error
-                try? await io.run { POSIXStreaming.cleanup(context) }
+                try? await fs.run { POSIX.cleanup(context) }
                 throw error
             }
         }
@@ -128,11 +128,11 @@ extension File.System.Write.Streaming {
             _ chunks: Chunks,
             to path: File.Path,
             options: Options,
-            io: File.IO.Executor
+            fs: File.System.Async
         ) async throws where Chunks.Element == [UInt8] {
             // Phase 1: Open
-            let context = try await io.run {
-                try WindowsStreaming.openForStreaming(path: path.string, options: options)
+            let context = try await fs.run {
+                try Windows.open(path: String(path), options: options)
             }
 
             do {
@@ -151,18 +151,18 @@ extension File.System.Write.Streaming {
                             let bufferToWrite = consume coalescingBuffer
                             coalescingBuffer = []
                             coalescingBuffer.reserveCapacity(targetSize)
-                            try await io.run {
+                            try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try WindowsStreaming.writeChunk(span, to: context)
+                                    try Windows.write(chunk: span, to: context)
                                 }
                             }
                         }
                         let chunkToWrite = chunk
-                        try await io.run {
+                        try await fs.run {
                             try chunkToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
-                                try WindowsStreaming.writeChunk(span, to: context)
+                                try Windows.write(chunk: span, to: context)
                             }
                         }
                     } else {
@@ -171,10 +171,10 @@ extension File.System.Write.Streaming {
                             let bufferToWrite = consume coalescingBuffer
                             coalescingBuffer = []
                             coalescingBuffer.reserveCapacity(targetSize)
-                            try await io.run {
+                            try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try WindowsStreaming.writeChunk(span, to: context)
+                                    try Windows.write(chunk: span, to: context)
                                 }
                             }
                         }
@@ -184,20 +184,20 @@ extension File.System.Write.Streaming {
                 // Flush remaining
                 if !coalescingBuffer.isEmpty {
                     let bufferToWrite = consume coalescingBuffer
-                    try await io.run {
+                    try await fs.run {
                         try bufferToWrite.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
-                            try WindowsStreaming.writeChunk(span, to: context)
+                            try Windows.write(chunk: span, to: context)
                         }
                     }
                 }
 
                 // Phase 3: Commit
-                try await io.run { try WindowsStreaming.commit(context) }
+                try await fs.run { try Windows.commit(context) }
 
             } catch {
                 // Cleanup on any error
-                try? await io.run { WindowsStreaming.cleanup(context) }
+                try? await fs.run { Windows.cleanup(context) }
                 throw error
             }
         }

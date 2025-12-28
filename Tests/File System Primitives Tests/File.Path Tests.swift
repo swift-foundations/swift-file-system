@@ -21,26 +21,31 @@ extension File.Path.Test.Unit {
     @Test("Valid absolute path initialization")
     func validAbsolutePath() throws {
         let path = File.Path("/usr/local/bin")
-        #expect(path.string == "/usr/local/bin")
+        #expect(path == "/usr/local/bin")
     }
 
     @Test("Valid relative path initialization")
     func validRelativePath() {
         let path: File.Path = "foo/bar/baz"
-        #expect(path.string == "foo/bar/baz")
+        #expect(path == "foo/bar/baz")
     }
 
     @Test("Single component path")
     func singleComponentPath() {
         let path: File.Path = "file.txt"
-        #expect(path.string == "file.txt")
+        #expect(path == "file.txt")
     }
 
     @Test("Root path")
     func rootPath() throws {
         let path = File.Path("/")
-        #expect(path.string == "/")
-        #expect(path.isAbsolute)
+        #expect(path == "/")
+        #if os(Windows)
+            // On Windows, "/" is relative to current drive, not absolute
+            #expect(path.isAbsolute == false)
+        #else
+            #expect(path.isAbsolute)
+        #endif
     }
 
     @Test("Empty path throws error")
@@ -71,7 +76,7 @@ extension File.Path.Test.Unit {
     func filePathInitValid() throws {
         let filePath = FilePath("/usr/bin")
         let path = try File.Path(filePath)
-        #expect(path.string == "/usr/bin")
+        #expect(path == "/usr/bin")
     }
 
     @Test("FilePath initializer - empty throws")
@@ -88,7 +93,7 @@ extension File.Path.Test.Unit {
     func parentOfNestedPath() throws {
         let path = File.Path("/usr/local/bin")
         let parent = path.parent
-        #expect(parent?.string == "/usr/local")
+        #expect(parent == "/usr/local")
     }
 
     @Test("Parent of root path is nil")
@@ -100,9 +105,9 @@ extension File.Path.Test.Unit {
     @Test("Parent chain")
     func parentChain() throws {
         let path = File.Path("/a/b/c")
-        #expect(path.parent?.string == "/a/b")
-        #expect(path.parent?.parent?.string == "/a")
-        #expect(path.parent?.parent?.parent?.string == "/")
+        #expect(path.parent == "/a/b")
+        #expect(path.parent?.parent == "/a")
+        #expect(path.parent?.parent?.parent == "/")
         #expect(path.parent?.parent?.parent?.parent == nil)
     }
 
@@ -110,7 +115,7 @@ extension File.Path.Test.Unit {
     func appendingString() throws {
         let path = File.Path("/usr/local")
         let newPath = File.Path(path, appending: "bin")
-        #expect(newPath.string == "/usr/local/bin")
+        #expect(newPath == "/usr/local/bin")
     }
 
     @Test("Appending Component")
@@ -118,7 +123,7 @@ extension File.Path.Test.Unit {
         let path: File.Path = "/usr/local"
         let component: File.Path.Component = "bin"
         let newPath = File.Path(path, appending: component)
-        #expect(newPath.string == "/usr/local/bin")
+        #expect(newPath == "/usr/local/bin")
     }
 
     @Test("Appending another path")
@@ -126,7 +131,7 @@ extension File.Path.Test.Unit {
         let base: File.Path = "/usr"
         let suffix: File.Path = "local/bin"
         let newPath = File.Path(base, appending: suffix)
-        #expect(newPath.string == "/usr/local/bin")
+        #expect(newPath == "/usr/local/bin")
     }
 
     // MARK: - Introspection
@@ -176,8 +181,14 @@ extension File.Path.Test.Unit {
     @Test("isAbsolute for absolute path")
     func isAbsoluteForAbsolutePath() throws {
         let path = File.Path("/usr/bin")
-        #expect(path.isAbsolute == true)
-        #expect(path.isRelative == false)
+        #if os(Windows)
+            // On Windows, paths starting with "/" are relative to current drive
+            #expect(path.isAbsolute == false)
+            #expect(path.isRelative == true)
+        #else
+            #expect(path.isAbsolute == true)
+            #expect(path.isRelative == false)
+        #endif
     }
 
     @Test("isAbsolute for relative path")
@@ -192,7 +203,7 @@ extension File.Path.Test.Unit {
     @Test("String conversion")
     func stringConversion() throws {
         let path = File.Path("/usr/local/bin")
-        #expect(path.string == "/usr/local/bin")
+        #expect(path == "/usr/local/bin")
     }
 
     @Test("FilePath conversion")
@@ -207,7 +218,7 @@ extension File.Path.Test.Unit {
     func slashOperatorWithString() throws {
         let path = File.Path("/usr")
         let newPath = path / "local" / "bin"
-        #expect(newPath.string == "/usr/local/bin")
+        #expect(newPath == "/usr/local/bin")
     }
 
     @Test("Slash operator with Component")
@@ -215,7 +226,7 @@ extension File.Path.Test.Unit {
         let path: File.Path = "/usr"
         let component: File.Path.Component = "local"
         let newPath = path / component
-        #expect(newPath.string == "/usr/local")
+        #expect(newPath == "/usr/local")
     }
 
     @Test("Slash operator with Path")
@@ -223,7 +234,7 @@ extension File.Path.Test.Unit {
         let base: File.Path = "/usr"
         let suffix: File.Path = "local/bin"
         let newPath = base / suffix
-        #expect(newPath.string == "/usr/local/bin")
+        #expect(newPath == "/usr/local/bin")
     }
 
     // MARK: - Protocols
@@ -251,7 +262,7 @@ extension File.Path.Test.Unit {
     @Test("ExpressibleByStringLiteral")
     func expressibleByStringLiteral() {
         let path: File.Path = "/usr/local/bin"
-        #expect(path.string == "/usr/local/bin")
+        #expect(path == "/usr/local/bin")
     }
 
     @Test("Use in Set")
@@ -291,7 +302,7 @@ extension File.Path.Test.Performance {
             path = File.Path(path, appending: "component_\(i)")
         }
 
-        #expect(path.string.contains("component_19"))
+        #expect(String(path).contains("component_19"))
     }
 
     @Test("Path component extraction", .timed(iterations: 100, warmup: 10))

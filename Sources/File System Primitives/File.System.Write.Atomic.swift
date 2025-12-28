@@ -41,7 +41,7 @@ import Binary
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System.Write {
@@ -76,9 +76,9 @@ extension File.System.Write.Atomic {
         options: borrowing Options = Options()
     ) throws(File.System.Write.Atomic.Error) {
         #if os(Windows)
-            try WindowsAtomic.writeSpan(bytes, to: path.string, options: options)
+            try WindowsAtomic.writeSpan(bytes, to: String(path), options: options)
         #else
-            try POSIXAtomic.writeSpan(bytes, to: path.string, options: options)
+            try POSIXAtomic.writeSpan(bytes, to: String(path), options: options)
         #endif
     }
 }

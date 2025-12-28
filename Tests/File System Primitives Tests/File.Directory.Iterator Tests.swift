@@ -87,10 +87,10 @@ extension File.Directory.Iterator.Test.Unit {
 extension File.Directory.Iterator.Test.Unit {
     @Test("Error.pathNotFound description")
     func errorPathNotFoundDescription() throws {
-        let path = File.Path("/nonexistent")
+        let path: File.Path = "/nonexistent"
         let error = File.Directory.Iterator.Error.pathNotFound(path)
         #expect(error.description.contains("Path not found"))
-        #expect(error.description.contains("/nonexistent"))
+        #expect(error.description.contains(String(path)))
     }
 
     @Test("Error.permissionDenied description")

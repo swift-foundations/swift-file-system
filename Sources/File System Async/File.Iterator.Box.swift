@@ -1,16 +1,16 @@
 //
-//  File.IO.Iterator.Box.swift
+//  File.Iterator.Box.swift
 //  swift-file-system
 //
 //  Created by Coen ten Thije Boonkkamp on 21/12/2025.
 //
 
-extension File.IO {
+extension File {
     /// Namespace for iterator-related types.
     package enum Iterator {}
 }
 
-extension File.IO.Iterator {
+extension File.Iterator {
     /// A heap-allocated box for non-copyable iterators.
     ///
     /// ## Design
@@ -18,9 +18,9 @@ extension File.IO.Iterator {
     /// to be used across async boundaries by boxing them on the heap.
     ///
     /// ## Safety Invariant (for @unchecked Sendable)
-    /// - Only accessed from within `io.run` closures (single-threaded access)
+    /// - Only accessed from within `fs.run` closures (single-threaded access)
     /// - Never accessed concurrently
-    /// - Caller ensures sequential access pattern via executor serialization
+    /// - Caller ensures sequential access pattern via lane serialization
     ///
     /// ## Lifecycle Contract
     /// Callers MUST call `close(_:)` before the box is deallocated.
@@ -35,19 +35,22 @@ extension File.IO.Iterator {
         }
 
         deinit {
-            // Per plan: "allowed to print debug warning, but must not spawn tasks
-            // or perform best-effort cleanup"
+            guard let ptr = storage else { return }
+
             #if DEBUG
-                if storage != nil {
-                    print(
-                        """
-                        Warning: File.IO.Iterator.Box deallocated without close().
-                        This violates the io.run-only invariant.
-                        Use terminate() on the owning iterator for deterministic cleanup.
-                        """
-                    )
-                }
+                print(
+                    """
+                    Warning: File.Iterator.Box deallocated without close().
+                    Call terminate() on the owning iterator for deterministic cleanup.
+                    Falling back to synchronous cleanup in deinit.
+                    """
+                )
             #endif
+
+            // Best-effort cleanup to prevent resource leaks in production.
+            // The iterator's deinit will close the underlying directory handle.
+            ptr.deinitialize(count: 1)
+            ptr.deallocate()
         }
 
         package var hasValue: Bool { storage != nil }

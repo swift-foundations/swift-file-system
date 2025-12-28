@@ -26,13 +26,14 @@
             var flags: Int32 = 0
 
             // Set access mode
-            switch mode {
-            case .read:
-                flags |= O_RDONLY
-            case .write:
-                flags |= O_WRONLY
-            case .readWrite:
+            let hasRead = mode.contains(.read)
+            let hasWrite = mode.contains(.write)
+            if hasRead && hasWrite {
                 flags |= O_RDWR
+            } else if hasWrite {
+                flags |= O_WRONLY
+            } else {
+                flags |= O_RDONLY
             }
 
             // Set options
@@ -67,11 +68,11 @@
             let defaultMode: mode_t = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH
 
             #if canImport(Darwin)
-                let fd = Darwin.open(path.string, flags, defaultMode)
+                let fd = Darwin.open(String(path), flags, defaultMode)
             #elseif canImport(Glibc)
-                let fd = Glibc.open(path.string, flags, defaultMode)
+                let fd = Glibc.open(String(path), flags, defaultMode)
             #elseif canImport(Musl)
-                let fd = Musl.open(path.string, flags, defaultMode)
+                let fd = Musl.open(String(path), flags, defaultMode)
             #endif
 
             guard fd >= 0 else {

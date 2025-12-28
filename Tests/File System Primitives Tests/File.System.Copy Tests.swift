@@ -223,7 +223,7 @@ extension File.System.Copy.Test.Unit {
 
                         try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
                         try FileManager.default.createDirectory(
-                            atPath: destDir.string,
+                            atPath: String(destDir),
                             withIntermediateDirectories: false
                         )
 
@@ -235,7 +235,7 @@ extension File.System.Copy.Test.Unit {
                         }
 
                         // Verify directory still exists
-                        #expect(FileManager.default.fileExists(atPath: destDir.string))
+                        #expect(FileManager.default.fileExists(atPath: String(destDir)))
                     }
                 }
 
@@ -250,8 +250,8 @@ extension File.System.Copy.Test.Unit {
                         try File.System.Write.Atomic.write([99].span, to: targetPath)
 
                         try FileManager.default.createSymbolicLink(
-                            atPath: symlinkPath.string,
-                            withDestinationPath: targetPath.string
+                            atPath: String(symlinkPath),
+                            withDestinationPath: String(targetPath)
                         )
 
                         let options = File.System.Copy.Options(overwrite: true)
@@ -259,14 +259,14 @@ extension File.System.Copy.Test.Unit {
 
                         // Destination should now be a regular file, not a symlink
                         var isSymlink: ObjCBool = false
-                        FileManager.default.fileExists(atPath: symlinkPath.string, isDirectory: &isSymlink)
+                        FileManager.default.fileExists(atPath: String(symlinkPath), isDirectory: &isSymlink)
 
                         // Verify it's now a regular file with source content
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: symlinkPath.string))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(symlinkPath)))
                         #expect(destData == Data([10, 20, 30]))
 
                         // Verify original target file is unchanged
-                        let targetData = try Data(contentsOf: URL(fileURLWithPath: targetPath.string))
+                        let targetData = try Data(contentsOf: URL(fileURLWithPath: String(targetPath)))
                         #expect(targetData == Data([99]))
                     }
                 }
@@ -281,22 +281,22 @@ extension File.System.Copy.Test.Unit {
                         try File.System.Write.Atomic.write([99, 88, 77].span, to: targetPath)
 
                         try FileManager.default.createSymbolicLink(
-                            atPath: symlinkPath.string,
-                            withDestinationPath: targetPath.string
+                            atPath: String(symlinkPath),
+                            withDestinationPath: String(targetPath)
                         )
 
                         let options = File.System.Copy.Options(followSymlinks: false)
                         try File.System.Copy.copy(from: symlinkPath, to: destPath, options: options)
 
                         // Destination should be a symlink
-                        let destAttributes = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let destAttributes = try FileManager.default.attributesOfItem(atPath: String(destPath))
                         #expect(destAttributes[.type] as? FileAttributeType == .typeSymbolicLink)
 
                         // Verify it points to the same target
                         let destTarget = try FileManager.default.destinationOfSymbolicLink(
-                            atPath: destPath.string
+                            atPath: String(destPath)
                         )
-                        #expect(destTarget == targetPath.string)
+                        #expect(destTarget == String(targetPath))
                     }
                 }
 
@@ -312,15 +312,15 @@ extension File.System.Copy.Test.Unit {
                         let testDate = Date(timeIntervalSince1970: 1_000_000_000)  // 2001-09-09
                         try FileManager.default.setAttributes(
                             [.posixPermissions: 0o644, .modificationDate: testDate],
-                            ofItemAtPath: sourcePath.string
+                            ofItemAtPath: String(sourcePath)
                         )
 
                         let options = File.System.Copy.Options(copyAttributes: true)
                         try File.System.Copy.copy(from: sourcePath, to: destPath, options: options)
 
                         // Verify permissions are preserved
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         #expect(
                             sourceAttrs[.posixPermissions] as? Int == destAttrs[.posixPermissions]
@@ -349,19 +349,19 @@ extension File.System.Copy.Test.Unit {
                         // Set specific permissions on source
                         try FileManager.default.setAttributes(
                             [.posixPermissions: 0o600],
-                            ofItemAtPath: sourcePath.string
+                            ofItemAtPath: String(sourcePath)
                         )
 
                         let options = File.System.Copy.Options(copyAttributes: false)
                         try File.System.Copy.copy(from: sourcePath, to: destPath, options: options)
 
                         // Verify data is copied
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: destPath.string))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(destPath)))
                         #expect(destData == Data([10, 20, 30, 40]))
 
                         // Verify permissions are default (not copied from source)
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourcePerms = sourceAttrs[.posixPermissions] as? Int
                         let destPerms = destAttrs[.posixPermissions] as? Int
@@ -394,8 +394,8 @@ extension File.System.Copy.Test.Unit {
                         let elapsed = Date().timeIntervalSince(startTime)
 
                         // Verify data integrity
-                        let sourceData = try Data(contentsOf: URL(fileURLWithPath: sourcePath.string))
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: destPath.string))
+                        let sourceData = try Data(contentsOf: URL(fileURLWithPath: String(sourcePath)))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(destPath)))
                         #expect(sourceData == destData)
 
                         // On APFS with clonefile, 2MB should copy almost instantly (< 0.1s)
@@ -432,8 +432,8 @@ extension File.System.Copy.Test.Unit {
                         // Create large file inline
                         let chunkSize = 1024 * 1024  // 1MB chunks
                         let chunk = Data(repeating: 0xAB, count: chunkSize)
-                        FileManager.default.createFile(atPath: sourcePath.string, contents: nil)
-                        let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: sourcePath.string))
+                        _ = FileManager.default.createFile(atPath: String(sourcePath), contents: nil)
+                        let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: String(sourcePath)))
                         defer { try? fileHandle.close() }
                         for _ in 0..<100 {
                             fileHandle.write(chunk)
@@ -442,8 +442,8 @@ extension File.System.Copy.Test.Unit {
                         try File.System.Copy.copy(from: sourcePath, to: destPath)
 
                         // Verify file was copied completely
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourceSize = (sourceAttrs[.size] as? UInt64) ?? 0
                         let destSize = (destAttrs[.size] as? UInt64) ?? 0
@@ -452,8 +452,8 @@ extension File.System.Copy.Test.Unit {
                         #expect(sourceSize == 100 * 1024 * 1024)
 
                         // Verify data integrity by comparing a sample from the file
-                        let sourceData = try Data(contentsOf: URL(fileURLWithPath: sourcePath.string))
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: destPath.string))
+                        let sourceData = try Data(contentsOf: URL(fileURLWithPath: String(sourcePath)))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(destPath)))
                         #expect(sourceData == destData)
                     }
                 }
@@ -468,8 +468,8 @@ extension File.System.Copy.Test.Unit {
                         // Create large file inline
                         let chunkSize = 1024 * 1024  // 1MB chunks
                         let chunk = Data(repeating: 0xAB, count: chunkSize)
-                        FileManager.default.createFile(atPath: sourcePath.string, contents: nil)
-                        let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: sourcePath.string))
+                        _ = FileManager.default.createFile(atPath: String(sourcePath), contents: nil)
+                        let fileHandle = try FileHandle(forWritingTo: URL(fileURLWithPath: String(sourcePath)))
                         defer { try? fileHandle.close() }
                         for _ in 0..<500 {
                             fileHandle.write(chunk)
@@ -480,8 +480,8 @@ extension File.System.Copy.Test.Unit {
                         let elapsed = Date().timeIntervalSince(startTime)
 
                         // Verify size matches
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourceSize = (sourceAttrs[.size] as? UInt64) ?? 0
                         let destSize = (destAttrs[.size] as? UInt64) ?? 0
@@ -515,7 +515,7 @@ extension File.System.Copy.Test.Unit {
                         try File.System.Copy.copy(from: sourcePath, to: destPath)
 
                         // Verify copy succeeded (best effort - we got whatever was there)
-                        #expect(FileManager.default.fileExists(atPath: destPath.string))
+                        #expect(FileManager.default.fileExists(atPath: String(destPath)))
 
                         // Note: This is not an atomic operation. If the source changes during
                         // copy, the destination may contain a mix of old and new data.
@@ -535,7 +535,7 @@ extension File.System.Copy.Test.Unit {
 
                         // Create destination directory
                         try FileManager.default.createDirectory(
-                            atPath: destDirPath.string,
+                            atPath: String(destDirPath),
                             withIntermediateDirectories: false
                         )
 
@@ -558,7 +558,7 @@ extension File.System.Copy.Test.Unit {
 
                         // Create source directory
                         try FileManager.default.createDirectory(
-                            atPath: sourceDirPath.string,
+                            atPath: String(sourceDirPath),
                             withIntermediateDirectories: false
                         )
 
@@ -594,11 +594,11 @@ extension File.System.Copy.Test.Unit {
                         )
 
                         // Verify destination is a regular file with target's content
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: destPath.string))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(destPath)))
                         #expect(Array(destData) == [10, 20, 30])
 
                         // Verify destination is not a symlink
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
                         #expect(destAttrs[.type] as? FileAttributeType != .typeSymbolicLink)
                     }
                 }
@@ -627,7 +627,7 @@ extension File.System.Copy.Test.Unit {
 
                         // Verify destination is a symlink pointing to the same target
                         let destTarget = try FileManager.default.destinationOfSymbolicLink(
-                            atPath: destPath.string
+                            atPath: String(destPath)
                         )
                         #expect(destTarget == String(targetPath))
                     }
@@ -657,11 +657,11 @@ extension File.System.Copy.Test.Unit {
                         )
 
                         // Verify destination is now a regular file with source content
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: linkPath.string))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(linkPath)))
                         #expect(Array(destData) == [100, 200])
 
                         // Verify it's not a symlink anymore
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: linkPath.string)
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(linkPath))
                         #expect(destAttrs[.type] as? FileAttributeType != .typeSymbolicLink)
                     }
                 }
@@ -680,13 +680,13 @@ extension File.System.Copy.Test.Unit {
                         try File.System.Copy.copy(from: sourcePath, to: destPath)
 
                         // Verify destination exists and is empty
-                        #expect(FileManager.default.fileExists(atPath: destPath.string))
+                        #expect(FileManager.default.fileExists(atPath: String(destPath)))
 
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: destPath.string))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(destPath)))
                         #expect(destData.isEmpty)
 
                         // Verify it's a regular file with size 0
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
                         #expect(destAttrs[.type] as? FileAttributeType == .typeRegular)
                         #expect(destAttrs[.size] as? UInt64 == 0)
                     }
@@ -705,7 +705,7 @@ extension File.System.Copy.Test.Unit {
                         // Set specific permissions on source
                         try FileManager.default.setAttributes(
                             [.posixPermissions: 0o600],
-                            ofItemAtPath: sourcePath.string
+                            ofItemAtPath: String(sourcePath)
                         )
 
                         // Copy without attributes
@@ -716,8 +716,8 @@ extension File.System.Copy.Test.Unit {
                         )
 
                         // Get permissions of both files
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourcePerms = (sourceAttrs[.posixPermissions] as? UInt16) ?? 0
                         let destPerms = (destAttrs[.posixPermissions] as? UInt16) ?? 0
@@ -741,7 +741,7 @@ extension File.System.Copy.Test.Unit {
                         let oldDate = Date(timeIntervalSince1970: 1_000_000_000)  // Year 2001
                         try FileManager.default.setAttributes(
                             [.modificationDate: oldDate],
-                            ofItemAtPath: sourcePath.string
+                            ofItemAtPath: String(sourcePath)
                         )
 
                         // Wait a moment to ensure new file has different timestamp
@@ -754,8 +754,8 @@ extension File.System.Copy.Test.Unit {
                             options: .init(copyAttributes: false)
                         )
 
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourceModTime =
                             (sourceAttrs[.modificationDate] as? Date) ?? Date.distantPast
@@ -780,7 +780,7 @@ extension File.System.Copy.Test.Unit {
                         // Set specific permissions on source
                         try FileManager.default.setAttributes(
                             [.posixPermissions: 0o755],
-                            ofItemAtPath: sourcePath.string
+                            ofItemAtPath: String(sourcePath)
                         )
 
                         // Copy with attributes (default)
@@ -790,8 +790,8 @@ extension File.System.Copy.Test.Unit {
                             options: .init(copyAttributes: true)
                         )
 
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourcePerms = (sourceAttrs[.posixPermissions] as? UInt16) ?? 0
                         let destPerms = (destAttrs[.posixPermissions] as? UInt16) ?? 0
@@ -813,7 +813,7 @@ extension File.System.Copy.Test.Unit {
                         let oldDate = Date(timeIntervalSince1970: 1_000_000_000)  // Year 2001
                         try FileManager.default.setAttributes(
                             [.modificationDate: oldDate],
-                            ofItemAtPath: sourcePath.string
+                            ofItemAtPath: String(sourcePath)
                         )
 
                         // Copy with attributes (default)
@@ -823,8 +823,8 @@ extension File.System.Copy.Test.Unit {
                             options: .init(copyAttributes: true)
                         )
 
-                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: sourcePath.string)
-                        let destAttrs = try FileManager.default.attributesOfItem(atPath: destPath.string)
+                        let sourceAttrs = try FileManager.default.attributesOfItem(atPath: String(sourcePath))
+                        let destAttrs = try FileManager.default.attributesOfItem(atPath: String(destPath))
 
                         let sourceModTime =
                             (sourceAttrs[.modificationDate] as? Date) ?? Date.distantPast
@@ -853,8 +853,8 @@ extension File.System.Copy.Test.Unit {
                         try File.System.Copy.copy(from: sourcePath, to: destPath)
 
                         // Verify data integrity
-                        let sourceData = try Data(contentsOf: URL(fileURLWithPath: sourcePath.string))
-                        let destData = try Data(contentsOf: URL(fileURLWithPath: destPath.string))
+                        let sourceData = try Data(contentsOf: URL(fileURLWithPath: String(sourcePath)))
+                        let destData = try Data(contentsOf: URL(fileURLWithPath: String(destPath)))
                         #expect(sourceData == destData)
                     }
                 }

@@ -73,27 +73,29 @@ extension File.System.Metadata.Timestamps.Test.Unit {
         }
     }
 
-    @Test("Modification time updates on file write")
-    func modificationTimeUpdatesOnWrite() throws {
-        try File.Directory.temporary { dir in
-            let filePath = File.Path(dir.path, appending: "test.txt")
-            let empty: [UInt8] = []
-            try File.System.Write.Atomic.write(empty.span, to: filePath)
+    #if os(macOS) || os(Linux)
+        @Test("Modification time updates on file write")
+        func modificationTimeUpdatesOnWrite() throws {
+            try File.Directory.temporary { dir in
+                let filePath = File.Path(dir.path, appending: "test.txt")
+                let empty: [UInt8] = []
+                try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-            let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
+                let beforeWrite = try File.System.Metadata.Timestamps(at: filePath)
 
-            // Wait a small amount and write to the file
-            usleep(100_000)  // 100ms
-            try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
+                // Wait a small amount and write to the file
+                usleep(100_000)  // 100ms
+                try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
 
-            let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
+                let afterWrite = try File.System.Metadata.Timestamps(at: filePath)
 
-            #expect(
-                afterWrite.modificationTime.secondsSinceEpoch
-                    >= beforeWrite.modificationTime.secondsSinceEpoch
-            )
+                #expect(
+                    afterWrite.modificationTime.secondsSinceEpoch
+                        >= beforeWrite.modificationTime.secondsSinceEpoch
+                )
+            }
         }
-    }
+    #endif
 
     // MARK: - Set Timestamps
 

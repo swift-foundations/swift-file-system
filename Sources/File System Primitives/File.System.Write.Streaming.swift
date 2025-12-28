@@ -12,7 +12,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System.Write {
@@ -77,9 +77,9 @@ extension File.System.Write.Streaming {
         options: Options = Options()
     ) throws(File.System.Write.Streaming.Error) where Chunks.Element == [UInt8] {
         #if os(Windows)
-            try WindowsStreaming.write(chunks, to: path.string, options: options)
+            try Windows.write(chunks, to: String(path), options: options)
         #else
-            try POSIXStreaming.write(chunks, to: path.string, options: options)
+            try POSIX.write(chunks, to: String(path), options: options)
         #endif
     }
 }

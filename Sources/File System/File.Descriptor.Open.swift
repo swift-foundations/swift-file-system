@@ -40,6 +40,50 @@ extension File.Descriptor {
             self.options = options
         }
 
+        // MARK: - Private Implementation
+
+        /// Opens a descriptor, runs a closure, and ensures cleanup.
+        ///
+        /// - Close error policy:
+        ///   - Body succeeded → propagate close error
+        ///   - Body threw → deinit handles cleanup, prefer original error
+        @usableFromInline
+        internal func scoped<Result>(
+            mode: Mode,
+            _ body: (inout File.Descriptor) throws -> Result
+        ) throws -> Result {
+            var descriptor = try File.Descriptor.open(path, mode: mode, options: options)
+            let result: Result
+            do {
+                result = try body(&descriptor)
+            } catch {
+                // Descriptor deinit will close it
+                _ = consume descriptor
+                throw error
+            }
+            try descriptor.close()
+            return result
+        }
+
+        /// Async variant of scoped open.
+        @usableFromInline
+        internal func scoped<Result>(
+            mode: Mode,
+            _ body: (inout File.Descriptor) async throws -> Result
+        ) async throws -> Result {
+            var descriptor = try File.Descriptor.open(path, mode: mode, options: options)
+            let result: Result
+            do {
+                result = try await body(&descriptor)
+            } catch {
+                // Descriptor deinit will close it
+                _ = consume descriptor
+                throw error
+            }
+            try descriptor.close()
+            return result
+        }
+
         // MARK: - callAsFunction (Read-only default)
 
         /// Opens the file for reading and runs the closure.
@@ -57,6 +101,14 @@ extension File.Descriptor {
             try read(body)
         }
 
+        /// Async variant of callAsFunction.
+        @inlinable
+        public func callAsFunction<Result>(
+            _ body: (inout File.Descriptor) async throws -> Result
+        ) async throws -> Result {
+            try await read(body)
+        }
+
         // MARK: - Explicit Read
 
         /// Opens the file for reading and runs the closure.
@@ -70,7 +122,15 @@ extension File.Descriptor {
         public func read<Result>(
             _ body: (inout File.Descriptor) throws -> Result
         ) throws -> Result {
-            try File.Descriptor.withOpen(path, mode: .read, options: options, body: body)
+            try scoped(mode: .read, body)
+        }
+
+        /// Async variant of read.
+        @inlinable
+        public func read<Result>(
+            _ body: (inout File.Descriptor) async throws -> Result
+        ) async throws -> Result {
+            try await scoped(mode: .read, body)
         }
 
         // MARK: - Write
@@ -84,7 +144,15 @@ extension File.Descriptor {
         public func write<Result>(
             _ body: (inout File.Descriptor) throws -> Result
         ) throws -> Result {
-            try File.Descriptor.withOpen(path, mode: .write, options: options, body: body)
+            try scoped(mode: .write, body)
+        }
+
+        /// Async variant of write.
+        @inlinable
+        public func write<Result>(
+            _ body: (inout File.Descriptor) async throws -> Result
+        ) async throws -> Result {
+            try await scoped(mode: .write, body)
         }
 
         // MARK: - Appending
@@ -100,7 +168,17 @@ extension File.Descriptor {
         ) throws -> Result {
             var opts = options
             opts.insert(.append)
-            return try File.Descriptor.withOpen(path, mode: .write, options: opts, body: body)
+            return try Open(path: path, options: opts).scoped(mode: .write, body)
+        }
+
+        /// Async variant of appending.
+        @inlinable
+        public func appending<Result>(
+            _ body: (inout File.Descriptor) async throws -> Result
+        ) async throws -> Result {
+            var opts = options
+            opts.insert(.append)
+            return try await Open(path: path, options: opts).scoped(mode: .write, body)
         }
 
         // MARK: - Read-Write
@@ -114,7 +192,15 @@ extension File.Descriptor {
         public func readWrite<Result>(
             _ body: (inout File.Descriptor) throws -> Result
         ) throws -> Result {
-            try File.Descriptor.withOpen(path, mode: .readWrite, options: options, body: body)
+            try scoped(mode: [.read, .write], body)
+        }
+
+        /// Async variant of readWrite.
+        @inlinable
+        public func readWrite<Result>(
+            _ body: (inout File.Descriptor) async throws -> Result
+        ) async throws -> Result {
+            try await scoped(mode: [.read, .write], body)
         }
     }
 

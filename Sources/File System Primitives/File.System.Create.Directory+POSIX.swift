@@ -28,7 +28,7 @@
             if options.createIntermediates {
                 try _createIntermediates(at: path, mode: mode_t(mode))
             } else {
-                guard mkdir(path.string, mode_t(mode)) == 0 else {
+                guard mkdir(String(path), mode_t(mode)) == 0 else {
                     throw _mapErrno(errno, path: path)
                 }
             }
@@ -41,7 +41,7 @@
         ) throws(File.System.Create.Directory.Error) {
             // Check if directory already exists
             var statBuf = stat()
-            if stat(path.string, &statBuf) == 0 {
+            if stat(String(path), &statBuf) == 0 {
                 if (statBuf.st_mode & S_IFMT) == S_IFDIR {
                     // Already exists as directory - success
                     return
@@ -51,7 +51,7 @@
             }
 
             // Try to create parent directory first
-            let pathString = path.string
+            let pathString = String(path)
             if let lastSlash = pathString.lastIndex(of: "/"), lastSlash != pathString.startIndex {
                 let parentString = String(pathString[..<lastSlash])
                 if !parentString.isEmpty {
@@ -62,11 +62,11 @@
             }
 
             // Now create this directory
-            if mkdir(path.string, mode) != 0 {
+            if mkdir(String(path), mode) != 0 {
                 let error = errno
                 // Check if it was created by another process/thread in the meantime
                 if error == EEXIST {
-                    if stat(path.string, &statBuf) == 0 && (statBuf.st_mode & S_IFMT) == S_IFDIR {
+                    if stat(String(path), &statBuf) == 0 && (statBuf.st_mode & S_IFMT) == S_IFDIR {
                         return
                     }
                 }

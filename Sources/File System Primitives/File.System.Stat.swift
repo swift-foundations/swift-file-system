@@ -12,7 +12,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System {
@@ -43,7 +43,7 @@ extension File.System.Stat {
         at path: File.Path
     ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
         #if os(Windows)
-            return try _infoWindows(at: path)
+            return try _infoWindows(at: path, followSymlinks: true)
         #else
             return try _infoPOSIX(at: path)
         #endif
@@ -61,8 +61,7 @@ extension File.System.Stat {
         at path: File.Path
     ) throws(File.System.Stat.Error) -> File.System.Metadata.Info {
         #if os(Windows)
-            // Windows: GetFileAttributesEx doesn't follow symlinks by default
-            return try _infoWindows(at: path)
+            return try _infoWindows(at: path, followSymlinks: false)
         #else
             return try _lstatInfoPOSIX(at: path)
         #endif

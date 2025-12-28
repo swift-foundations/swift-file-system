@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import IO
+
 extension File.Directory {
     /// Internal async directory implementation.
     ///
@@ -15,21 +17,21 @@ extension File.Directory {
     /// }
     /// ```
     public struct Async: Sendable {
-        let io: File.IO.Executor
+        let fs: File.System.Async
 
-        /// Creates an async directory API with the given executor.
-        public init(io: File.IO.Executor = .default) {
-            self.io = io
+        /// Creates an async directory API with the given file system.
+        public init(fs: File.System.Async = .async) {
+            self.fs = fs
         }
 
         /// Lists directory contents (non-streaming).
         public func contents(
             at directory: File.Directory
-        ) async throws(File.IO.Error<File.Directory.Contents.Error>) -> [File.Directory.Entry] {
+        ) async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>) -> [File.Directory.Entry] {
             let operation: @Sendable () throws(File.Directory.Contents.Error) -> [File.Directory.Entry] = {
                 try File.Directory.Contents.list(at: directory)
             }
-            return try await io.run(operation)
+            return try await fs.run(operation)
         }
     }
 }

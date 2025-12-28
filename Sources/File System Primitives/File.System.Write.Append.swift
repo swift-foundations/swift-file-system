@@ -12,7 +12,7 @@
 #elseif canImport(Musl)
     import Musl
 #elseif os(Windows)
-    public import WinSDK
+    internal import WinSDK
 #endif
 
 extension File.System.Write {
@@ -85,7 +85,7 @@ extension File.System.Write.Append {
             _ bytes: borrowing Span<UInt8>,
             to path: File.Path
         ) throws(File.System.Write.Append.Error) {
-            let fd = open(path.string, O_WRONLY | O_CREAT | O_APPEND, 0o644)
+            let fd = open(String(path), O_WRONLY | O_CREAT | O_APPEND, 0o644)
             guard fd >= 0 else {
                 throw _mapErrno(errno, path: path)
             }
@@ -147,7 +147,7 @@ extension File.System.Write.Append {
             _ bytes: borrowing Span<UInt8>,
             to path: File.Path
         ) throws(File.System.Write.Append.Error) {
-            let handle = path.string.withCString(encodedAs: UTF16.self) { wpath in
+            let handle = String(path).withCString(encodedAs: UTF16.self) { wpath in
                 CreateFileW(
                     wpath,
                     _mask(FILE_APPEND_DATA),

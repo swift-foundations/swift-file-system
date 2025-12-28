@@ -26,7 +26,7 @@ extension File.Test.Unit {
     func pathProperty() throws {
         let path = File.Path("/usr/local/bin/test")
         let file = File(path)
-        #expect(file.path.string == "/usr/local/bin/test")
+        #expect(file.path == "/usr/local/bin/test")
     }
 
     @Test("Hashable conformance - equal paths have equal hashes")
@@ -98,13 +98,13 @@ extension File.Test.EdgeCase {
     func fileWithRootPath() throws {
         let path = File.Path("/")
         let file = File(path)
-        #expect(file.path.string == "/")
+        #expect(file.path == "/")
     }
 
     @Test("File with deep nested path")
     func fileWithDeepNestedPath() throws {
         let path = File.Path("/a/b/c/d/e/f/g/h/i/j/k.txt")
         let file = File(path)
-        #expect(file.path.string == "/a/b/c/d/e/f/g/h/i/j/k.txt")
+        #expect(file.path == "/a/b/c/d/e/f/g/h/i/j/k.txt")
     }
 }
