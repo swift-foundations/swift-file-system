@@ -74,17 +74,21 @@ extension File {
             self._path = filePath
         }
 
-        /// Internal initializer from a null-terminated C string pointer.
-        ///
-        /// Use this for paths from trusted sources like kernel APIs (fts, readdir)
-        /// where the path is guaranteed to be valid. Avoids intermediate String allocation.
-        ///
-        /// - Parameter cString: A pointer to a null-terminated C string.
-        /// - Precondition: The pointer must be valid and null-terminated.
-        @usableFromInline
-        internal init(cString: UnsafePointer<CChar>) {
-            self._path = FilePath(platformString: cString)
-        }
+        #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
+            /// Internal initializer from a null-terminated C string pointer.
+            ///
+            /// Use this for paths from trusted sources like kernel APIs (fts, readdir)
+            /// where the path is guaranteed to be valid. Avoids intermediate String allocation.
+            ///
+            /// Available on POSIX systems only (macOS, Linux, BSD).
+            ///
+            /// - Parameter cString: A pointer to a null-terminated C string.
+            /// - Precondition: The pointer must be valid and null-terminated.
+            @usableFromInline
+            internal init(cString: UnsafePointer<CChar>) {
+                self._path = FilePath(platformString: cString)
+            }
+        #endif
     }
 }
 
@@ -180,7 +184,7 @@ extension File.Path {
 
 // MARK: - C Interop
 
-#if !os(Windows)
+#if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
     extension File.Path {
         /// Calls a closure with a pointer to the path as a null-terminated C string.
         ///

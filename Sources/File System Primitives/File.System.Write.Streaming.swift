@@ -198,7 +198,7 @@ extension File.System.Write.Streaming {
         options: Options = Options()
     ) throws(File.System.Write.Streaming.Error) {
         #if os(Windows)
-            try write(Array(bytes), to: path, options: options)
+            try Windows.write([Array(bytes)], to: String(path), options: options)
         #else
             let context = try POSIX.open(path: path, options: options)
             do {
