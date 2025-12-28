@@ -97,10 +97,13 @@ extension File.Directory.Walk {
                 switch info {
                 case FTS_D:
                     // Directory in pre-order
+                    // Skip root directory (depth 0) to match concurrent walker behavior
+                    let depth = Int(ftsent.pointee.fts_level)
+                    if depth == 0 { continue }
                     return Entry(
                         path: File.Path(cString: ftsent.pointee.fts_path),
                         type: .directory,
-                        depth: Int(ftsent.pointee.fts_level)
+                        depth: depth
                     )
 
                 case FTS_F:

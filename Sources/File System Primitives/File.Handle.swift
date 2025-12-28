@@ -511,19 +511,21 @@ extension File.Handle {
         base: UnsafeRawPointer,
         count: Int
     ) throws(File.Handle.Error) -> Int {
-        #if canImport(Darwin)
-        let result = Darwin.write(_descriptor.rawValue, base, count)
-        #elseif canImport(Glibc)
-        let result = Glibc.write(_descriptor.rawValue, base, count)
-        #elseif canImport(Musl)
-        let result = Musl.write(_descriptor.rawValue, base, count)
-        #endif
+        while true {
+            #if canImport(Darwin)
+            let result = Darwin.write(_descriptor.rawValue, base, count)
+            #elseif canImport(Glibc)
+            let result = Glibc.write(_descriptor.rawValue, base, count)
+            #elseif canImport(Musl)
+            let result = Musl.write(_descriptor.rawValue, base, count)
+            #endif
 
-        if result >= 0 { return result }
+            if result >= 0 { return result }
 
-        let e = errno
-        if e == EINTR { return 0 } // Let caller retry
-        throw .writeFailed(errno: e, message: String(cString: strerror(e)))
+            let e = errno
+            if e == EINTR { continue } // Retry on interrupt
+            throw .writeFailed(errno: e, message: String(cString: strerror(e)))
+        }
     }
     #endif
 

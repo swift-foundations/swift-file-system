@@ -763,14 +763,32 @@ extension NIOComparison.Test.Performance {
         // 10 dirs × 10 subdirs × 10 files = 1000 files + 110 directories
 
         @Test(
-            "swift-file-system: walk 1000 files (recursive)",
+            "swift-file-system: walk 1000 files (concurrent, maxConcurrency=8)",
             .timed(iterations: 3, warmup: 1, trackAllocations: false)
         )
-        func swiftFileSystemWalk() async throws {
+        func swiftFileSystemWalkConcurrent() async throws {
             let dir = try Self.fixture.path()
 
             var count = 0
             for try await _ in File.Directory.walk(at: File.Directory(dir)) {
+                count += 1
+            }
+            // 1000 files + 100 subdirs + 10 dirs = 1110 entries
+            #expect(count == 1110)
+        }
+
+        @Test(
+            "swift-file-system: walk 1000 files (fast-path, maxConcurrency=1)",
+            .timed(iterations: 3, warmup: 1, trackAllocations: false)
+        )
+        func swiftFileSystemWalkFastPath() async throws {
+            let dir = try Self.fixture.path()
+
+            var count = 0
+            for try await _ in File.Directory.walk(
+                at: File.Directory(dir),
+                options: .init(maxConcurrency: 1)
+            ) {
                 count += 1
             }
             // 1000 files + 100 subdirs + 10 dirs = 1110 entries
