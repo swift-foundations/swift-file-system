@@ -478,8 +478,8 @@
             options: File.System.Write.Streaming.Options
         ) throws(File.System.Write.Streaming.Error) -> Context {
 
-            let resolvedPath = File.System.Path.Utilities.normalizePath(path)
-            let parent = File.System.Path.Utilities.parentDirectory(of: resolvedPath)
+            let resolvedPath = normalizePath(path)
+            let parent = parentDirectory(of: resolvedPath)
             try verifyOrCreateParentDirectory(
                 parent,
                 createIntermediates: options.createIntermediates
