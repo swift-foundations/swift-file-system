@@ -17,36 +17,64 @@
     // MARK: - Syscall Injection (DEBUG only)
 
     #if DEBUG
+        import Synchronization
+
         /// Injectable syscall layer for testing error paths.
         /// All syscall wrappers check these overrides first.
+        /// Thread-safe via Mutex to prevent data races in concurrent tests.
         enum SyscallOverrides {
-            nonisolated(unsafe) static var openOverride:
-                (
-                    (UnsafePointer<CChar>, Int32, mode_t) -> Int32
-                )?
-            nonisolated(unsafe) static var fsyncOverride: ((Int32) -> Int32)?
-            nonisolated(unsafe) static var fdatasyncOverride: ((Int32) -> Int32)?
-            nonisolated(unsafe) static var getrandomOverride:
-                (
-                    (UnsafeMutableRawPointer, Int, UInt32) -> Int
-                )?
-            nonisolated(unsafe) static var renameOverride:
-                (
-                    (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
-                )?
-            nonisolated(unsafe) static var renameat2Override:
-                (
-                    (String, String) -> (result: Int32, errno: Int32)
-                )?
+            typealias OpenFn = (UnsafePointer<CChar>, Int32, mode_t) -> Int32
+            typealias FsyncFn = (Int32) -> Int32
+            typealias GetrandomFn = (UnsafeMutableRawPointer, Int, UInt32) -> Int
+            typealias RenameFn = (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
+            typealias Renameat2Fn = (String, String) -> (result: Int32, errno: Int32)
+
+            private struct State: @unchecked Sendable {
+                var openOverride: OpenFn?
+                var fsyncOverride: FsyncFn?
+                var fdatasyncOverride: FsyncFn?
+                var getrandomOverride: GetrandomFn?
+                var renameOverride: RenameFn?
+                var renameat2Override: Renameat2Fn?
+            }
+
+            private static let _state = Mutex(State())
+
+            static var openOverride: OpenFn? {
+                get { _state.withLock { $0.openOverride } }
+                set { _state.withLock { $0.openOverride = newValue } }
+            }
+            static var fsyncOverride: FsyncFn? {
+                get { _state.withLock { $0.fsyncOverride } }
+                set { _state.withLock { $0.fsyncOverride = newValue } }
+            }
+            static var fdatasyncOverride: FsyncFn? {
+                get { _state.withLock { $0.fdatasyncOverride } }
+                set { _state.withLock { $0.fdatasyncOverride = newValue } }
+            }
+            static var getrandomOverride: GetrandomFn? {
+                get { _state.withLock { $0.getrandomOverride } }
+                set { _state.withLock { $0.getrandomOverride = newValue } }
+            }
+            static var renameOverride: RenameFn? {
+                get { _state.withLock { $0.renameOverride } }
+                set { _state.withLock { $0.renameOverride = newValue } }
+            }
+            static var renameat2Override: Renameat2Fn? {
+                get { _state.withLock { $0.renameat2Override } }
+                set { _state.withLock { $0.renameat2Override = newValue } }
+            }
 
             /// Reset all overrides (call in test tearDown)
             static func reset() {
-                openOverride = nil
-                fsyncOverride = nil
-                fdatasyncOverride = nil
-                getrandomOverride = nil
-                renameOverride = nil
-                renameat2Override = nil
+                _state.withLock { state in
+                    state.openOverride = nil
+                    state.fsyncOverride = nil
+                    state.fdatasyncOverride = nil
+                    state.getrandomOverride = nil
+                    state.renameOverride = nil
+                    state.renameat2Override = nil
+                }
             }
         }
     #endif

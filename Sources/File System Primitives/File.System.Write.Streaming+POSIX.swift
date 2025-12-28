@@ -62,7 +62,7 @@
                 // A pre-check could cause incorrect early failure if the file is removed
                 // between check and publish.
 
-                let tempPath = generateTempPath(in: parent, for: resolvedPath)
+                let tempPath = try generateTempPath(in: parent, for: resolvedPath)
                 let fd = try createFile(at: tempPath, exclusive: true)
 
                 var didClose = false
@@ -237,7 +237,10 @@
         ///
         /// Invariant A1: Temp must be in same directory as dest for atomic
         /// operations (especially link+unlink fallback which requires same filesystem).
-        private static func generateTempPath(in parent: String, for destPath: String) -> String {
+        private static func generateTempPath(
+            in parent: String,
+            for destPath: String
+        ) throws(File.System.Write.Streaming.Error) -> String {
             // Defensive assertion: verify parent matches destPath's actual parent
             // This guards against future refactoring that might pass mismatched values
             let destParent = parentDirectory(of: destPath)
@@ -247,14 +250,20 @@
             )
 
             let baseName = fileName(of: destPath)
-            let random = randomToken(length: 12)
+            let random = try randomToken(length: 12)
             return "\(parent)/.\(baseName).streaming.\(random).tmp"
         }
 
-        private static func randomToken(length: Int) -> String {
+        private static func randomToken(
+            length: Int
+        ) throws(File.System.Write.Streaming.Error) -> String {
             precondition(length == 12, "randomToken expects fixed length of 12")
 
-            return withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length) { buffer in
+            // Use error capture pattern to work around typed throws in closures
+            var getrandomError: File.System.Write.Streaming.Error? = nil
+
+            let result = withUnsafeTemporaryAllocation(of: UInt8.self, capacity: length) {
+                buffer -> String? in
                 let base = buffer.baseAddress!
 
                 #if canImport(Darwin)
@@ -272,13 +281,22 @@
                         } else if result == -1 {
                             let e = errno
                             if e == EINTR { continue }
-                            preconditionFailure("getrandom failed: \(e)")
+                            getrandomError = .randomGenerationFailed(
+                                errno: e,
+                                message: "CSPRNG getrandom syscall failed"
+                            )
+                            return nil
                         }
                     }
                 #endif
 
                 return Span(_unsafeElements: buffer).hex.encoded()
             }
+
+            if let error = getrandomError {
+                throw error
+            }
+            return result!
         }
     }
 
@@ -709,7 +727,7 @@
 
             switch options.commit {
             case .atomic(let atomicOptions):
-                let tempPath = generateTempPath(in: parent, for: resolvedPath)
+                let tempPath = try generateTempPath(in: parent, for: resolvedPath)
                 let fd = try createFile(at: tempPath, exclusive: true)
                 return Context(
                     fd: fd,

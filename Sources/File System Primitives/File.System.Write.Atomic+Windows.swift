@@ -3,6 +3,7 @@
 
 #if os(Windows)
 
+    import Synchronization
     import WinSDK
     import INCITS_4_1986
     import RFC_4648
@@ -179,21 +180,22 @@
         }
 
         /// Counter for uniqueness within same tick.
-        private nonisolated(unsafe) static var _counter: UInt32 = 0
+        /// Thread-safe via Atomic to prevent data races.
+        private static let _counter = Atomic<UInt32>(0)
 
         /// Generates a unique hex string for temp file naming.
         /// Uses process ID, tick count, and counter for uniqueness.
         private static func randomHex(_ byteCount: Int) -> String {
             let pid = GetCurrentProcessId()
             let tick = GetTickCount64()
-            _counter &+= 1
+            let counterValue = _counter.wrappingAdd(1, ordering: .relaxed).oldValue
 
             // Build hex string from these values using INCITS_4_1986 ASCII constants
             let digit0 = UInt32(UInt8.ascii.`0`)
             let letterA = UInt32(UInt8.ascii.a)
 
             var result = ""
-            let value = UInt64(pid) ^ tick ^ UInt64(_counter)
+            let value = UInt64(pid) ^ tick ^ UInt64(counterValue)
             var remaining = value
             for _ in 0..<min(byteCount * 2, 16) {
                 let nibble = UInt32(remaining & 0xF)

@@ -36,6 +36,11 @@ extension File.System.Write.Streaming {
         ///
         /// This occurs when trying to write to a closed or committed stream.
         case invalidState
+
+        /// Random token generation failed.
+        ///
+        /// This is an extremely rare error indicating the kernel CSPRNG failed.
+        case randomGenerationFailed(errno: Int32, message: String)
     }
 }
 
@@ -66,6 +71,8 @@ extension File.System.Write.Streaming.Error: CustomStringConvertible {
             return "Directory sync failed after commit '\(path)': \(message) (errno=\(errno))"
         case .invalidState:
             return "Streaming write is not in a valid state for this operation"
+        case .randomGenerationFailed(let errno, let message):
+            return "Random token generation failed: \(message) (errno=\(errno))"
         }
     }
 }
