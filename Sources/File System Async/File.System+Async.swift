@@ -51,7 +51,7 @@ extension File.System.Write.Streaming {
         ) async throws where Chunks.Element == [UInt8] {
             // Phase 1: Open
             let context = try await fs.run {
-                try POSIXStreaming.openForStreaming(path: String(path), options: options)
+                try POSIX.open(path: String(path), options: options)
             }
 
             do {
@@ -73,7 +73,7 @@ extension File.System.Write.Streaming {
                             try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try POSIXStreaming.writeChunk(span, to: context)
+                                    try POSIX.write(chunk: span, to: context)
                                 }
                             }
                         }
@@ -81,7 +81,7 @@ extension File.System.Write.Streaming {
                         try await fs.run {
                             try chunkToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
-                                try POSIXStreaming.writeChunk(span, to: context)
+                                try POSIX.write(chunk: span, to: context)
                             }
                         }
                     } else {
@@ -93,7 +93,7 @@ extension File.System.Write.Streaming {
                             try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try POSIXStreaming.writeChunk(span, to: context)
+                                    try POSIX.write(chunk: span, to: context)
                                 }
                             }
                         }
@@ -106,17 +106,17 @@ extension File.System.Write.Streaming {
                     try await fs.run {
                         try bufferToWrite.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
-                            try POSIXStreaming.writeChunk(span, to: context)
+                            try POSIX.write(chunk: span, to: context)
                         }
                     }
                 }
 
                 // Phase 3: Commit
-                try await fs.run { try POSIXStreaming.commit(context) }
+                try await fs.run { try POSIX.commit(context) }
 
             } catch {
                 // Cleanup on any error
-                try? await fs.run { POSIXStreaming.cleanup(context) }
+                try? await fs.run { POSIX.cleanup(context) }
                 throw error
             }
         }
@@ -132,7 +132,7 @@ extension File.System.Write.Streaming {
         ) async throws where Chunks.Element == [UInt8] {
             // Phase 1: Open
             let context = try await fs.run {
-                try WindowsStreaming.openForStreaming(path: String(path), options: options)
+                try Windows.open(path: String(path), options: options)
             }
 
             do {
@@ -154,7 +154,7 @@ extension File.System.Write.Streaming {
                             try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try WindowsStreaming.writeChunk(span, to: context)
+                                    try Windows.write(chunk: span, to: context)
                                 }
                             }
                         }
@@ -162,7 +162,7 @@ extension File.System.Write.Streaming {
                         try await fs.run {
                             try chunkToWrite.withUnsafeBufferPointer { buffer in
                                 let span = Span<UInt8>(_unsafeElements: buffer)
-                                try WindowsStreaming.writeChunk(span, to: context)
+                                try Windows.write(chunk: span, to: context)
                             }
                         }
                     } else {
@@ -174,7 +174,7 @@ extension File.System.Write.Streaming {
                             try await fs.run {
                                 try bufferToWrite.withUnsafeBufferPointer { buffer in
                                     let span = Span<UInt8>(_unsafeElements: buffer)
-                                    try WindowsStreaming.writeChunk(span, to: context)
+                                    try Windows.write(chunk: span, to: context)
                                 }
                             }
                         }
@@ -187,17 +187,17 @@ extension File.System.Write.Streaming {
                     try await fs.run {
                         try bufferToWrite.withUnsafeBufferPointer { buffer in
                             let span = Span<UInt8>(_unsafeElements: buffer)
-                            try WindowsStreaming.writeChunk(span, to: context)
+                            try Windows.write(chunk: span, to: context)
                         }
                     }
                 }
 
                 // Phase 3: Commit
-                try await fs.run { try WindowsStreaming.commit(context) }
+                try await fs.run { try Windows.commit(context) }
 
             } catch {
                 // Cleanup on any error
-                try? await fs.run { WindowsStreaming.cleanup(context) }
+                try? await fs.run { Windows.cleanup(context) }
                 throw error
             }
         }

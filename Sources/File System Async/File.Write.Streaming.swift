@@ -6,11 +6,11 @@
 //
 
 // Platform-specific write context typealias.
-// Both POSIXStreaming.Write.Context and WindowsStreaming.Write.Context are @unchecked Sendable.
+// Both POSIX.Context and Windows.Context are @unchecked Sendable.
 #if os(Windows)
-    typealias PlatformWriteContext = WindowsStreaming.Write.Context
+    typealias PlatformWriteContext = File.System.Write.Streaming.Windows.Context
 #else
-    typealias PlatformWriteContext = POSIXStreaming.Write.Context
+    typealias PlatformWriteContext = File.System.Write.Streaming.POSIX.Context
 #endif
 
 extension File {

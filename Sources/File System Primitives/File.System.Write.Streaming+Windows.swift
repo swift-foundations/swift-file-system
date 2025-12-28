@@ -8,11 +8,13 @@
 
     // MARK: - Windows Implementation
 
-    public enum WindowsStreaming {
+    extension File.System.Write.Streaming {
+        /// Windows implementation of streaming file writes.
+        public enum Windows {
 
-        // MARK: - Generic Sequence API
+            // MARK: - Generic Sequence API
 
-        static func write<Chunks: Sequence>(
+            static func write<Chunks: Sequence>(
             _ chunks: Chunks,
             to path: borrowing String,
             options: borrowing File.System.Write.Streaming.Options
@@ -145,11 +147,12 @@
             }
             handleClosed = true
         }
+        }
     }
 
     // MARK: - Path Handling
 
-    extension WindowsStreaming {
+    extension File.System.Write.Streaming.Windows {
 
         private static func normalizePath(_ path: String) -> String {
             var result = ""
@@ -237,7 +240,7 @@
 
     // MARK: - File Operations
 
-    extension WindowsStreaming {
+    extension File.System.Write.Streaming.Windows {
 
         private static func createFile(
             at path: String,
@@ -416,7 +419,7 @@
 
     // MARK: - Utilities
 
-    extension WindowsStreaming {
+    extension File.System.Write.Streaming.Windows {
 
         private static func withWideString<T>(
             _ string: String,
@@ -433,14 +436,7 @@
 
     // MARK: - Multi-phase Streaming Helpers (for async)
 
-    extension WindowsStreaming {
-
-        /// Namespace for write-related types.
-        public enum Write {
-        }
-    }
-
-    extension WindowsStreaming.Write {
+    extension File.System.Write.Streaming.Windows {
         /// Context for multi-phase streaming writes.
         ///
         /// @unchecked Sendable because all fields are immutable value types.
@@ -458,14 +454,14 @@
         }
     }
 
-    extension WindowsStreaming {
+    extension File.System.Write.Streaming.Windows {
         /// Opens a file for multi-phase streaming write.
         ///
-        /// Returns a context that can be used for subsequent writeChunk and commit calls.
-        package static func openForStreaming(
+        /// Returns a context that can be used for subsequent write(chunk:) and commit calls.
+        package static func open(
             path: String,
             options: File.System.Write.Streaming.Options
-        ) throws(File.System.Write.Streaming.Error) -> Write.Context {
+        ) throws(File.System.Write.Streaming.Error) -> Context {
 
             let resolvedPath = normalizePath(path)
             let parent = parentDirectory(of: resolvedPath)
@@ -478,7 +474,7 @@
             case .atomic(let atomicOptions):
                 let tempPath = generateTempPath(in: parent, for: resolvedPath)
                 let handle = try createFile(at: tempPath, exclusive: true)
-                return Write.Context(
+                return Context(
                     handle: handle,
                     tempPath: tempPath,
                     resolvedPath: resolvedPath,
@@ -493,7 +489,7 @@
                     at: resolvedPath,
                     exclusive: directOptions.strategy == .create
                 )
-                return Write.Context(
+                return Context(
                     handle: handle,
                     tempPath: nil,
                     resolvedPath: resolvedPath,
@@ -508,9 +504,9 @@
         /// Writes a chunk to an open streaming context.
         ///
         /// The Span must not escape - callee uses it immediately and synchronously.
-        package static func writeChunk(
-            _ span: borrowing Span<UInt8>,
-            to context: borrowing Write.Context
+        package static func write(
+            chunk span: borrowing Span<UInt8>,
+            to context: borrowing Context
         ) throws(File.System.Write.Streaming.Error) {
             try writeAll(span, to: context.handle, path: context.tempPath ?? context.resolvedPath)
         }
@@ -521,7 +517,7 @@
         /// - Pre-publish failures throw normal errors
         /// - Post-publish I/O failures throw `.directorySyncFailedAfterCommit`
         package static func commit(
-            _ context: borrowing Write.Context
+            _ context: borrowing Context
         ) throws(File.System.Write.Streaming.Error) {
 
             // Sync file data
@@ -565,7 +561,7 @@
         /// Cleans up a failed streaming write.
         ///
         /// Best-effort cleanup - closes handle and removes temp file if atomic mode.
-        package static func cleanup(_ context: borrowing Write.Context) {
+        package static func cleanup(_ context: borrowing Context) {
             // Close handle if still open (ignore errors)
             _ = CloseHandle(context.handle)
 

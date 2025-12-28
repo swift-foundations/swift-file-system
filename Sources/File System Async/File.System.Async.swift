@@ -94,9 +94,9 @@ extension File.System {
                 handleWaitersLimit: 64,
                 teardown: .onLane(lane) { resource in
                     #if os(Windows)
-                        WindowsStreaming.cleanup(resource.context)
+                        File.System.Write.Streaming.Windows.cleanup(resource.context)
                     #else
-                        POSIXStreaming.cleanup(resource.context)
+                        File.System.Write.Streaming.POSIX.cleanup(resource.context)
                     #endif
                 }
             )
@@ -132,9 +132,9 @@ extension File.System {
                 handleWaitersLimit: 64,
                 teardown: .onLane(lane) { resource in
                     #if os(Windows)
-                        WindowsStreaming.cleanup(resource.context)
+                        File.System.Write.Streaming.Windows.cleanup(resource.context)
                     #else
-                        POSIXStreaming.cleanup(resource.context)
+                        File.System.Write.Streaming.POSIX.cleanup(resource.context)
                     #endif
                 }
             )
@@ -166,9 +166,9 @@ extension File.System {
                 handleWaitersLimit: 64,
                 teardown: .onLane(lane) { resource in
                     #if os(Windows)
-                        WindowsStreaming.cleanup(resource.context)
+                        File.System.Write.Streaming.Windows.cleanup(resource.context)
                     #else
-                        POSIXStreaming.cleanup(resource.context)
+                        File.System.Write.Streaming.POSIX.cleanup(resource.context)
                     #endif
                 }
             )
@@ -292,9 +292,9 @@ extension File.System.Async {
         return try await writes.register {
             () throws(File.System.Write.Streaming.Error) -> File.Write.Streaming in
             #if os(Windows)
-                let context = try WindowsStreaming.openForStreaming(path: pathString, options: options)
+                let context = try File.System.Write.Streaming.Windows.open(path: pathString, options: options)
             #else
-                let context = try POSIXStreaming.openForStreaming(path: pathString, options: options)
+                let context = try File.System.Write.Streaming.POSIX.open(path: pathString, options: options)
             #endif
             return File.Write.Streaming(context: context, path: path, options: options)
         }
@@ -317,9 +317,9 @@ extension File.System.Async {
                 throw File.System.Write.Streaming.Error.invalidState
             }
             #if os(Windows)
-                try WindowsStreaming.writeChunk(bytes.span, to: resource.context)
+                try File.System.Write.Streaming.Windows.write(chunk: bytes.span, to: resource.context)
             #else
-                try POSIXStreaming.writeChunk(bytes.span, to: resource.context)
+                try File.System.Write.Streaming.POSIX.write(chunk: bytes.span, to: resource.context)
             #endif
         }
     }
@@ -339,9 +339,9 @@ extension File.System.Async {
             }
             resource.state = .committing
             #if os(Windows)
-                try WindowsStreaming.commit(resource.context)
+                try File.System.Write.Streaming.Windows.commit(resource.context)
             #else
-                try POSIXStreaming.commit(resource.context)
+                try File.System.Write.Streaming.POSIX.commit(resource.context)
             #endif
             resource.state = .closed
         }
