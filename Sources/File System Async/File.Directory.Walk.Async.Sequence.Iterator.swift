@@ -303,12 +303,14 @@ extension File.Directory.Walk.Async.Sequence {
                                 continue
                             case .stopAndThrow:
                                 await authority.fail(
-                                    with: .failure(.operation(
-                                        .undecodableEntry(
-                                            parent: entry.parent,
-                                            name: entry.name
+                                    with: .failure(
+                                        .operation(
+                                            .undecodableEntry(
+                                                parent: entry.parent,
+                                                name: entry.name
+                                            )
                                         )
-                                    ))
+                                    )
                                 )
                             }
                             continue

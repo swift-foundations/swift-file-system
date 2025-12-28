@@ -8,11 +8,11 @@
 @_exported import IO
 
 #if canImport(Darwin)
-import Darwin
+    import Darwin
 #elseif canImport(Glibc)
-import Glibc
+    import Glibc
 #elseif os(Windows)
-import WinSDK
+    import WinSDK
 #endif
 
 extension File.System {

@@ -21,7 +21,7 @@ let package = Package(
         .package(url: "https://github.com/swift-standards/swift-incits-4-1986", from: "0.7.1"),
         .package(url: "https://github.com/swift-standards/swift-rfc-4648", from: "0.6.0"),
         .package(url: "https://github.com/swift-standards/swift-time-standard", from: "0.1.0"),
-        .package(path: "../swift-io"),
+        .package(url: "https://github.com/coenttb/swift-io.git", from: "0.2.0"),
     ],
     targets: [
         .target(

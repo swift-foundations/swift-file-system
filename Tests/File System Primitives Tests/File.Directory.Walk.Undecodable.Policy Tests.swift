@@ -24,7 +24,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         switch policy {
         case .skip:
             #expect(Bool(true))
-        default:
+        case .emit, .stopAndThrow:
             Issue.record("Expected skip case")
         }
     }
@@ -35,7 +35,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         switch policy {
         case .emit:
             #expect(Bool(true))
-        default:
+        case .skip, .stopAndThrow:
             Issue.record("Expected emit case")
         }
     }
@@ -46,7 +46,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         switch policy {
         case .stopAndThrow:
             #expect(Bool(true))
-        default:
+        case .skip, .emit:
             Issue.record("Expected stopAndThrow case")
         }
     }
@@ -64,17 +64,17 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
 
         switch skip {
         case .skip: matchCount += 1
-        default: break
+        case .emit, .stopAndThrow: break
         }
 
         switch emit {
         case .emit: matchCount += 1
-        default: break
+        case .skip, .stopAndThrow: break
         }
 
         switch stop {
         case .stopAndThrow: matchCount += 1
-        default: break
+        case .skip, .emit: break
         }
 
         #expect(matchCount == 3)
@@ -109,7 +109,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         switch result {
         case .emit:
             #expect(Bool(true))
-        default:
+        case .skip, .stopAndThrow:
             Issue.record("Expected emit")
         }
     }
@@ -140,7 +140,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         switch result {
         case .skip:
             #expect(Bool(true))
-        default:
+        case .emit, .stopAndThrow:
             Issue.record("Expected skip")
         }
     }
@@ -154,14 +154,14 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         switch decidePolicy(shouldEmit: true) {
         case .emit:
             #expect(Bool(true))
-        default:
+        case .skip, .stopAndThrow:
             Issue.record("Expected emit")
         }
 
         switch decidePolicy(shouldEmit: false) {
         case .skip:
             #expect(Bool(true))
-        default:
+        case .emit, .stopAndThrow:
             Issue.record("Expected skip")
         }
     }
@@ -195,7 +195,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.EdgeCase {
             switch policy {
             case .skip:
                 #expect(Bool(true))
-            default:
+            case .emit, .stopAndThrow:
                 Issue.record("Expected skip")
             }
         case .failure:
@@ -232,14 +232,14 @@ extension File.Directory.Walk.Undecodable.Policy.Test.EdgeCase {
         switch getPolicy() {
         case .skip:
             #expect(Bool(true))
-        default:
+        case .emit, .stopAndThrow:
             Issue.record("Expected skip as default")
         }
 
         switch getPolicy(.emit) {
         case .emit:
             #expect(Bool(true))
-        default:
+        case .skip, .stopAndThrow:
             Issue.record("Expected emit as override")
         }
     }
