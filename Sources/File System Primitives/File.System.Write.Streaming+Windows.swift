@@ -286,6 +286,57 @@
             }
         }
 
+        /// Writes all bytes from a raw buffer to handle, handling partial writes.
+        ///
+        /// This is the internal primitive used by the reusable-buffer streaming API
+        /// to avoid Span construction overhead.
+        private static func writeAllRaw(
+            _ buffer: UnsafeRawBufferPointer,
+            to handle: HANDLE,
+            path: String
+        ) throws(File.System.Write.Streaming.Error) {
+            let total = buffer.count
+            if total == 0 { return }
+
+            guard let base = buffer.baseAddress else { return }
+
+            var written = 0
+
+            while written < total {
+                let remaining = total - written
+                var bytesWritten: DWORD = 0
+
+                let success = WriteFile(
+                    handle,
+                    base.advanced(by: written),
+                    DWORD(truncatingIfNeeded: remaining),
+                    &bytesWritten,
+                    nil
+                )
+
+                if !_ok(success) {
+                    let err = GetLastError()
+                    throw File.System.Write.Streaming.Error.writeFailed(
+                        path: File.Path(__unchecked: (), path),
+                        bytesWritten: written,
+                        errno: Int32(err),
+                        message: "WriteFile failed with error \(err)"
+                    )
+                }
+
+                if bytesWritten == 0 {
+                    throw File.System.Write.Streaming.Error.writeFailed(
+                        path: File.Path(__unchecked: (), path),
+                        bytesWritten: written,
+                        errno: 0,
+                        message: "WriteFile wrote 0 bytes"
+                    )
+                }
+
+                written += Int(bytesWritten)
+            }
+        }
+
         private static func flushFile(
             _ handle: HANDLE,
             durability: File.System.Write.Streaming.Durability
@@ -475,6 +526,16 @@
             try writeAll(span, to: context.handle, path: context.tempPath ?? context.resolvedPath)
         }
 
+        /// Writes a raw buffer chunk to an open streaming context.
+        ///
+        /// Used by the zero-copy ArraySlice path to avoid Span construction.
+        package static func writeRaw(
+            chunk buffer: UnsafeRawBufferPointer,
+            to context: borrowing Context
+        ) throws(File.System.Write.Streaming.Error) {
+            try writeAllRaw(buffer, to: context.handle, path: context.tempPath ?? context.resolvedPath)
+        }
+
         /// Commits a streaming write, closing the file and performing the atomic rename if needed.
         ///
         /// This function owns post-publish error semantics:
@@ -532,6 +593,69 @@
             // Remove temp file if atomic mode
             if let tempPath = context.tempPath {
                 _ = deleteFile(tempPath)
+            }
+        }
+    }
+
+    // MARK: - Reusable-Buffer Streaming Implementation
+
+    extension File.System.Write.Streaming.Windows {
+        /// Performance-grade streaming write using a caller-owned reusable buffer.
+        ///
+        /// This implementation uses the multi-phase API (open, write, commit) and
+        /// calls the fill closure in a loop until it returns 0.
+        static func writeWithBuffer(
+            to path: String,
+            options: borrowing File.System.Write.Streaming.Options,
+            buffer: inout [UInt8],
+            fill: (inout [UInt8]) throws -> Int
+        ) throws(File.System.Write.Streaming.Error) {
+
+            let context = try open(path: path, options: options)
+            var writeError: File.System.Write.Streaming.Error? = nil
+
+            defer {
+                if writeError != nil {
+                    cleanup(context)
+                }
+            }
+
+            while true {
+                let bytesProduced: Int
+                do {
+                    bytesProduced = try fill(&buffer)
+                } catch {
+                    writeError = .userError(message: String(describing: error))
+                    throw writeError!
+                }
+
+                if bytesProduced == 0 {
+                    break
+                }
+
+                guard bytesProduced <= buffer.count else {
+                    writeError = .invalidFillResult(produced: bytesProduced, capacity: buffer.count)
+                    throw writeError!
+                }
+
+                // Write the valid portion using raw buffer pointer
+                do {
+                    try buffer.withUnsafeBufferPointer { ptr throws(File.System.Write.Streaming.Error) in
+                        guard let base = ptr.baseAddress else { return }
+                        let rawBuffer = UnsafeRawBufferPointer(start: base, count: bytesProduced)
+                        try writeAllRaw(rawBuffer, to: context.handle, path: context.tempPath ?? context.resolvedPath)
+                    }
+                } catch let error {
+                    writeError = error
+                    throw error
+                }
+            }
+
+            do {
+                try commit(context)
+            } catch let error {
+                writeError = error
+                throw error
             }
         }
     }

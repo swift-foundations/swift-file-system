@@ -392,7 +392,8 @@
                 #endif
 
                 // Encode to hex (Foundation-free via RFC_4648)
-                return Span(_unsafeElements: buffer).hex.encoded()
+                // Copy to array for hex encoding (12 bytes, called once per write)
+                return Array(buffer).hex.encoded()
             }
 
             if let error = getrandomError {

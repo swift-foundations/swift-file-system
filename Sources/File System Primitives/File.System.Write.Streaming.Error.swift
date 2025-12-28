@@ -41,6 +41,17 @@ extension File.System.Write.Streaming {
         ///
         /// This is an extremely rare error indicating the kernel CSPRNG failed.
         case randomGenerationFailed(errno: Int32, message: String)
+
+        /// The user-provided fill closure threw an error.
+        ///
+        /// Used by the reusable-buffer streaming API when the fill closure fails.
+        /// The underlying error's description is preserved in the message.
+        case userError(message: String)
+
+        /// The fill closure returned more bytes than the buffer capacity.
+        ///
+        /// This indicates a programming error in the fill closure.
+        case invalidFillResult(produced: Int, capacity: Int)
     }
 }
 
@@ -73,6 +84,10 @@ extension File.System.Write.Streaming.Error: CustomStringConvertible {
             return "Streaming write is not in a valid state for this operation"
         case .randomGenerationFailed(let errno, let message):
             return "Random token generation failed: \(message) (errno=\(errno))"
+        case .userError(let message):
+            return "User-provided closure failed: \(message)"
+        case .invalidFillResult(let produced, let capacity):
+            return "Fill closure returned \(produced) bytes but buffer capacity is \(capacity)"
         }
     }
 }
