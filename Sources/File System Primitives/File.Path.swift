@@ -180,15 +180,18 @@ extension File.Path {
 
 // MARK: - C Interop
 
-extension File.Path {
-    /// Calls a closure with a pointer to the path as a null-terminated C string.
-    ///
-    /// This provides zero-copy access for syscalls that require C strings.
-    @inlinable
-    public func withCString<R>(_ body: (UnsafePointer<CChar>) throws -> R) rethrows -> R {
-        try _path.withCString(body)
+#if !os(Windows)
+    extension File.Path {
+        /// Calls a closure with a pointer to the path as a null-terminated C string.
+        ///
+        /// This provides zero-copy access for syscalls that require C strings.
+        /// Available on POSIX systems only (macOS, Linux, BSD).
+        @inlinable
+        public func withCString<R>(_ body: (UnsafePointer<CChar>) throws -> R) rethrows -> R {
+            try _path.withCString(body)
+        }
     }
-}
+#endif
 
 // MARK: - Conversion
 

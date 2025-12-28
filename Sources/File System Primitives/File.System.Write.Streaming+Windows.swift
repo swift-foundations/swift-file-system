@@ -22,8 +22,8 @@
             ) throws(File.System.Write.Streaming.Error)
             where Chunks.Element == [UInt8] {
 
-                let resolvedPath = File.System.Path.Utilities.normalizePath(path)
-                let parent = File.System.Path.Utilities.parentDirectory(of: resolvedPath)
+                let resolvedPath = normalizePath(path)
+                let parent = parentDirectory(of: resolvedPath)
                 try verifyOrCreateParentDirectory(
                     parent,
                     createIntermediates: options.createIntermediates
@@ -172,7 +172,7 @@
         }
 
         private static func generateTempPath(in parent: String, for destPath: String) -> String {
-            let baseName = File.System.Path.Utilities.fileName(of: destPath)
+            let baseName = fileName(of: destPath)
             let random = randomHex(12)
             return "\(parent)\\\(baseName).streaming.\(random).tmp"
         }
@@ -657,6 +657,57 @@
                 writeError = error
                 throw error
             }
+        }
+    }
+
+    // MARK: - Path Utilities
+
+    extension File.System.Write.Streaming.Windows {
+
+        /// Normalizes a Windows path.
+        private static func normalizePath(_ path: String) -> String {
+            // Convert forward slashes to backslashes manually (no Foundation)
+            var result = ""
+            result.reserveCapacity(path.utf8.count)
+            for char in path {
+                if char == "/" {
+                    result.append("\\")
+                } else {
+                    result.append(char)
+                }
+            }
+
+            // Remove trailing backslashes (except for root like "C:\")
+            while result.count > 3 && result.hasSuffix("\\") {
+                result.removeLast()
+            }
+
+            return result
+        }
+
+        /// Extracts parent directory from a Windows path.
+        private static func parentDirectory(of path: String) -> String {
+            // Handle UNC paths, drive letters, etc.
+            if let lastSep = path.lastIndex(of: "\\") {
+                if lastSep == path.startIndex {
+                    return String(path[...lastSep])
+                }
+                // Check for "C:\" case
+                let prefix = String(path[..<lastSep])
+                if prefix.count == 2 && prefix.last == ":" {
+                    return prefix + "\\"
+                }
+                return prefix
+            }
+            return "."
+        }
+
+        /// Extracts filename from a path.
+        private static func fileName(of path: String) -> String {
+            if let lastSep = path.lastIndex(of: "\\") {
+                return String(path[path.index(after: lastSep)...])
+            }
+            return path
         }
     }
 
