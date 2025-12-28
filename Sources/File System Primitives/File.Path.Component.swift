@@ -76,6 +76,12 @@ extension File.Path.Component {
     public var filePathComponent: FilePath.Component {
         _component
     }
+
+    /// Whether this component starts with the given byte.
+    @inlinable
+    public func starts(with byte: UInt8) -> Bool {
+        _component.string.utf8.first == byte
+    }
 }
 
 // MARK: - ExpressibleByStringLiteral
