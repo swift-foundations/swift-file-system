@@ -86,6 +86,14 @@ extension File.Path {
         guard parent != _path else { return nil }
         return File.Path(__unchecked: (), parent)
     }
+
+    /// The parent directory, falling back to self for root paths.
+    ///
+    /// Internal use for write implementations that need a valid parent path.
+    @usableFromInline
+    package var parentOrSelf: File.Path {
+        parent ?? self
+    }
 }
 
 // MARK: - Appending (Canonical Inits)
@@ -155,6 +163,18 @@ extension File.Path {
     @inlinable
     public var isEmpty: Bool {
         _path.isEmpty
+    }
+}
+
+// MARK: - C Interop
+
+extension File.Path {
+    /// Calls a closure with a pointer to the path as a null-terminated C string.
+    ///
+    /// This provides zero-copy access for syscalls that require C strings.
+    @inlinable
+    public func withCString<R>(_ body: (UnsafePointer<CChar>) throws -> R) rethrows -> R {
+        try _path.withCString(body)
     }
 }
 
@@ -246,3 +266,97 @@ extension File.Path: Binary.Serializable {
         buffer.append(contentsOf: path._path.string.utf8)
     }
 }
+
+// MARK: - Internal Resolution Inits
+
+#if !os(Windows)
+
+    #if canImport(Darwin)
+        import Darwin
+    #elseif canImport(Glibc)
+        import Glibc
+    #elseif canImport(Musl)
+        import Musl
+    #endif
+
+    extension File.Path {
+        /// Creates a resolved path from a string (POSIX).
+        ///
+        /// - Expands `~` to home directory
+        /// - Makes relative paths absolute using current working directory
+        /// - Normalizes trailing slashes
+        ///
+        /// This is an internal init for write implementations that need C API interop.
+        @usableFromInline
+        package init(_resolvingPOSIX string: String) {
+            var result = string
+
+            // Expand ~ to home directory
+            if result.hasPrefix("~/") {
+                if let home = getenv("HOME") {
+                    result = String(cString: home) + String(result.dropFirst())
+                }
+            } else if result == "~" {
+                if let home = getenv("HOME") {
+                    result = String(cString: home)
+                }
+            }
+
+            // Make relative paths absolute using current working directory
+            if !result.hasPrefix("/") {
+                withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
+                    if getcwd(buffer.baseAddress!, buffer.count) != nil {
+                        let cwdStr = String(cString: buffer.baseAddress!)
+                        if result == "." {
+                            result = cwdStr
+                        } else if result.hasPrefix("./") {
+                            result = cwdStr + String(result.dropFirst())
+                        } else {
+                            result = cwdStr + "/" + result
+                        }
+                    }
+                }
+            }
+
+            // Normalize: remove trailing slashes (except root)
+            while result.count > 1 && result.hasSuffix("/") {
+                result.removeLast()
+            }
+
+            self._path = FilePath(result)
+        }
+    }
+
+#endif
+
+#if os(Windows)
+
+    extension File.Path {
+        /// Creates a normalized path from a string (Windows).
+        ///
+        /// - Converts forward slashes to backslashes
+        /// - Removes trailing backslashes (except for root like `C:\`)
+        ///
+        /// This is an internal init for write implementations that need C API interop.
+        @usableFromInline
+        package init(_normalizingWindows string: String) {
+            var result = ""
+            result.reserveCapacity(string.utf8.count)
+            for char in string {
+                if char == "/" {
+                    result.append("\\")
+                } else {
+                    result.append(char)
+                }
+            }
+
+            // Remove trailing backslashes (except for root like "C:\")
+            while result.count > 3 && result.hasSuffix("\\") {
+                result.removeLast()
+            }
+
+            self._path = FilePath(result)
+        }
+    }
+
+#endif

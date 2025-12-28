@@ -24,13 +24,13 @@
 
             static func write<Chunks: Sequence>(
                 _ chunks: Chunks,
-                to path: borrowing String,
+                to path: String,
                 options: borrowing File.System.Write.Streaming.Options
             ) throws(File.System.Write.Streaming.Error)
             where Chunks.Element == [UInt8] {
 
-                let resolvedPath = resolvePath(path)
-                let parent = parentDirectory(of: resolvedPath)
+                let resolved = File.Path(_resolvingPOSIX: path)
+                let parent = resolved.parentOrSelf
                 try verifyOrCreateParentDirectory(
                     parent,
                     createIntermediates: options.createIntermediates
@@ -38,9 +38,9 @@
 
                 switch options.commit {
                 case .atomic(let atomicOptions):
-                    try writeAtomic(chunks, to: resolvedPath, parent: parent, options: atomicOptions)
+                    try writeAtomic(chunks, to: resolved, parent: parent, options: atomicOptions)
                 case .direct(let directOptions):
-                    try writeDirect(chunks, to: resolvedPath, options: directOptions)
+                    try writeDirect(chunks, to: resolved, options: directOptions)
                 }
             }
 
@@ -48,8 +48,8 @@
 
             private static func writeAtomic<Chunks: Sequence>(
                 _ chunks: Chunks,
-                to resolvedPath: String,
-                parent: String,
+                to resolved: File.Path,
+                parent: File.Path,
                 options: File.System.Write.Streaming.Atomic.Options
             ) throws(File.System.Write.Streaming.Error)
             where Chunks.Element == [UInt8] {
@@ -62,20 +62,20 @@
                 // A pre-check could cause incorrect early failure if the file is removed
                 // between check and publish.
 
-                let tempPath = try generateTempPath(in: parent, for: resolvedPath)
-                let fd = try createFile(at: tempPath, exclusive: true)
+                let temp = try generateTempPath(in: parent, for: resolved)
+                let fd = try createFile(at: temp, exclusive: true)
 
                 var didClose = false
                 var didRename = false
 
                 defer {
                     if !didClose { _ = close(fd) }
-                    if !didRename { _ = unlink(tempPath) }
+                    if !didRename { temp.withCString { _ = unlink($0) } }
                 }
 
                 // Write all chunks
                 for chunk in chunks {
-                    try writeAll(chunk.span, to: fd, path: resolvedPath)
+                    try writeAll(chunk.span, to: fd, path: temp)
                 }
 
                 try syncFile(fd, durability: options.durability)
@@ -85,9 +85,9 @@
                 // Use appropriate rename based on strategy
                 switch options.strategy {
                 case .replaceExisting:
-                    try atomicRename(from: tempPath, to: resolvedPath)
+                    try atomicRename(from: temp, to: resolved)
                 case .noClobber:
-                    try atomicRenameNoClobber(from: tempPath, to: resolvedPath)
+                    try atomicRenameNoClobber(from: temp, to: resolved)
                 }
                 didRename = true
 
@@ -118,18 +118,18 @@
 
             private static func writeDirect<Chunks: Sequence>(
                 _ chunks: Chunks,
-                to resolvedPath: String,
+                to dest: File.Path,
                 options: File.System.Write.Streaming.Direct.Options
             ) throws(File.System.Write.Streaming.Error)
             where Chunks.Element == [UInt8] {
 
                 if case .create = options.strategy {
-                    if fileExists(resolvedPath) {
-                        throw .destinationExists(path: File.Path(__unchecked: (), resolvedPath))
+                    if fileExists(dest) {
+                        throw .destinationExists(path: dest)
                     }
                 }
 
-                let fd = try createFile(at: resolvedPath, exclusive: options.strategy == .create)
+                let fd = try createFile(at: dest, exclusive: options.strategy == .create)
 
                 var didClose = false
 
@@ -147,7 +147,7 @@
 
                 // Write all chunks
                 for chunk in chunks {
-                    try writeAll(chunk.span, to: fd, path: resolvedPath)
+                    try writeAll(chunk.span, to: fd, path: dest)
                 }
 
                 try syncFile(fd, durability: options.durability)
@@ -161,74 +161,18 @@
 
     extension File.System.Write.Streaming.POSIX {
 
-        private static func resolvePath(_ path: String) -> String {
-            var result = path
-
-            if result.hasPrefix("~/") {
-                if let home = getenv("HOME") {
-                    result = String(cString: home) + String(result.dropFirst())
-                }
-            } else if result == "~" {
-                if let home = getenv("HOME") {
-                    result = String(cString: home)
-                }
-            }
-
-            if !result.hasPrefix("/") {
-                withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
-                    if getcwd(buffer.baseAddress!, buffer.count) != nil {
-                        let cwdStr = String(cString: buffer.baseAddress!)
-                        if result == "." {
-                            result = cwdStr
-                        } else if result.hasPrefix("./") {
-                            result = cwdStr + String(result.dropFirst())
-                        } else {
-                            result = cwdStr + "/" + result
-                        }
-                    }
-                }
-            }
-
-            while result.count > 1 && result.hasSuffix("/") {
-                result.removeLast()
-            }
-
-            return result
-        }
-
-        private static func parentDirectory(of path: String) -> String {
-            if path == "/" { return "/" }
-
-            guard let lastSlash = path.lastIndex(of: "/") else {
-                return "."
-            }
-
-            if lastSlash == path.startIndex {
-                return "/"
-            }
-
-            return String(path[..<lastSlash])
-        }
-
-        private static func fileName(of path: String) -> String {
-            if let lastSlash = path.lastIndex(of: "/") {
-                return String(path[path.index(after: lastSlash)...])
-            }
-            return path
-        }
-
         private static func verifyOrCreateParentDirectory(
-            _ dir: String,
+            _ path: File.Path,
             createIntermediates: Bool
         ) throws(File.System.Write.Streaming.Error) {
             do {
-                try File.System.Parent.Check.verify(dir, createIntermediates: createIntermediates)
+                try File.System.Parent.Check.verify(path, createIntermediates: createIntermediates)
             } catch let e {
                 throw .parent(e)
             }
         }
 
-        private static func fileExists(_ path: String) -> Bool {
+        private static func fileExists(_ path: File.Path) -> Bool {
             var st = stat()
             return path.withCString { lstat($0, &st) } == 0
         }
@@ -238,20 +182,21 @@
         /// Invariant A1: Temp must be in same directory as dest for atomic
         /// operations (especially link+unlink fallback which requires same filesystem).
         private static func generateTempPath(
-            in parent: String,
-            for destPath: String
-        ) throws(File.System.Write.Streaming.Error) -> String {
-            // Defensive assertion: verify parent matches destPath's actual parent
+            in parent: File.Path,
+            for dest: File.Path
+        ) throws(File.System.Write.Streaming.Error) -> File.Path {
+            // Defensive assertion: verify parent matches dest's actual parent
             // This guards against future refactoring that might pass mismatched values
-            let destParent = parentDirectory(of: destPath)
+            let destParent = dest.parentOrSelf
             precondition(
-                parent == destParent,
-                "Temp file must be in same directory as destination (got parent='\(parent)', destParent='\(destParent)')"
+                String(parent) == String(destParent),
+                "Temp file must be in same directory as destination"
             )
 
-            let baseName = fileName(of: destPath)
+            let baseName = dest.lastComponent.map { String($0) } ?? ""
             let random = try randomToken(length: 12)
-            return "\(parent)/.\(baseName).streaming.\(random).tmp"
+            let tempName = ".\(baseName).streaming.\(random).tmp"
+            return parent / tempName
         }
 
         private static func randomToken(
@@ -305,7 +250,7 @@
     extension File.System.Write.Streaming.POSIX {
 
         private static func createFile(
-            at path: String,
+            at path: File.Path,
             exclusive: Bool
         ) throws(File.System.Write.Streaming.Error) -> Int32 {
             var flags: Int32 = O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC
@@ -326,7 +271,7 @@
             if fd < 0 {
                 let e = errno
                 throw .fileCreationFailed(
-                    path: File.Path(__unchecked: (), path),
+                    path: path,
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
@@ -373,7 +318,7 @@
         private static func writeAll(
             _ span: borrowing Span<UInt8>,
             to fd: Int32,
-            path: String
+            path: File.Path
         ) throws(File.System.Write.Streaming.Error) {
             let total = span.count
             if total == 0 { return }
@@ -401,7 +346,7 @@
 
                     if rc == 0 {
                         throw File.System.Write.Streaming.Error.writeFailed(
-                            path: File.Path(__unchecked: (), path),
+                            path: path,
                             bytesWritten: written,
                             errno: 0,
                             message: "write returned 0"
@@ -416,7 +361,7 @@
                     }
 
                     throw File.System.Write.Streaming.Error.writeFailed(
-                        path: File.Path(__unchecked: (), path),
+                        path: path,
                         bytesWritten: written,
                         errno: e,
                         message: File.System.Write.Streaming.errorMessage(for: e)
@@ -511,11 +456,11 @@
         }
 
         private static func atomicRename(
-            from: String,
-            to: String
+            from source: File.Path,
+            to dest: File.Path
         ) throws(File.System.Write.Streaming.Error) {
-            let rc = from.withCString { fromPtr in
-                to.withCString { toPtr in
+            let rc = source.withCString { fromPtr in
+                dest.withCString { toPtr in
                     rename(fromPtr, toPtr)
                 }
             }
@@ -523,8 +468,8 @@
             if rc != 0 {
                 let e = errno
                 throw .renameFailed(
-                    from: File.Path(__unchecked: (), from),
-                    to: File.Path(__unchecked: (), to),
+                    from: source,
+                    to: dest,
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
@@ -537,14 +482,14 @@
         /// - macOS/iOS: `renamex_np` with `RENAME_EXCL`
         /// - Linux: `renameat2` with `RENAME_NOREPLACE`, fallback to `link+unlink`
         private static func atomicRenameNoClobber(
-            from tempPath: String,
-            to destPath: String
+            from temp: File.Path,
+            to dest: File.Path
         ) throws(File.System.Write.Streaming.Error) {
             #if canImport(Darwin)
                 // macOS/iOS: Use renamex_np with RENAME_EXCL
                 // Available since macOS 10.12, iOS 10 (we require newer via Swift 6.2)
-                let rc = tempPath.withCString { fromPtr in
-                    destPath.withCString { toPtr in
+                let rc = temp.withCString { fromPtr in
+                    dest.withCString { toPtr in
                         renamex_np(fromPtr, toPtr, UInt32(RENAME_EXCL))
                     }
                 }
@@ -553,11 +498,11 @@
 
                 let e = errno
                 if e == EEXIST {
-                    throw .destinationExists(path: File.Path(__unchecked: (), destPath))
+                    throw .destinationExists(path: dest)
                 }
                 throw .renameFailed(
-                    from: File.Path(__unchecked: (), tempPath),
-                    to: File.Path(__unchecked: (), destPath),
+                    from: temp,
+                    to: dest,
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
@@ -565,8 +510,8 @@
             #elseif os(Linux)
                 // Linux: Try renameat2 with RENAME_NOREPLACE, fallback to link+unlink
                 var outErrno: Int32 = 0
-                let rc = tempPath.withCString { fromPtr in
-                    destPath.withCString { toPtr in
+                let rc = temp.withCString { fromPtr in
+                    dest.withCString { toPtr in
                         atomicfilewrite_renameat2_noreplace(fromPtr, toPtr, &outErrno)
                     }
                 }
@@ -576,23 +521,23 @@
                 let e = outErrno
                 switch e {
                 case EEXIST:
-                    throw .destinationExists(path: File.Path(__unchecked: (), destPath))
+                    throw .destinationExists(path: dest)
 
                 case ENOSYS, EINVAL:
                     // ENOSYS: renameat2 not available (old kernel < 3.15)
                     // EINVAL: flags not supported by filesystem
-                    try linkUnlinkFallback(from: tempPath, to: destPath)
+                    try linkUnlinkFallback(from: temp, to: dest)
 
                 case EPERM:
                     // EPERM can mean: filesystem rejects RENAME_NOREPLACE, OR real permission error
                     // Try fallback, but if that also fails, surface original EPERM with context
                     do {
-                        try linkUnlinkFallback(from: tempPath, to: destPath)
+                        try linkUnlinkFallback(from: temp, to: dest)
                     } catch let fallbackError {
                         // Include context that renameat2 returned EPERM before fallback failed
                         throw .renameFailed(
-                            from: File.Path(__unchecked: (), tempPath),
-                            to: File.Path(__unchecked: (), destPath),
+                            from: temp,
+                            to: dest,
                             errno: EPERM,
                             message:
                                 "renameat2 returned EPERM, fallback also failed: \(fallbackError)"
@@ -601,8 +546,8 @@
 
                 default:
                     throw .renameFailed(
-                        from: File.Path(__unchecked: (), tempPath),
-                        to: File.Path(__unchecked: (), destPath),
+                        from: temp,
+                        to: dest,
                         errno: e,
                         message: File.System.Write.Streaming.errorMessage(for: e)
                     )
@@ -610,7 +555,7 @@
 
             #else
                 // Other POSIX: Use link+unlink fallback
-                try linkUnlinkFallback(from: tempPath, to: destPath)
+                try linkUnlinkFallback(from: temp, to: dest)
             #endif
         }
 
@@ -622,12 +567,12 @@
         /// Note: This is NOT identical to rename - it creates a new directory entry
         /// and ctime changes on the inode. But it provides equivalent content atomicity.
         private static func linkUnlinkFallback(
-            from tempPath: String,
-            to destPath: String
+            from temp: File.Path,
+            to dest: File.Path
         ) throws(File.System.Write.Streaming.Error) {
             // link() is atomic - fails with EEXIST if dest exists
-            let linkRc = tempPath.withCString { fromPtr in
-                destPath.withCString { toPtr in
+            let linkRc = temp.withCString { fromPtr in
+                dest.withCString { toPtr in
                     link(fromPtr, toPtr)
                 }
             }
@@ -635,11 +580,11 @@
             if linkRc != 0 {
                 let e = errno
                 if e == EEXIST {
-                    throw .destinationExists(path: File.Path(__unchecked: (), destPath))
+                    throw .destinationExists(path: dest)
                 }
                 throw .renameFailed(
-                    from: File.Path(__unchecked: (), tempPath),
-                    to: File.Path(__unchecked: (), destPath),
+                    from: temp,
+                    to: dest,
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
@@ -647,7 +592,7 @@
 
             // Now both temp and dest point to same inode
             // unlink(temp) removes the temp name; dest remains
-            let unlinkRc = tempPath.withCString { unlink($0) }
+            let unlinkRc = temp.withCString { unlink($0) }
             if unlinkRc != 0 {
                 // Unusual but not catastrophic - the write succeeded, dest has correct content
                 // We have two names pointing to same data. Log warning but don't throw.
@@ -655,7 +600,7 @@
             }
         }
 
-        private static func syncDirectory(_ path: String) throws(File.System.Write.Streaming.Error) {
+        private static func syncDirectory(_ path: File.Path) throws(File.System.Write.Streaming.Error) {
             var flags: Int32 = O_RDONLY | O_CLOEXEC
             #if os(Linux)
                 flags |= O_DIRECTORY
@@ -672,7 +617,7 @@
             if fd < 0 {
                 let e = errno
                 throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
+                    path: path,
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
@@ -683,7 +628,7 @@
             if fsync(fd) != 0 {
                 let e = errno
                 throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
+                    path: path,
                     errno: e,
                     message: File.System.Write.Streaming.errorMessage(for: e)
                 )
@@ -696,13 +641,13 @@
     extension File.System.Write.Streaming.POSIX {
         /// Context for multi-phase streaming writes.
         ///
-        /// @unchecked Sendable because all fields are immutable value types (Int32, String).
+        /// All fields are immutable value types. `File.Path` is `Sendable`.
         /// Safe to pass to io.run closures within a single async function.
-        public struct Context: @unchecked Sendable {
+        public struct Context: Sendable {
             public let fd: Int32
-            public let tempPath: String?  // nil for direct mode
-            public let resolvedPath: String
-            public let parent: String
+            public let temp: File.Path?  // nil for direct mode
+            public let resolved: File.Path
+            public let parent: File.Path
             public let durability: File.System.Write.Streaming.Durability
             public let isAtomic: Bool
             public let strategy: File.System.Write.Streaming.Atomic.Strategy?
@@ -718,8 +663,8 @@
             options: File.System.Write.Streaming.Options
         ) throws(File.System.Write.Streaming.Error) -> Context {
 
-            let resolvedPath = resolvePath(path)
-            let parent = parentDirectory(of: resolvedPath)
+            let resolved = File.Path(_resolvingPOSIX: path)
+            let parent = resolved.parentOrSelf
             try verifyOrCreateParentDirectory(
                 parent,
                 createIntermediates: options.createIntermediates
@@ -727,12 +672,12 @@
 
             switch options.commit {
             case .atomic(let atomicOptions):
-                let tempPath = try generateTempPath(in: parent, for: resolvedPath)
-                let fd = try createFile(at: tempPath, exclusive: true)
+                let temp = try generateTempPath(in: parent, for: resolved)
+                let fd = try createFile(at: temp, exclusive: true)
                 return Context(
                     fd: fd,
-                    tempPath: tempPath,
-                    resolvedPath: resolvedPath,
+                    temp: temp,
+                    resolved: resolved,
                     parent: parent,
                     durability: atomicOptions.durability,
                     isAtomic: true,
@@ -742,13 +687,13 @@
             case .direct(let directOptions):
                 // For direct mode with .create strategy, we still need exclusive create
                 let fd = try createFile(
-                    at: resolvedPath,
+                    at: resolved,
                     exclusive: directOptions.strategy == .create
                 )
                 return Context(
                     fd: fd,
-                    tempPath: nil,
-                    resolvedPath: resolvedPath,
+                    temp: nil,
+                    resolved: resolved,
                     parent: parent,
                     durability: directOptions.durability,
                     isAtomic: false,
@@ -764,7 +709,7 @@
             chunk span: borrowing Span<UInt8>,
             to context: borrowing Context
         ) throws(File.System.Write.Streaming.Error) {
-            try writeAll(span, to: context.fd, path: context.tempPath ?? context.resolvedPath)
+            try writeAll(span, to: context.fd, path: context.temp ?? context.resolved)
         }
 
         /// Commits a streaming write, closing the file and performing the atomic rename if needed.
@@ -784,13 +729,13 @@
             // Close the file descriptor
             try closeFile(context.fd)
 
-            if context.isAtomic, let tempPath = context.tempPath {
+            if context.isAtomic, let temp = context.temp {
                 // Atomic rename
                 switch context.strategy {
                 case .replaceExisting, .none:
-                    try atomicRename(from: tempPath, to: context.resolvedPath)
+                    try atomicRename(from: temp, to: context.resolved)
                 case .noClobber:
-                    try atomicRenameNoClobber(from: tempPath, to: context.resolvedPath)
+                    try atomicRenameNoClobber(from: temp, to: context.resolved)
                 }
 
                 // Directory sync after publish - only for .full durability
@@ -819,8 +764,8 @@
             _ = close(context.fd)
 
             // Remove temp file if atomic mode
-            if let tempPath = context.tempPath {
-                _ = tempPath.withCString { unlink($0) }
+            if let temp = context.temp {
+                temp.withCString { _ = unlink($0) }
             }
         }
     }

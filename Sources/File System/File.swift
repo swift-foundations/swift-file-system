@@ -489,7 +489,7 @@ extension File {
 
     /// The file name (last component of the path).
     public var name: String {
-        path.lastComponent?.string ?? ""
+        path.lastComponent.map { String($0) } ?? ""
     }
 
     /// The file extension, or `nil` if there is none.

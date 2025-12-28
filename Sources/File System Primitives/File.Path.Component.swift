@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 17/12/2025.
 //
 
+public import Binary
 public import INCITS_4_1986
 import SystemPackage
 
@@ -52,6 +53,7 @@ extension File.Path {
 
 extension File.Path.Component {
     /// The string representation of this component.
+    @available(*, deprecated, message: "Use String(component) instead")
     @inlinable
     public var string: String {
         _component.string
@@ -159,3 +161,18 @@ extension File.Path.Component: ExpressibleByStringLiteral {
         }
     }
 #endif
+
+// MARK: - Binary.Serializable
+
+extension File.Path.Component: Binary.Serializable {
+    /// Serializes the component as UTF-8 bytes.
+    ///
+    /// This enables `String(component)` via `StringProtocol.init<T: Binary.Serializable>(_:)`.
+    @inlinable
+    public static func serialize<Buffer: RangeReplaceableCollection>(
+        _ component: Self,
+        into buffer: inout Buffer
+    ) where Buffer.Element == UInt8 {
+        buffer.append(contentsOf: component._component.string.utf8)
+    }
+}

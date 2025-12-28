@@ -133,13 +133,13 @@ extension File.Path: CustomDebugStringConvertible {
 extension File.Path.Component: CustomStringConvertible {
     @inlinable
     public var description: String {
-        string
+        String(self)
     }
 }
 
 extension File.Path.Component: CustomDebugStringConvertible {
     public var debugDescription: String {
-        "File.Path.Component(\(string.debugDescription))"
+        "File.Path.Component(\(String(self).debugDescription))"
     }
 }
 

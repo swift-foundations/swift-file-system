@@ -469,7 +469,7 @@ extension File.Directory {
 
     /// The directory name (last component of the path).
     public var name: String {
-        path.lastComponent?.string ?? ""
+        path.lastComponent.map { String($0) } ?? ""
     }
 
     /// Returns a new directory with the given component appended.

@@ -162,7 +162,7 @@
 
         static func writeSpan(
             _ bytes: borrowing Swift.Span<UInt8>,
-            to path: borrowing String,
+            to path: String,
             options: borrowing File.System.Write.Atomic.Options
         ) throws(File.System.Write.Atomic.Error) {
             typealias Phase = File.System.Write.Atomic.Commit.Phase
@@ -171,18 +171,18 @@
             var phase: Phase = .pending
 
             // 1. Resolve and validate parent directory
-            let resolvedPath = resolvePath(path)
-            let parent = parentDirectory(of: resolvedPath)
+            let resolved = File.Path(_resolvingPOSIX: path)
+            let parent = resolved.parentOrSelf
             try verifyOrCreateParentDirectory(
                 parent,
                 createIntermediates: options.createIntermediates
             )
 
             // 2. Stat destination if it exists (for metadata preservation)
-            let destStat = try statIfExists(resolvedPath)
+            let destStat = try statIfExists(resolved)
 
             // 3. Create temp file with unique name (retries on EEXIST)
-            let (fd, tempPath) = try createTempFileWithRetry(in: parent, for: resolvedPath)
+            let (fd, temp) = try createTempFileWithRetry(in: parent, for: resolved)
             phase = .writing
 
             defer {
@@ -192,7 +192,7 @@
                     _ = close(fd)
                 }
                 if phase < .renamedPublished {
-                    _ = unlink(tempPath)
+                    temp.withCString { _ = unlink($0) }
                 }
                 // Note: if phase >= .renamedPublished, temp no longer exists (was renamed)
             }
@@ -206,7 +206,7 @@
 
             // 6. Apply metadata from destination if requested
             if let st = destStat {
-                try applyMetadata(from: st, to: fd, options: options, destPath: resolvedPath)
+                try applyMetadata(from: st, to: fd, options: options, dest: resolved)
             }
 
             // 7. Close file (required before rename on some systems)
@@ -216,9 +216,9 @@
             // 8. Atomic rename
             switch options.strategy {
             case .replaceExisting:
-                try atomicRename(from: tempPath, to: resolvedPath)
+                try atomicRename(from: temp, to: resolved)
             case .noClobber:
-                try atomicRenameNoClobber(from: tempPath, to: resolvedPath)
+                try atomicRenameNoClobber(from: temp, to: resolved)
             }
             // CRITICAL: Update phase IMMEDIATELY after successful rename
             phase = .renamedPublished
@@ -233,16 +233,16 @@
                 do {
                     try syncDirectory(parent)
                     phase = .syncedDirectory
-                } catch let syncError {
+                } catch {
                     // Already published, report as after-commit failure
-                    if case .directorySyncFailed(let path, let code, let msg) = syncError {
+                    if case .directorySyncFailed(let path, let code, let msg) = error {
                         throw .directorySyncFailedAfterCommit(
                             path: path,
                             code: code,
                             message: msg
                         )
                     }
-                    throw syncError
+                    throw error
                 }
             } else {
                 // No directory sync requested, consider it "complete"
@@ -255,81 +255,13 @@
 
     extension POSIXAtomic {
 
-        /// Resolves a path, expanding ~ and making relative paths absolute.
-        private static func resolvePath(_ path: String) -> String {
-            var result = path
-
-            // Expand ~ to home directory
-            if result.hasPrefix("~/") {
-                if let home = getenv("HOME") {
-                    result = String(cString: home) + String(result.dropFirst())
-                }
-            } else if result == "~" {
-                if let home = getenv("HOME") {
-                    result = String(cString: home)
-                }
-            }
-
-            // Make relative paths absolute using current working directory
-            if !result.hasPrefix("/") {
-                // Use stack allocation for getcwd buffer
-                withUnsafeTemporaryAllocation(of: CChar.self, capacity: Int(PATH_MAX)) { buffer in
-                    if getcwd(buffer.baseAddress!, buffer.count) != nil {
-                        // cwd is already null-terminated by getcwd - use String(cString:) directly
-                        let cwdStr = String(cString: buffer.baseAddress!)
-                        if result == "." {
-                            result = cwdStr
-                        } else if result.hasPrefix("./") {
-                            result = cwdStr + String(result.dropFirst())
-                        } else {
-                            result = cwdStr + "/" + result
-                        }
-                    }
-                }
-            }
-
-            // Normalize: remove trailing slashes (except root)
-            while result.count > 1 && result.hasSuffix("/") {
-                result.removeLast()
-            }
-
-            return result
-        }
-
-        /// Extracts the parent directory from a path.
-        private static func parentDirectory(of path: String) -> String {
-            // Root has no parent
-            if path == "/" { return "/" }
-
-            // Find last slash
-            guard let lastSlash = path.lastIndex(of: "/") else {
-                // No slash means current directory (shouldn't happen after resolvePath)
-                return "."
-            }
-
-            if lastSlash == path.startIndex {
-                // Path like "/file" - parent is root
-                return "/"
-            }
-
-            return String(path[..<lastSlash])
-        }
-
-        /// Extracts the filename from a path.
-        private static func fileName(of path: String) -> String {
-            if let lastSlash = path.lastIndex(of: "/") {
-                return String(path[path.index(after: lastSlash)...])
-            }
-            return path
-        }
-
         /// Verifies the parent directory exists and is accessible, optionally creating it.
         private static func verifyOrCreateParentDirectory(
-            _ dir: String,
+            _ path: File.Path,
             createIntermediates: Bool
         ) throws(File.System.Write.Atomic.Error) {
             do {
-                try File.System.Parent.Check.verify(dir, createIntermediates: createIntermediates)
+                try File.System.Parent.Check.verify(path, createIntermediates: createIntermediates)
             } catch let e {
                 throw .parent(e)
             }
@@ -348,10 +280,10 @@
         /// - Returns: A tuple of (file descriptor, temp file path).
         /// - Throws: `.tempFileCreationFailed` after max attempts or on non-EEXIST errors.
         private static func createTempFileWithRetry(
-            in parent: String,
-            for destPath: String
-        ) throws(File.System.Write.Atomic.Error) -> (fd: Int32, tempPath: String) {
-            let baseName = fileName(of: destPath)
+            in parent: File.Path,
+            for dest: File.Path
+        ) throws(File.System.Write.Atomic.Error) -> (fd: Int32, temp: File.Path) {
+            let baseName = dest.lastComponent.map { String($0) } ?? ""
             let pid = getpid()  // Stable prefix for cross-process uniqueness
             let flags: Int32 = O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC
             let mode: mode_t = 0o600  // Owner read/write only initially
@@ -359,12 +291,12 @@
             for attempt in 0..<maxTempFileAttempts {
                 let random = try randomToken(length: 12)
                 // Format: .{basename}.atomic.{pid}.{random}.tmp
-                let tempPath = "\(parent)/.\(baseName).atomic.\(pid).\(random).tmp"
+                let temp = parent / ".\(baseName).atomic.\(pid).\(random).tmp"
 
-                let fd = tempPath.withCString { openRetryingEINTR($0, flags, mode) }
+                let fd = temp.withCString { openRetryingEINTR($0, flags, mode) }
 
                 if fd >= 0 {
-                    return (fd, tempPath)
+                    return (fd, temp)
                 }
 
                 let e = errno
@@ -374,7 +306,7 @@
                 }
 
                 throw .tempFileCreationFailed(
-                    directory: File.Path(__unchecked: (), parent),
+                    directory: parent,
                     code: .posix(e),
                     message: e == EEXIST
                         ? "Failed after \(maxTempFileAttempts) attempts (EEXIST)"
@@ -384,7 +316,7 @@
 
             // Should not be reached due to loop structure, but Swift requires exhaustive return
             throw .tempFileCreationFailed(
-                directory: File.Path(__unchecked: (), parent),
+                directory: parent,
                 code: .posix(EEXIST),
                 message: "Failed after \(maxTempFileAttempts) attempts"
             )
@@ -471,7 +403,7 @@
 
         /// Stats a file, returning nil if it doesn't exist.
         private static func statIfExists(
-            _ path: String
+            _ path: File.Path
         ) throws(File.System.Write.Atomic.Error) -> stat? {
             var st = stat()
             let rc = path.withCString { lstat($0, &st) }
@@ -486,7 +418,7 @@
             }
 
             throw .destinationStatFailed(
-                path: File.Path(__unchecked: (), path),
+                path: path,
                 code: .posix(e),
                 message: File.System.Write.Atomic.errorMessage(for: e)
             )
@@ -657,8 +589,8 @@
 
         /// Performs an atomic rename (replace if exists).
         private static func atomicRename(
-            from: String,
-            to: String
+            from: File.Path,
+            to: File.Path
         ) throws(File.System.Write.Atomic.Error) {
             let rc = from.withCString { fromPtr in
                 to.withCString { toPtr in
@@ -669,8 +601,8 @@
             if rc != 0 {
                 let e = errno
                 throw .renameFailed(
-                    from: File.Path(__unchecked: (), from),
-                    to: File.Path(__unchecked: (), to),
+                    from: from,
+                    to: to,
                     code: .posix(e),
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )
@@ -682,8 +614,8 @@
         /// On Linux, tries renameat2(RENAME_NOREPLACE) first for true atomicity.
         /// Falls back to check-then-rename if renameat2 is unavailable or unsupported.
         private static func atomicRenameNoClobber(
-            from: String,
-            to: String
+            from: File.Path,
+            to: File.Path
         ) throws(File.System.Write.Atomic.Error) {
             #if os(Linux)
                 // Try renameat2 with RENAME_NOREPLACE for true atomicity
@@ -700,17 +632,17 @@
                 // report the original EPERM to preserve diagnostic context.
                 do {
                     try toctouRenameNoClobber(from: from, to: to)
-                } catch let fallbackError {
+                } catch {
                     // If original was EPERM and fallback also failed, report original
                     if renameat2Errno == EPERM {
                         throw .renameFailed(
-                            from: File.Path(__unchecked: (), from),
-                            to: File.Path(__unchecked: (), to),
+                            from: from,
+                            to: to,
                             code: .posix(EPERM),
                             message: "RENAME_NOREPLACE rejected (EPERM), fallback also failed"
                         )
                     }
-                    throw fallbackError
+                    throw error
                 }
             #else
                 // Non-Linux: use TOCTOU fallback directly
@@ -721,14 +653,14 @@
         /// TOCTOU fallback for noClobber rename: check-then-rename.
         /// Has a race window, but matches behavior of most file APIs.
         private static func toctouRenameNoClobber(
-            from: String,
-            to: String
+            from: File.Path,
+            to: File.Path
         ) throws(File.System.Write.Atomic.Error) {
             var st = stat()
             let exists = to.withCString { lstat($0, &st) } == 0
 
             if exists {
-                throw .destinationExists(path: File.Path(__unchecked: (), to))
+                throw .destinationExists(path: to)
             }
 
             try atomicRename(from: from, to: to)
@@ -745,14 +677,14 @@
             /// The `errno` out parameter is set to the error code for diagnostics,
             /// especially when returning nil (to distinguish ENOSYS from EPERM).
             private static func tryRenameat2NoClobber(
-                from: String,
-                to: String,
+                from: File.Path,
+                to: File.Path,
                 errno outErrno: inout Int32
             ) -> Result<Void, File.System.Write.Atomic.Error>? {
                 #if DEBUG
                     // Support syscall injection for testing
                     if let override = SyscallOverrides.renameat2Override {
-                        let result = override(from, to)
+                        let result = override(String(from), String(to))
                         outErrno = result.errno
                         if result.result == 0 {
                             return .success(())
@@ -783,7 +715,7 @@
                 switch outErrno {
                 case EEXIST:
                     // Definitive: destination exists
-                    return .failure(.destinationExists(path: File.Path(__unchecked: (), to)))
+                    return .failure(.destinationExists(path: to))
 
                 case ENOSYS, EINVAL, ENOTSUPP_OR_NOTSUP:
                     // Feature unavailable - fall back to portable strategy
@@ -802,8 +734,8 @@
                     // Other errors are definitive failures
                     return .failure(
                         .renameFailed(
-                            from: File.Path(__unchecked: (), from),
-                            to: File.Path(__unchecked: (), to),
+                            from: from,
+                            to: to,
                             code: .posix(outErrno),
                             message: File.System.Write.Atomic.errorMessage(for: outErrno)
                         )
@@ -814,7 +746,7 @@
 
         /// Syncs a directory to persist rename operations.
         /// Uses EINTR-safe wrappers for open() and fsync().
-        private static func syncDirectory(_ path: String) throws(File.System.Write.Atomic.Error) {
+        private static func syncDirectory(_ path: File.Path) throws(File.System.Write.Atomic.Error) {
             var flags: Int32 = O_RDONLY | O_CLOEXEC
             #if os(Linux)
                 flags |= O_DIRECTORY
@@ -825,7 +757,7 @@
             if fd < 0 {
                 let e = errno
                 throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
+                    path: path,
                     code: .posix(e),
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )
@@ -836,7 +768,7 @@
             if fsyncRetryingEINTR(fd) != 0 {
                 let e = errno
                 throw .directorySyncFailed(
-                    path: File.Path(__unchecked: (), path),
+                    path: path,
                     code: .posix(e),
                     message: File.System.Write.Atomic.errorMessage(for: e)
                 )
@@ -853,7 +785,7 @@
             from st: stat,
             to fd: Int32,
             options: File.System.Write.Atomic.Options,
-            destPath: String
+            dest: File.Path
         ) throws(File.System.Write.Atomic.Error) {
 
             // Permissions (mode)
@@ -892,12 +824,12 @@
 
             // Extended attributes
             if options.preserveExtendedAttributes {
-                try copyExtendedAttributes(from: destPath, to: fd)
+                try copyExtendedAttributes(from: dest, to: fd)
             }
 
             // ACLs
             if options.preserveACLs {
-                try copyACL(from: destPath, to: fd)
+                try copyACL(from: dest, to: fd)
             }
         }
 
@@ -937,25 +869,25 @@
 
         /// Copies extended attributes from source path to destination fd.
         private static func copyExtendedAttributes(
-            from srcPath: String,
+            from src: File.Path,
             to dstFd: Int32
         ) throws(File.System.Write.Atomic.Error) {
             #if canImport(Darwin)
-                try copyXattrsDarwin(from: srcPath, to: dstFd)
+                try copyXattrsDarwin(from: src, to: dstFd)
             #else
                 // Linux xattr requires C shim (planned for future release)
                 // Other platforms - silently skip
-                _ = (srcPath, dstFd)
+                _ = (src, dstFd)
             #endif
         }
 
         #if canImport(Darwin)
             private static func copyXattrsDarwin(
-                from srcPath: String,
+                from src: File.Path,
                 to dstFd: Int32
             ) throws(File.System.Write.Atomic.Error) {
                 // Get list of xattr names
-                let listSize = srcPath.withCString { listxattr($0, nil, 0, 0) }
+                let listSize = src.withCString { listxattr($0, nil, 0, 0) }
 
                 if listSize < 0 {
                     let e = errno
@@ -977,7 +909,7 @@
                     nameListBuffer: UnsafeMutableBufferPointer<CChar>
                 ) throws(File.System.Write.Atomic.Error) {
                     // Read the name list
-                    let gotSize = srcPath.withCString { path in
+                    let gotSize = src.withCString { path in
                         listxattr(path, nameListBuffer.baseAddress, listSize, 0)
                     }
 
@@ -1009,7 +941,7 @@
                         offset = end + 1
 
                         // Get xattr value
-                        let valueSize = srcPath.withCString { path in
+                        let valueSize = src.withCString { path in
                             name.withCString { n in
                                 getxattr(path, n, nil, 0, 0, 0)
                             }
@@ -1029,7 +961,7 @@
                         func copyXattrValue(
                             buffer: UnsafeMutableBufferPointer<UInt8>
                         ) throws(File.System.Write.Atomic.Error) -> Int {
-                            let gotValue = srcPath.withCString { path in
+                            let gotValue = src.withCString { path in
                                 name.withCString { n in
                                     getxattr(path, n, buffer.baseAddress, valueSize, 0, 0)
                                 }
@@ -1135,12 +1067,12 @@
 
         /// Copies ACL from source path to destination fd.
         private static func copyACL(
-            from srcPath: String,
+            from src: File.Path,
             to dstFd: Int32
         ) throws(File.System.Write.Atomic.Error) {
             #if ATOMICFILEWRITE_HAS_ACL_SHIMS
                 var outErrno: Int32 = 0
-                let rc = srcPath.withCString { path in
+                let rc = src.withCString { path in
                     atomicfilewrite_copy_acl_from_path_to_fd(path, dstFd, &outErrno)
                 }
 
@@ -1158,7 +1090,7 @@
             #else
                 // ACL shims not compiled - silently skip
                 // (User requested ACL preservation but it's not available)
-                _ = (srcPath, dstFd)
+                _ = (src, dstFd)
             #endif
         }
 
