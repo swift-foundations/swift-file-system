@@ -15,6 +15,7 @@
 
             // MARK: - Generic Sequence API
 
+            @usableFromInline
             static func write<Chunks: Sequence>(
                 _ chunks: Chunks,
                 to path: borrowing String,
