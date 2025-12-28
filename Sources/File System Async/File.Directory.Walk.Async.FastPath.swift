@@ -30,6 +30,42 @@ extension File.Directory.Walk.Async {
             return true
         }
 
+        /// Internal heuristic: detect small trees where concurrency overhead exceeds benefit.
+        ///
+        /// Probes the root directory to count immediate subdirectories.
+        /// If the count is below a threshold, fast-path is more efficient.
+        ///
+        /// - Returns: `true` if fast-path should be used for this tree.
+        internal static func shouldUseForSmallTree(root: File.Directory, options: Options) -> Bool {
+            // Can't use fast-path with symlink following
+            guard !options.followSymlinks else { return false }
+
+            // Probe threshold: if root has fewer than this many subdirectories,
+            // concurrency overhead typically exceeds parallelism benefit.
+            // Tuned for typical file system latencies and TaskGroup overhead.
+            let subdirectoryThreshold = 16
+
+            // Quick probe: count immediate subdirectories
+            guard let entries = try? File.Directory.Contents.list(at: root) else {
+                // If we can't read root, fall back to concurrent (it handles errors)
+                return false
+            }
+
+            var subdirCount = 0
+            for entry in entries {
+                if entry.type == .directory {
+                    subdirCount += 1
+                    if subdirCount >= subdirectoryThreshold {
+                        // Tree is large enough that concurrency may help
+                        return false
+                    }
+                }
+            }
+
+            // Few subdirectories - fast-path wins due to lower overhead
+            return true
+        }
+
         /// Creates a fast-path async sequence for directory walking.
         internal static func makeSequence(
             root: File.Directory,

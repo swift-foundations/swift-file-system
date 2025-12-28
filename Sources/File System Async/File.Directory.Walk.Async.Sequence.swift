@@ -57,19 +57,30 @@ extension File.Directory.Walk.Async {
 
         /// Returns an iterator using either fast-path or concurrent walker.
         ///
-        /// Fast-path is selected when:
-        /// - `maxConcurrency == 1`
-        /// - `followSymlinks == false`
+        /// Strategy selection (internal, not user-configurable):
+        /// 1. Fast-path when `maxConcurrency == 1` and `!followSymlinks`
+        /// 2. Fast-path for small trees (heuristic: few subdirectories at root)
+        /// 3. Concurrent otherwise
         public func makeAsyncIterator() -> Strategy.Iterator {
+            // Explicit fast-path request via maxConcurrency == 1
             if FastPath.canUse(options: options) {
                 return Strategy.Iterator(
                     .fastPath(FastPath.makeSequence(root: root, options: options, fs: fs))
                 )
-            } else {
+            }
+
+            // Internal heuristic: use fast-path for small trees
+            // where concurrency overhead exceeds parallelism benefit
+            if FastPath.shouldUseForSmallTree(root: root, options: options) {
                 return Strategy.Iterator(
-                    .concurrent(Sequence.Iterator.make(root: root, options: options, fs: fs))
+                    .fastPath(FastPath.makeSequence(root: root, options: options, fs: fs))
                 )
             }
+
+            // Default: concurrent walker
+            return Strategy.Iterator(
+                .concurrent(Sequence.Iterator.make(root: root, options: options, fs: fs))
+            )
         }
     }
 

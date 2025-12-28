@@ -379,7 +379,7 @@ extension File.Handle {
     /// ## Partial Writes
     /// Returns bytes written from single syscall. Caller must loop for full write.
     @usableFromInline
-    internal mutating func _pwrite(
+    package mutating func _pwrite(
         _ buffer: UnsafeRawBufferPointer,
         at offset: Int64
     ) throws(File.Handle.Error) -> Int {
@@ -538,7 +538,7 @@ extension File.Handle {
     ///   - offset: Absolute file offset to start writing at.
     /// - Throws: `File.Handle.Error` on failure.
     @usableFromInline
-    internal mutating func _pwriteAll(
+    package mutating func _pwriteAll(
         _ buffer: UnsafeRawBufferPointer,
         at offset: Int64
     ) throws(File.Handle.Error) {
