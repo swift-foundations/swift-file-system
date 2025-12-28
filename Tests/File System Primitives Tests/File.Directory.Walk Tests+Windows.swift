@@ -23,7 +23,7 @@ import Testing
                 let subdir = dir.path / "empty"
                 try File.System.Create.Directory.create(at: subdir)
 
-                let entries = try File.Directory.Walk.walk(at: File.Directory(subdir))
+                let entries = try File.Directory(subdir).walk()
                 #expect(entries.isEmpty)
             }
         }
@@ -37,7 +37,7 @@ import Testing
                     try File.System.Write.Atomic.write([UInt8(i)], to: filePath)
                 }
 
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == 3)
             }
         }
@@ -59,7 +59,7 @@ import Testing
                 let nestedPath = File.Path(subPath, appending: "nested.txt")
                 try File.System.Write.Atomic.write([2], to: nestedPath)
 
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == 3)  // file.txt, subdir, nested.txt
             }
         }
@@ -81,12 +81,12 @@ import Testing
 
                 // maxDepth 0 should only return immediate children
                 let options0 = File.Directory.Walk.Options(maxDepth: 0)
-                let entries0 = try File.Directory.Walk.walk(at: dir, options: options0)
+                let entries0 = try dir.walk(options: options0)
                 #expect(entries0.count == 1)  // Just level1
 
                 // maxDepth 1 should return level1 and level2
                 let options1 = File.Directory.Walk.Options(maxDepth: 1)
-                let entries1 = try File.Directory.Walk.walk(at: dir, options: options1)
+                let entries1 = try dir.walk(options: options1)
                 #expect(entries1.count == 2)  // level1, level2
             }
         }
@@ -103,12 +103,12 @@ import Testing
 
                 // Without hidden files
                 let optionsNoHidden = File.Directory.Walk.Options(includeHidden: false)
-                let entriesNoHidden = try File.Directory.Walk.walk(at: dir, options: optionsNoHidden)
+                let entriesNoHidden = try dir.walk(options: optionsNoHidden)
                 #expect(entriesNoHidden.count == 1)
 
                 // With hidden files
                 let optionsWithHidden = File.Directory.Walk.Options(includeHidden: true)
-                let entriesWithHidden = try File.Directory.Walk.walk(at: dir, options: optionsWithHidden)
+                let entriesWithHidden = try dir.walk(options: optionsWithHidden)
                 #expect(entriesWithHidden.count == 2)
             }
         }
@@ -125,7 +125,7 @@ import Testing
                 try File.System.Write.Atomic.write([1], to: filePath)
 
                 // Walk should work regardless of path separator style
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == 2)  // subdir, file.txt
             }
         }
@@ -137,7 +137,7 @@ import Testing
                 let filePath = File.Path(dir.path, appending: spaceName)
                 try File.System.Write.Atomic.write([1], to: filePath)
 
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == 1)
 
                 let entry = entries[0]
@@ -162,7 +162,7 @@ import Testing
                 try File.System.Write.Atomic.write([1], to: filePath)
 
                 // Walk should find all directories and the file
-                let entries = try File.Directory.Walk.walk(at: dir)
+                let entries = try dir.walk()
                 #expect(entries.count == depth + 1)  // 10 dirs + 1 file
             }
         }
