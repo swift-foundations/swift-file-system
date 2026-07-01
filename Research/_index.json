@@ -1,0 +1,27 @@
+{
+  "$schema": "https://swift-institute.org/schemas/research-index-v1.json",
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-04-18",
+  "title": "Research Index: swift-file-system",
+  "blurb": "",
+  "scope": "swift-file-system (swift-foundations)",
+  "documents": [
+    {
+      "file": "read-api-non-closure.md",
+      "displayName": "Read API: Non-Closure (Owning Return)",
+      "topic": "Tiered non-closure read: full() -> institute Array<Byte> (eager) + mapped() -> Memory.Map (lazy/demand-paged, for large content); both vend Span<Byte> via Span.Protocol; closures kept additively; bytes not String; generic strategy-merge verified-feasible but deferred; async mapped() toolchain-blocked",
+      "status": "RECOMMENDATION",
+      "statusDetail": "implementation deferred 2026-06-26 (parked by principal, not blocked); async-mapped rider gated on 6.4 adoption",
+      "tier": 2,
+      "scope": "cross-package"
+    },
+    {
+      "file": "filename-string-storage.md",
+      "displayName": "Filename String Storage",
+      "topic": "Storage type for File.Name: [Path.Char]/[Byte] vs String_Primitives.String and the ~Copyable cascade",
+      "status": "RECOMMENDATION",
+      "tier": 2,
+      "scope": "cross-package"
+    }
+  ]
+}

@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+public import Kernel
+
 // MARK: - Open Namespace
 
 extension File.Descriptor {
@@ -31,179 +33,236 @@ extension File.Descriptor {
         /// The path to open.
         public let path: File.Path
         /// Options for opening.
-        public let options: Options
+        public let options: Kernel.File.Open.Options
 
         /// Creates an Open instance.
         @usableFromInline
-        internal init(path: File.Path, options: Options) {
+        internal init(path: File.Path, options: Kernel.File.Open.Options) {
             self.path = path
             self.options = options
         }
+    }
+}
 
-        // MARK: - Private Implementation
+// MARK: - Scoped Error Type
 
-        /// Opens a descriptor, runs a closure, and ensures cleanup.
-        ///
-        /// - Close error policy:
-        ///   - Body succeeded → propagate close error
-        ///   - Body threw → deinit handles cleanup, prefer original error
-        @usableFromInline
-        internal func scoped<Result>(
-            mode: Mode,
-            _ body: (inout File.Descriptor) throws -> Result
-        ) throws -> Result {
-            var descriptor = try File.Descriptor.open(path, mode: mode, options: options)
-            let result: Result
-            do {
-                result = try body(&descriptor)
-            } catch {
-                // Descriptor deinit will close it
-                _ = consume descriptor
-                throw error
-            }
+extension File.Descriptor.Open {
+    /// Error type for scoped file descriptor operations.
+    ///
+    /// Captures errors from any phase of a scoped operation:
+    /// - Opening the file
+    /// - Running the closure
+    /// - Closing the file
+    public enum Error<ClosureError: Swift.Error>: Swift.Error, Sendable {
+        /// Failed to open the file.
+        case open(Kernel.File.Open.Error)
+        /// The closure threw an error.
+        case operation(ClosureError)
+        /// Failed to close the file after successful operation.
+        case close(Kernel.Close.Error)
+    }
+}
+
+// MARK: - Private Implementation
+
+extension File.Descriptor.Open {
+    /// Opens a descriptor, runs a closure, and ensures cleanup.
+    ///
+    /// - Close error policy:
+    ///   - Body succeeded → propagate close error
+    ///   - Body threw → deinit handles cleanup, prefer original error
+    @usableFromInline
+    internal func scoped<Result, E: Swift.Error>(
+        mode: Kernel.File.Open.Mode,
+        _ body: (inout File.Descriptor) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        var descriptor: File.Descriptor
+        do throws(Kernel.File.Open.Error) {
+            descriptor = try File.Descriptor.open(path, mode: mode, options: options)
+        } catch {
+            throw .open(error)
+        }
+
+        let result: Result
+        do throws(E) {
+            result = try body(&descriptor)
+        } catch {
+            // Descriptor deinit will close it
+            _ = consume descriptor
+            throw .operation(error)
+        }
+
+        do throws(Kernel.Close.Error) {
             try descriptor.close()
-            return result
+        } catch {
+            throw .close(error)
         }
-
-        /// Async variant of scoped open.
-        @usableFromInline
-        internal func scoped<Result>(
-            mode: Mode,
-            _ body: (inout File.Descriptor) async throws -> Result
-        ) async throws -> Result {
-            var descriptor = try File.Descriptor.open(path, mode: mode, options: options)
-            let result: Result
-            do {
-                result = try await body(&descriptor)
-            } catch {
-                // Descriptor deinit will close it
-                _ = consume descriptor
-                throw error
-            }
-            try descriptor.close()
-            return result
-        }
-
-        // MARK: - callAsFunction (Read-only default)
-
-        /// Opens the file for reading and runs the closure.
-        ///
-        /// This is the default access mode when calling an `Open` instance directly.
-        /// The file descriptor is automatically closed when the closure completes.
-        ///
-        /// - Parameter body: A closure that receives the file descriptor.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Descriptor.Error` on open failure, or any error from the closure.
-        @inlinable
-        public func callAsFunction<Result>(
-            _ body: (inout File.Descriptor) throws -> Result
-        ) throws -> Result {
-            try read(body)
-        }
-
-        /// Async variant of callAsFunction.
-        @inlinable
-        public func callAsFunction<Result>(
-            _ body: (inout File.Descriptor) async throws -> Result
-        ) async throws -> Result {
-            try await read(body)
-        }
-
-        // MARK: - Explicit Read
-
-        /// Opens the file for reading and runs the closure.
-        ///
-        /// Same as `callAsFunction` - explicit method for clarity.
-        ///
-        /// - Parameter body: A closure that receives the file descriptor.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Descriptor.Error` on open failure, or any error from the closure.
-        @inlinable
-        public func read<Result>(
-            _ body: (inout File.Descriptor) throws -> Result
-        ) throws -> Result {
-            try scoped(mode: .read, body)
-        }
-
-        /// Async variant of read.
-        @inlinable
-        public func read<Result>(
-            _ body: (inout File.Descriptor) async throws -> Result
-        ) async throws -> Result {
-            try await scoped(mode: .read, body)
-        }
-
-        // MARK: - Write
-
-        /// Opens the file for writing and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file descriptor.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Descriptor.Error` on open failure, or any error from the closure.
-        @inlinable
-        public func write<Result>(
-            _ body: (inout File.Descriptor) throws -> Result
-        ) throws -> Result {
-            try scoped(mode: .write, body)
-        }
-
-        /// Async variant of write.
-        @inlinable
-        public func write<Result>(
-            _ body: (inout File.Descriptor) async throws -> Result
-        ) async throws -> Result {
-            try await scoped(mode: .write, body)
-        }
-
-        // MARK: - Appending
-
-        /// Opens the file for appending and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file descriptor.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Descriptor.Error` on open failure, or any error from the closure.
-        @inlinable
-        public func appending<Result>(
-            _ body: (inout File.Descriptor) throws -> Result
-        ) throws -> Result {
-            var opts = options
-            opts.insert(.append)
-            return try Open(path: path, options: opts).scoped(mode: .write, body)
-        }
-
-        /// Async variant of appending.
-        @inlinable
-        public func appending<Result>(
-            _ body: (inout File.Descriptor) async throws -> Result
-        ) async throws -> Result {
-            var opts = options
-            opts.insert(.append)
-            return try await Open(path: path, options: opts).scoped(mode: .write, body)
-        }
-
-        // MARK: - Read-Write
-
-        /// Opens the file for reading and writing and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file descriptor.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Descriptor.Error` on open failure, or any error from the closure.
-        @inlinable
-        public func readWrite<Result>(
-            _ body: (inout File.Descriptor) throws -> Result
-        ) throws -> Result {
-            try scoped(mode: [.read, .write], body)
-        }
-
-        /// Async variant of readWrite.
-        @inlinable
-        public func readWrite<Result>(
-            _ body: (inout File.Descriptor) async throws -> Result
-        ) async throws -> Result {
-            try await scoped(mode: [.read, .write], body)
-        }
+        return result
     }
 
+    /// Async variant of scoped open.
+    @usableFromInline
+    internal func scoped<Result, E: Swift.Error>(
+        mode: Kernel.File.Open.Mode,
+        _ body: (inout File.Descriptor) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        var descriptor: File.Descriptor
+        do throws(Kernel.File.Open.Error) {
+            descriptor = try File.Descriptor.open(path, mode: mode, options: options)
+        } catch {
+            throw .open(error)
+        }
+
+        let result: Result
+        do throws(E) {
+            result = try await body(&descriptor)
+        } catch {
+            // Descriptor deinit will close it
+            _ = consume descriptor
+            throw .operation(error)
+        }
+
+        do throws(Kernel.Close.Error) {
+            try descriptor.close()
+        } catch {
+            throw .close(error)
+        }
+        return result
+    }
+}
+
+// MARK: - callAsFunction (Read-only default)
+
+extension File.Descriptor.Open {
+    /// Opens the file for reading and runs the closure.
+    ///
+    /// This is the default access mode when calling an `Open` instance directly.
+    /// The file descriptor is automatically closed when the closure completes.
+    ///
+    /// - Parameter body: A closure that receives the file descriptor.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Descriptor.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func callAsFunction<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try read(body)
+    }
+
+    /// Async variant of callAsFunction.
+    @inlinable
+    public func callAsFunction<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await read(body)
+    }
+}
+
+// MARK: - Explicit Read
+
+extension File.Descriptor.Open {
+    /// Opens the file for reading and runs the closure.
+    ///
+    /// Same as `callAsFunction` - explicit method for clarity.
+    ///
+    /// - Parameter body: A closure that receives the file descriptor.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Descriptor.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func read<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try scoped(mode: Kernel.File.Open.Mode.read, body)
+    }
+
+    /// Async variant of read.
+    @inlinable
+    public func read<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await scoped(mode: Kernel.File.Open.Mode.read, body)
+    }
+}
+
+// MARK: - Write
+
+extension File.Descriptor.Open {
+    /// Opens the file for writing and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file descriptor.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Descriptor.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func write<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try scoped(mode: Kernel.File.Open.Mode.write, body)
+    }
+
+    /// Async variant of write.
+    @inlinable
+    public func write<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await scoped(mode: Kernel.File.Open.Mode.write, body)
+    }
+}
+
+// MARK: - Appending
+
+extension File.Descriptor.Open {
+    /// Opens the file for appending and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file descriptor.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Descriptor.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func appending<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        var opts = options
+        opts.insert(.append)
+        return try File.Descriptor.Open(path: path, options: opts).scoped(mode: Kernel.File.Open.Mode.write, body)
+    }
+
+    /// Async variant of appending.
+    @inlinable
+    public func appending<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        var opts = options
+        opts.insert(.append)
+        return try await File.Descriptor.Open(path: path, options: opts).scoped(mode: Kernel.File.Open.Mode.write, body)
+    }
+}
+
+// MARK: - Read-Write
+
+extension File.Descriptor.Open {
+    /// Opens the file for reading and writing and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file descriptor.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Descriptor.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func readWrite<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try scoped(mode: .readWrite, body)
+    }
+
+    /// Async variant of readWrite.
+    @inlinable
+    public func readWrite<Result, E: Swift.Error>(
+        _ body: (inout File.Descriptor) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await scoped(mode: .readWrite, body)
+    }
+}
+
+// MARK: - Factory
+
+extension File.Descriptor {
     /// Returns an `Open` instance for the given path.
     ///
     /// Use this to access the ergonomic file opening API:
@@ -220,7 +279,7 @@ extension File.Descriptor {
     ///   - options: Options for opening the file.
     /// - Returns: An `Open` instance.
     @inlinable
-    public static func open(_ path: File.Path, options: Options = []) -> Open {
-        Open(path: path, options: options)
+    public static func open(_ path: borrowing File.Path, options: Kernel.File.Open.Options = []) -> Open {
+        Open(path: copy path, options: options)
     }
 }

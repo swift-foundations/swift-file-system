@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Copy Namespace
 
 extension File.Directory {
@@ -42,7 +45,7 @@ extension File.Directory {
             _ destination: File.Path,
             options: File.System.Copy.Options = .init()
         ) throws(File.System.Copy.Error) -> File.Directory {
-            try File.System.Copy.copy(from: path, to: destination, options: options)
+            try File.System.Copy.recursive(from: path, to: destination, options: options)
             return File.Directory(destination)
         }
 
@@ -59,7 +62,7 @@ extension File.Directory {
             _ destination: File.Directory,
             options: File.System.Copy.Options = .init()
         ) throws(File.System.Copy.Error) -> File.Directory {
-            try File.System.Copy.copy(from: path, to: destination.path, options: options)
+            try File.System.Copy.recursive(from: path, to: destination.path, options: options)
             return destination
         }
 
@@ -67,31 +70,37 @@ extension File.Directory {
 
         /// Copies the directory to a destination path.
         ///
-        /// Async variant.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
         /// - Returns: A `File.Directory` representing the copy at the destination.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>` on failure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
         @discardableResult
         @inlinable
         public func to(
             _ destination: File.Path,
             options: File.System.Copy.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File.Directory {
-            try await File.System.Copy.copy(from: path, to: destination, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File.Directory {
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
+                try File.System.Copy.recursive(from: source, to: destination, options: options)
+            }
             return File.Directory(destination)
         }
 
         /// Copies the directory to a destination.
         ///
-        /// Async variant.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
         /// - Returns: The destination `File.Directory`.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>` on failure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
         @discardableResult
         @inlinable
         public func to(
             _ destination: File.Directory,
             options: File.System.Copy.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File.Directory {
-            try await File.System.Copy.copy(from: path, to: destination.path, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File.Directory {
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
+                try File.System.Copy.recursive(from: source, to: destination.path, options: options)
+            }
             return destination
         }
     }

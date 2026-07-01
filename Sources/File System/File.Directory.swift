@@ -12,8 +12,8 @@ extension File.Directory {
     ///
     /// - Parameter name: The file name.
     /// - Returns: A file for the named file.
-    public subscript(_ name: String) -> File {
-        File(path.appending(name))
+    public subscript(_ name: File.Path.Component) -> File {
+        File(path / name)
     }
 
     /// Access a file in this directory (labeled).
@@ -25,8 +25,8 @@ extension File.Directory {
     ///
     /// - Parameter name: The file name.
     /// - Returns: A file for the named file.
-    public subscript(file name: String) -> File {
-        File(path.appending(name))
+    public subscript(file name: File.Path.Component) -> File {
+        File(path / name)
     }
 
     /// Access a subdirectory (labeled).
@@ -39,16 +39,16 @@ extension File.Directory {
     ///
     /// - Parameter name: The subdirectory name.
     /// - Returns: A directory for the named subdirectory.
-    public subscript(directory name: String) -> File.Directory {
-        File.Directory(path.appending(name))
+    public subscript(directory name: File.Path.Component) -> File.Directory {
+        File.Directory(path / name)
     }
 
     /// Access a subdirectory.
     ///
     /// - Parameter name: The subdirectory name.
     /// - Returns: A directory for the named subdirectory.
-    public func subdirectory(_ name: String) -> File.Directory {
-        File.Directory(path.appending(name))
+    public func subdirectory(_ name: File.Path.Component) -> File.Directory {
+        File.Directory(path / name)
     }
 }
 
@@ -61,16 +61,16 @@ extension File.Directory {
     }
 
     /// The directory name (last component of the path).
-    public var name: String {
-        path.lastComponent.map { String($0) } ?? ""
+    public var name: File.Path.Component {
+        path.components.last ?? "."
     }
 
     /// Returns a new directory with the given component appended.
     ///
     /// - Parameter component: The component to append.
     /// - Returns: A new directory with the appended path.
-    public func appending(_ component: String) -> File.Directory {
-        File.Directory(path.appending(component))
+    public func appending(_ component: File.Path.Component) -> File.Directory {
+        File.Directory(path / component)
     }
 
     /// Appends a component to a directory.
@@ -79,7 +79,7 @@ extension File.Directory {
     ///   - lhs: The base directory.
     ///   - rhs: The component to append.
     /// - Returns: A new directory with the appended path.
-    public static func / (lhs: File.Directory, rhs: String) -> File.Directory {
+    public static func / (lhs: File.Directory, rhs: File.Path.Component) -> File.Directory {
         lhs.appending(rhs)
     }
 }
@@ -87,15 +87,15 @@ extension File.Directory {
 // MARK: - CustomStringConvertible
 
 extension File.Directory: CustomStringConvertible {
-    public var description: String {
-        String(path)
+    public var description: Swift.String {
+        Swift.String(path)
     }
 }
 
 // MARK: - CustomDebugStringConvertible
 
 extension File.Directory: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "File.Directory(\(String(path).debugDescription))"
+    public var debugDescription: Swift.String {
+        "File.Directory(\(Swift.String(path).debugDescription))"
     }
 }

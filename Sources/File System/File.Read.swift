@@ -5,6 +5,10 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+import Kernel
+public import Thread_Pool
+
 // MARK: - Read Namespace
 
 extension File {
@@ -31,71 +35,92 @@ extension File {
             self.path = path
         }
 
-        // MARK: - Full Read (Sync)
+        // MARK: - Full Read (Sync, Zero-Copy)
 
-        /// Reads the entire file contents into memory.
+        /// Reads the file and passes contents to a closure as a borrowed span.
         ///
-        /// - Returns: The file contents as an array of bytes.
+        /// This is the canonical read API. The closure receives a `Swift.Span<Byte>`
+        /// that borrows from an internal buffer. Copy inside the closure if needed.
+        ///
+        /// ```swift
+        /// // Process without allocation
+        /// let checksum = try file.read.full { span in
+        ///     computeChecksum(span)
+        /// }
+        ///
+        /// // Copy when needed
+        /// let bytes: [UInt8] = try file.read.full { span in
+        ///     Array(span)
+        /// }
+        ///
+        /// // Decode as string
+        /// let text: String = try file.read.full { span in
+        ///     String(decoding: span, as: UTF8.self)
+        /// }
+        /// ```
+        ///
+        /// - Parameter body: A closure that receives the file contents as a borrowed span.
+        /// - Returns: The value returned by the closure.
         /// - Throws: `File.System.Read.Full.Error` on failure.
         @inlinable
-        public func full() throws(File.System.Read.Full.Error) -> [UInt8] {
-            try File.System.Read.Full.read(from: path)
+        public func full<R>(
+            _ body: (Swift.Span<Byte>) -> R
+        ) throws(File.System.Read.Full.Error) -> R {
+            try File.System.Read.Full.read(from: path, body: body)
         }
 
-        /// Reads the file contents as a UTF-8 string.
+        /// Reads the file and passes contents to a throwing closure as a borrowed span.
         ///
-        /// - Parameter type: The string type to decode as (e.g., `String.self`).
-        /// - Returns: The file contents decoded as UTF-8.
-        /// - Throws: `File.System.Read.Full.Error` on failure.
+        /// - Parameter body: A throwing closure that receives the file contents.
+        /// - Returns: The value returned by the closure.
+        /// - Throws: `Either<Read.Full.Error, E>` — `.left` for read failures,
+        ///   `.right` if the closure throws.
         @inlinable
-        public func full<S: StringProtocol>(as type: S.Type) throws(File.System.Read.Full.Error) -> S {
-            let bytes = try File.System.Read.Full.read(from: path)
-            return S(decoding: bytes, as: UTF8.self)
+        public func full<R, E: Swift.Error>(
+            _ body: (Swift.Span<Byte>) throws(E) -> R
+        ) throws(Either<File.System.Read.Full.Error, E>) -> R {
+            try File.System.Read.Full.read(from: path, body: body)
         }
 
         // MARK: - Full Read (Async)
 
-        /// Reads the entire file contents into memory.
+        /// Reads the file and passes contents to a closure as a borrowed span.
         ///
-        /// Async variant.
-        /// - Returns: The file contents as an array of bytes.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Read.Full.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// The body closure executes on the blocking lane's OS thread,
+        /// receiving a `Swift.Span<Byte>` that borrows from the internal read buffer.
+        ///
+        /// - Parameter body: A sendable closure that receives the file contents.
+        /// - Returns: The value returned by the closure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Read.Full.Error>` on failure.
         @inlinable
-        public func full() async throws(IO.Lifecycle.Error<IO.Error<File.System.Read.Full.Error>>) -> [UInt8] {
-            try await File.System.Read.Full.read(from: path)
+        public func full<R: Sendable>(
+            _ body: @escaping @Sendable (Swift.Span<Byte>) -> R
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Read.Full.Error>) -> R {
+            let path = self.path
+            return try await Kernel.Thread.Pool.shared.run { () throws(File.System.Read.Full.Error) -> R in
+                try File.System.Read.Full.read(from: path, body: body)
+            }
         }
 
-        /// Reads the file contents as a UTF-8 string.
+        /// Reads the file and passes contents to a throwing closure as a borrowed span.
         ///
-        /// Async variant.
-        /// - Parameter type: The string type to decode as (e.g., `String.self`).
-        /// - Returns: The file contents decoded as UTF-8.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Read.Full.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// The body closure executes on the blocking lane's OS thread.
+        ///
+        /// - Parameter body: A sendable throwing closure that receives the file contents.
+        /// - Returns: The value returned by the closure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, Either<File.System.Read.Full.Error, E>>` on failure.
         @inlinable
-        public func full<S: StringProtocol>(
-            as type: S.Type
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Read.Full.Error>>) -> S {
-            let bytes = try await File.System.Read.Full.read(from: path)
-            return S(decoding: bytes, as: UTF8.self)
+        public func full<R: Sendable, E: Swift.Error>(
+            _ body: @escaping @Sendable (Swift.Span<Byte>) throws(E) -> R
+        ) async throws(Either<Kernel.Thread.Pool.Error, Either<File.System.Read.Full.Error, E>>) -> R {
+            let path = self.path
+            return try await Kernel.Thread.Pool.shared.run { () throws(Either<File.System.Read.Full.Error, E>) -> R in
+                try File.System.Read.Full.read(from: path, body: body)
+            }
         }
 
-        // MARK: - Streaming Read
-
-        /// Returns an async sequence of byte chunks from the file.
-        ///
-        /// Use this for memory-efficient reading of large files.
-        ///
-        /// - Parameters:
-        ///   - fs: The async file system to use (defaults to `.async`).
-        ///   - options: Read options.
-        /// - Returns: An async sequence of byte arrays.
-        @inlinable
-        public func bytes(
-            fs: File.System.Async = .async,
-            options: File.System.Read.Async.Options = .init()
-        ) -> File.System.Read.Async.Sequence {
-            File.System.Read.Async(fs: fs).bytes(from: path, options: options)
-        }
     }
 }
 
@@ -108,7 +133,10 @@ extension File {
     /// ```swift
     /// let bytes = try file.read.full()
     /// let text = try file.read.full(as: String.self)
-    /// for try await chunk in file.read.bytes() { ... }
+    ///
+    /// // Async variants
+    /// let bytes = try await file.read.full()
+    /// let text = try await file.read.full(as: String.self)
     /// ```
     public var read: Read {
         Read(path)

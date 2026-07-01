@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+public import Kernel
+
 // MARK: - Open Namespace
 
 extension File {
@@ -31,158 +33,179 @@ extension File {
     public struct Open: Sendable {
         /// The underlying Handle.Open instance.
         @usableFromInline
-        internal let open: File.Handle.Open
+        internal let _open: File.Handle.Open
 
         /// Creates an Open instance.
         @usableFromInline
-        internal init(path: File.Path, options: File.Handle.Options) {
-            self.open = File.Handle.Open(path: path, options: options)
+        internal init(path: File.Path, options: Kernel.File.Open.Options) {
+            self._open = File.Handle.Open(path: path, options: options)
         }
 
         /// The path to open.
         @inlinable
-        public var path: File.Path { open.path }
+        public var path: File.Path { _open.path }
 
         /// Options for opening.
         @inlinable
-        public var options: File.Handle.Options { open.options }
+        public var options: Kernel.File.Open.Options { _open.options }
+    }
+}
 
-        // MARK: - callAsFunction (Read-only default)
+// MARK: - Error Type Alias
 
-        /// Opens the file for reading and runs the closure.
-        ///
-        /// This is the default access mode when calling an `Open` instance directly.
-        /// The file handle is automatically closed when the closure completes.
-        ///
-        /// - Parameter body: A closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func callAsFunction<Result>(
-            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
-        ) throws(File.Handle.Error) -> Result {
-            try open.read(body)
-        }
+extension File.Open {
+    /// Error type for scoped file operations.
+    ///
+    /// This is an alias for `File.Handle.Open.Error`.
+    public typealias Error<E: Swift.Error> = File.Handle.Open.Error<E>
+}
 
-        // MARK: - Explicit Read
+// MARK: - callAsFunction (Read-only default)
 
-        /// Opens the file for reading and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func read<Result>(
-            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
-        ) throws(File.Handle.Error) -> Result {
-            try open.read(body)
-        }
+extension File.Open {
+    /// Opens the file for reading and runs the closure.
+    ///
+    /// This is the default access mode when calling an `Open` instance directly.
+    /// The file handle is automatically closed when the closure completes.
+    ///
+    /// - Parameter body: A closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func callAsFunction<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try _open.read(body)
+    }
+}
 
-        // MARK: - Write
+// MARK: - Explicit Read
 
-        /// Opens the file for writing and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func write<Result>(
-            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
-        ) throws(File.Handle.Error) -> Result {
-            try open.write(body)
-        }
+extension File.Open {
+    /// Opens the file for reading and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func read<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try _open.read(body)
+    }
+}
 
-        // MARK: - Appending
+// MARK: - Write
 
-        /// Opens the file for appending and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func appending<Result>(
-            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
-        ) throws(File.Handle.Error) -> Result {
-            try open.appending(body)
-        }
+extension File.Open {
+    /// Opens the file for writing and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func write<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try _open.write(body)
+    }
+}
 
-        // MARK: - Read-Write
+// MARK: - Appending
 
-        /// Opens the file for reading and writing and runs the closure.
-        ///
-        /// - Parameter body: A closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func readWrite<Result>(
-            _ body: (inout File.Handle) throws(File.Handle.Error) -> Result
-        ) throws(File.Handle.Error) -> Result {
-            try open.readWrite(body)
-        }
+extension File.Open {
+    /// Opens the file for appending and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func appending<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try _open.appending(body)
+    }
+}
 
-        // MARK: - Async Variants
+// MARK: - Read-Write
 
-        /// Opens the file for reading and runs an async closure.
-        ///
-        /// This is the async variant of `callAsFunction` for use in async contexts.
-        ///
-        /// - Parameter body: An async closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func callAsFunction<Result>(
-            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
-        ) async throws(File.Handle.Error) -> Result {
-            try await open.read(body)
-        }
+extension File.Open {
+    /// Opens the file for reading and writing and runs the closure.
+    ///
+    /// - Parameter body: A closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func readWrite<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) throws(E) -> Result
+    ) throws(Error<E>) -> Result {
+        try _open.readWrite(body)
+    }
+}
 
-        /// Opens the file for reading and runs an async closure.
-        ///
-        /// - Parameter body: An async closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func read<Result>(
-            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
-        ) async throws(File.Handle.Error) -> Result {
-            try await open.read(body)
-        }
+// MARK: - Async Variants
 
-        /// Opens the file for writing and runs an async closure.
-        ///
-        /// - Parameter body: An async closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func write<Result>(
-            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
-        ) async throws(File.Handle.Error) -> Result {
-            try await open.write(body)
-        }
+extension File.Open {
+    /// Opens the file for reading and runs an async closure.
+    ///
+    /// This is the async variant of `callAsFunction` for use in async contexts.
+    ///
+    /// - Parameter body: An async closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func callAsFunction<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await _open.read(body)
+    }
 
-        /// Opens the file for appending and runs an async closure.
-        ///
-        /// - Parameter body: An async closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func appending<Result>(
-            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
-        ) async throws(File.Handle.Error) -> Result {
-            try await open.appending(body)
-        }
+    /// Opens the file for reading and runs an async closure.
+    ///
+    /// - Parameter body: An async closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func read<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await _open.read(body)
+    }
 
-        /// Opens the file for reading and writing and runs an async closure.
-        ///
-        /// - Parameter body: An async closure that receives the file handle.
-        /// - Returns: The result from the closure.
-        /// - Throws: `File.Handle.Error` on failure.
-        @inlinable
-        public func readWrite<Result>(
-            _ body: (inout File.Handle) async throws(File.Handle.Error) -> Result
-        ) async throws(File.Handle.Error) -> Result {
-            try await open.readWrite(body)
-        }
+    /// Opens the file for writing and runs an async closure.
+    ///
+    /// - Parameter body: An async closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func write<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await _open.write(body)
+    }
+
+    /// Opens the file for appending and runs an async closure.
+    ///
+    /// - Parameter body: An async closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func appending<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await _open.appending(body)
+    }
+
+    /// Opens the file for reading and writing and runs an async closure.
+    ///
+    /// - Parameter body: An async closure that receives the file handle.
+    /// - Returns: The result from the closure.
+    /// - Throws: `File.Open.Error` on open/close failure, or wrapped closure error.
+    @inlinable
+    public func readWrite<Result, E: Swift.Error>(
+        _ body: (inout File.Handle) async throws(E) -> Result
+    ) async throws(Error<E>) -> Result {
+        try await _open.readWrite(body)
     }
 }
 
@@ -205,8 +228,8 @@ extension File {
     ///   - options: Options for opening the file.
     /// - Returns: An `Open` instance.
     @inlinable
-    public static func open(_ path: File.Path, options: File.Handle.Options = []) -> Open {
-        Open(path: path, options: options)
+    public static func open(_ path: borrowing File.Path, options: Kernel.File.Open.Options = []) -> Open {
+        Open(path: copy path, options: options)
     }
 }
 
@@ -237,7 +260,7 @@ extension File {
     /// - Parameter options: Options for opening the file.
     /// - Returns: An `Open` instance.
     @inlinable
-    public func open(options: File.Handle.Options) -> Open {
+    public func open(options: Kernel.File.Open.Options) -> Open {
         Open(path: path, options: options)
     }
 }

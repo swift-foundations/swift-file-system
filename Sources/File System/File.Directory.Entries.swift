@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Entries Namespace
 
 extension File.Directory {
@@ -18,8 +21,8 @@ extension File.Directory {
     /// // Common case - callable
     /// for entry in try dir.entries() { ... }
     ///
-    /// // Async streaming
-    /// for try await entry in dir.entries.stream() { ... }
+    /// // Async
+    /// for entry in try await dir.entries() { ... }
     /// ```
     public struct Entries: Sendable {
         /// The directory path.
@@ -46,26 +49,14 @@ extension File.Directory {
 
         /// Returns the contents of the directory.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>` on failure.
         @inlinable
-        public func callAsFunction() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>) -> [File.Directory.Entry] {
-            try await File.Directory.Contents.list(at: File.Directory(path))
-        }
-
-        // MARK: - Streaming
-
-        /// Returns an async sequence of directory entries.
-        ///
-        /// Use this for memory-efficient iteration over large directories.
-        ///
-        /// - Parameter fs: The async file system to use (defaults to `.async`).
-        /// - Returns: An async sequence of directory entries.
-        @inlinable
-        public func stream(
-            fs: File.System.Async = .async
-        ) -> File.Directory.Contents.Async {
-            File.Directory.Async(fs: fs).entries(at: File.Directory(path))
+        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>) -> [File.Directory.Entry] {
+            let path = self.path
+            return try await Kernel.Thread.Pool.shared.run { () throws(File.Directory.Contents.Error) in
+                try File.Directory.Contents.list(at: File.Directory(path))
+            }
         }
     }
 }
@@ -78,7 +69,6 @@ extension File.Directory {
     /// This property returns a callable namespace:
     /// ```swift
     /// for entry in try dir.entries() { ... }
-    /// for try await entry in dir.entries.stream() { ... }
     /// ```
     public var entries: Entries {
         Entries(path)

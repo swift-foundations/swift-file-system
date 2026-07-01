@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Move Namespace
 
 extension File.Directory {
@@ -73,13 +76,14 @@ extension File.Directory {
         @discardableResult
         @inlinable
         public func rename(
-            to newName: String,
+            to newName: File.Path.Component,
             options: File.System.Move.Options = .init()
         ) throws(File.System.Move.Error) -> File.Directory {
             guard let parent = path.parent else {
-                throw .sourceNotFound(path)
+                // Path has no parent (e.g., root path) - cannot rename
+                throw .rename(.invalidArgument)
             }
-            let destination = parent.appending(newName)
+            let destination = parent / newName
             try File.System.Move.move(from: path, to: destination, options: options)
             return File.Directory(destination)
         }
@@ -88,49 +92,59 @@ extension File.Directory {
 
         /// Moves the directory to a destination path.
         ///
-        /// Async variant.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
         /// - Returns: The destination `File.Directory`.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>` on failure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Move.Error>` on failure.
         @discardableResult
         @inlinable
         public func to(
             _ destination: File.Path,
             options: File.System.Move.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File.Directory {
-            try await File.System.Move.move(from: path, to: destination, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Move.Error>) -> File.Directory {
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Move.Error) in
+                try File.System.Move.move(from: source, to: destination, options: options)
+            }
             return File.Directory(destination)
         }
 
         /// Moves the directory to a destination.
         ///
-        /// Async variant.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
         /// - Returns: The destination `File.Directory`.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>` on failure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Move.Error>` on failure.
         @discardableResult
         @inlinable
         public func to(
             _ destination: File.Directory,
             options: File.System.Move.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File.Directory {
-            try await File.System.Move.move(from: path, to: destination.path, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Move.Error>) -> File.Directory {
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Move.Error) in
+                try File.System.Move.move(from: source, to: destination.path, options: options)
+            }
             return destination
         }
 
         /// Renames the directory within the same parent directory.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Move.Error>` on failure.
         @discardableResult
         @inlinable
         public func rename(
-            to newName: String,
+            to newName: File.Path.Component,
             options: File.System.Move.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Move.Error>>) -> File.Directory {
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Move.Error>) -> File.Directory {
             guard let parent = path.parent else {
-                throw .failure(.operation(.sourceNotFound(path)))
+                // Path has no parent (e.g., root path) - cannot rename
+                throw .right(.rename(.invalidArgument))
             }
-            let destination = parent.appending(newName)
-            try await File.System.Move.move(from: path, to: destination, options: options)
+            let destination = parent / newName
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Move.Error) in
+                try File.System.Move.move(from: source, to: destination, options: options)
+            }
             return File.Directory(destination)
         }
     }

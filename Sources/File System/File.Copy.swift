@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Copy Namespace
 
 extension File {
@@ -67,31 +70,37 @@ extension File {
 
         /// Copies the file to a destination path.
         ///
-        /// Async variant.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
         /// - Returns: A `File` representing the copy at the destination.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>` on failure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
         @discardableResult
         @inlinable
         public func to(
             _ destination: File.Path,
             options: File.System.Copy.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File {
-            try await File.System.Copy.copy(from: path, to: destination, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File {
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
+                try File.System.Copy.copy(from: source, to: destination, options: options)
+            }
             return File(destination)
         }
 
         /// Copies the file to a destination.
         ///
-        /// Async variant.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
         /// - Returns: The destination `File`.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>` on failure.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
         @discardableResult
         @inlinable
         public func to(
             _ destination: File,
             options: File.System.Copy.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Copy.Error>>) -> File {
-            try await File.System.Copy.copy(from: path, to: destination.path, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File {
+            let source = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
+                try File.System.Copy.copy(from: source, to: destination.path, options: options)
+            }
             return destination
         }
     }

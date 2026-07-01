@@ -6,7 +6,7 @@
 //
 
 import File_System
-public import File_System_Primitives
+public import File_System_Core
 
 #if canImport(Darwin)
     import Darwin
@@ -29,7 +29,7 @@ extension File.Directory {
 extension File.Directory.Temporary {
     #if os(Windows)
         /// Gets an environment variable using Windows API.
-        private static func getEnvironmentVariable(_ name: String) -> String? {
+        private static func getEnvironmentVariable(_ name: Swift.String) -> String? {
             name.withCString(encodedAs: UTF16.self) { wName in
                 // First call to get required buffer size
                 let requiredSize = GetEnvironmentVariableW(wName, nil, 0)
@@ -52,7 +52,7 @@ extension File.Directory.Temporary {
     /// - Windows: `TEMP` or `TMP`, falling back to "C:\Temp"
     public static var system: File.Directory {
         get throws {
-            let path: String
+            let path: Swift.String
             #if os(Windows)
                 if let temp = getEnvironmentVariable("TEMP") {
                     path = temp
@@ -62,13 +62,13 @@ extension File.Directory.Temporary {
                     path = "C:\\Temp"
                 }
             #else
-                if let ptr = getenv("TMPDIR") {
-                    path = String(cString: ptr)
+                if let ptr = unsafe getenv("TMPDIR") {
+                    path = unsafe Swift.String(cString: ptr)
                 } else {
                     path = "/tmp"
                 }
             #endif
-            return try File.Directory(path)
+            return try File.Directory(validating: path)
         }
     }
 
@@ -78,23 +78,23 @@ extension File.Directory.Temporary {
     ///
     /// - Parameter prefix: Prefix to match (default: "test").
     /// - Throws: Directory listing errors.
-    public static func cleanup(prefix: String = "test") throws {
+    public static func cleanup(prefix: Swift.String = "test") throws {
         let base = try system
         let contents = try File.Directory.Contents.list(at: base)
         let targetPrefix = "\(prefix)-"
 
         for entry in contents {
-            guard let name = String(entry.name) else { continue }
-            if name.hasPrefix(targetPrefix) {
-                let path = File.Path(base.path, appending: name)
-                try? File.System.Delete.delete(at: path, options: .init(recursive: true))
+            guard let name = Swift.String(entry.name) else { continue }
+            if name.hasPrefix(targetPrefix), let component = try? File.Path.Component(name) {
+                let path = base.path / component
+                try? File.System.Delete.delete(at: path, recursive: true)
             }
         }
     }
 
     /// Generates a random identifier for unique temp paths.
-    internal static func randomID() -> String {
-        String(Int.random(in: 0..<Int.max), radix: 36)
+    internal static func randomID() -> Swift.String {
+        Swift.String(Int.random(in: (0..<Int.max)), radix: 36)
     }
 }
 
@@ -116,12 +116,12 @@ extension File.Directory.Temporary {
     /// ```
     public struct Scope: Sendable {
         /// The prefix for the temp directory name.
-        public let prefix: String
+        public let prefix: Swift.String
 
         /// Creates a Scope instance.
         ///
         /// - Parameter prefix: Prefix for the temp directory name (default: "test").
-        public init(prefix: String = "test") {
+        public init(prefix: Swift.String = "test") {
             self.prefix = prefix
         }
 
@@ -135,11 +135,11 @@ extension File.Directory.Temporary {
             _ body: (File.Directory) throws -> T
         ) throws -> T {
             let base = try File.Directory.Temporary.system
-            let dirName = "\(prefix)-\(File.Directory.Temporary.randomID())"
-            let path = File.Path(base.path, appending: dirName)
+            let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
+            let path = base.path / dirName
 
             try File.System.Create.Directory.create(at: path)
-            defer { try? File.System.Delete.delete(at: path, options: .init(recursive: true)) }
+            defer { try? File.System.Delete.delete(at: path, recursive: true) }
 
             return try body(File.Directory(path))
         }
@@ -154,17 +154,17 @@ extension File.Directory.Temporary {
             _ body: (File.Directory) async throws -> T
         ) async throws -> T {
             let base = try File.Directory.Temporary.system
-            let dirName = "\(prefix)-\(File.Directory.Temporary.randomID())"
-            let path = File.Path(base.path, appending: dirName)
+            let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
+            let path = base.path / dirName
 
-            try await File.System.Create.Directory.create(at: path)
+            try File.System.Create.Directory.create(at: path)
 
             do {
                 let value = try await body(File.Directory(path))
-                try? await File.System.Delete.delete(at: path, options: .init(recursive: true))
+                try? File.System.Delete.delete(at: path, recursive: true)
                 return value
             } catch {
-                try? await File.System.Delete.delete(at: path, options: .init(recursive: true))
+                try? File.System.Delete.delete(at: path, recursive: true)
                 throw error
             }
         }
