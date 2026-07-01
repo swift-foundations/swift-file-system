@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Create Namespace
 
 extension File.Directory {
@@ -49,41 +52,44 @@ extension File.Directory {
 
         /// Creates the directory.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Create.Directory.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>` on failure.
         @inlinable
         public func callAsFunction(
             options: File.System.Create.Directory.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Create.Directory.Error>>) {
-            try await File.System.Create.Directory.create(at: path, options: options)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>) {
+            let path = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
+                try File.System.Create.Directory.create(at: path, options: options)
+            }
         }
 
         // MARK: - Variants
 
         /// Creates the directory and any missing parent directories.
         ///
-        /// - Parameter options: Create options (createIntermediates is set to true).
+        /// - Parameter options: Create options.
         /// - Throws: `File.System.Create.Directory.Error` on failure.
         @inlinable
         public func recursive(
             options: File.System.Create.Directory.Options = .init()
         ) throws(File.System.Create.Directory.Error) {
-            var opts = options
-            opts.createIntermediates = true
-            try File.System.Create.Directory.create(at: path, options: opts)
+            try File.System.Create.Directory.create(at: path, options: options, createIntermediates: true)
         }
 
         /// Creates the directory and any missing parent directories.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Create.Directory.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>` on failure.
         @inlinable
         public func recursive(
             options: File.System.Create.Directory.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Create.Directory.Error>>) {
-            var opts = options
-            opts.createIntermediates = true
-            try await File.System.Create.Directory.create(at: path, options: opts)
+        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>) {
+            let path = self.path
+            let opts = options
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
+                try File.System.Create.Directory.create(at: path, options: opts, createIntermediates: true)
+            }
         }
     }
 }

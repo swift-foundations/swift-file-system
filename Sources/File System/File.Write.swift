@@ -5,6 +5,10 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+import Kernel
+public import Thread_Pool
+
 // MARK: - Write Namespace
 
 extension File {
@@ -45,12 +49,12 @@ extension File.Write {
     /// Uses a temp file + rename strategy for crash safety.
     ///
     /// - Parameters:
-    ///   - bytes: The bytes to write.
+    ///   - bytes: The bytes to write (borrowed, zero-copy).
     ///   - options: Atomic write options (strategy, durability, preserve settings).
     /// - Throws: `File.System.Write.Atomic.Error` on failure.
     @inlinable
     public func atomic(
-        _ bytes: [UInt8],
+        _ bytes: borrowing Swift.Span<Byte>,
         options: File.System.Write.Atomic.Options = .init()
     ) throws(File.System.Write.Atomic.Error) {
         try File.System.Write.Atomic.write(bytes, to: path, options: options)
@@ -64,10 +68,11 @@ extension File.Write {
     /// - Throws: `File.System.Write.Atomic.Error` on failure.
     @inlinable
     public func atomic(
-        _ string: String,
+        _ string: Swift.String,
         options: File.System.Write.Atomic.Options = .init()
     ) throws(File.System.Write.Atomic.Error) {
-        try atomic(Array(string.utf8), options: options)
+        let utf8 = [Byte](string.utf8)
+        try atomic(utf8.span, options: options)
     }
 
     /// Writes bytes from a sequence to the file atomically.
@@ -77,60 +82,58 @@ extension File.Write {
     ///   - options: Atomic write options.
     /// - Throws: `File.System.Write.Atomic.Error` on failure.
     @inlinable
-    public func atomic<S: Sequence>(
+    public func atomic<S: Swift.Sequence>(
         contentsOf bytes: S,
         options: File.System.Write.Atomic.Options = .init()
-    ) throws(File.System.Write.Atomic.Error) where S.Element == UInt8 {
-        try atomic(Array(bytes), options: options)
+    ) throws(File.System.Write.Atomic.Error) where S.Element == Byte {
+        let array = Array(bytes)
+        try atomic(array.span, options: options)
     }
 
     // MARK: - Atomic Write (Async)
 
-    /// Writes bytes to the file atomically.
-    ///
-    /// Async variant.
-    /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>` on failure.
-    @inlinable
-    public func atomic(
-        _ bytes: [UInt8],
-        options: File.System.Write.Atomic.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) {
-        try await File.System.Write.Atomic.write(bytes, to: path, options: options)
-    }
-
     /// Writes a string to the file atomically (UTF-8 encoded).
     ///
-    /// Async variant.
-    /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>` on failure.
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Write.Atomic.Error>` on failure.
     @inlinable
     public func atomic(
-        _ string: String,
+        _ string: Swift.String,
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) {
-        try await atomic(Array(string.utf8), options: options)
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Write.Atomic.Error>) {
+        let path = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Write.Atomic.Error) in
+            let utf8 = [Byte](string.utf8)
+            try File.System.Write.Atomic.write(utf8.span, to: path, options: options)
+        }
     }
 
-    /// Writes bytes from a sequence to the file atomically.
+    /// Writes bytes from a sendable sequence to the file atomically.
     ///
-    /// Async variant.
-    /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>` on failure.
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Write.Atomic.Error>` on failure.
     @inlinable
-    public func atomic<S: Sequence>(
+    public func atomic<S: Swift.Sequence & Sendable>(
         contentsOf bytes: S,
         options: File.System.Write.Atomic.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Atomic.Error>>) where S.Element == UInt8 {
-        try await atomic(Array(bytes), options: options)
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Write.Atomic.Error>)
+    where S.Element == Byte {
+        let path = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Write.Atomic.Error) in
+            let array = Array(bytes)
+            try File.System.Write.Atomic.write(array.span, to: path, options: options)
+        }
     }
 
     // MARK: - Append (Sync)
 
     /// Appends bytes to the file.
     ///
-    /// - Parameter bytes: The bytes to append.
+    /// - Parameter bytes: The bytes to append (borrowed, zero-copy).
     /// - Throws: `File.System.Write.Append.Error` on failure.
     @inlinable
-    public func append(_ bytes: [UInt8]) throws(File.System.Write.Append.Error) {
-        try File.System.Write.Append.append(bytes.span, to: path)
+    public func append(_ bytes: borrowing Swift.Span<Byte>) throws(File.System.Write.Append.Error) {
+        try File.System.Write.Append.append(bytes, to: path)
     }
 
     /// Appends a string to the file (UTF-8 encoded).
@@ -138,32 +141,26 @@ extension File.Write {
     /// - Parameter string: The string to append.
     /// - Throws: `File.System.Write.Append.Error` on failure.
     @inlinable
-    public func append(_ string: String) throws(File.System.Write.Append.Error) {
-        try append(Array(string.utf8))
+    public func append(_ string: Swift.String) throws(File.System.Write.Append.Error) {
+        let utf8 = [Byte](string.utf8)
+        try append(utf8.span)
     }
 
     // MARK: - Append (Async)
 
-    /// Appends bytes to the file.
-    ///
-    /// Async variant.
-    /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>` on failure.
-    @inlinable
-    public func append(
-        _ bytes: [UInt8]
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>) {
-        try await File.System.Write.Append.append(bytes, to: path)
-    }
-
     /// Appends a string to the file (UTF-8 encoded).
     ///
-    /// Async variant.
-    /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>` on failure.
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Write.Append.Error>` on failure.
     @inlinable
     public func append(
-        _ string: String
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Append.Error>>) {
-        try await append(Array(string.utf8))
+        _ string: Swift.String
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Write.Append.Error>) {
+        let path = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Write.Append.Error) in
+            let utf8 = [Byte](string.utf8)
+            try File.System.Write.Append.append(utf8.span, to: path)
+        }
     }
 
     // MARK: - Streaming Write (Sync)
@@ -177,10 +174,10 @@ extension File.Write {
     ///   - options: Streaming write options.
     /// - Throws: `File.System.Write.Streaming.Error` on failure.
     @inlinable
-    public func streaming<Chunks: Sequence>(
+    public func streaming<Chunks: Swift.Sequence>(
         _ chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
-    ) throws(File.System.Write.Streaming.Error) where Chunks.Element == [UInt8] {
+    ) throws(File.System.Write.Streaming.Error) where Chunks.Element == [Byte] {
         try File.System.Write.Streaming.write(chunks, to: path, options: options)
     }
 
@@ -188,31 +185,18 @@ extension File.Write {
 
     /// Writes chunks to the file using streaming (memory-efficient).
     ///
-    /// Async variant for sync sequences.
-    /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>` on failure.
+    /// Async variant for sync sequences - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Write.Streaming.Error>` on failure.
     @inlinable
-    public func streaming<Chunks: Sequence & Sendable>(
+    public func streaming<Chunks: Swift.Sequence & Sendable>(
         _ chunks: Chunks,
         options: File.System.Write.Streaming.Options = .init()
-    ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Write.Streaming.Error>>)
-    where Chunks.Element == [UInt8] {
-        try await File.System.Write.Streaming.write(chunks, to: path, options: options)
-    }
-
-    /// Writes chunks from an async sequence to the file.
-    ///
-    /// True streaming implementation - processes chunks as they arrive.
-    ///
-    /// - Parameters:
-    ///   - chunks: Async sequence of byte arrays to write.
-    ///   - options: Streaming write options.
-    /// - Throws: On failure (untyped due to async sequence complexity).
-    @inlinable
-    public func streaming<Chunks: AsyncSequence & Sendable>(
-        _ chunks: Chunks,
-        options: File.System.Write.Streaming.Options = .init()
-    ) async throws where Chunks.Element == [UInt8] {
-        try await File.System.Write.Streaming.write(chunks, to: path, options: options)
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Write.Streaming.Error>)
+    where Chunks.Element == [Byte] {
+        let path = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Write.Streaming.Error) in
+            try File.System.Write.Streaming.write(chunks, to: path, options: options)
+        }
     }
 }
 

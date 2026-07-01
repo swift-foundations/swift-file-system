@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import Kernel
+
 // MARK: - Stat Namespace
 
 extension File {
@@ -59,41 +61,41 @@ extension File {
 
         /// Returns file metadata information.
         ///
-        /// - Throws: `File.System.Stat.Error` on failure.
+        /// - Throws: `Kernel.File.Stats.Error` on failure.
         @inlinable
         public var info: File.System.Metadata.Info {
-            get throws(File.System.Stat.Error) {
+            get throws(Kernel.File.Stats.Error) {
                 try File.System.Stat.info(at: path)
             }
         }
 
         /// Returns the file size in bytes.
         ///
-        /// - Throws: `File.System.Stat.Error` on failure.
+        /// - Throws: `Kernel.File.Stats.Error` on failure.
         @inlinable
-        public var size: Int64 {
-            get throws(File.System.Stat.Error) {
+        public var size: Kernel.File.Size {
+            get throws(Kernel.File.Stats.Error) {
                 try info.size
             }
         }
 
         /// Returns the file permissions.
         ///
-        /// - Throws: `File.System.Stat.Error` on failure.
+        /// - Throws: `Kernel.File.Stats.Error` on failure.
         @inlinable
         public var permissions: File.System.Metadata.Permissions {
-            get throws(File.System.Stat.Error) {
+            get throws(Kernel.File.Stats.Error) {
                 try info.permissions
             }
         }
 
         /// Returns `true` if the file is empty (size is 0).
         ///
-        /// - Throws: `File.System.Stat.Error` on failure.
+        /// - Throws: `Kernel.File.Stats.Error` on failure.
         @inlinable
         public var isEmpty: Bool {
-            get throws(File.System.Stat.Error) {
-                try size == 0
+            get throws(Kernel.File.Stats.Error) {
+                try size.isZero
             }
         }
     }

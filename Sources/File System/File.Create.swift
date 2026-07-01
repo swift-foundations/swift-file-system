@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import Kernel
+
 // MARK: - Create Namespace
 
 extension File {
@@ -32,10 +34,10 @@ extension File {
         /// Creates an empty file or updates its timestamp if it exists.
         ///
         /// - Returns: The file for chaining.
-        /// - Throws: `File.Handle.Error` on failure.
+        /// - Throws: `File.Handle.Open.Error<Never>` on failure.
         @discardableResult
         @inlinable
-        public func touch() throws(File.Handle.Error) -> File {
+        public func touch() throws(File.Handle.Open.Error<Never>) -> File {
             try File.Handle.open(path, options: [.create]).readWrite { _ in }
             return File(path)
         }
@@ -46,10 +48,10 @@ extension File {
         ///
         /// Async variant.
         /// - Returns: The file for chaining.
-        /// - Throws: `File.Handle.Error` on failure.
+        /// - Throws: `File.Handle.Open.Error<Never>` on failure.
         @discardableResult
         @inlinable
-        public func touch() async throws(File.Handle.Error) -> File {
+        public func touch() async throws(File.Handle.Open.Error<Never>) -> File {
             try File.Handle.open(path, options: [.create]).readWrite { _ in }
             return File(path)
         }

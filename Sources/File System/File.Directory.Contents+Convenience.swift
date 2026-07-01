@@ -5,7 +5,7 @@
 //  Convenience collectors for directory iteration.
 //
 
-import File_System_Primitives
+import File_System_Core
 
 extension File.Directory.Contents {
     /// Collects all file names in a directory.
@@ -13,31 +13,26 @@ extension File.Directory.Contents {
     /// This is a convenience wrapper that collects all names into an array.
     /// For performance-critical iteration, use `makeIterator(at:)` directly.
     ///
-    /// - Parameter path: The path to the directory.
+    /// - Parameter directory: The directory to list.
     /// - Returns: An array of file names.
     /// - Throws: `Error` if the directory cannot be opened.
     public static func names(
         at directory: File.Directory
     ) throws(File.Directory.Contents.Error) -> [File.Name] {
-        #if os(Windows)
-            // Windows uses the existing _listWindows and extracts names
-            return try _listWindows(at: directory).map(\.name)
-        #else
-            let (iterator, handle) = try makeIterator(at: directory)
-            defer { closeIterator(handle) }
+        let (iterator, handle) = try makeIterator(at: directory)
+        defer { closeIterator(handle) }
 
-            var names: [File.Name] = []
-            var iter = iterator
-            while let name = iter.next() {
-                names.append(name)
-            }
+        var names: [File.Name] = []
+        var iter = iterator
+        while let name = iter.next() {
+            names.append(name)
+        }
 
-            // Check for errors that occurred during iteration
-            if let error = iteratorError(for: directory) {
-                throw error
-            }
+        // Check for errors that occurred during iteration
+        if let error = iteratorError(for: iter, directory: directory) {
+            throw error
+        }
 
-            return names
-        #endif
+        return names
     }
 }

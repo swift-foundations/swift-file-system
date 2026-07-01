@@ -6,7 +6,7 @@
 //
 
 import File_System
-public import File_System_Primitives
+public import File_System_Core
 
 extension File {
     /// Wrapper for scoped temporary file operations.
@@ -24,13 +24,13 @@ extension File {
     /// ```
     public struct Temporary: Sendable {
         /// The file extension (e.g., "pdf", "txt").
-        public let ext: String
+        public let ext: Swift.String
 
         /// The prefix for the temp file name.
-        public let prefix: String
+        public let prefix: Swift.String
 
         /// Creates a Temporary instance.
-        internal init(extension ext: String, prefix: String) {
+        internal init(extension ext: Swift.String, prefix: Swift.String) {
             self.ext = ext
             self.prefix = prefix
         }
@@ -45,14 +45,14 @@ extension File {
             _ body: (File.Path) throws -> T
         ) throws -> T {
             let base = try File.Directory.Temporary.system
-            let dirName = "\(prefix)-\(File.Directory.Temporary.randomID())"
-            let dirPath = File.Path(base.path, appending: dirName)
+            let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
+            let dirPath = base.path / dirName
 
             try File.System.Create.Directory.create(at: dirPath)
-            defer { try? File.System.Delete.delete(at: dirPath, options: .init(recursive: true)) }
+            defer { try? File.System.Delete.delete(at: dirPath, recursive: true) }
 
-            let fileName = "\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)"
-            let filePath = File.Path(dirPath, appending: fileName)
+            let fileName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)")
+            let filePath = dirPath / fileName
 
             return try body(filePath)
         }
@@ -67,14 +67,14 @@ extension File {
             _ body: (File.Path) async throws -> T
         ) async throws -> T {
             let base = try File.Directory.Temporary.system
-            let dirName = "\(prefix)-\(File.Directory.Temporary.randomID())"
-            let dirPath = File.Path(base.path, appending: dirName)
+            let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
+            let dirPath = base.path / dirName
 
-            try await File.System.Create.Directory.create(at: dirPath)
-            defer { try? File.System.Delete.delete(at: dirPath, options: .init(recursive: true)) }
+            try File.System.Create.Directory.create(at: dirPath)
+            defer { try? File.System.Delete.delete(at: dirPath, recursive: true) }
 
-            let fileName = "\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)"
-            let filePath = File.Path(dirPath, appending: fileName)
+            let fileName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)")
+            let filePath = dirPath / fileName
 
             return try await body(filePath)
         }
@@ -87,8 +87,8 @@ extension File {
     ///   - prefix: Prefix for the temp file name (default: "test").
     /// - Returns: A `Temporary` wrapper for scoped file operations.
     public static func temporary(
-        extension ext: String,
-        prefix: String = "test"
+        extension ext: Swift.String,
+        prefix: Swift.String = "test"
     ) -> Temporary {
         Temporary(extension: ext, prefix: prefix)
     }

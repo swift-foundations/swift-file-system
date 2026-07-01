@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Directories Namespace
 
 extension File.Directory {
@@ -48,13 +51,16 @@ extension File.Directory {
 
         /// Returns all subdirectories in the directory.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>` on failure.
         @inlinable
-        public func callAsFunction() async throws(IO.Lifecycle.Error<IO.Error<File.Directory.Contents.Error>>) -> [File.Directory] {
-            try await File.Directory.Contents.list(at: File.Directory(path))
-                .filter { $0.type == .directory }
-                .compactMap { $0.pathIfValid.map { File.Directory($0) } }
+        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>) -> [File.Directory] {
+            let path = self.path
+            return try await Kernel.Thread.Pool.shared.run { () throws(File.Directory.Contents.Error) in
+                try File.Directory.Contents.list(at: File.Directory(path))
+                    .filter { $0.type == .directory }
+                    .compactMap { $0.pathIfValid.map { File.Directory($0) } }
+            }
         }
     }
 }

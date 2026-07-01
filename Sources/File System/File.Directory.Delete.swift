@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Delete Namespace
 
 extension File.Directory {
@@ -42,16 +45,19 @@ extension File.Directory {
         /// - Throws: `File.System.Delete.Error` on failure.
         @inlinable
         public func callAsFunction() throws(File.System.Delete.Error) {
-            try File.System.Delete.delete(at: path, options: .init(recursive: false))
+            try File.System.Delete.delete(at: path)
         }
 
         /// Deletes the directory.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure.
         @inlinable
-        public func callAsFunction() async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
-            try await File.System.Delete.delete(at: path, options: .init(recursive: false))
+        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+            let path = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
+                try File.System.Delete.delete(at: path)
+            }
         }
 
         // MARK: - Variants
@@ -61,16 +67,19 @@ extension File.Directory {
         /// - Throws: `File.System.Delete.Error` on failure.
         @inlinable
         public func recursive() throws(File.System.Delete.Error) {
-            try File.System.Delete.delete(at: path, options: .init(recursive: true))
+            try File.System.Delete.delete(at: path, recursive: true)
         }
 
         /// Deletes the directory and all its contents.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure.
         @inlinable
-        public func recursive() async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
-            try await File.System.Delete.delete(at: path, options: .init(recursive: true))
+        public func recursive() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+            let path = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
+                try File.System.Delete.delete(at: path, recursive: true)
+            }
         }
 
         /// Deletes the directory if it exists, no error if missing.
@@ -79,22 +88,31 @@ extension File.Directory {
         @inlinable
         public func ifExists() throws(File.System.Delete.Error) {
             do {
-                try File.System.Delete.delete(at: path, options: .init(recursive: false))
-            } catch .pathNotFound {
-                // Ignore - directory doesn't exist
+                try File.System.Delete.delete(at: path)
+            } catch {
+                if error.isNotFound {
+                    return  // Ignore - directory doesn't exist
+                }
+                throw error
             }
         }
 
         /// Deletes the directory if it exists, no error if missing.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>` on failure (other than not found).
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure (other than not found).
         @inlinable
-        public func ifExists() async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
+        public func ifExists() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+            let path = self.path
             do {
-                try await File.System.Delete.delete(at: path, options: .init(recursive: false))
-            } catch .failure(.operation(.pathNotFound)) {
-                // Ignore - directory doesn't exist
+                try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
+                    try File.System.Delete.delete(at: path)
+                }
+            } catch {
+                if case .right(let deleteError) = error, deleteError.isNotFound {
+                    return  // Ignore - directory doesn't exist
+                }
+                throw error
             }
         }
     }

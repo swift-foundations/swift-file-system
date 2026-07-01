@@ -14,17 +14,17 @@ extension File {
     }
 
     /// The file name (last component of the path).
-    public var name: String {
-        path.lastComponent.map { String($0) } ?? ""
+    public var name: File.Path.Component {
+        path.components.last ?? "."
     }
 
     /// The file extension, or `nil` if there is none.
-    public var `extension`: String? {
+    public var `extension`: File.Path.Component.Extension? {
         path.extension
     }
 
     /// The filename without extension.
-    public var stem: String? {
+    public var stem: File.Path.Component.Stem? {
         path.stem
     }
 
@@ -32,8 +32,8 @@ extension File {
     ///
     /// - Parameter component: The component to append.
     /// - Returns: A new file with the appended path.
-    public func appending(_ component: String) -> File {
-        File(path.appending(component))
+    public func appending(_ component: File.Path.Component) -> File {
+        File(path / component)
     }
 
     /// Appends a component to a file.
@@ -42,7 +42,7 @@ extension File {
     ///   - lhs: The base file.
     ///   - rhs: The component to append.
     /// - Returns: A new file with the appended path.
-    public static func / (lhs: File, rhs: String) -> File {
+    public static func / (lhs: File, rhs: File.Path.Component) -> File {
         lhs.appending(rhs)
     }
 }
@@ -50,16 +50,16 @@ extension File {
 // MARK: - CustomStringConvertible
 
 extension File: CustomStringConvertible {
-    public var description: String {
-        String(path)
+    public var description: Swift.String {
+        Swift.String(path)
     }
 }
 
 // MARK: - CustomDebugStringConvertible
 
 extension File: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        "File(\(String(path).debugDescription))"
+    public var debugDescription: Swift.String {
+        "File(\(Swift.String(path).debugDescription))"
     }
 }
 

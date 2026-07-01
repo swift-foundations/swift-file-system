@@ -5,6 +5,8 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+import Kernel
+
 // MARK: - Stat Namespace
 
 extension File.Directory {
@@ -53,20 +55,20 @@ extension File.Directory {
 
         /// Returns directory metadata information.
         ///
-        /// - Throws: `File.System.Stat.Error` on failure.
+        /// - Throws: `Kernel.File.Stats.Error` on failure.
         @inlinable
         public var info: File.System.Metadata.Info {
-            get throws(File.System.Stat.Error) {
+            get throws(Kernel.File.Stats.Error) {
                 try File.System.Stat.info(at: path)
             }
         }
 
         /// Returns the directory permissions.
         ///
-        /// - Throws: `File.System.Stat.Error` on failure.
+        /// - Throws: `Kernel.File.Stats.Error` on failure.
         @inlinable
         public var permissions: File.System.Metadata.Permissions {
-            get throws(File.System.Stat.Error) {
+            get throws(Kernel.File.Stats.Error) {
                 try info.permissions
             }
         }

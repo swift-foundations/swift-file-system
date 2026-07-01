@@ -5,6 +5,9 @@
 //  Created by Coen ten Thije Boonkkamp on 28/12/2025.
 //
 
+public import IO
+public import Thread_Pool
+
 // MARK: - Delete Namespace
 
 extension File {
@@ -37,55 +40,57 @@ extension File {
         ///
         /// This is the primary action, accessible via `file.delete()`.
         ///
-        /// - Parameter options: Delete options.
         /// - Throws: `File.System.Delete.Error` on failure.
         @inlinable
-        public func callAsFunction(
-            options: File.System.Delete.Options = .init()
-        ) throws(File.System.Delete.Error) {
-            try File.System.Delete.delete(at: path, options: options)
+        public func callAsFunction() throws(File.System.Delete.Error) {
+            try File.System.Delete.delete(at: path)
         }
 
         /// Deletes the file.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>` on failure.
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure.
         @inlinable
-        public func callAsFunction(
-            options: File.System.Delete.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
-            try await File.System.Delete.delete(at: path, options: options)
+        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+            let path = self.path
+            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
+                try File.System.Delete.delete(at: path)
+            }
         }
 
         // MARK: - Variants
 
         /// Deletes the file if it exists, no error if missing.
         ///
-        /// - Parameter options: Delete options.
         /// - Throws: `File.System.Delete.Error` on failure (other than not found).
         @inlinable
-        public func ifExists(
-            options: File.System.Delete.Options = .init()
-        ) throws(File.System.Delete.Error) {
+        public func ifExists() throws(File.System.Delete.Error) {
             do {
-                try File.System.Delete.delete(at: path, options: options)
-            } catch .pathNotFound {
-                // Ignore - file doesn't exist
+                try File.System.Delete.delete(at: path)
+            } catch {
+                if error.isNotFound {
+                    return  // Ignore - file doesn't exist
+                }
+                throw error
             }
         }
 
         /// Deletes the file if it exists, no error if missing.
         ///
-        /// Async variant.
-        /// - Throws: `IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>` on failure (other than not found).
+        /// Async variant - runs blocking I/O on a dedicated thread pool.
+        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure (other than not found).
         @inlinable
-        public func ifExists(
-            options: File.System.Delete.Options = .init()
-        ) async throws(IO.Lifecycle.Error<IO.Error<File.System.Delete.Error>>) {
+        public func ifExists() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+            let path = self.path
             do {
-                try await File.System.Delete.delete(at: path, options: options)
-            } catch .failure(.operation(.pathNotFound)) {
-                // Ignore - file doesn't exist
+                try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
+                    try File.System.Delete.delete(at: path)
+                }
+            } catch {
+                if case .right(let deleteError) = error, deleteError.isNotFound {
+                    return  // Ignore - file doesn't exist
+                }
+                throw error
             }
         }
     }
