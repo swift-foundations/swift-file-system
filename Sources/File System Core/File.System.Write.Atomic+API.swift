@@ -18,25 +18,25 @@ extension File.System.Write.Atomic.Error {
     init(_ error: File.System.Write.Error) {
         switch error {
         case .sync(let msg):
-            self = .syncFailed(code: .POSIX.EIO, message: msg)
+            self = .syncFailed(code: ._fsIO, message: msg)
         case .close(let msg):
-            self = .closeFailed(code: .POSIX.EIO, message: msg)
+            self = .closeFailed(code: ._fsIO, message: msg)
         case .rename(let from, let to, let msg):
-            self = .renameFailed(from: from, to: to, code: .POSIX.EIO, message: msg)
+            self = .renameFailed(from: from, to: to, code: ._fsIO, message: msg)
         case .exists(let path):
             self = .destinationExists(path: path)
         case .directory(let path, let msg):
-            self = .directorySyncFailed(path: path, code: .POSIX.EIO, message: msg)
+            self = .directorySyncFailed(path: path, code: ._fsIO, message: msg)
         case .write(let written, let expected, let msg):
             self = .writeFailed(
                 bytesWritten: written,
                 bytesExpected: expected,
-                code: .POSIX.EIO,
+                code: ._fsIO,
                 message: msg
             )
         case .random(let msg):
             self = .randomGenerationFailed(
-                code: .POSIX.EIO,
+                code: ._fsIO,
                 operation: "getrandom",
                 message: msg
             )
@@ -95,7 +95,7 @@ extension File.System.Write.Atomic {
         if !File.System.Write.fileExists(parent) {
             throw .parentVerificationFailed(
                 path: parent,
-                code: .POSIX.ENOENT,
+                code: ._fsNotFound,
                 message: "Parent directory does not exist"
             )
         }
@@ -176,7 +176,7 @@ extension File.System.Write.Atomic {
                 if case .directory(let path, let msg) = error {
                     throw .directorySyncFailedAfterCommit(
                         path: path,
-                        code: .POSIX.EIO,
+                        code: ._fsIO,
                         message: msg
                     )
                 }
@@ -221,7 +221,7 @@ extension File.System.Write.Atomic {
         guard let baseName = File.System.Write.fileName(of: dest) else {
             throw .tempFileCreationFailed(
                 directory: parent,
-                code: .POSIX.EINVAL,
+                code: ._fsInvalid,
                 message: "destination has no filename component"
             )
         }
@@ -252,7 +252,7 @@ extension File.System.Write.Atomic {
                 }
                 throw .tempFileCreationFailed(
                     directory: parent,
-                    code: .POSIX.EIO,
+                    code: ._fsIO,
                     message: "\(error)"
                 )
             }
@@ -284,9 +284,9 @@ extension File.System.Write.Atomic {
                 let code: Error_Primitives.Error.Code
                 switch error {
                 case .platform(let e): code = e.code
-                case .permission: code = .POSIX.EACCES
-                case .path: code = .POSIX.ENOENT
-                case .io: code = .POSIX.EIO
+                case .permission: code = ._fsAccessDenied
+                case .path: code = ._fsNotFound
+                case .io: code = ._fsIO
                 }
                 throw .metadataPreservationFailed(
                     operation: "fchmod",
@@ -308,9 +308,9 @@ extension File.System.Write.Atomic {
                     let code: Error_Primitives.Error.Code
                     switch error {
                     case .platform(let e): code = e.code
-                    case .permission: code = .POSIX.EACCES
-                    case .path: code = .POSIX.ENOENT
-                    case .io: code = .POSIX.EIO
+                    case .permission: code = ._fsAccessDenied
+                    case .path: code = ._fsNotFound
+                    case .io: code = ._fsIO
                     }
                     throw .metadataPreservationFailed(
                         operation: "fchown",

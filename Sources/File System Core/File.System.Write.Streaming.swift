@@ -212,7 +212,7 @@ extension File.System.Write.Streaming {
         } catch {
             throw .parentVerificationFailed(
                 path: parent,
-                code: .POSIX.ENOENT,
+                code: ._fsNotFound,
                 message: "\(error)"
             )
         }
