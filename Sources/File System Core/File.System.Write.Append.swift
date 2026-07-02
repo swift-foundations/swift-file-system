@@ -147,12 +147,15 @@ extension File.System.Write.Append {
                     totalWritten += written
                 }
             } catch {
-                // Check for EINTR (interrupted) - retry
-                if case .platform(let kernelError) = error,
-                    kernelError.code == Error_Primitives.Error.Code.POSIX.EINTR
-                {
-                    continue
-                }
+                // Check for EINTR (interrupted) - retry. POSIX vocabulary;
+                // Windows syscalls are not interruptible in the signal sense.
+                #if !os(Windows)
+                    if case .platform(let kernelError) = error,
+                        kernelError.code == Error_Primitives.Error.Code.POSIX.EINTR
+                    {
+                        continue
+                    }
+                #endif
                 throw error
             }
         }

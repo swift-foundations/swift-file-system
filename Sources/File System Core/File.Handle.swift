@@ -165,10 +165,15 @@ extension File.Handle {
                 at: Kernel.File.Offset(offset)
             )
         } catch let error {
-            // Check for pipe/socket - not seekable at offset 0, fallback to sequential
-            if case .platform(let p) = error, p.code == .POSIX.ESPIPE, offset == 0 {
-                return try unsafe Kernel.IO.Write.write(_descriptor.kernelDescriptor, from: buffer)
-            }
+            // Check for pipe/socket - not seekable at offset 0, fallback to
+            // sequential. ESPIPE is POSIX vocabulary; Windows pipe handles
+            // fail positioned writes with codes that don't identify "pipe"
+            // reliably, so no fallback there.
+            #if !os(Windows)
+                if case .platform(let p) = error, p.code == .POSIX.ESPIPE, offset == 0 {
+                    return try unsafe Kernel.IO.Write.write(_descriptor.kernelDescriptor, from: buffer)
+                }
+            #endif
             throw error
         }
     }

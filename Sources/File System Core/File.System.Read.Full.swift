@@ -221,11 +221,15 @@ extension File.System.Read.Full {
                 guard bytesRead > 0 else { break }
                 totalRead += bytesRead
             } catch {
-                if case .platform(let kernelError) = error,
-                    kernelError.code == Error_Primitives.Error.Code.POSIX.EINTR
-                {
-                    continue
-                }
+                // EINTR retry is POSIX vocabulary; Windows syscalls are
+                // not interruptible in the signal sense.
+                #if !os(Windows)
+                    if case .platform(let kernelError) = error,
+                        kernelError.code == Error_Primitives.Error.Code.POSIX.EINTR
+                    {
+                        continue
+                    }
+                #endif
                 throw error
             }
         }
