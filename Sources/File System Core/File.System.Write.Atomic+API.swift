@@ -260,7 +260,7 @@ extension File.System.Write.Atomic {
 
         throw .tempFileCreationFailed(
             directory: parent,
-            code: .EEXIST,
+            code: ._fsExists,
             message: "Failed after \(maxTempFileAttempts) attempts"
         )
     }
