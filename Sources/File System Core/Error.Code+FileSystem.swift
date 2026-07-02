@@ -54,4 +54,13 @@ extension Error_Primitives.Error.Code {
             .POSIX.EACCES
         #endif
     }
+
+    /// Already exists (`EEXIST` / `ERROR_FILE_EXISTS`).
+    internal static var _fsExists: Self {
+        #if os(Windows)
+            .Windows.ERROR_FILE_EXISTS
+        #else
+            .POSIX.EEXIST
+        #endif
+    }
 }
