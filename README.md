@@ -1,6 +1,6 @@
 # swift-file-system
 
-![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
+![CI](https://github.com/swift-foundations/swift-file-system/actions/workflows/ci.yml/badge.svg) ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 
 File system operations for Swift, exposing a `File` value type for reading, writing, scoped handles, atomic writes, and directory traversal with typed-throws error handling.
 
@@ -46,7 +46,7 @@ for entry in try project.entries() where entry.type == .file {
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/swift-foundations/swift-file-system.git", branch: "main")
+    .package(url: "https://github.com/swift-foundations/swift-file-system.git", from: "0.6.0")
 ]
 ```
 
@@ -78,11 +78,15 @@ Three library products. `File System` re-exports `File System Core`, so most con
 ## Community
 
 <!-- BEGIN: discussion -->
-*Discussion thread will be created at first public flip.*
+*A discussion thread will open with the first tagged release.*
 <!-- END: discussion -->
+
+## Status & maintainer
+
+This package is public alpha (pre-1.0): interfaces are stabilizing and APIs may change between minor versions.
+
+Maintained by [Coen ten Thije Boonkkamp](https://github.com/coenttb) — available for Swift infrastructure and document-systems consulting: coen@coenttb.com.
 
 ## License
 
 Apache 2.0. See [LICENSE](LICENSE.md).
-</content>
-</invoke>
