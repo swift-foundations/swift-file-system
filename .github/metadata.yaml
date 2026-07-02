@@ -1,6 +1,6 @@
 # .github/metadata.yaml
 # Triaged 2026-04-29 — anomaly-fix pass after wave-4 PR-branch triage didn't apply.
-description: "File system for Swift."
+description: "File system operations with a typed File value type, atomic writes, and directory traversal for Swift."
 topics:
   - foundations
   - file
