@@ -156,22 +156,22 @@ extension File.System.Read.Full.Test.Unit {
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isNotFound semantic accessor`() {
-        let error = File.System.Read.Full.Error.open(.path(.notFound))
-        #expect(error.isNotFound)
-        #expect(!error.isPermissionDenied)
-    }
+        @Test
+        func `isNotFound semantic accessor`() {
+            let error = File.System.Read.Full.Error.open(.path(.notFound))
+            #expect(error.isNotFound)
+            #expect(!error.isPermissionDenied)
+        }
     #endif
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isPermissionDenied semantic accessor`() {
-        let error = File.System.Read.Full.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
-        #expect(error.isPermissionDenied)
-        #expect(!error.isNotFound)
-    }
+        @Test
+        func `isPermissionDenied semantic accessor`() {
+            let error = File.System.Read.Full.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
+            #expect(error.isPermissionDenied)
+            #expect(!error.isNotFound)
+        }
     #endif
 
     @Test
