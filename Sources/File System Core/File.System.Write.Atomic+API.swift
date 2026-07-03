@@ -18,25 +18,25 @@ extension File.System.Write.Atomic.Error {
     init(_ error: File.System.Write.Error) {
         switch error {
         case .sync(let msg):
-            self = .syncFailed(code: ._fsIO, message: msg)
+            self = .syncFailed(code: ._io, message: msg)
         case .close(let msg):
-            self = .closeFailed(code: ._fsIO, message: msg)
+            self = .closeFailed(code: ._io, message: msg)
         case .rename(let from, let to, let msg):
-            self = .renameFailed(from: from, to: to, code: ._fsIO, message: msg)
+            self = .renameFailed(from: from, to: to, code: ._io, message: msg)
         case .exists(let path):
             self = .destinationExists(path: path)
         case .directory(let path, let msg):
-            self = .directorySyncFailed(path: path, code: ._fsIO, message: msg)
+            self = .directorySyncFailed(path: path, code: ._io, message: msg)
         case .write(let written, let expected, let msg):
             self = .writeFailed(
                 bytesWritten: written,
                 bytesExpected: expected,
-                code: ._fsIO,
+                code: ._io,
                 message: msg
             )
         case .random(let msg):
             self = .randomGenerationFailed(
-                code: ._fsIO,
+                code: ._io,
                 operation: "getrandom",
                 message: msg
             )
@@ -95,7 +95,7 @@ extension File.System.Write.Atomic {
         if !File.System.Write.fileExists(parent) {
             throw .parentVerificationFailed(
                 path: parent,
-                code: ._fsNotFound,
+                code: ._notFound,
                 message: "Parent directory does not exist"
             )
         }
@@ -181,7 +181,7 @@ extension File.System.Write.Atomic {
                 if case .directory(let path, let msg) = error {
                     throw .directorySyncFailedAfterCommit(
                         path: path,
-                        code: ._fsIO,
+                        code: ._io,
                         message: msg
                     )
                 }
@@ -226,7 +226,7 @@ extension File.System.Write.Atomic {
         guard let baseName = File.System.Write.fileName(of: dest) else {
             throw .tempFileCreationFailed(
                 directory: parent,
-                code: ._fsInvalid,
+                code: ._invalid,
                 message: "destination has no filename component"
             )
         }
@@ -257,7 +257,7 @@ extension File.System.Write.Atomic {
                 }
                 throw .tempFileCreationFailed(
                     directory: parent,
-                    code: ._fsIO,
+                    code: ._io,
                     message: "\(error)"
                 )
             }
@@ -265,7 +265,9 @@ extension File.System.Write.Atomic {
 
         throw .tempFileCreationFailed(
             directory: parent,
-            code: ._fsExists,
+            // `._exists` here is `Error_Primitives.Error.Code` (this file's synthesized code);
+            // distinct from `File.System.Write.Error.exists` matched in the init above.
+            code: ._exists,
             message: "Failed after \(maxTempFileAttempts) attempts"
         )
     }
@@ -289,9 +291,9 @@ extension File.System.Write.Atomic {
                 let code: Error_Primitives.Error.Code
                 switch error {
                 case .platform(let e): code = e.code
-                case .permission: code = ._fsAccessDenied
-                case .path: code = ._fsNotFound
-                case .io: code = ._fsIO
+                case .permission: code = ._accessDenied
+                case .path: code = ._notFound
+                case .io: code = ._io
                 }
                 throw .metadataPreservationFailed(
                     operation: "fchmod",
@@ -313,9 +315,9 @@ extension File.System.Write.Atomic {
                     let code: Error_Primitives.Error.Code
                     switch error {
                     case .platform(let e): code = e.code
-                    case .permission: code = ._fsAccessDenied
-                    case .path: code = ._fsNotFound
-                    case .io: code = ._fsIO
+                    case .permission: code = ._accessDenied
+                    case .path: code = ._notFound
+                    case .io: code = ._io
                     }
                     throw .metadataPreservationFailed(
                         operation: "fchown",
