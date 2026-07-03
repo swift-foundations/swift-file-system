@@ -163,19 +163,25 @@ extension File.System.Write.Streaming {
                 throw writeError!
             }
 
-            do throws(File.System.Write.Error) {
-                try unsafe buffer.withUnsafeBufferPointer { ptr throws(File.System.Write.Error) in
+            // Route through the borrowing Context method (via the static
+            // wrapper), not a direct `context.descriptor!` projection: the
+            // §A23 structural fix — projecting the @guaranteed field out of
+            // the borrowed ~Copyable Context lets CopyPropagation shorten
+            // the borrow to end before the consuming call, aborting the SIL
+            // ownership verifier ("Found outside of lifetime use?!").
+            do throws(Error) {
+                try unsafe buffer.withUnsafeBufferPointer { ptr throws(Error) in
                     guard let base = ptr.baseAddress else { return }
-                    try unsafe File.System.Write.writeAllRaw(
-                        unsafe UnsafeRawBufferPointer(
+                    try unsafe write(
+                        chunk: UnsafeRawBufferPointer(
                             start: base,
                             count: bytesProduced
                         ),
-                        to: context.descriptor!
+                        to: context
                     )
                 }
             } catch let error {
-                writeError = Error(error)
+                writeError = error
                 throw writeError!
             }
         }
