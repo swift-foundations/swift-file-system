@@ -135,15 +135,13 @@ extension File.System.Write.Append.Test.Unit {
 
     // MARK: - Semantic Accessors
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
-    #if !os(Windows)
-        @Test
-        func `isNotFound semantic accessor`() {
-            let error = File.System.Write.Append.Error.open(.path(.notFound))
-            #expect(error.isNotFound)
-            #expect(!error.isPermissionDenied)
-        }
-    #endif
+    // Structural error-case construction (.path(.notFound)); platform-neutral.
+    @Test
+    func `isNotFound semantic accessor`() {
+        let error = File.System.Write.Append.Error.open(.path(.notFound))
+        #expect(error.isNotFound)
+        #expect(!error.isPermissionDenied)
+    }
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
@@ -155,15 +153,23 @@ extension File.System.Write.Append.Test.Unit {
         }
     #endif
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
-    #if !os(Windows)
+    // Windows twin of the POSIX-gated test above: same accessor, Win32 code.
+    #if os(Windows)
         @Test
-        func `isDirectory semantic accessor`() {
-            let error = File.System.Write.Append.Error.open(.path(.isDirectory))
-            #expect(error.isDirectory)
+        func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
+            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED)))
+            #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
         }
     #endif
+
+    // Structural error-case construction (.path(.isDirectory)); platform-neutral.
+    @Test
+    func `isDirectory semantic accessor`() {
+        let error = File.System.Write.Append.Error.open(.path(.isDirectory))
+        #expect(error.isDirectory)
+        #expect(!error.isNotFound)
+    }
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)

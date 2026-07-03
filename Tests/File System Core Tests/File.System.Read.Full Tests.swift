@@ -199,21 +199,29 @@ extension File.System.Read.Full.Test.Unit {
 
     // MARK: - Semantic Accessors
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
-    #if !os(Windows)
-        @Test
-        func `isNotFound semantic accessor`() {
-            let error = File.System.Read.Full.Error.open(.path(.notFound))
-            #expect(error.isNotFound)
-            #expect(!error.isPermissionDenied)
-        }
-    #endif
+    // Structural error-case construction (.path(.notFound)); platform-neutral.
+    @Test
+    func `isNotFound semantic accessor`() {
+        let error = File.System.Read.Full.Error.open(.path(.notFound))
+        #expect(error.isNotFound)
+        #expect(!error.isPermissionDenied)
+    }
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
         @Test
         func `isPermissionDenied semantic accessor`() {
             let error = File.System.Read.Full.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
+            #expect(error.isPermissionDenied)
+            #expect(!error.isNotFound)
+        }
+    #endif
+
+    // Windows twin of the POSIX-gated test above: same accessor, Win32 code.
+    #if os(Windows)
+        @Test
+        func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
+            let error = File.System.Read.Full.Error.open(.platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED)))
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
         }
