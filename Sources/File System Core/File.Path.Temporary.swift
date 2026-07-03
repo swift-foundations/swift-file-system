@@ -45,7 +45,12 @@ extension File.Path.Temporary {
         key: Swift.String,
         suffix: Swift.String
     ) throws(File.Path.Error) -> File.Path {
-        let temporaryDirectoryString: Swift.String = Environment.read("TMPDIR") ?? "/tmp"
+        #if os(Windows)
+            let temporaryDirectoryString: Swift.String =
+                Environment.read("TEMP") ?? Environment.read("TMP") ?? "C:\\Temp"
+        #else
+            let temporaryDirectoryString: Swift.String = Environment.read("TMPDIR") ?? "/tmp"
+        #endif
         // `File.Path` owns trailing-separator semantics — the typed
         // construction normalizes them so the prior manual `dropLast`
         // is unnecessary. Separator semantics, component validation,

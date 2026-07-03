@@ -96,16 +96,21 @@ extension File.Path.Temporary.Test.Deterministic {
     }
 
     @Test
-    func `Path is rooted at TMPDIR or fallback /tmp`() throws {
+    func `Path is rooted at the platform temporary directory`() throws {
         let path = try File.Path.Temporary.deterministic(
             prefix: "p-",
             key: "anything",
             suffix: ".tmp"
         )
-        // Either the system TMPDIR or /tmp; both end with a trailing
-        // segment that matches the prefix-key-suffix join.
+        // The platform temp root (TMPDIR or /tmp on POSIX; TEMP/TMP or
+        // C:\Temp on Windows) plus a trailing segment matching the
+        // prefix-key-suffix join.
         let asString = path.description
-        #expect(asString.hasPrefix("/"))
-        #expect(asString.contains("/p-anything.tmp"))
+        #if os(Windows)
+            #expect(asString.contains("\\p-anything.tmp"))
+        #else
+            #expect(asString.hasPrefix("/"))
+            #expect(asString.contains("/p-anything.tmp"))
+        #endif
     }
 }
