@@ -96,22 +96,26 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
     // MARK: - Error Cases
 
-    #if !os(Windows)
-        // Windows doesn't support POSIX uid/gid ownership model
+    // Platform-neutral: init(at:) routes through Kernel.File.Stats.get on
+    // every platform (including the Windows leg, which still synthesizes
+    // uid/gid as (0, 0) but now verifies existence first), so a
+    // non-existent path throws isNotFound the same way everywhere.
+    @Test
+    func `Get ownership of non-existent file throws error with isNotFound`() throws {
+        try File.Directory.temporary { dir in
+            let path = dir.path / "non-existent.txt"
 
-        @Test
-        func `Get ownership of non-existent file throws error with isNotFound`() throws {
-            try File.Directory.temporary { dir in
-                let path = dir.path / "non-existent.txt"
-
-                do {
-                    _ = try File.System.Metadata.Ownership(at: path)
-                    Issue.record("Expected error for non-existent file")
-                } catch let error as File.System.Metadata.Ownership.Error {
-                    #expect(error.isNotFound)
-                }
+            do {
+                _ = try File.System.Metadata.Ownership(at: path)
+                Issue.record("Expected error for non-existent file")
+            } catch let error as File.System.Metadata.Ownership.Error {
+                #expect(error.isNotFound)
             }
         }
+    }
+
+    #if !os(Windows)
+        // Windows doesn't support POSIX uid/gid ownership model
 
         @Test
         func `Set ownership of non-existent file throws error with isNotFound`() throws {

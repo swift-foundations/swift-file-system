@@ -89,7 +89,16 @@ extension File.System.Metadata.Ownership {
     /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
     public init(at path: borrowing File.Path) throws(File.System.Metadata.Ownership.Error) {
         #if os(Windows)
-            // Windows doesn't expose uid/gid
+            // Windows doesn't expose uid/gid, but the path must still exist —
+            // route through the same Stats call the POSIX branch uses below
+            // (mirrors the Windows-side Stats read in
+            // File.System.Metadata.Permissions.init(at:)) so a nonexistent
+            // path throws like POSIX instead of silently synthesizing (0, 0).
+            do {
+                _ = try Kernel.File.Stats.get(path: path.kernelPath)
+            } catch {
+                throw .stat(error)
+            }
             self.init(uid: 0, gid: 0)
         #else
             do {
@@ -117,20 +126,19 @@ extension File.System.Metadata.Ownership {
         _ ownership: Self,
         at path: borrowing File.Path
     ) throws(File.System.Metadata.Ownership.Error) {
-        #if os(Windows)
-            // Windows doesn't support chown - this is a no-op
-            return
-        #else
-            do throws(Kernel.File.Chown.Error) {
-                try Kernel.File.Chown.chown(
-                    path: path.kernelPath,
-                    uid: ownership.uid,
-                    gid: ownership.gid
-                )
-            } catch {
-                throw .chown(error)
-            }
-        #endif
+        // Windows has no chown syscall; Kernel.File.Chown is the single
+        // cross-platform entry point and owns the no-op/conditional
+        // semantics for platforms without real ownership — this L3 domain
+        // layer no longer special-cases Windows here.
+        do throws(Kernel.File.Chown.Error) {
+            try Kernel.File.Chown.chown(
+                path: path.kernelPath,
+                uid: ownership.uid,
+                gid: ownership.gid
+            )
+        } catch {
+            throw .chown(error)
+        }
     }
 }
 
