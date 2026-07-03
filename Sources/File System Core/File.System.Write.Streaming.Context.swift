@@ -36,9 +36,14 @@ extension File.System.Write.Streaming {
     /// The descriptor and paths are stable after creation.
     public struct Context: ~Copyable, Sendable {
         /// The file descriptor for the open file.
-        /// Optional to support extraction at commit time (close before rename).
-        /// Closes via deinit if not explicitly taken.
-        public var descriptor: Kernel.Descriptor?
+        /// Closes via its own deinit when the context drops.
+        ///
+        /// Stored non-optionally: nothing extracts it (commit relies on
+        /// context destruction), and the borrowed-Optional force-unwrap
+        /// (`descriptor!`) is the SIL shape behind the §A23 ownership-
+        /// verifier abort on the Windows asserts toolchain — a plain
+        /// field projection avoids the class entirely.
+        public var descriptor: Kernel.Descriptor
 
         /// Path for the temp file (nil for direct mode).
         ///
