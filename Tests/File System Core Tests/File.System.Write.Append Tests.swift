@@ -137,52 +137,52 @@ extension File.System.Write.Append.Test.Unit {
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isNotFound semantic accessor`() {
-        let error = File.System.Write.Append.Error.open(.path(.notFound))
-        #expect(error.isNotFound)
-        #expect(!error.isPermissionDenied)
-    }
+        @Test
+        func `isNotFound semantic accessor`() {
+            let error = File.System.Write.Append.Error.open(.path(.notFound))
+            #expect(error.isNotFound)
+            #expect(!error.isPermissionDenied)
+        }
     #endif
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isPermissionDenied semantic accessor`() {
-        let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
-        #expect(error.isPermissionDenied)
-        #expect(!error.isNotFound)
-    }
+        @Test
+        func `isPermissionDenied semantic accessor`() {
+            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
+            #expect(error.isPermissionDenied)
+            #expect(!error.isNotFound)
+        }
     #endif
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isDirectory semantic accessor`() {
-        let error = File.System.Write.Append.Error.open(.path(.isDirectory))
-        #expect(error.isDirectory)
-        #expect(!error.isNotFound)
-    }
+        @Test
+        func `isDirectory semantic accessor`() {
+            let error = File.System.Write.Append.Error.open(.path(.isDirectory))
+            #expect(error.isDirectory)
+            #expect(!error.isNotFound)
+        }
     #endif
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isReadOnly semantic accessor`() {
-        let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EROFS)))
-        #expect(error.isReadOnly)
-        #expect(!error.isPermissionDenied)
-    }
+        @Test
+        func `isReadOnly semantic accessor`() {
+            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EROFS)))
+            #expect(error.isReadOnly)
+            #expect(!error.isPermissionDenied)
+        }
     #endif
 
     // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
-    @Test
-    func `isNoSpace semantic accessor`() {
-        let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.ENOSPC)))
-        #expect(error.isNoSpace)
-        #expect(!error.isNotFound)
-    }
+        @Test
+        func `isNoSpace semantic accessor`() {
+            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.ENOSPC)))
+            #expect(error.isNoSpace)
+            #expect(!error.isNotFound)
+        }
     #endif
 
     @Test
