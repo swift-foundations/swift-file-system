@@ -106,6 +106,8 @@ extension File.System.Write.Append {
         // Open file for appending (create if not exists)
         // var instead of deferred-init let: workaround for compiler bug with
         // ~Copyable deferred-init let captured in non-escaping closure.
+        // WHEN TO REMOVE: once the underlying compiler bug is fixed upstream.
+        // TRACKING: swift-file-system/HANDOFF.md follow-up item 4 (compiler-bug dossiers).
         var descriptor: Kernel.Descriptor = .invalid
         do {
             descriptor = try Kernel.File.Open.open(
