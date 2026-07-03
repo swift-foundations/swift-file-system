@@ -173,24 +173,24 @@ extension File.System.Read.Full {
         from path: borrowing File.Path,
         body: (Swift.Span<Byte>) throws(E) -> R
     ) throws(Either<File.System.Read.Full.Error, E>) -> R {
-        var bodyError: E?
-        let result: R?
+        let result: Result<R, E>
         do throws(File.System.Read.Full.Error) {
-            result = try read(from: path) { (span: Swift.Span<Byte>) -> R? in
+            result = try read(from: path) { (span: Swift.Span<Byte>) -> Result<R, E> in
                 do throws(E) {
-                    return try body(span)
+                    return .success(try body(span))
                 } catch {
-                    bodyError = error
-                    return nil
+                    return .failure(error)
                 }
             }
         } catch {
             throw .left(error)
         }
-        if let error = bodyError {
+        switch result {
+        case .success(let value):
+            return value
+        case .failure(let error):
             throw .right(error)
         }
-        return result!
     }
 
 }

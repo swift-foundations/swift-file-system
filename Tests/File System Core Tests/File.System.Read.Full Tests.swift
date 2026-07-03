@@ -5,6 +5,7 @@
 //  Created by Coen ten Thije Boonkkamp on 18/12/2025.
 //
 
+import Either_Primitives
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -149,6 +150,50 @@ extension File.System.Read.Full.Test.Unit {
 
             let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
             #expect(readContent.isEmpty)
+        }
+    }
+
+    // MARK: - Throwing-body shim (Result<R, E> internal storage)
+
+    @Test
+    func `Throwing-body read returning nil preserves the Optional injection`() throws {
+        try File.Directory.temporary { dir in
+            let filePath = dir.path / "throwing-body-nil.bin"
+            try File.System.Write.Atomic.write([Byte]([1, 2, 3]).span, to: filePath)
+
+            // `throws(Never)` closure literal: exercises the throwing-body overload
+            // (not the plain non-throwing overload) while never actually throwing.
+            let result: Int? = try File.System.Read.Full.read(from: filePath) {
+                (_: Swift.Span<Byte>) throws(Never) -> Int? in
+                nil
+            }
+            #expect(result == nil)
+        }
+    }
+
+    @Test
+    func `Throwing-body read where body throws surfaces as Either right`() throws {
+        struct BodyError: Swift.Error, Equatable {}
+
+        try File.Directory.temporary { dir in
+            let filePath = dir.path / "throwing-body-throws.bin"
+            try File.System.Write.Atomic.write([Byte]([1, 2, 3]).span, to: filePath)
+
+            do {
+                let _: Int = try File.System.Read.Full.read(from: filePath) {
+                    (_: Swift.Span<Byte>) throws(BodyError) -> Int in
+                    throw BodyError()
+                }
+                Issue.record("Expected the read call to throw")
+            } catch let error as Either<File.System.Read.Full.Error, BodyError> {
+                guard case .right(let bodyError) = error else {
+                    Issue.record("Expected .right(BodyError), got \(error)")
+                    return
+                }
+                #expect(bodyError == BodyError())
+            } catch {
+                Issue.record("Expected Either<Read.Full.Error, BodyError>, got \(type(of: error)): \(error)")
+            }
         }
     }
 
