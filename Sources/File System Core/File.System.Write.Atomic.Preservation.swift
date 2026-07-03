@@ -21,16 +21,16 @@ extension File.System.Write.Atomic {
         }
 
         /// Preserve file permissions (mode bits).
-        public static let permissions = Preservation(rawValue: 1 << 0)
+        public static let permissions = Self(rawValue: 1 << 0)
 
         /// Preserve file timestamps (access and modification times).
-        public static let timestamps = Preservation(rawValue: 1 << 1)
+        public static let timestamps = Self(rawValue: 1 << 1)
 
         /// Preserve extended attributes.
-        public static let extendedAttributes = Preservation(rawValue: 1 << 2)
+        public static let extendedAttributes = Self(rawValue: 1 << 2)
 
         /// Preserve access control lists.
-        public static let acls = Preservation(rawValue: 1 << 3)
+        public static let acls = Self(rawValue: 1 << 3)
 
         /// Preserve all supported metadata.
         public static let all: Preservation = [

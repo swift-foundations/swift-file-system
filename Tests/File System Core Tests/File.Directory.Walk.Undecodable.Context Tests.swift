@@ -303,6 +303,7 @@ extension File.Directory.Walk.Undecodable.Context {
             switch policy {
             case .skip:
                 #expect(Bool(true))
+
             default:
                 Issue.record("Expected skip")
             }

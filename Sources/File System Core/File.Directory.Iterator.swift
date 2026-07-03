@@ -93,7 +93,7 @@ extension File.Directory.Iterator {
     /// - Throws: `File.Directory.Iterator.Error` on failure.
     public static func open(
         at directory: File.Directory
-    ) throws(File.Directory.Iterator.Error) -> File.Directory.Iterator {
+    ) throws(Self.Error) -> File.Directory.Iterator {
         let stream: Kernel.Directory.Stream
         do {
             stream = try Kernel.Directory.open(at: directory.path.kernelPath)
@@ -108,7 +108,7 @@ extension File.Directory.Iterator {
     ///
     /// - Returns: The next directory entry, or nil if iteration is complete.
     /// - Throws: `File.Directory.Iterator.Error` on failure.
-    public mutating func next() throws(File.Directory.Iterator.Error) -> File.Directory.Entry? {
+    public mutating func next() throws(Self.Error) -> File.Directory.Entry? {
         guard let stream = _stream else {
             return nil
         }
@@ -139,10 +139,13 @@ extension File.Directory.Iterator {
                 switch type {
                 case .regular:
                     entryType = .file
+
                 case .directory:
                     entryType = .directory
+
                 case .link(.symbolic):
                     entryType = .symbolicLink
+
                 default:
                     entryType = .other
                 }
@@ -178,10 +181,13 @@ extension File.Directory.Iterator {
             switch stats.type {
             case .regular:
                 return .file
+
             case .directory:
                 return .directory
+
             case .link(.symbolic), .link:
                 return .symbolicLink
+
             default:
                 return .other
             }

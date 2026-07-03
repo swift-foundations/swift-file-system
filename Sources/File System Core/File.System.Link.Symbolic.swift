@@ -82,7 +82,7 @@ extension File.System.Link.Symbolic {
     public static func create(
         at path: borrowing File.Path,
         pointingTo target: borrowing File.Path
-    ) throws(File.System.Link.Symbolic.Error) {
+    ) throws(Self.Error) {
         do throws(Kernel.Link.Symbolic.Error) {
             try Kernel.Link.Symbolic.create(target: target.kernelPath, at: path.kernelPath)
         } catch {

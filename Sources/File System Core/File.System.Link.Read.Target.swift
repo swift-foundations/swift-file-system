@@ -42,8 +42,10 @@ extension File.System.Link.Read.Target.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isNotFound { return true }
             return false
+
         case .readlink(let e):
             return e == .notFound
+
         default:
             return false
         }
@@ -55,8 +57,10 @@ extension File.System.Link.Read.Target.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isPermissionDenied { return true }
             return false
+
         case .readlink(let e):
             return e == .permission
+
         default:
             return false
         }
@@ -67,8 +71,10 @@ extension File.System.Link.Read.Target.Error {
         switch self {
         case .notASymlink:
             return true
+
         case .readlink(let e):
             return e == .notSymbolicLink
+
         default:
             return false
         }
@@ -85,7 +91,7 @@ extension File.System.Link.Read.Target {
     /// - Throws: `File.System.Link.Read.Target.Error` on failure.
     public static func target(
         of path: borrowing File.Path
-    ) throws(File.System.Link.Read.Target.Error) -> File.Path {
+    ) throws(Self.Error) -> File.Path {
         // First check if it's a symlink using lstat (doesn't follow symlinks)
         let stats: Kernel.File.Stats
         do {
@@ -121,10 +127,13 @@ extension File.System.Link.Read.Target.Error: CustomStringConvertible {
         switch self {
         case .stat(let error):
             return "Stat failed: \(error)"
+
         case .readlink(let error):
             return "Readlink failed: \(error)"
+
         case .notASymlink(let path):
             return "Not a symbolic link: \(path)"
+
         case .invalidTargetPath(let target):
             return "Invalid target path: \(target)"
         }

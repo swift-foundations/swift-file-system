@@ -29,7 +29,7 @@ extension File.System.Parent.Check {
     public static func verify(
         _ path: File.Path,
         createIntermediates: Bool
-    ) throws(File.System.Parent.Check.Error) {
+    ) throws(Self.Error) {
         let stats: Kernel.File.Stats
         do throws(Kernel.File.Stats.Error) {
             stats = try Kernel.File.Stats.get(path: path.kernelPath)
@@ -67,7 +67,7 @@ extension File.System.Parent.Check {
         }
     }
 
-    private static func createParent(at path: File.Path) throws(File.System.Parent.Check.Error) {
+    private static func createParent(at path: File.Path) throws(Self.Error) {
         do {
             try File.System.Create.Directory.create(
                 at: path,
@@ -170,16 +170,22 @@ extension File.System.Parent.Check.Error: CustomStringConvertible {
         switch self {
         case .accessDenied(let path):
             return "Access denied to parent directory: \(path)"
+
         case .notDirectory(let path):
             return "Path component is not a directory: \(path)"
+
         case .missing(let path):
             return "Parent directory not found: \(path)"
+
         case .statFailed(let path, let operation, let code):
             return "\(operation.rawValue) failed for \(path): \(code)"
+
         case .invalidPath(let path):
             return "Invalid path: \(path)"
+
         case .networkPathNotFound(let path):
             return "Network path not found: \(path)"
+
         case .creationFailed(let path, let underlying):
             return "Failed to create parent directory \(path): \(underlying)"
         }

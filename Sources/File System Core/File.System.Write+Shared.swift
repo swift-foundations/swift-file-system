@@ -43,11 +43,11 @@ extension File.System.Write {
 extension File.System.Write {
     internal static func randomToken(
         length: Int
-    ) throws(File.System.Write.Error) -> Swift.String {
+    ) throws(Self.Error) -> Swift.String {
         try unsafe withUnsafeTemporaryAllocation(
             of: UInt8.self,
             capacity: length
-        ) { buffer throws(File.System.Write.Error) -> Swift.String in
+        ) { buffer throws(Self.Error) -> Swift.String in
             let rawBuffer = UnsafeMutableRawBufferPointer(buffer)
             do {
                 try unsafe Random.fill(rawBuffer)
@@ -81,13 +81,13 @@ extension File.System.Write {
     internal static func writeAll(
         _ span: borrowing Swift.Span<Byte>,
         to fd: borrowing Kernel.Descriptor
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         let total = span.count
         if total == 0 { return }
 
         var written = 0
 
-        unsafe try span.withUnsafeBufferPointer { buffer throws(File.System.Write.Error) in
+        unsafe try span.withUnsafeBufferPointer { buffer throws(Self.Error) in
             guard let base = buffer.baseAddress else { return }
 
             while written < total {
@@ -103,7 +103,7 @@ extension File.System.Write {
                         continue
                     }
                     if rc == 0 {
-                        throw File.System.Write.Error.write(
+                        throw Self.Error.write(
                             written: written,
                             expected: total,
                             "write returned 0"
@@ -111,15 +111,15 @@ extension File.System.Write {
                     }
                 } catch let error as Kernel.IO.Write.Error {
                     if case .blocking(.wouldBlock) = error { continue }
-                    throw File.System.Write.Error.write(
+                    throw Self.Error.write(
                         written: written,
                         expected: total,
                         "write failed: \(error)"
                     )
-                } catch let error as File.System.Write.Error {
+                } catch let error as Self.Error {
                     throw error
                 } catch {
-                    throw File.System.Write.Error.write(
+                    throw Self.Error.write(
                         written: written,
                         expected: total,
                         "write failed: \(error)"
@@ -133,7 +133,7 @@ extension File.System.Write {
     internal static func writeAllRaw(
         _ buffer: UnsafeRawBufferPointer,
         to fd: borrowing Kernel.Descriptor
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         let total = buffer.count
         if total == 0 { return }
 
@@ -154,7 +154,7 @@ extension File.System.Write {
                     continue
                 }
                 if rc == 0 {
-                    throw File.System.Write.Error.write(
+                    throw Self.Error.write(
                         written: written,
                         expected: total,
                         "write returned 0"
@@ -162,15 +162,15 @@ extension File.System.Write {
                 }
             } catch let error as Kernel.IO.Write.Error {
                 if case .blocking(.wouldBlock) = error { continue }
-                throw File.System.Write.Error.write(
+                throw Self.Error.write(
                     written: written,
                     expected: total,
                     "write failed: \(error)"
                 )
-            } catch let error as File.System.Write.Error {
+            } catch let error as Self.Error {
                 throw error
             } catch {
-                throw File.System.Write.Error.write(
+                throw Self.Error.write(
                     written: written,
                     expected: total,
                     "write failed: \(error)"
@@ -191,7 +191,7 @@ extension File.System.Write {
     internal static func syncFile(
         _ fd: borrowing Kernel.Descriptor,
         durability: File.System.Write.Durability
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         switch durability {
         case .full:
             do {
@@ -199,12 +199,14 @@ extension File.System.Write {
             } catch {
                 throw .sync("fsync failed: \(error)")
             }
+
         case .dataOnly:
             do {
                 try Kernel.File.Flush.data(fd)
             } catch {
                 throw .sync("data sync failed: \(error)")
             }
+
         case .none:
             break
         }
@@ -212,7 +214,7 @@ extension File.System.Write {
 
     internal static func closeFile(
         _ fd: consuming Kernel.Descriptor
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         do {
             try Kernel.Close.close(fd)
         } catch {
@@ -228,7 +230,7 @@ extension File.System.Write {
     internal static func atomicRename(
         from source: File.Path,
         to dest: File.Path
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         do {
             try Kernel.File.Move.move(from: source.kernelPath, to: dest.kernelPath)
         } catch {
@@ -247,7 +249,7 @@ extension File.System.Write {
     internal static func atomicRenameNoClobber(
         from source: File.Path,
         to dest: File.Path
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         if File.System.Stat.exists(at: dest) {
             throw .exists(path: dest)
         }
@@ -261,7 +263,7 @@ extension File.System.Write {
     /// Syncs a directory to persist rename operations.
     internal static func syncDirectory(
         _ path: File.Path
-    ) throws(File.System.Write.Error) {
+    ) throws(Self.Error) {
         #if os(Windows)
             _ = path
         #else

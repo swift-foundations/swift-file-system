@@ -27,7 +27,7 @@ extension File.Directory.Contents {
     @inlinable
     public static func list(
         at directory: borrowing File.Directory
-    ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
+    ) throws(Self.Error) -> [File.Directory.Entry] {
         var entries: [File.Directory.Entry] = []
         try iterate(at: directory) { entry in
             entries.append(entry)
@@ -80,7 +80,7 @@ extension File.Directory.Contents {
     public static func iterate(
         at directory: borrowing File.Directory,
         body: (File.Directory.Entry) -> Control
-    ) throws(File.Directory.Contents.Error) {
+    ) throws(Self.Error) {
         let path = directory.path
 
         let stream: Kernel.Directory.Stream
@@ -114,6 +114,7 @@ extension File.Directory.Contents {
             switch body(entry) {
             case .continue:
                 continue
+
             case .break:
                 return
             }
@@ -132,7 +133,7 @@ extension File.Directory.Contents {
         body: (File.Directory.Entry) throws(E) -> Control
     ) throws(Either<File.Directory.Contents.Error, E>) {
         var bodyError: E?
-        do throws(File.Directory.Contents.Error) {
+        do throws(Self.Error) {
             try iterate(at: directory) { entry in
                 do throws(E) {
                     return try body(entry)
@@ -161,14 +162,19 @@ extension File.Directory.Contents {
         switch error {
         case .notFound:
             return .pathNotFound(path)
+
         case .permission:
             return .permissionDenied(path)
+
         case .notDirectory:
             return .notADirectory(path)
+
         case .tooManyOpenFiles:
             return .readFailed(errno: 0, message: "Too many open files")
+
         case .io:
             return .readFailed(errno: 0, message: "I/O error")
+
         case .platform(let kernelError):
             let errno = kernelError.code.posix ?? Int32(kernelError.code.win32 ?? 0)
             return .readFailed(errno: errno, message: "\(kernelError)")
@@ -194,13 +200,17 @@ extension File.Directory.Contents {
         switch kernelType {
         case .regular:
             return .file
+
         case .directory:
             return .directory
+
         case .link(.symbolic):
             return .symbolicLink
+
         case .link:
             // Other link types (junction, mount point) treated as symlinks
             return .symbolicLink
+
         case .device, .fifo, .socket, .unknown:
             return .other
         }
@@ -226,10 +236,13 @@ extension File.Directory.Contents {
             switch stats.type {
             case .regular:
                 return .file
+
             case .directory:
                 return .directory
+
             case .link(.symbolic), .link:
                 return .symbolicLink
+
             default:
                 return .other
             }

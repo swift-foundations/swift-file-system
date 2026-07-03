@@ -49,6 +49,7 @@ extension File.System.Metadata.Ownership.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isNotFound { return true }
             return false
+
         case .chown(let e):
             if case .path(.notFound) = e { return true }
             return false
@@ -61,6 +62,7 @@ extension File.System.Metadata.Ownership.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isPermissionDenied { return true }
             return false
+
         case .chown(let e):
             if case .permission(.denied) = e { return true }
             if case .permission(.notPermitted) = e { return true }
@@ -74,6 +76,7 @@ extension File.System.Metadata.Ownership.Error {
         case .chown(let e):
             if case .permission(.readOnlyFilesystem) = e { return true }
             return false
+
         default:
             return false
         }
@@ -87,7 +90,7 @@ extension File.System.Metadata.Ownership {
     ///
     /// - Parameter path: The path to the file.
     /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
-    public init(at path: borrowing File.Path) throws(File.System.Metadata.Ownership.Error) {
+    public init(at path: borrowing File.Path) throws(Self.Error) {
         #if os(Windows)
             // Windows doesn't expose uid/gid, but the path must still exist —
             // route through the same Stats call the POSIX branch uses below
@@ -125,7 +128,7 @@ extension File.System.Metadata.Ownership {
     public static func set(
         _ ownership: Self,
         at path: borrowing File.Path
-    ) throws(File.System.Metadata.Ownership.Error) {
+    ) throws(Self.Error) {
         // Windows has no chown syscall; Kernel.File.Chown is the single
         // cross-platform entry point and owns the no-op/conditional
         // semantics for platforms without real ownership — this L3 domain
@@ -149,6 +152,7 @@ extension File.System.Metadata.Ownership.Error: CustomStringConvertible {
         switch self {
         case .stat(let error):
             return "Stat failed: \(error)"
+
         case .chown(let error):
             return "Chown failed: \(error)"
         }

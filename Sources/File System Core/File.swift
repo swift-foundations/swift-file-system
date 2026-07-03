@@ -27,14 +27,14 @@
 /// ```
 public struct File: Hashable, Sendable {
     /// The underlying file path.
-    public let path: File.Path
+    public let path: Self.Path
 
     // MARK: - Initializers
 
     /// Creates a file from a path.
     ///
     /// - Parameter path: The file path.
-    public init(_ path: File.Path) {
+    public init(_ path: Self.Path) {
         self.path = path
     }
 }

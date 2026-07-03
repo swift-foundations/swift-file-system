@@ -19,14 +19,19 @@ extension File.System.Write.Atomic.Error {
         switch error {
         case .sync(let msg):
             self = .syncFailed(code: ._io, message: msg)
+
         case .close(let msg):
             self = .closeFailed(code: ._io, message: msg)
+
         case .rename(let from, let to, let msg):
             self = .renameFailed(from: from, to: to, code: ._io, message: msg)
+
         case .exists(let path):
             self = .destinationExists(path: path)
+
         case .directory(let path, let msg):
             self = .directorySyncFailed(path: path, code: ._io, message: msg)
+
         case .write(let written, let expected, let msg):
             self = .writeFailed(
                 bytesWritten: written,
@@ -34,6 +39,7 @@ extension File.System.Write.Atomic.Error {
                 code: ._io,
                 message: msg
             )
+
         case .random(let msg):
             self = .randomGenerationFailed(
                 code: ._io,
@@ -161,6 +167,7 @@ extension File.System.Write.Atomic {
                     to: resolved
                 )
             } catch { throw Error(error) }
+
         case .noClobber:
             do {
                 try File.System.Write.atomicRenameNoClobber(

@@ -54,11 +54,14 @@ extension File.System.Move.Error {
         switch self {
         case .destinationExists:
             return false
+
         case .rename(let e):
             return e == .notFound
+
         case .copy(let e):
             if case .sourceNotFound = e { return true }
             return false
+
         case .cleanup:
             return false
         }
@@ -69,11 +72,14 @@ extension File.System.Move.Error {
         switch self {
         case .destinationExists:
             return true
+
         case .rename:
             return false
+
         case .copy(let e):
             if case .destinationExists = e { return true }
             return false
+
         case .cleanup:
             return false
         }
@@ -84,11 +90,14 @@ extension File.System.Move.Error {
         switch self {
         case .destinationExists:
             return false
+
         case .rename(let e):
             return e == .permission
+
         case .copy(let e):
             if case .permissionDenied = e { return true }
             return false
+
         case .cleanup(let e):
             if case .permission = e { return true }
             return false
@@ -100,6 +109,7 @@ extension File.System.Move.Error {
         switch self {
         case .rename(let e):
             return e == .crossDevice
+
         default:
             return false
         }
@@ -110,9 +120,11 @@ extension File.System.Move.Error {
         switch self {
         case .rename(let e):
             return e == .isDirectory
+
         case .copy(let e):
             if case .isDirectory = e { return true }
             return false
+
         default:
             return false
         }
@@ -133,7 +145,7 @@ extension File.System.Move {
         from source: borrowing File.Path,
         to destination: borrowing File.Path,
         options: borrowing Options = .init()
-    ) throws(File.System.Move.Error) {
+    ) throws(Self.Error) {
         // Check if destination exists (when overwrite is disabled)
         if !options.overwrite {
             let destExists = (try? Kernel.File.Stats.get(path: destination.kernelPath)) != nil
@@ -160,7 +172,7 @@ extension File.System.Move {
         from source: File.Path,
         to destination: File.Path,
         options: Options
-    ) throws(File.System.Move.Error) {
+    ) throws(Self.Error) {
         // Use Copy to copy the file
         let copyOptions = File.System.Copy.Options(
             overwrite: options.overwrite,
@@ -192,10 +204,13 @@ extension File.System.Move.Error: CustomStringConvertible {
         switch self {
         case .destinationExists(let path):
             return "Destination already exists: \(path)"
+
         case .rename(let error):
             return "Rename failed: \(error)"
+
         case .copy(let error):
             return "Copy failed (cross-device): \(error)"
+
         case .cleanup(let error):
             return "Source cleanup failed after copy: \(error)"
         }

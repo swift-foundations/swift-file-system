@@ -19,8 +19,10 @@ extension File.System.Write.Streaming.Error {
         switch error {
         case .sync(let msg):
             self = .syncFailed(code: ._io, message: msg)
+
         case .close(let msg):
             self = .closeFailed(code: ._io, message: msg)
+
         case .rename(let from, let to, let msg):
             self = .renameFailed(
                 from: from,
@@ -28,20 +30,24 @@ extension File.System.Write.Streaming.Error {
                 code: ._io,
                 message: msg
             )
+
         case .exists(let path):
             self = .destinationExists(path: path)
+
         case .directory(let path, let msg):
             self = .directorySyncFailed(
                 path: path,
                 code: ._io,
                 message: msg
             )
+
         case .write(let written, _, let msg):
             self = .writeFailed(
                 bytesWritten: written,
                 code: ._io,
                 message: msg
             )
+
         case .random(let msg):
             self = .randomGenerationFailed(
                 code: ._io,
@@ -307,6 +313,7 @@ extension File.System.Write.Streaming {
                         to: context.resolvedPath
                     )
                 } catch { throw Error(error) }
+
             case .noClobber:
                 do {
                     try File.System.Write.atomicRenameNoClobber(

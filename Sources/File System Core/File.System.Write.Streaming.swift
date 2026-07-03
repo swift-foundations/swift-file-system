@@ -46,7 +46,7 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) where Chunks.Element == [Byte] {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try File.System.Write.Streaming.write(chunks, to: path.kernelPath, options: options)
+        try Self.write(chunks, to: path.kernelPath, options: options)
     }
 }
 
@@ -69,7 +69,7 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try File.System.Write.Streaming.write(bytes, to: path.kernelPath, options: options)
+        try Self.write(bytes, to: path.kernelPath, options: options)
     }
 
     /// Writes a byte slice to a file path (zero-copy when contiguous).
@@ -95,16 +95,16 @@ extension File.System.Write.Streaming {
         let wasContiguous = unsafe bytes.withContiguousStorageIfAvailable { buffer -> Bool in
             do throws(Error) {
                 let kp = path.kernelPath
-                let context = try File.System.Write.Streaming.open(path: kp, options: options)
+                let context = try Self.open(path: kp, options: options)
                 var succeeded = false
                 defer {
                     if !succeeded {
-                        File.System.Write.Streaming.cleanup(context)
+                        Self.cleanup(context)
                     }
                 }
                 let rawBuffer = UnsafeRawBufferPointer(buffer)
-                try unsafe File.System.Write.Streaming.write(chunk: rawBuffer, to: context)
-                try File.System.Write.Streaming.commit(context)
+                try unsafe Self.write(chunk: rawBuffer, to: context)
+                try Self.commit(context)
                 succeeded = true
             } catch {
                 capturedError = error
@@ -141,7 +141,7 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try File.System.Write.Streaming.write(bytes, to: path.kernelPath, options: options)
+        try Self.write(bytes, to: path.kernelPath, options: options)
     }
 }
 
@@ -169,7 +169,7 @@ extension File.System.Write.Streaming {
         fill: (inout [Byte]) throws(E) -> Int
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try File.System.Write.Streaming.write(to: path.kernelPath, options: options, using: &buffer, fill: fill)
+        try Self.write(to: path.kernelPath, options: options, using: &buffer, fill: fill)
     }
 }
 
@@ -192,7 +192,7 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) -> Context {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        return try File.System.Write.Streaming.open(path: path.kernelPath, options: options)
+        return try Self.open(path: path.kernelPath, options: options)
     }
 
 }

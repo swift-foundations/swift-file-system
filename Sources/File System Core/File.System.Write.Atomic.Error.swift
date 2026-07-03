@@ -85,6 +85,7 @@ extension File.System.Write.Atomic.Error {
             .destinationStatFailed(_, let code, _),
             .tempFileCreationFailed(_, let code, _):
             return code.isNotFound
+
         default:
             return false
         }
@@ -104,8 +105,10 @@ extension File.System.Write.Atomic.Error {
             .directorySyncFailed(_, let code, _),
             .directorySyncFailedAfterCommit(_, let code, _):
             return code.isPermissionDenied
+
         case .randomGenerationFailed(let code, _, _):
             return code.isPermissionDenied
+
         default:
             return false
         }
@@ -127,6 +130,7 @@ extension File.System.Write.Atomic.Error {
             .directorySyncFailed(_, let code, _),
             .directorySyncFailedAfterCommit(_, let code, _):
             return code.isReadOnly
+
         default:
             return false
         }
@@ -139,6 +143,7 @@ extension File.System.Write.Atomic.Error {
             .writeFailed(_, _, let code, _),
             .syncFailed(let code, _):
             return code.isNoSpace
+
         default:
             return false
         }
@@ -164,32 +169,46 @@ extension File.System.Write.Atomic.Error: CustomStringConvertible {
         switch self {
         case .parentVerificationFailed(let path, let code, let message):
             return "Parent directory error '\(path)': \(message) (\(code))"
+
         case .destinationStatFailed(let path, let code, let message):
             return "Failed to stat destination '\(path)': \(message) (\(code))"
+
         case .tempFileCreationFailed(let directory, let code, let message):
             return "Failed to create temp file in '\(directory)': \(message) (\(code))"
+
         case .writeFailed(let written, let expected, let code, let message):
             return "Write failed after \(written)/\(expected) bytes: \(message) (\(code))"
+
         case .syncFailed(let code, let message):
             return "Sync failed: \(message) (\(code))"
+
         case .closeFailed(let code, let message):
             return "Close failed: \(message) (\(code))"
+
         case .metadataPreservationFailed(let op, let code, let message):
             return "Metadata preservation failed (\(op)): \(message) (\(code))"
+
         case .timestampPreservationFailed(let error):
             return "Timestamp preservation failed (futimens): \(error)"
+
         case .renameFailed(let from, let to, let code, let message):
             return "Rename failed '\(from)' → '\(to)': \(message) (\(code))"
+
         case .destinationExists(let path):
             return "Destination already exists (noClobber): \(path)"
+
         case .directorySyncFailed(let path, let code, let message):
             return "Directory sync failed '\(path)': \(message) (\(code))"
+
         case .directorySyncFailedAfterCommit(let path, let code, let message):
             return "Directory sync failed after commit '\(path)': \(message) (\(code))"
+
         case .randomGenerationFailed(let code, let operation, let message):
             return "Random generation failed (\(operation)): \(message) (\(code))"
+
         case .platformIncompatible(let operation, let message):
             return "Platform incompatible (\(operation)): \(message)"
+
         case .invalidPath(let error):
             return "Invalid path: \(error)"
         }

@@ -48,10 +48,13 @@ extension File.Directory.Contents.Error: CustomStringConvertible {
         switch self {
         case .pathNotFound(let path):
             return "Path not found: \(path)"
+
         case .permissionDenied(let path):
             return "Permission denied: \(path)"
+
         case .notADirectory(let path):
             return "Not a directory: \(path)"
+
         case .readFailed(let errno, let message):
             return "Read failed: \(message) (errno=\(errno))"
         }
