@@ -53,7 +53,7 @@ extension File.Directory.Contents {
     /// - Throws: `Error` if the directory cannot be opened.
     public static func makeIterator(
         at directory: File.Directory
-    ) throws(File.Directory.Contents.Error) -> (iterator: Iterator, handle: IteratorHandle) {
+    ) throws(Self.Error) -> (iterator: Iterator, handle: IteratorHandle) {
         let stream: Kernel.Directory.Stream
         do throws(Kernel.Directory.Error) {
             stream = try Kernel.Directory.open(at: directory.path.kernelPath)
@@ -104,9 +104,11 @@ extension File.Directory.Contents {
         switch error {
         case .io:
             return .readFailed(errno: 0, message: "I/O error during iteration")
+
         case .platform(let kernelError):
             let errno = kernelError.code.posix ?? Int32(kernelError.code.win32 ?? 0)
             return .readFailed(errno: errno, message: "\(kernelError)")
+
         default:
             return .readFailed(errno: 0, message: "\(error)")
         }

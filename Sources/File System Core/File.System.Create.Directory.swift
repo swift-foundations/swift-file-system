@@ -26,7 +26,7 @@ extension File.System.Create.Directory {
         at path: borrowing File.Path,
         options: Options = .init(),
         createIntermediates: Bool = false
-    ) throws(File.System.Create.Directory.Error) {
+    ) throws(Self.Error) {
         let permissions = Kernel.File.Permissions(
             rawValue: options.permissions?.rawValue ?? File.System.Metadata.Permissions.defaultDirectory.rawValue
         )
@@ -42,7 +42,7 @@ extension File.System.Create.Directory {
     private static func mkdir(
         at path: File.Path,
         permissions: Kernel.File.Permissions
-    ) throws(File.System.Create.Directory.Error) {
+    ) throws(Self.Error) {
         do {
             try Kernel.Directory.Create.create(path.kernelPath, permissions: permissions)
         } catch {
@@ -54,7 +54,7 @@ extension File.System.Create.Directory {
     private static func createIntermediates(
         at path: File.Path,
         permissions: Kernel.File.Permissions
-    ) throws(File.System.Create.Directory.Error) {
+    ) throws(Self.Error) {
         // Check if directory already exists
         let existsAsDirectory: Bool
         do {

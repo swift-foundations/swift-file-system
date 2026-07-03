@@ -98,7 +98,7 @@ extension File.System.Link.Hard {
     public static func create(
         at path: borrowing File.Path,
         to existing: borrowing File.Path
-    ) throws(File.System.Link.Hard.Error) {
+    ) throws(Self.Error) {
         do throws(Kernel.Link.Error) {
             try Kernel.Link.create(at: path.kernelPath, to: existing.kernelPath)
         } catch {

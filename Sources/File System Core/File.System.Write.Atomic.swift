@@ -68,7 +68,7 @@ extension File.System.Write.Atomic {
         createIntermediates: Bool = false
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try File.System.Write.Atomic.write(bytes, to: path.kernelPath, options: options)
+        try Self.write(bytes, to: path.kernelPath, options: options)
     }
 }
 

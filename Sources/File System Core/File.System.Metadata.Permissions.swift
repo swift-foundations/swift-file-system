@@ -18,24 +18,24 @@ extension File.System.Metadata {
         }
 
         // Owner permissions
-        public static let ownerRead = Permissions(rawValue: 0o400)
-        public static let ownerWrite = Permissions(rawValue: 0o200)
-        public static let ownerExecute = Permissions(rawValue: 0o100)
+        public static let ownerRead = Self(rawValue: 0o400)
+        public static let ownerWrite = Self(rawValue: 0o200)
+        public static let ownerExecute = Self(rawValue: 0o100)
 
         // Group permissions
-        public static let groupRead = Permissions(rawValue: 0o040)
-        public static let groupWrite = Permissions(rawValue: 0o020)
-        public static let groupExecute = Permissions(rawValue: 0o010)
+        public static let groupRead = Self(rawValue: 0o040)
+        public static let groupWrite = Self(rawValue: 0o020)
+        public static let groupExecute = Self(rawValue: 0o010)
 
         // Other permissions
-        public static let otherRead = Permissions(rawValue: 0o004)
-        public static let otherWrite = Permissions(rawValue: 0o002)
-        public static let otherExecute = Permissions(rawValue: 0o001)
+        public static let otherRead = Self(rawValue: 0o004)
+        public static let otherWrite = Self(rawValue: 0o002)
+        public static let otherExecute = Self(rawValue: 0o001)
 
         // Special bits
-        public static let setuid = Permissions(rawValue: 0o4000)
-        public static let setgid = Permissions(rawValue: 0o2000)
-        public static let sticky = Permissions(rawValue: 0o1000)
+        public static let setuid = Self(rawValue: 0o4000)
+        public static let setgid = Self(rawValue: 0o2000)
+        public static let sticky = Self(rawValue: 0o1000)
 
         // Common combinations
         public static let ownerAll: Permissions = [.ownerRead, .ownerWrite, .ownerExecute]
@@ -84,6 +84,7 @@ extension File.System.Metadata.Permissions.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isNotFound { return true }
             return false
+
         case .chmod(let e):
             if case .path(.notFound) = e { return true }
             return false
@@ -96,6 +97,7 @@ extension File.System.Metadata.Permissions.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isPermissionDenied { return true }
             return false
+
         case .chmod(let e):
             if case .permission(.denied) = e { return true }
             if case .permission(.notPermitted) = e { return true }
@@ -109,6 +111,7 @@ extension File.System.Metadata.Permissions.Error {
         case .chmod(let e):
             if case .permission(.readOnlyFilesystem) = e { return true }
             return false
+
         default:
             return false
         }
@@ -122,7 +125,7 @@ extension File.System.Metadata.Permissions {
     ///
     /// - Parameter path: The path to the file.
     /// - Throws: `File.System.Metadata.Permissions.Error` on failure.
-    public init(at path: borrowing File.Path) throws(File.System.Metadata.Permissions.Error) {
+    public init(at path: borrowing File.Path) throws(Self.Error) {
         // Both legs read through Stats: the Windows L2 synthesizes
         // POSIX-shaped permissions (readonly bit → write mask, directory
         // attribute → execute bits), so the placeholder .defaultFile
@@ -148,7 +151,7 @@ extension File.System.Metadata.Permissions {
     public static func set(
         _ permissions: Self,
         at path: borrowing File.Path
-    ) throws(File.System.Metadata.Permissions.Error) {
+    ) throws(Self.Error) {
         #if os(Windows)
             // Windows doesn't have POSIX permissions - this is a no-op
             return
@@ -172,6 +175,7 @@ extension File.System.Metadata.Permissions.Error: CustomStringConvertible {
         switch self {
         case .stat(let error):
             return "Stat failed: \(error)"
+
         case .chmod(let error):
             return "Chmod failed: \(error)"
         }

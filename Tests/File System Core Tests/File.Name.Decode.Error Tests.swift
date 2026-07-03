@@ -200,6 +200,7 @@ extension File.Name.Decode.Error {
             switch result {
             case .success:
                 Issue.record("Expected failure")
+
             case .failure(let error):
                 #expect(error.name == name)
             }

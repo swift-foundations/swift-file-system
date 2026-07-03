@@ -68,7 +68,7 @@ extension File.Directory.Walk {
     @inlinable
     public func callAsFunction(
         options: borrowing Options = Options()
-    ) throws(File.Directory.Walk.Error) -> [File.Directory.Entry] {
+    ) throws(Self.Error) -> [File.Directory.Entry] {
         var entries: [File.Directory.Entry] = []
         try iterate(options: options) { entry in
             entries.append(entry)
@@ -115,7 +115,7 @@ extension File.Directory.Walk {
     public func iterate(
         options: borrowing Options = Options(),
         body: (File.Directory.Entry) -> File.Directory.Contents.Control
-    ) throws(File.Directory.Walk.Error) {
+    ) throws(Self.Error) {
         var visited: Set<InodeKey> = []
         try Self.walkCallback(
             at: File.Directory(path),
@@ -138,7 +138,7 @@ extension File.Directory.Walk {
         body: (File.Directory.Entry) throws(E) -> File.Directory.Contents.Control
     ) throws(Either<File.Directory.Walk.Error, E>) {
         var bodyError: E?
-        do throws(File.Directory.Walk.Error) {
+        do throws(Self.Error) {
             try iterate(options: options) { entry in
                 do throws(E) {
                     return try body(entry)
@@ -165,7 +165,7 @@ extension File.Directory.Walk {
     public func files(
         options: borrowing Options = Options(),
         body: (File) -> File.Directory.Contents.Control
-    ) throws(File.Directory.Walk.Error) {
+    ) throws(Self.Error) {
         try iterate(options: options) { entry in
             guard entry.type == .file, let path = entry.pathIfValid else {
                 return .continue
@@ -184,7 +184,7 @@ extension File.Directory.Walk {
     public func directories(
         options: borrowing Options = Options(),
         body: (File.Directory) -> File.Directory.Contents.Control
-    ) throws(File.Directory.Walk.Error) {
+    ) throws(Self.Error) {
         try iterate(options: options) { entry in
             guard entry.type == .directory, let path = entry.pathIfValid else {
                 return .continue
@@ -204,7 +204,7 @@ extension File.Directory.Walk {
         depth: Int,
         visited: inout Set<InodeKey>,
         body: (File.Directory.Entry) -> File.Directory.Contents.Control
-    ) throws(File.Directory.Walk.Error) {
+    ) throws(Self.Error) {
         // Check depth limit
         if let maxDepth = options.maxDepth, depth > maxDepth {
             return
@@ -235,6 +235,7 @@ extension File.Directory.Walk {
                     switch body(entry) {
                     case .continue:
                         break
+
                     case .break:
                         return .break
                     }
@@ -242,7 +243,7 @@ extension File.Directory.Walk {
                     // Recurse into directories
                     if entry.type == .directory {
                         let subdir = File.Directory(entryPath)
-                        do throws(File.Directory.Walk.Error) {
+                        do throws(Self.Error) {
                             try walkCallback(
                                 at: subdir,
                                 options: options,
@@ -259,7 +260,7 @@ extension File.Directory.Walk {
                             info.type == .directory
                         {
                             let subdir = File.Directory(entryPath)
-                            do throws(File.Directory.Walk.Error) {
+                            do throws(Self.Error) {
                                 try walkCallback(
                                     at: subdir,
                                     options: options,
@@ -284,13 +285,16 @@ extension File.Directory.Walk {
                     switch options.onUndecodable(context) {
                     case .skip:
                         break
+
                     case .emit:
                         switch body(entry) {
                         case .continue:
                             break
+
                         case .break:
                             return .break
                         }
+
                     case .stopAndThrow:
                         walkError = .undecodableEntry(parent: entry.parent, name: entry.name)
                         return .break
@@ -303,10 +307,13 @@ extension File.Directory.Walk {
             switch error {
             case .pathNotFound(let p):
                 throw .pathNotFound(p)
+
             case .permissionDenied(let p):
                 throw .permissionDenied(p)
+
             case .notADirectory(let p):
                 throw .notADirectory(p)
+
             case .readFailed(let errno, let message):
                 throw .walkFailed(errno: errno, message: message)
             }

@@ -18,7 +18,7 @@ extension File.Directory.Contents {
     /// - Throws: `Error` if the directory cannot be opened.
     public static func names(
         at directory: File.Directory
-    ) throws(File.Directory.Contents.Error) -> [File.Name] {
+    ) throws(Self.Error) -> [File.Name] {
         let (iterator, handle) = try makeIterator(at: directory)
         defer { closeIterator(handle) }
 

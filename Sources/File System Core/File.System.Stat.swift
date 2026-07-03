@@ -60,18 +60,25 @@ extension File.System.Stat {
         switch stats.type {
         case .regular:
             fileType = .regular
+
         case .directory:
             fileType = .directory
+
         case .link:
             fileType = .symbolicLink
+
         case .device(.block):
             fileType = .blockDevice
+
         case .device(.character):
             fileType = .characterDevice
+
         case .fifo:
             fileType = .fifo
+
         case .socket:
             fileType = .socket
+
         case .unknown:
             fileType = .regular
         }

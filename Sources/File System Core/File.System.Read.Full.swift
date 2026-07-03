@@ -43,6 +43,7 @@ extension File.System.Read.Full.Error {
         case .open(let e):
             if case .path(.notFound) = e { return true }
             return false
+
         default:
             return false
         }
@@ -54,6 +55,7 @@ extension File.System.Read.Full.Error {
         case .open(let e):
             if case .platform(let p) = e, p.code.isPermissionDenied { return true }
             return false
+
         default:
             return false
         }
@@ -64,9 +66,11 @@ extension File.System.Read.Full.Error {
         switch self {
         case .isDirectory:
             return true
+
         case .open(let e):
             if case .path(.isDirectory) = e { return true }
             return false
+
         default:
             return false
         }
@@ -78,6 +82,7 @@ extension File.System.Read.Full.Error {
         case .open(let e):
             if case .handle(.limit) = e { return true }
             return false
+
         default:
             return false
         }
@@ -115,7 +120,7 @@ extension File.System.Read.Full {
     public static func read<R>(
         from path: borrowing File.Path,
         body: (Swift.Span<Byte>) -> R
-    ) throws(File.System.Read.Full.Error) -> R {
+    ) throws(Self.Error) -> R {
         // Open file for reading
         let descriptor: Kernel.Descriptor
         do {
@@ -174,7 +179,7 @@ extension File.System.Read.Full {
         body: (Swift.Span<Byte>) throws(E) -> R
     ) throws(Either<File.System.Read.Full.Error, E>) -> R {
         let result: Result<R, E>
-        do throws(File.System.Read.Full.Error) {
+        do throws(Self.Error) {
             result = try read(from: path) { (span: Swift.Span<Byte>) -> Result<R, E> in
                 do throws(E) {
                     return .success(try body(span))
@@ -188,6 +193,7 @@ extension File.System.Read.Full {
         switch result {
         case .success(let value):
             return value
+
         case .failure(let error):
             throw .right(error)
         }
@@ -248,10 +254,13 @@ extension File.System.Read.Full.Error: CustomStringConvertible {
         switch self {
         case .open(let error):
             return "Open failed: \(error)"
+
         case .stat(let error):
             return "Stat failed: \(error)"
+
         case .read(let error):
             return "Read failed: \(error)"
+
         case .isDirectory(let path):
             return "Is a directory: \(path)"
         }

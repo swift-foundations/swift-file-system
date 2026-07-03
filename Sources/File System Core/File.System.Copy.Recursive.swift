@@ -176,8 +176,10 @@ extension File.System.Copy {
         switch info.type {
         case .directory:
             try copyRecursive(from: source, to: destination, options: options)
+
         case .regular:
             try copy(from: source, to: destination, options: options)
+
         default:
             // Skip other types
             break
@@ -292,10 +294,13 @@ extension File.System.Copy {
         switch error {
         case .pathNotFound:
             return .sourceNotFound
+
         case .permissionDenied:
             return .permissionDenied
+
         case .notADirectory:
             return .isDirectory
+
         case .readFailed(_, let message):
             return .operation("Directory read failed: \(message)")
         }

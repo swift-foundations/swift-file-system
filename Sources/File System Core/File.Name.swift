@@ -68,7 +68,7 @@ extension Swift.String {
     /// - Windows: Returns `nil` if raw code units contain invalid UTF-16 (e.g., lone surrogates)
     @inlinable
     public init?(_ fileName: File.Name) {
-        guard let decoded = Swift.String.strict(platformNative: fileName.rawBytes) else {
+        guard let decoded = Self.strict(platformNative: fileName.rawBytes) else {
             return nil
         }
         self = decoded
@@ -85,7 +85,7 @@ extension Swift.String {
     /// - Warning: Paths containing replacement characters cannot be used to re-open files.
     @inlinable
     public init(lossy fileName: File.Name) {
-        self = Swift.String.lossy(platformNative: fileName.rawBytes)
+        self = Self.lossy(platformNative: fileName.rawBytes)
     }
 
     /// Creates a string from a file name using strict decoding.

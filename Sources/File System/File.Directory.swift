@@ -57,7 +57,7 @@ extension File.Directory {
 extension File.Directory {
     /// The parent directory, or `nil` if this is a root path.
     public var parent: File.Directory? {
-        path.parent.map(File.Directory.init)
+        path.parent.map(Self.init)
     }
 
     /// The directory name (last component of the path).

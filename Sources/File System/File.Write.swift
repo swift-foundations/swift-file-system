@@ -213,6 +213,6 @@ extension File {
     /// try file.write.streaming(chunks)
     /// ```
     public var write: File.Write {
-        File.Write(path)
+        Self.Write(path)
     }
 }

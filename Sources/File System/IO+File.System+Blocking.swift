@@ -39,7 +39,7 @@ extension IO where Capabilities == File.System.IO.Capabilities {
                 try await actor.stat(path)
             }
         )
-        let runner = unsafe IO.Runner(
+        let runner = unsafe Self.Runner(
             executor: { unsafe actor.unownedExecutor },
             shutdown: {
                 // Caller owns the supplied executor's lifecycle. The

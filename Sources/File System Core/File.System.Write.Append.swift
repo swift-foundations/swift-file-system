@@ -37,6 +37,7 @@ extension File.System.Write.Append.Error {
         case .open(let e):
             if case .path(.notFound) = e { return true }
             return false
+
         default:
             return false
         }
@@ -48,6 +49,7 @@ extension File.System.Write.Append.Error {
         case .open(let e):
             if case .platform(let p) = e, p.code.isPermissionDenied { return true }
             return false
+
         default:
             return false
         }
@@ -59,6 +61,7 @@ extension File.System.Write.Append.Error {
         case .open(let e):
             if case .path(.isDirectory) = e { return true }
             return false
+
         default:
             return false
         }
@@ -70,6 +73,7 @@ extension File.System.Write.Append.Error {
         case .open(let e):
             if case .platform(let p) = e, p.code.isReadOnly { return true }
             return false
+
         default:
             return false
         }
@@ -81,6 +85,7 @@ extension File.System.Write.Append.Error {
         case .open(let e):
             if case .platform(let p) = e, p.code.isNoSpace { return true }
             return false
+
         case .write(let e):
             if case .platform(let p) = e, p.code.isNoSpace { return true }
             return false
@@ -102,7 +107,7 @@ extension File.System.Write.Append {
     public static func append(
         _ bytes: borrowing Swift.Span<Byte>,
         to path: borrowing File.Path
-    ) throws(File.System.Write.Append.Error) {
+    ) throws(Self.Error) {
         // Open file for appending (create if not exists)
         // var instead of deferred-init let: workaround for compiler bug with
         // ~Copyable deferred-init let captured in non-escaping closure.
@@ -176,9 +181,9 @@ extension File.System.Write.Append {
     public static func append<S: Binary.Serializable>(
         _ value: S,
         to path: borrowing File.Path
-    ) throws(File.System.Write.Append.Error) {
+    ) throws(Self.Error) {
         try S.withSerializedBytes(value) {
-            (span: borrowing Swift.Span<Byte>) throws(File.System.Write.Append.Error) in
+            (span: borrowing Swift.Span<Byte>) throws(Self.Error) in
             try append(span, to: path)
         }
     }
@@ -192,6 +197,7 @@ extension File.System.Write.Append.Error: CustomStringConvertible {
         switch self {
         case .open(let error):
             return "Open failed: \(error)"
+
         case .write(let error):
             return "Write failed: \(error)"
         }

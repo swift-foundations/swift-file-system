@@ -91,7 +91,7 @@
                     try await thread.stat(path)
                 }
             )
-            let runner = unsafe IO.Runner(
+            let runner = unsafe Self.Runner(
                 executor: { completion.unownedExecutor },
                 shutdown: {}
             )

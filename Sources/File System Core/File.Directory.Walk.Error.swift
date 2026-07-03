@@ -54,12 +54,16 @@ extension File.Directory.Walk.Error: CustomStringConvertible {
         switch self {
         case .pathNotFound(let path):
             return "Path not found: \(path)"
+
         case .permissionDenied(let path):
             return "Permission denied: \(path)"
+
         case .notADirectory(let path):
             return "Not a directory: \(path)"
+
         case .walkFailed(let errno, let message):
             return "Walk failed: \(message) (errno=\(errno))"
+
         case .undecodableEntry(let parent, let name):
             return "Undecodable entry in \(parent): \(Swift.String(describing: name))"
         }

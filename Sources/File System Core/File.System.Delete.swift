@@ -50,11 +50,14 @@ extension File.System.Delete.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isNotFound { return true }
             return false
+
         case .unlink(let e):
             if case .notFound = e { return true }
             return false
+
         case .rmdir(let e):
             return e == .notFound
+
         case .directory(let e):
             return e == .notFound
         }
@@ -66,11 +69,14 @@ extension File.System.Delete.Error {
         case .stat(let e):
             if case .platform(let p) = e, p.code.isPermissionDenied { return true }
             return false
+
         case .unlink(let e):
             if case .permission = e { return true }
             return false
+
         case .rmdir(let e):
             return e == .permission
+
         case .directory(let e):
             return e == .permission
         }
@@ -82,6 +88,7 @@ extension File.System.Delete.Error {
         case .unlink(let e):
             if case .isDirectory = e { return true }
             return false
+
         default:
             return false
         }
@@ -92,6 +99,7 @@ extension File.System.Delete.Error {
         switch self {
         case .rmdir(let e):
             return e == .notEmpty
+
         default:
             return false
         }

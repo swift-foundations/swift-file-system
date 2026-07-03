@@ -10,7 +10,7 @@
 extension File {
     /// The parent directory as a file, or `nil` if this is a root path.
     public var parent: File? {
-        path.parent.map(File.init)
+        path.parent.map(Self.init)
     }
 
     /// The file name (last component of the path).
