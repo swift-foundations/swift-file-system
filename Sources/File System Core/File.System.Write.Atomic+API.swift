@@ -103,30 +103,35 @@ extension File.System.Write.Atomic {
         // 2. Stat destination if it exists (for metadata preservation)
         let destStats = statIfExists(resolved)
 
-        // 3. Create temp file with unique name
+        // 3. Create temp file with unique name. Extract the descriptor
+        // into a plain local immediately: borrowed-Optional field
+        // projections (tempFile.descriptor!) into throwing calls are the
+        // §A23 ownership-verifier crash class on the Windows asserts
+        // toolchain; borrows of a whole local value are not.
         var tempFile = try createTempFileWithRetry(
             in: parent,
             for: resolved
         )
+        let tempPath = tempFile.path
+        let descriptor = tempFile.descriptor.take()!
         phase = .writing
 
         defer {
             // CRITICAL: After renamedPublished, NEVER unlink destination!
-            // Descriptor closes via deinit when tempFile drops (if not already taken).
             if phase < .renamedPublished {
-                try? Kernel.File.Delete.delete(tempFile.path.kernelPath)
+                try? Kernel.File.Delete.delete(tempPath.kernelPath)
             }
         }
 
         // 4. Write all data
         do {
-            try File.System.Write.writeAll(bytes, to: tempFile.descriptor!)
+            try File.System.Write.writeAll(bytes, to: descriptor)
         } catch { throw Error(error) }
 
         // 5. Sync file to disk
         do {
             try File.System.Write.syncFile(
-                tempFile.descriptor!,
+                descriptor,
                 durability: options.durability
             )
         } catch { throw Error(error) }
@@ -136,14 +141,14 @@ extension File.System.Write.Atomic {
         if let stats = destStats {
             try applyMetadata(
                 from: stats,
-                to: tempFile.descriptor!,
+                to: descriptor,
                 options: options
             )
         }
 
         // 7. Close file (required before rename on some systems)
         do throws(File.System.Write.Error) {
-            try File.System.Write.closeFile(tempFile.descriptor.take()!)
+            try File.System.Write.closeFile(descriptor)
         } catch { throw Error(error) }
         phase = .closed
 
