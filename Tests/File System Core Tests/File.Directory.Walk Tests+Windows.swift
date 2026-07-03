@@ -33,7 +33,7 @@ import Testing
             try File.Directory.temporary { dir in
                 // Create some files
                 for i in 0..<3 {
-                    let filePath = dir.path / "file\(i.txt)"
+                    let filePath = dir.path / "file\(i).txt"
                     try File.System.Write.Atomic.write([UInt8(i)], to: filePath)
                 }
 
@@ -134,7 +134,7 @@ import Testing
         func `Walk handles files with spaces`() throws {
             try File.Directory.temporary { dir in
                 let spaceName = "file with spaces.txt"
-                let filePath = dir.path / spaceName
+                let filePath = dir.path / "\(spaceName)"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
                 let entries = try dir.walk()

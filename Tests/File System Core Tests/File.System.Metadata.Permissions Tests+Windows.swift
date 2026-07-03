@@ -79,7 +79,7 @@ import Testing
                 try File.System.Write.Atomic.write(testData, to: filePath)
 
                 // Verify we can read the file
-                let readData = try File.System.Read.Full.read(from: filePath)
+                let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
                 #expect(readData == testData)
             }
         }

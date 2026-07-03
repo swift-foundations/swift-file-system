@@ -83,7 +83,10 @@ import Testing
                 ]
 
                 for (uid, gid) in testCases {
-                    let ownership = File.System.Metadata.Ownership(uid: uid, gid: gid)
+                    let ownership = File.System.Metadata.Ownership(
+                        uid: Kernel.User.ID(_unchecked: uid),
+                        gid: Kernel.Group.ID(_unchecked: gid)
+                    )
                     try File.System.Metadata.Ownership.set(ownership, at: filePath)
 
                     // All should read back as zeros on Windows
