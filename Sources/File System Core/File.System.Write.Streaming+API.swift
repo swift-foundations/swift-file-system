@@ -18,14 +18,14 @@ extension File.System.Write.Streaming.Error {
     init(_ error: File.System.Write.Error) {
         switch error {
         case .sync(let msg):
-            self = .syncFailed(code: ._fsIO, message: msg)
+            self = .syncFailed(code: ._io, message: msg)
         case .close(let msg):
-            self = .closeFailed(code: ._fsIO, message: msg)
+            self = .closeFailed(code: ._io, message: msg)
         case .rename(let from, let to, let msg):
             self = .renameFailed(
                 from: from,
                 to: to,
-                code: ._fsIO,
+                code: ._io,
                 message: msg
             )
         case .exists(let path):
@@ -33,18 +33,18 @@ extension File.System.Write.Streaming.Error {
         case .directory(let path, let msg):
             self = .directorySyncFailed(
                 path: path,
-                code: ._fsIO,
+                code: ._io,
                 message: msg
             )
         case .write(let written, _, let msg):
             self = .writeFailed(
                 bytesWritten: written,
-                code: ._fsIO,
+                code: ._io,
                 message: msg
             )
         case .random(let msg):
             self = .randomGenerationFailed(
-                code: ._fsIO,
+                code: ._io,
                 message: msg
             )
         }
@@ -223,7 +223,7 @@ extension File.System.Write.Streaming {
         if !File.System.Write.fileExists(parent) {
             throw .parentVerificationFailed(
                 path: parent,
-                code: ._fsNotFound,
+                code: ._notFound,
                 message: "Parent directory does not exist"
             )
         }
@@ -323,7 +323,7 @@ extension File.System.Write.Streaming {
                     if case .directory(let path, let msg) = error {
                         throw Error.directorySyncFailedAfterCommit(
                             path: path,
-                            code: ._fsIO,
+                            code: ._io,
                             message: msg
                         )
                     }
@@ -404,7 +404,7 @@ extension File.System.Write.Streaming {
         } catch {
             throw .fileCreationFailed(
                 path: path,
-                code: ._fsNotFound,
+                code: ._notFound,
                 message: "open failed: \(error)"
             )
         }
@@ -417,7 +417,7 @@ extension File.System.Write.Streaming {
         guard let baseName = File.System.Write.fileName(of: dest) else {
             throw .fileCreationFailed(
                 path: dest,
-                code: ._fsInvalid,
+                code: ._invalid,
                 message: "destination has no filename component"
             )
         }

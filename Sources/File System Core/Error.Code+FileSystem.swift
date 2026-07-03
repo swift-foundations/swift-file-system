@@ -20,7 +20,7 @@ internal import Error_Primitives
 
 extension Error_Primitives.Error.Code {
     /// Generic I/O failure (`EIO` / `ERROR_IO_DEVICE`).
-    internal static var _fsIO: Self {
+    internal static var _io: Self {
         #if os(Windows)
             .win32(1117)  // ERROR_IO_DEVICE (no named constant yet)
         #else
@@ -29,7 +29,7 @@ extension Error_Primitives.Error.Code {
     }
 
     /// Path does not exist (`ENOENT` / `ERROR_FILE_NOT_FOUND`).
-    internal static var _fsNotFound: Self {
+    internal static var _notFound: Self {
         #if os(Windows)
             .Windows.ERROR_FILE_NOT_FOUND
         #else
@@ -38,7 +38,7 @@ extension Error_Primitives.Error.Code {
     }
 
     /// Invalid argument (`EINVAL` / `ERROR_INVALID_PARAMETER`).
-    internal static var _fsInvalid: Self {
+    internal static var _invalid: Self {
         #if os(Windows)
             .Windows.ERROR_INVALID_PARAMETER
         #else
@@ -47,7 +47,7 @@ extension Error_Primitives.Error.Code {
     }
 
     /// Access denied (`EACCES` / `ERROR_ACCESS_DENIED`).
-    internal static var _fsAccessDenied: Self {
+    internal static var _accessDenied: Self {
         #if os(Windows)
             .Windows.ERROR_ACCESS_DENIED
         #else
@@ -56,7 +56,7 @@ extension Error_Primitives.Error.Code {
     }
 
     /// Already exists (`EEXIST` / `ERROR_FILE_EXISTS`).
-    internal static var _fsExists: Self {
+    internal static var _exists: Self {
         #if os(Windows)
             .Windows.ERROR_FILE_EXISTS
         #else

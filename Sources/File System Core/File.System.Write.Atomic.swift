@@ -112,7 +112,7 @@ extension File.System.Write.Atomic {
         } catch {
             throw .parentVerificationFailed(
                 path: parent,
-                code: ._fsNotFound,
+                code: ._notFound,
                 message: "\(error)"
             )
         }
