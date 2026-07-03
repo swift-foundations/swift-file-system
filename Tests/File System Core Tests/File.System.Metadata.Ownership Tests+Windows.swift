@@ -32,17 +32,21 @@ import Testing
         }
 
         @Test
-        func `Set ownership on Windows is no-op`() throws {
+        func `Set ownership to a different identity throws on Windows`() throws {
             try File.Directory.temporary { dir in
                 let filePath = dir.path / "test.txt"
                 let empty: [Byte] = []
                 try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-                // Setting ownership should not throw on Windows (it's a no-op)
+                // Kernel.File.Chown's conditional no-op succeeds only when the
+                // requested ownership matches the synthesized (0, 0) identity;
+                // anything else throws rather than silently pretending to succeed.
                 let ownership = File.System.Metadata.Ownership(uid: 1000, gid: 1000)
-                try File.System.Metadata.Ownership.set(ownership, at: filePath)
+                #expect(throws: File.System.Metadata.Ownership.Error.self) {
+                    try File.System.Metadata.Ownership.set(ownership, at: filePath)
+                }
 
-                // Reading back still returns zeros (Windows ignores the set)
+                // The on-disk (synthesized) ownership is unaffected.
                 let readBack = try File.System.Metadata.Ownership(at: filePath)
                 #expect(readBack.uid == 0)
                 #expect(readBack.gid == 0)
@@ -68,28 +72,35 @@ import Testing
         }
 
         @Test
-        func `Ownership roundtrip on Windows preserves zeros`() throws {
+        func `Set ownership on Windows succeeds only for the synthesized identity`() throws {
             try File.Directory.temporary { dir in
                 let filePath = dir.path / "test.txt"
                 let empty: [Byte] = []
                 try File.System.Write.Atomic.write(empty.span, to: filePath)
 
-                // Try to set various ownership values
-                let testCases: [(uid: UInt32, gid: UInt32)] = [
-                    (1000, 1000),
-                    (0, 0),
-                    (501, 20),
-                    (65534, 65534),
+                // Only (0, 0) matches the synthesized identity Windows reports;
+                // every other combination should throw rather than succeed.
+                let testCases: [(uid: UInt32, gid: UInt32, shouldSucceed: Bool)] = [
+                    (1000, 1000, false),
+                    (0, 0, true),
+                    (501, 20, false),
+                    (65534, 65534, false),
                 ]
 
-                for (uid, gid) in testCases {
+                for (uid, gid, shouldSucceed) in testCases {
                     let ownership = File.System.Metadata.Ownership(
                         uid: Kernel.User.ID(_unchecked: uid),
                         gid: Kernel.Group.ID(_unchecked: gid)
                     )
-                    try File.System.Metadata.Ownership.set(ownership, at: filePath)
+                    if shouldSucceed {
+                        try File.System.Metadata.Ownership.set(ownership, at: filePath)
+                    } else {
+                        #expect(throws: File.System.Metadata.Ownership.Error.self) {
+                            try File.System.Metadata.Ownership.set(ownership, at: filePath)
+                        }
+                    }
 
-                    // All should read back as zeros on Windows
+                    // The on-disk (synthesized) ownership is unaffected either way.
                     let readBack = try File.System.Metadata.Ownership(at: filePath)
                     #expect(readBack.uid == 0)
                     #expect(readBack.gid == 0)
