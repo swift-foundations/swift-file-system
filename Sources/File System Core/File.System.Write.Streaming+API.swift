@@ -364,19 +364,19 @@ extension File.System.Write.Streaming.Context {
     borrowing func write(
         chunk span: borrowing Swift.Span<Byte>
     ) throws(File.System.Write.Error) {
-        try File.System.Write.writeAll(span, to: descriptor!)
+        try File.System.Write.writeAll(span, to: descriptor)
     }
 
     /// Writes a raw buffer chunk to this context's descriptor.
     borrowing func write(
         chunk buffer: UnsafeRawBufferPointer
     ) throws(File.System.Write.Error) {
-        try unsafe File.System.Write.writeAllRaw(buffer, to: descriptor!)
+        try unsafe File.System.Write.writeAllRaw(buffer, to: descriptor)
     }
 
     /// Syncs this context's descriptor according to its durability setting.
     borrowing func sync() throws(File.System.Write.Error) {
-        try File.System.Write.syncFile(descriptor!, durability: durability)
+        try File.System.Write.syncFile(descriptor, durability: durability)
     }
 }
 
