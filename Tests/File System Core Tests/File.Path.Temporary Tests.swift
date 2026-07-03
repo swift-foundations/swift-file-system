@@ -108,6 +108,13 @@ extension File.Path.Temporary.Test.Deterministic {
         let asString = path.description
         #if os(Windows)
             #expect(asString.contains("\\p-anything.tmp"))
+            // Rooted: either a drive-letter path (colon at index 1, e.g.
+            // "C:\...") or a UNC/rooted path starting with a backslash.
+            let isDriveLetterRooted =
+                asString.count > 1
+                && asString[asString.index(asString.startIndex, offsetBy: 1)] == ":"
+            let isBackslashRooted = asString.hasPrefix("\\")
+            #expect(isDriveLetterRooted || isBackslashRooted)
         #else
             #expect(asString.hasPrefix("/"))
             #expect(asString.contains("/p-anything.tmp"))

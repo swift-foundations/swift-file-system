@@ -17,14 +17,53 @@ import Testing
         // MARK: - Windows Behavior Tests
 
         @Test
-        func `Get permissions on Windows returns default value`() throws {
+        func `Get permissions on Windows synthesizes 0o644 for a regular writable file`() throws {
             try File.Directory.temporary { dir in
                 let filePath = dir.path / "test.txt"
                 try File.System.Write.Atomic.write([], to: filePath)
 
-                // Windows doesn't have POSIX permissions, so init(at:) returns defaultFile
+                // Windows has no POSIX mode bits; Stats synthesizes permissions
+                // from file attributes. A regular writable file has no readonly
+                // attribute and is not a directory, so it synthesizes to 0o644
+                // (which happens to equal .defaultFile's bit pattern).
                 let perms = try File.System.Metadata.Permissions(at: filePath)
                 #expect(perms == .defaultFile)
+            }
+        }
+
+        @Test
+        func `Get permissions on Windows for a directory includes execute bits`() throws {
+            try File.Directory.temporary { dir in
+                let subdirPath = dir.path / "subdir"
+                try File.System.Create.Directory.create(at: subdirPath)
+
+                // The directory attribute synthesizes execute bits — distinct
+                // from .defaultFile, which carries no execute bits at all.
+                let perms = try File.System.Metadata.Permissions(at: subdirPath)
+                #expect(perms != .defaultFile)
+                #expect(perms.contains(.ownerExecute))
+                #expect(perms.contains(.groupExecute))
+                #expect(perms.contains(.otherExecute))
+            }
+        }
+
+        @Test
+        func `Get permissions on Windows for a readonly file clears owner-write`() throws {
+            try File.Directory.temporary { dir in
+                let filePath = dir.path / "readonly.txt"
+                try File.System.Write.Atomic.write([], to: filePath)
+
+                // Set the Windows readonly attribute directly via
+                // Kernel.File.Attributes (mirrors the synthesis direction
+                // documented on File.System.Metadata.Permissions.init(at:):
+                // readonly attribute -> owner-write bit cleared).
+                try Kernel.File.Attributes.set(
+                    Kernel.File.Permissions(rawValue: 0o444),
+                    at: filePath.kernelPath
+                )
+
+                let perms = try File.System.Metadata.Permissions(at: filePath)
+                #expect(!perms.contains(.ownerWrite))
             }
         }
 

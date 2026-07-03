@@ -11,7 +11,6 @@
 
 #if !os(Windows)
 
-    // import Test_Primitives  // TODO: re-enable when swift-testing is ready
     import Testing
 
     import Kernel
