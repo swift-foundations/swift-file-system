@@ -123,17 +123,16 @@ extension File.System.Metadata.Permissions {
     /// - Parameter path: The path to the file.
     /// - Throws: `File.System.Metadata.Permissions.Error` on failure.
     public init(at path: borrowing File.Path) throws(File.System.Metadata.Permissions.Error) {
-        #if os(Windows)
-            // Windows doesn't have POSIX permissions
-            self = .defaultFile
-        #else
-            do {
-                let stats = try Kernel.File.Stats.get(path: path.kernelPath)
-                self.init(rawValue: stats.permissions.rawValue)
-            } catch {
-                throw .stat(error)
-            }
-        #endif
+        // Both legs read through Stats: the Windows L2 synthesizes
+        // POSIX-shaped permissions (readonly bit → write mask, directory
+        // attribute → execute bits), so the placeholder .defaultFile
+        // short-circuit is retired.
+        do {
+            let stats = try Kernel.File.Stats.get(path: path.kernelPath)
+            self.init(rawValue: stats.permissions.rawValue)
+        } catch {
+            throw .stat(error)
+        }
     }
 }
 
