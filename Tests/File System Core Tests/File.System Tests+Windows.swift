@@ -51,11 +51,11 @@ import Testing
             try File.Directory.temporary { dir in
                 let filePath = dir.path / "crlf.txt"
                 // Windows-style line endings: CRLF
-                let content: [Byte] = Array("Hello\r\nWorld\r\n".utf8)
+                let content: [Byte] = Array("Hello\r\nWorld\r\n".utf8).map(Byte.init)
 
                 try File.System.Write.Atomic.write(content, to: filePath)
 
-                let readBack = try File.System.Read.Full.read(from: filePath)
+                let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
                 #expect(readBack == content)
             }
         }
@@ -66,12 +66,12 @@ import Testing
                 // Use 100 chars to stay well within MAX_PATH (260) when combined
                 // with temp directory path (~60 chars) and atomic write temp suffix
                 let longName = Swift.String(repeating: "a", count: 100) + ".txt"
-                let filePath = dir.path / longName
+                let filePath = dir.path / "\(longName)"
 
                 try File.System.Write.Atomic.write([1, 2, 3], to: filePath)
                 #expect(File.System.Stat.exists(at: filePath))
 
-                let readBack = try File.System.Read.Full.read(from: filePath)
+                let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
                 #expect(readBack == [1, 2, 3])
             }
         }
@@ -84,7 +84,7 @@ import Testing
                 try File.System.Write.Atomic.write([1, 2, 3], to: filePath)
                 #expect(File.System.Stat.exists(at: filePath))
 
-                let readBack = try File.System.Read.Full.read(from: filePath)
+                let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
                 #expect(readBack == [1, 2, 3])
             }
         }
@@ -101,7 +101,7 @@ import Testing
                 let info = try File.System.Stat.info(at: filePath)
 
                 #expect(info.type == .regular)
-                #expect(info.size == Int64(testData.count))
+                #expect(info.size == 5)  // testData.count
                 // Windows returns device ID and file index
                 #expect(info.device > 0 || info.inode > 0)
             }

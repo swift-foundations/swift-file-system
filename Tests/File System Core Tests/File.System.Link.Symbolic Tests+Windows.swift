@@ -64,7 +64,7 @@ import Testing
                 #expect(File.System.Stat.exists(at: linkPath))
 
                 // Verify we can read through the link
-                let data = try File.System.Read.Full.read(from: linkPath)
+                let data = try File.System.Read.Full.read(from: linkPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
                 #expect(data == [1, 2, 3])
             }
         }
@@ -91,7 +91,7 @@ import Testing
 
                 // Verify we can access file through the link
                 let linkedFilePath = linkPath / "file.txt"
-                let data = try File.System.Read.Full.read(from: linkedFilePath)
+                let data = try File.System.Read.Full.read(from: linkedFilePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
                 #expect(data == [1])
             }
         }
@@ -165,8 +165,11 @@ import Testing
                 let filePath = dir.path / "regular.txt"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
-                #expect(throws: File.System.Link.Read.Target.Error.notASymlink(filePath)) {
+                do {
                     _ = try File.System.Link.Read.Target.target(of: filePath)
+                    Issue.record("Expected error for non-symlink")
+                } catch let error as File.System.Link.Read.Target.Error {
+                    #expect(error.isNotASymlink)
                 }
             }
         }
@@ -176,8 +179,11 @@ import Testing
             try File.Directory.temporary { dir in
                 let nonExistent = dir.path / "nonexistent"
 
-                #expect(throws: File.System.Link.Read.Target.Error.pathNotFound(nonExistent)) {
+                do {
                     _ = try File.System.Link.Read.Target.target(of: nonExistent)
+                    Issue.record("Expected error for non-existent path")
+                } catch let error as File.System.Link.Read.Target.Error {
+                    #expect(error.isNotFound)
                 }
             }
         }
