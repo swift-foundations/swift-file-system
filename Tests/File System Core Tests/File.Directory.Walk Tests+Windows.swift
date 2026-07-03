@@ -34,7 +34,7 @@ import Testing
                 // Create some files
                 for i in 0..<3 {
                     let filePath = dir.path / "file\(i).txt"
-                    try File.System.Write.Atomic.write([UInt8(i)], to: filePath)
+                    try File.System.Write.Atomic.write([Byte(UInt8(i))], to: filePath)
                 }
 
                 let entries = try dir.walk()

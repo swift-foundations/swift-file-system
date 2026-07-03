@@ -103,7 +103,7 @@ import Testing
                 #expect(info.type == .regular)
                 #expect(info.size == 5)  // testData.count
                 // Windows returns device ID and file index
-                #expect(info.device > 0 || info.inode > 0)
+                #expect(info.device.rawValue > 0 || info.inode.rawValue > 0)
             }
         }
 
