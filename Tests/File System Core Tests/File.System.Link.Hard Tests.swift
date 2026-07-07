@@ -179,6 +179,7 @@ extension File.System.Link.Hard {
         }
 
         @Test
+        // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
         func `Error description contains failure message`() {
             let error = File.System.Link.Hard.Error.link(.notFound)
             #expect(error.description.contains("Hard link creation failed"))

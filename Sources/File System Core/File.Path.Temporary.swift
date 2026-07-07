@@ -38,7 +38,7 @@ extension File.Path.Temporary {
     /// source.
     ///
     /// - Throws: ``File/Path/Error`` if the constructed path string
-    ///   fails validation (interior NUL, empty result, etc.). The
+    ///   fails validation, such as an interior NUL or empty result. The
     ///   sanitization step normally precludes such failures.
     public static func deterministic(
         prefix: Swift.String,

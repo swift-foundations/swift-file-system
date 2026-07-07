@@ -85,7 +85,7 @@ extension File.Directory.Contents {
     public static func iteratorError(
         for iterator: Iterator,
         directory: File.Directory
-    ) -> Error? {
+    ) -> File.Directory.Contents.Error? {
         guard let kernelError = iterator._lastError else {
             return nil
         }
@@ -100,7 +100,7 @@ extension File.Directory.Contents {
     private static func mapKernelReadError(
         _ error: Kernel.Directory.Error,
         path: File.Path
-    ) -> Error {
+    ) -> File.Directory.Contents.Error {
         switch error {
         case .io:
             return .readFailed(errno: 0, message: "I/O error during iteration")

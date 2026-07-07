@@ -138,7 +138,7 @@ extension File.System.Write.Streaming {
         fill: (inout [Byte]) throws(E) -> Int
     ) throws(Error) {
         let context = try open(path: path, options: options)
-        var writeError: Error? = nil
+        var writeError: Self.Error? = nil
 
         defer {
             if writeError != nil {
@@ -280,7 +280,7 @@ extension File.System.Write.Streaming {
     ) throws(Error) {
         do {
             try context.write(chunk: span)
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
     }
 
     /// Writes a raw buffer chunk to an open streaming context.
@@ -292,7 +292,7 @@ extension File.System.Write.Streaming {
     ) throws(Error) {
         do {
             try context.write(chunk: buffer)
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
     }
 
     /// Commits a streaming write, syncing and performing the atomic
@@ -302,7 +302,7 @@ extension File.System.Write.Streaming {
     ) throws(Error) {
         do {
             try context.sync()
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
 
         if context.isAtomic, let tempPath = context.tempPath {
             switch context.strategy {
@@ -312,7 +312,7 @@ extension File.System.Write.Streaming {
                         from: tempPath,
                         to: context.resolvedPath
                     )
-                } catch { throw Error(error) }
+                } catch { throw Self.Error(error) }
 
             case .noClobber:
                 do {
@@ -320,7 +320,7 @@ extension File.System.Write.Streaming {
                         from: tempPath,
                         to: context.resolvedPath
                     )
-                } catch { throw Error(error) }
+                } catch { throw Self.Error(error) }
             }
 
             if context.durability == .full {
@@ -328,13 +328,13 @@ extension File.System.Write.Streaming {
                     try File.System.Write.syncDirectory(context.parentPath)
                 } catch {
                     if case .directory(let path, let msg) = error {
-                        throw Error.directorySyncFailedAfterCommit(
+                        throw Self.Error.directorySyncFailedAfterCommit(
                             path: path,
                             code: ._io,
                             message: msg
                         )
                     }
-                    throw Error(error)
+                    throw Self.Error(error)
                 }
             }
         }
@@ -344,7 +344,11 @@ extension File.System.Write.Streaming {
     /// Descriptor closes via deinit when context drops.
     public static func cleanup(_ context: borrowing Context) {
         if let tempPath = context.tempPath {
-            try? Kernel.File.Delete.delete(tempPath.kernelPath)
+            do throws(Kernel.File.Delete.Error) {
+                try Kernel.File.Delete.delete(tempPath.kernelPath)
+            } catch {
+                // Best-effort cleanup; ignore failures.
+            }
         }
     }
 }
@@ -431,7 +435,7 @@ extension File.System.Write.Streaming {
         let random: Swift.String
         do {
             random = try File.System.Write.randomToken(length: 12)
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
         let tempComponent: File.Path.Component =
             ".\(baseName.string).streaming.\(random).tmp"
         return parent.appending(tempComponent)

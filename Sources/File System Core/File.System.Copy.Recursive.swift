@@ -52,7 +52,10 @@ extension File.System.Copy {
         options: Options
     ) throws(Error) {
         // Check source - get info to determine type
-        guard let sourceInfo = try? File.System.Stat.info(at: source) else {
+        let sourceInfo: File.System.Metadata.Info
+        do throws(Kernel.File.Stats.Error) {
+            sourceInfo = try File.System.Stat.info(at: source)
+        } catch {
             throw .sourceNotFound
         }
 
@@ -90,10 +93,14 @@ extension File.System.Copy {
         defer {
             if !success {
                 // Best-effort cleanup
-                try? File.System.Delete.delete(
-                    at: destination,
-                    recursive: true
-                )
+                do throws(File.System.Delete.Error) {
+                    try File.System.Delete.delete(
+                        at: destination,
+                        recursive: true
+                    )
+                } catch {
+                    // Best-effort cleanup; ignore failures.
+                }
             }
         }
 
@@ -168,7 +175,10 @@ extension File.System.Copy {
         options: Options
     ) throws(Error) {
         // Stat the symlink target to determine its type
-        guard let info = try? File.System.Stat.info(at: source) else {
+        let info: File.System.Metadata.Info
+        do throws(Kernel.File.Stats.Error) {
+            info = try File.System.Stat.info(at: source)
+        } catch {
             // Broken symlink - skip or throw
             throw .sourceNotFound
         }
@@ -207,7 +217,10 @@ extension File.System.Copy {
 
             // Create symlink at destination using Kernel API
             do throws(Kernel.Link.Symbolic.Error) {
-                guard let targetPath = try? File.Path(target) else {
+                let targetPath: File.Path
+                do throws(File.Path.Error) {
+                    targetPath = try File.Path(target)
+                } catch {
                     throw Kernel.Link.Symbolic.Error.notFound
                 }
                 try Kernel.Link.Symbolic.create(target: targetPath.kernelPath, at: destination.kernelPath)
@@ -244,7 +257,10 @@ extension File.System.Copy {
     ) {
         #if !os(Windows)
             // Get source permissions
-            guard let sourceInfo = try? File.System.Stat.info(at: source) else {
+            let sourceInfo: File.System.Metadata.Info
+            do throws(Kernel.File.Stats.Error) {
+                sourceInfo = try File.System.Stat.info(at: source)
+            } catch {
                 return
             }
 
@@ -265,7 +281,10 @@ extension File.System.Copy {
     ) {
         #if !os(Windows)
             // Get source timestamps
-            guard let sourceInfo = try? File.System.Stat.info(at: source) else {
+            let sourceInfo: File.System.Metadata.Info
+            do throws(Kernel.File.Stats.Error) {
+                sourceInfo = try File.System.Stat.info(at: source)
+            } catch {
                 return
             }
 
@@ -290,7 +309,7 @@ extension File.System.Copy {
     private static func mapContentsError(
         _ error: File.Directory.Contents.Error,
         source: File.Path
-    ) -> Error {
+    ) -> File.System.Copy.Error {
         switch error {
         case .pathNotFound:
             return .sourceNotFound

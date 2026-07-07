@@ -98,7 +98,11 @@ extension File.Handle.Open {
         do throws(E) {
             result = try body(&handle)
         } catch {
-            try? handle.close()  // Best-effort cleanup
+            do throws(Kernel.Close.Error) {
+                try handle.close()  // Best-effort cleanup
+            } catch {
+                // Best-effort cleanup; ignore failures.
+            }
             throw .operation(error)
         }
 
@@ -127,7 +131,11 @@ extension File.Handle.Open {
         do throws(E) {
             result = try await body(&handle)
         } catch {
-            try? handle.close()  // Best-effort cleanup
+            do throws(Kernel.Close.Error) {
+                try handle.close()  // Best-effort cleanup
+            } catch {
+                // Best-effort cleanup; ignore failures.
+            }
             throw .operation(error)
         }
 

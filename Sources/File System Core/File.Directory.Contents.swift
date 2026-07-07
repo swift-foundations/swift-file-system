@@ -158,7 +158,7 @@ extension File.Directory.Contents {
     internal static func mapKernelError(
         _ error: Kernel.Directory.Error,
         path: File.Path
-    ) -> Error {
+    ) -> File.Directory.Contents.Error {
         switch error {
         case .notFound:
             return .pathNotFound(path)

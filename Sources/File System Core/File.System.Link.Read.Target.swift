@@ -113,7 +113,10 @@ extension File.System.Link.Read.Target {
             throw .readlink(error)
         }
 
-        guard let targetPath = try? File.Path(targetString) else {
+        let targetPath: File.Path
+        do throws(File.Path.Error) {
+            targetPath = try File.Path(targetString)
+        } catch {
             throw .invalidTargetPath(targetString)
         }
         return targetPath

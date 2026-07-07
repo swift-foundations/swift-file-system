@@ -23,7 +23,7 @@ extension File {
     /// }
     /// ```
     public struct Temporary: Sendable {
-        /// The file extension (e.g., "pdf", "txt").
+        /// The file extension, such as "pdf" or "txt".
         public let ext: Swift.String
 
         /// The prefix for the temp file name.
@@ -83,7 +83,7 @@ extension File {
     /// Creates a temporary file wrapper.
     ///
     /// - Parameters:
-    ///   - ext: File extension (e.g., "pdf", "txt").
+    ///   - ext: File extension, such as "pdf" or "txt".
     ///   - prefix: Prefix for the temp file name (default: "test").
     /// - Returns: A `Temporary` wrapper for scoped file operations.
     public static func temporary(

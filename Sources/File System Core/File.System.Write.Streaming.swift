@@ -90,7 +90,7 @@ extension File.System.Write.Streaming {
         try ensureParent(for: path, createIntermediates: createIntermediates)
 
         // Try to use contiguous storage directly (zero-copy path)
-        var capturedError: Error? = nil
+        var capturedError: Self.Error? = nil
 
         let wasContiguous = unsafe bytes.withContiguousStorageIfAvailable { buffer -> Bool in
             do throws(Error) {

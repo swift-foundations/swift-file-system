@@ -125,14 +125,18 @@ extension File.System.Write.Atomic {
         defer {
             // CRITICAL: After renamedPublished, NEVER unlink destination!
             if phase < .renamedPublished {
-                try? Kernel.File.Delete.delete(tempPath.kernelPath)
+                do throws(Kernel.File.Delete.Error) {
+                    try Kernel.File.Delete.delete(tempPath.kernelPath)
+                } catch {
+                    // Best-effort cleanup; ignore failures.
+                }
             }
         }
 
         // 4. Write all data
         do {
             try File.System.Write.writeAll(bytes, to: descriptor)
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
 
         // 5. Sync file to disk
         do {
@@ -140,7 +144,7 @@ extension File.System.Write.Atomic {
                 descriptor,
                 durability: options.durability
             )
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
         phase = .syncedFile
 
         // 6. Apply metadata from destination if requested
@@ -155,7 +159,7 @@ extension File.System.Write.Atomic {
         // 7. Close file (required before rename on some systems)
         do throws(File.System.Write.Error) {
             try File.System.Write.closeFile(descriptor)
-        } catch { throw Error(error) }
+        } catch { throw Self.Error(error) }
         phase = .closed
 
         // 8. Atomic rename
@@ -166,7 +170,7 @@ extension File.System.Write.Atomic {
                     from: tempFile.path,
                     to: resolved
                 )
-            } catch { throw Error(error) }
+            } catch { throw Self.Error(error) }
 
         case .noClobber:
             do {
@@ -174,7 +178,7 @@ extension File.System.Write.Atomic {
                     from: tempFile.path,
                     to: resolved
                 )
-            } catch { throw Error(error) }
+            } catch { throw Self.Error(error) }
         }
         phase = .renamedPublished
 
@@ -192,7 +196,7 @@ extension File.System.Write.Atomic {
                         message: msg
                     )
                 }
-                throw Error(error)
+                throw Self.Error(error)
             }
         } else {
             phase = .syncedDirectory
@@ -243,7 +247,7 @@ extension File.System.Write.Atomic {
             let random: Swift.String
             do {
                 random = try File.System.Write.randomToken(length: 12)
-            } catch { throw Error(error) }
+            } catch { throw Self.Error(error) }
             let tempComponent: File.Path.Component =
                 ".\(baseName.string).atomic.\(pid).\(random).tmp"
             let tempPath = parent.appending(tempComponent)

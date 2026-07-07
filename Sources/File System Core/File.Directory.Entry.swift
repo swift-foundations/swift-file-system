@@ -29,7 +29,7 @@ extension File.Directory {
         /// - Parameters:
         ///   - name: The entry's filename (raw bytes preserved).
         ///   - parent: The parent directory path.
-        ///   - type: The type of entry (file, directory, symlink, etc.).
+        ///   - type: The type of entry: file, directory, or symlink.
         public init(name: File.Name, parent: File.Path, type: Kind) {
             self.name = name
             self.parent = parent
@@ -58,6 +58,10 @@ extension File.Directory.Entry {
     /// Use `path()` for the throwing version with error details.
     @inlinable
     public var pathIfValid: File.Path? {
-        try? path()
+        do throws(Paths.Path.Component.Error) {
+            return try path()
+        } catch {
+            return nil
+        }
     }
 }

@@ -56,7 +56,7 @@ extension File.System.Write.Atomic {
 
         /// CSPRNG failed - cannot generate secure temp file names.
         ///
-        /// This indicates a fundamental system failure (e.g., getrandom syscall failure).
+        /// This indicates a fundamental system failure, such as a getrandom syscall failure.
         /// The operation cannot proceed safely without secure random bytes.
         case randomGenerationFailed(code: Error_Primitives.Error.Code, operation: Swift.String, message: Swift.String)
 

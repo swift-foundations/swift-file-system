@@ -65,7 +65,7 @@ extension Swift.String {
     /// Returns `nil` if the raw data contains invalid encoding.
     ///
     /// - POSIX: Returns `nil` if raw bytes are not valid UTF-8
-    /// - Windows: Returns `nil` if raw code units contain invalid UTF-16 (e.g., lone surrogates)
+    /// - Windows: Returns `nil` if raw code units contain invalid UTF-16, such as lone surrogates
     @inlinable
     public init?(_ fileName: File.Name) {
         guard let decoded = Self.strict(platformNative: fileName.rawBytes) else {
@@ -204,8 +204,8 @@ extension File.Name {
     /// Access as UTF-8 bytes (may allocate for Windows encoding).
     ///
     /// UTF-8 is the canonical cross-platform wire format for filename
-    /// serialization (matches `Binary.Serializable` output, JSON / IPC
-    /// payloads, etc.). For zero-copy code-unit access in the platform-
+    /// serialization (matches `Binary.Serializable` output and JSON / IPC
+    /// payloads). For zero-copy code-unit access in the platform-
     /// native encoding, use `withCodeUnits` instead.
     ///
     /// Delegates to ``Strings/Array/utf8Bytes`` (unified L3 entry point in

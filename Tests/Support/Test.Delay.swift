@@ -32,7 +32,7 @@ public enum Test {
         }
     }
 
-    /// Retry utilities for flaky operations (e.g., Windows file handle release).
+    /// Retry utilities for flaky operations, such as Windows file handle release.
     public enum Retry {
         /// Retry an operation with delays between attempts.
         ///

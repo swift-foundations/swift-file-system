@@ -29,7 +29,7 @@ extension File.System.Write.Streaming.Direct {
         /// - **Con**: Changes ENOSPC behavior - fails upfront if space unavailable
         /// - **Con**: Preallocates even if actual write is smaller
         ///
-        /// Only used when total size is known upfront (e.g., bulk writes).
+        /// Only used when total size is known upfront, such as for bulk writes.
         /// Ignored for streaming writes where total size is unknown.
         public var expectedSize: Int64?
 

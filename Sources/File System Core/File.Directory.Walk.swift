@@ -6,6 +6,7 @@
 //
 
 import Either_Primitives
+import Kernel
 
 extension File.Directory {
     /// Namespace for recursive directory traversal operations.
@@ -256,7 +257,13 @@ extension File.Directory.Walk {
                             return .break
                         }
                     } else if entry.type == .symbolicLink && options.followSymlinks {
-                        if let info = try? File.System.Stat.info(at: entryPath),
+                        let info: File.System.Metadata.Info?
+                        do throws(Kernel.File.Stats.Error) {
+                            info = try File.System.Stat.info(at: entryPath)
+                        } catch {
+                            info = nil
+                        }
+                        if let info,
                             info.type == .directory
                         {
                             let subdir = File.Directory(entryPath)
@@ -334,7 +341,12 @@ extension File.Directory.Walk {
     /// Uses `stat` (not `lstat`) to get the target's identity when following symlinks.
     @usableFromInline
     internal static func getInodeKey(at path: File.Path) -> InodeKey? {
-        guard let info = try? File.System.Stat.info(at: path) else { return nil }
+        let info: File.System.Metadata.Info
+        do throws(Kernel.File.Stats.Error) {
+            info = try File.System.Stat.info(at: path)
+        } catch {
+            return nil
+        }
         return InodeKey(device: info.device, inode: info.inode)
     }
 }

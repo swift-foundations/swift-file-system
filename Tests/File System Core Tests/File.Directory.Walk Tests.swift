@@ -276,6 +276,7 @@ extension File.Directory.Walk {
         }
 
         @Test
+        // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
         func `Error is Equatable`() {
             let path: File.Path = "/test"
             let error1 = File.Directory.Walk.Error.pathNotFound(path)
@@ -307,6 +308,7 @@ extension File.Directory.Walk {
         }
 
         @Test
+        // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
         func `Error is Sendable`() async {
             let path: File.Path = "/test"
             let error = File.Directory.Walk.Error.pathNotFound(path)

@@ -140,6 +140,7 @@ extension File.System.Link.Symbolic {
         }
 
         @Test
+        // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
         func `Error description contains failure message`() {
             let error = File.System.Link.Symbolic.Error.symlink(.exists)
             #expect(error.description.contains("Symlink creation failed"))
