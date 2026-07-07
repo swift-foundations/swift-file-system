@@ -15,7 +15,7 @@ import Testing
 
     import WinSDK
 
-    extension File.System.Test.EdgeCase {
+    extension File.System.Test.`Edge Case` {
 
         // MARK: - Windows Path Tests
 

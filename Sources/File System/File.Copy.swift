@@ -29,80 +29,82 @@ extension File {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - Copy (Sync)
+extension File.Copy {
+    // MARK: - Copy (Sync)
 
-        /// Copies the file to a destination path.
-        ///
-        /// - Parameters:
-        ///   - destination: The destination path.
-        ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
-        /// - Returns: A `File` representing the copy at the destination.
-        /// - Throws: `File.System.Copy.Error` on failure.
-        @discardableResult
-        @inlinable
-        public func to(
-            _ destination: File.Path,
-            options: File.System.Copy.Options = .init()
-        ) throws(File.System.Copy.Error) -> File {
-            try File.System.Copy.copy(from: path, to: destination, options: options)
-            return File(destination)
+    /// Copies the file to a destination path.
+    ///
+    /// - Parameters:
+    ///   - destination: The destination path.
+    ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
+    /// - Returns: A `File` representing the copy at the destination.
+    /// - Throws: `File.System.Copy.Error` on failure.
+    @discardableResult
+    @inlinable
+    public func to(
+        _ destination: File.Path,
+        options: File.System.Copy.Options = .init()
+    ) throws(File.System.Copy.Error) -> File {
+        try File.System.Copy.copy(from: path, to: destination, options: options)
+        return File(destination)
+    }
+
+    /// Copies the file to a destination.
+    ///
+    /// - Parameters:
+    ///   - destination: The destination file.
+    ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
+    /// - Returns: The destination `File`.
+    /// - Throws: `File.System.Copy.Error` on failure.
+    @discardableResult
+    @inlinable
+    public func to(
+        _ destination: File,
+        options: File.System.Copy.Options = .init()
+    ) throws(File.System.Copy.Error) -> File {
+        try File.System.Copy.copy(from: path, to: destination.path, options: options)
+        return destination
+    }
+
+    // MARK: - Copy (Async)
+
+    /// Copies the file to a destination path.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Returns: A `File` representing the copy at the destination.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
+    @discardableResult
+    @inlinable
+    public func to(
+        _ destination: File.Path,
+        options: File.System.Copy.Options = .init()
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File {
+        let source = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
+            try File.System.Copy.copy(from: source, to: destination, options: options)
         }
+        return File(destination)
+    }
 
-        /// Copies the file to a destination.
-        ///
-        /// - Parameters:
-        ///   - destination: The destination file.
-        ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
-        /// - Returns: The destination `File`.
-        /// - Throws: `File.System.Copy.Error` on failure.
-        @discardableResult
-        @inlinable
-        public func to(
-            _ destination: File,
-            options: File.System.Copy.Options = .init()
-        ) throws(File.System.Copy.Error) -> File {
-            try File.System.Copy.copy(from: path, to: destination.path, options: options)
-            return destination
+    /// Copies the file to a destination.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Returns: The destination `File`.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
+    @discardableResult
+    @inlinable
+    public func to(
+        _ destination: File,
+        options: File.System.Copy.Options = .init()
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File {
+        let source = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
+            try File.System.Copy.copy(from: source, to: destination.path, options: options)
         }
-
-        // MARK: - Copy (Async)
-
-        /// Copies the file to a destination path.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Returns: A `File` representing the copy at the destination.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
-        @discardableResult
-        @inlinable
-        public func to(
-            _ destination: File.Path,
-            options: File.System.Copy.Options = .init()
-        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File {
-            let source = self.path
-            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
-                try File.System.Copy.copy(from: source, to: destination, options: options)
-            }
-            return File(destination)
-        }
-
-        /// Copies the file to a destination.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Returns: The destination `File`.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
-        @discardableResult
-        @inlinable
-        public func to(
-            _ destination: File,
-            options: File.System.Copy.Options = .init()
-        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>) -> File {
-            let source = self.path
-            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Copy.Error) in
-                try File.System.Copy.copy(from: source, to: destination.path, options: options)
-            }
-            return destination
-        }
+        return destination
     }
 }
 

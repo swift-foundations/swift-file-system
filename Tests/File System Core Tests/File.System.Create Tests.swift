@@ -12,7 +12,7 @@ extension File.System.Create {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -64,7 +64,7 @@ extension File.System.Create.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Create.Test.EdgeCase {
+extension File.System.Create.Test.`Edge Case` {
     @Test
     func `Options with zero permissions`() {
         let permissions = File.System.Metadata.Permissions(rawValue: 0o000)

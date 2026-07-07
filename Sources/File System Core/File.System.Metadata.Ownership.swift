@@ -97,14 +97,14 @@ extension File.System.Metadata.Ownership {
             // (mirrors the Windows-side Stats read in
             // File.System.Metadata.Permissions.init(at:)) so a nonexistent
             // path throws like POSIX instead of silently synthesizing (0, 0).
-            do {
+            do throws(Kernel.File.Stats.Error) {
                 _ = try Kernel.File.Stats.get(path: path.kernelPath)
             } catch {
                 throw .stat(error)
             }
             self.init(uid: 0, gid: 0)
         #else
-            do {
+            do throws(Kernel.File.Stats.Error) {
                 let stats = try Kernel.File.Stats.get(path: path.kernelPath)
                 self.init(uid: stats.uid, gid: stats.gid)
             } catch {

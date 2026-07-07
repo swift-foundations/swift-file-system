@@ -107,7 +107,7 @@ extension File.System.Write.Atomic {
     ) throws(Error) {
         guard createIntermediates else { return }
         let parent = path.parentOrSelf
-        do {
+        do throws(File.System.Parent.Check.Error) {
             try File.System.Parent.Check.verify(parent, createIntermediates: true)
         } catch {
             throw .parentVerificationFailed(

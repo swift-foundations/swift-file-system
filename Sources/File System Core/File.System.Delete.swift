@@ -121,7 +121,7 @@ extension File.System.Delete {
     ) throws(Error) {
         // First, stat the path to determine what it is
         let stats: Kernel.File.Stats
-        do {
+        do throws(Kernel.File.Stats.Error) {
             stats = try stat(path)
         } catch {
             throw .stat(error)
@@ -151,7 +151,7 @@ extension File.System.Delete {
     /// Removes a file using Kernel.File.Delete.
     @usableFromInline
     internal static func unlink(at path: File.Path) throws(Error) {
-        do {
+        do throws(Kernel.File.Delete.Error) {
             try Kernel.File.Delete.delete(path.kernelPath)
         } catch {
             throw .unlink(error)
@@ -161,7 +161,7 @@ extension File.System.Delete {
     /// Removes an empty directory using Kernel.Directory.Remove.
     @usableFromInline
     internal static func rmdir(at path: File.Path) throws(Error) {
-        do {
+        do throws(Kernel.Directory.Remove.Error) {
             try Kernel.Directory.Remove.remove(path.kernelPath)
         } catch {
             throw .rmdir(error)
@@ -175,7 +175,7 @@ extension File.System.Delete {
     ) throws(Error) {
         // Open directory
         let stream: Kernel.Directory.Stream
-        do {
+        do throws(Kernel.Directory.Error) {
             stream = try Kernel.Directory.open(at: path.kernelPath)
         } catch {
             throw .directory(error)
@@ -202,7 +202,7 @@ extension File.System.Delete {
 
             // Unified via File.Name — owns the platform-conditional decode
             let component: File.Path.Component
-            do {
+            do throws(Paths.Path.Component.Error) {
                 component = try File.Name(from: entry).asPathComponent()
             } catch {
                 // Skip entries with invalid path components (should be rare)

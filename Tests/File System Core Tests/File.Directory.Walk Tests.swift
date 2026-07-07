@@ -12,7 +12,7 @@ extension File.Directory.Walk {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -321,7 +321,7 @@ extension File.Directory.Walk {
 
     // MARK: - Edge Cases
 
-    extension File.Directory.Walk.Test.EdgeCase {
+    extension File.Directory.Walk.Test.`Edge Case` {
         @Test
         func `walk on non-existent directory throws`() throws {
             let path = try File.Path("/nonexistent-\(Int.random(in: (0..<Int.max)))")

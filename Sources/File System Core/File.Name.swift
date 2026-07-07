@@ -40,20 +40,22 @@ extension File {
         internal init(rawBytes: [Path.Char]) {
             self.rawBytes = rawBytes
         }
+    }
+}
 
-        // MARK: - Semantic Predicates
+// MARK: - Semantic Predicates
 
-        /// True if this name is "." or ".." (dot entries to skip during iteration).
-        @usableFromInline
-        internal var isDotOrDotDot: Bool {
-            rawBytes == [0x2E] || rawBytes == [0x2E, 0x2E]
-        }
+extension File.Name {
+    /// True if this name is "." or ".." (dot entries to skip during iteration).
+    @usableFromInline
+    internal var isDotOrDotDot: Bool {
+        rawBytes == [0x2E] || rawBytes == [0x2E, 0x2E]
+    }
 
-        /// True if this name starts with '.' (hidden file convention on Unix-like systems).
-        @inlinable
-        public var isHiddenByDotPrefix: Bool {
-            rawBytes.first == 0x2E
-        }
+    /// True if this name starts with '.' (hidden file convention on Unix-like systems).
+    @inlinable
+    public var isHiddenByDotPrefix: Bool {
+        rawBytes.first == 0x2E
     }
 }
 

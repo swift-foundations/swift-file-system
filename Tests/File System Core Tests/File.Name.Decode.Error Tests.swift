@@ -13,7 +13,7 @@ extension File.Name.Decode.Error {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -156,7 +156,7 @@ extension File.Name.Decode.Error {
 
     // MARK: - Edge Cases
 
-    extension File.Name.Decode.Error.Test.EdgeCase {
+    extension File.Name.Decode.Error.Test.`Edge Case` {
 
         @Test
         func `error with single invalid byte`() {

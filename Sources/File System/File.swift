@@ -93,79 +93,85 @@ extension File {
         internal init(path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - Symbolic Links
+extension File.Link {
+    // MARK: - Symbolic Links
 
-        /// Creates a symbolic link at this path pointing to the target.
-        ///
-        /// - Parameter target: The path the symlink will point to.
-        /// - Throws: `File.System.Link.Symbolic.Error` on failure.
-        public func symbolic(to target: File.Path) throws(File.System.Link.Symbolic.Error) {
-            try File.System.Link.Symbolic.create(at: path, pointingTo: target)
+    /// Creates a symbolic link at this path pointing to the target.
+    ///
+    /// - Parameter target: The path the symlink will point to.
+    /// - Throws: `File.System.Link.Symbolic.Error` on failure.
+    public func symbolic(to target: File.Path) throws(File.System.Link.Symbolic.Error) {
+        try File.System.Link.Symbolic.create(at: path, pointingTo: target)
+    }
+
+    /// Creates a symbolic link at this path pointing to the target.
+    ///
+    /// - Parameter target: The target file.
+    /// - Throws: `File.System.Link.Symbolic.Error` on failure.
+    public func symbolic(to target: File) throws(File.System.Link.Symbolic.Error) {
+        try File.System.Link.Symbolic.create(at: path, pointingTo: target.path)
+    }
+
+    // MARK: - Hard Links
+
+    /// Creates a hard link at this path to an existing file.
+    ///
+    /// Hard links share the same inode as the original file.
+    ///
+    /// - Parameter existing: The path to the existing file.
+    /// - Throws: `File.System.Link.Hard.Error` on failure.
+    public func hard(to existing: File.Path) throws(File.System.Link.Hard.Error) {
+        try File.System.Link.Hard.create(at: path, to: existing)
+    }
+
+    /// Creates a hard link at this path to an existing file.
+    ///
+    /// - Parameter existing: The existing file.
+    /// - Throws: `File.System.Link.Hard.Error` on failure.
+    public func hard(to existing: File) throws(File.System.Link.Hard.Error) {
+        try File.System.Link.Hard.create(at: path, to: existing.path)
+    }
+
+    // MARK: - Read Target
+
+    /// Namespace for reading symlink target.
+    ///
+    /// ## Usage
+    /// ```swift
+    /// let targetPath = try link.target.path
+    /// let targetFile = try link.target.file
+    /// ```
+    public var target: Target { Target(link: self) }
+}
+
+extension File.Link {
+    /// Target reading namespace.
+    public struct Target: Sendable {
+        let link: File.Link
+    }
+}
+
+extension File.Link.Target {
+    /// Reads the target of this symbolic link.
+    ///
+    /// - Returns: The target path that this symlink points to.
+    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
+    public var path: File.Path {
+        get throws(File.System.Link.Read.Target.Error) {
+            try File.System.Link.Read.Target.target(of: link.path)
         }
+    }
 
-        /// Creates a symbolic link at this path pointing to the target.
-        ///
-        /// - Parameter target: The target file.
-        /// - Throws: `File.System.Link.Symbolic.Error` on failure.
-        public func symbolic(to target: File) throws(File.System.Link.Symbolic.Error) {
-            try File.System.Link.Symbolic.create(at: path, pointingTo: target.path)
-        }
-
-        // MARK: - Hard Links
-
-        /// Creates a hard link at this path to an existing file.
-        ///
-        /// Hard links share the same inode as the original file.
-        ///
-        /// - Parameter existing: The path to the existing file.
-        /// - Throws: `File.System.Link.Hard.Error` on failure.
-        public func hard(to existing: File.Path) throws(File.System.Link.Hard.Error) {
-            try File.System.Link.Hard.create(at: path, to: existing)
-        }
-
-        /// Creates a hard link at this path to an existing file.
-        ///
-        /// - Parameter existing: The existing file.
-        /// - Throws: `File.System.Link.Hard.Error` on failure.
-        public func hard(to existing: File) throws(File.System.Link.Hard.Error) {
-            try File.System.Link.Hard.create(at: path, to: existing.path)
-        }
-
-        // MARK: - Read Target
-
-        /// Namespace for reading symlink target.
-        ///
-        /// ## Usage
-        /// ```swift
-        /// let targetPath = try link.target.path
-        /// let targetFile = try link.target.file
-        /// ```
-        public var target: Target { Target(link: self) }
-
-        /// Target reading namespace.
-        public struct Target: Sendable {
-            let link: Link
-
-            /// Reads the target of this symbolic link.
-            ///
-            /// - Returns: The target path that this symlink points to.
-            /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-            public var path: File.Path {
-                get throws(File.System.Link.Read.Target.Error) {
-                    try File.System.Link.Read.Target.target(of: link.path)
-                }
-            }
-
-            /// Reads the target of this symbolic link as a file.
-            ///
-            /// - Returns: The target file that this symlink points to.
-            /// - Throws: `File.System.Link.Read.Target.Error` on failure.
-            public var file: File {
-                get throws(File.System.Link.Read.Target.Error) {
-                    File(try File.System.Link.Read.Target.target(of: link.path))
-                }
-            }
+    /// Reads the target of this symbolic link as a file.
+    ///
+    /// - Returns: The target file that this symlink points to.
+    /// - Throws: `File.System.Link.Read.Target.Error` on failure.
+    public var file: File {
+        get throws(File.System.Link.Read.Target.Error) {
+            File(try File.System.Link.Read.Target.target(of: link.path))
         }
     }
 }

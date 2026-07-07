@@ -12,7 +12,7 @@ extension File.System.Write.Streaming.Commit.Policy {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -88,7 +88,7 @@ extension File.System.Write.Streaming.Commit.Policy.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Streaming.Commit.Policy.Test.EdgeCase {
+extension File.System.Write.Streaming.Commit.Policy.Test.`Edge Case` {
     @Test
     func `atomic with none durability`() {
         let options = File.System.Write.Streaming.Atomic.Options(durability: .none)

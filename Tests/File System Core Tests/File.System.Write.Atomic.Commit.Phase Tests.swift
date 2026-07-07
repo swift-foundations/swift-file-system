@@ -12,7 +12,7 @@ extension File.System.Write.Atomic.Commit.Phase {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -127,7 +127,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Atomic.Commit.Phase.Test.EdgeCase {
+extension File.System.Write.Atomic.Commit.Phase.Test.`Edge Case` {
     @Test
     func `rawValue progression is sequential`() {
         let phases: [File.System.Write.Atomic.Commit.Phase] = [

@@ -94,7 +94,7 @@ extension File.System.Link.Read.Target {
     ) throws(Self.Error) -> File.Path {
         // First check if it's a symlink using lstat (doesn't follow symlinks)
         let stats: Kernel.File.Stats
-        do {
+        do throws(Kernel.File.Stats.Error) {
             stats = try Kernel.File.Stats.lget(path: path.kernelPath)
         } catch {
             throw .stat(error)

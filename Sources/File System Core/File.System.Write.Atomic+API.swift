@@ -77,7 +77,7 @@ extension File.System.Write.Atomic {
     ) throws(Error) {
         let pathString = Swift.String(path)
         let resolved: File.Path
-        do {
+        do throws(File.Path.Error) {
             resolved = try File.Path(pathString)
         } catch {
             throw .invalidPath(error)
@@ -134,12 +134,12 @@ extension File.System.Write.Atomic {
         }
 
         // 4. Write all data
-        do {
+        do throws(File.System.Write.Error) {
             try File.System.Write.writeAll(bytes, to: descriptor)
         } catch { throw Self.Error(error) }
 
         // 5. Sync file to disk
-        do {
+        do throws(File.System.Write.Error) {
             try File.System.Write.syncFile(
                 descriptor,
                 durability: options.durability
@@ -165,7 +165,7 @@ extension File.System.Write.Atomic {
         // 8. Atomic rename
         switch options.strategy {
         case .replaceExisting:
-            do {
+            do throws(File.System.Write.Error) {
                 try File.System.Write.atomicRename(
                     from: tempFile.path,
                     to: resolved
@@ -173,7 +173,7 @@ extension File.System.Write.Atomic {
             } catch { throw Self.Error(error) }
 
         case .noClobber:
-            do {
+            do throws(File.System.Write.Error) {
                 try File.System.Write.atomicRenameNoClobber(
                     from: tempFile.path,
                     to: resolved
@@ -185,7 +185,7 @@ extension File.System.Write.Atomic {
         // 9. Sync directory to persist the rename
         if options.durability == .full {
             phase = .directorySyncAttempted
-            do {
+            do throws(File.System.Write.Error) {
                 try File.System.Write.syncDirectory(parent)
                 phase = .syncedDirectory
             } catch {
@@ -210,7 +210,7 @@ extension File.System.Write.Atomic {
     private static func statIfExists(
         _ path: File.Path
     ) -> Kernel.File.Stats? {
-        do {
+        do throws(Kernel.File.Stats.Error) {
             return try Kernel.File.Stats.lget(path: path.kernelPath)
         } catch {
             return nil
@@ -245,14 +245,14 @@ extension File.System.Write.Atomic {
 
         for attempt in 0..<maxTempFileAttempts {
             let random: Swift.String
-            do {
+            do throws(File.System.Write.Error) {
                 random = try File.System.Write.randomToken(length: 12)
             } catch { throw Self.Error(error) }
             let tempComponent: File.Path.Component =
                 ".\(baseName.string).atomic.\(pid).\(random).tmp"
             let tempPath = parent.appending(tempComponent)
 
-            do {
+            do throws(Kernel.File.Open.Error) {
                 let fd = try Kernel.File.Open.open(
                     path: tempPath.kernelPath,
                     mode: .readWrite,
@@ -293,12 +293,12 @@ extension File.System.Write.Atomic {
         options: borrowing Options
     ) throws(Error) {
         if options.preservation.contains(.permissions) {
-            do {
+            do throws(Kernel.File.Attributes.Error) {
                 try Kernel.File.Attributes.set(
                     stats.permissions,
                     on: descriptor
                 )
-            } catch let error {
+            } catch {
                 let code: Error_Primitives.Error.Code
                 switch error {
                 case .platform(let e): code = e.code
@@ -315,13 +315,13 @@ extension File.System.Write.Atomic {
         }
 
         if case .preserve(let strict) = options.ownership {
-            do {
+            do throws(Kernel.File.Chown.Error) {
                 try Kernel.File.Chown.fchown(
                     descriptor,
                     uid: stats.uid,
                     gid: stats.gid
                 )
-            } catch let error {
+            } catch {
                 if strict {
                     let code: Error_Primitives.Error.Code
                     switch error {
@@ -340,13 +340,13 @@ extension File.System.Write.Atomic {
         }
 
         if options.preservation.contains(.timestamps) {
-            do {
+            do throws(Kernel.File.Times.Error) {
                 try Kernel.File.Times.set(
                     access: stats.accessTime,
                     modification: stats.modificationTime,
                     on: descriptor
                 )
-            } catch let error {
+            } catch {
                 throw .timestampPreservationFailed(error)
             }
         }

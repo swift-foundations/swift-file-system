@@ -13,7 +13,7 @@ extension File.Directory.Iterator {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -128,7 +128,7 @@ extension File.Directory.Iterator.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.Directory.Iterator.Test.EdgeCase {
+extension File.Directory.Iterator.Test.`Edge Case` {
     @Test
     func `open on non-existent directory throws pathNotFound`() throws {
         let directory = File.Directory("/nonexistent-dir-\(Int.random(in: (0..<Int.max)))")

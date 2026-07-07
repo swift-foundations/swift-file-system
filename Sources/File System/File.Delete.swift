@@ -33,65 +33,67 @@ extension File {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - callAsFunction (Primary Action)
+extension File.Delete {
+    // MARK: - callAsFunction (Primary Action)
 
-        /// Deletes the file.
-        ///
-        /// This is the primary action, accessible via `file.delete()`.
-        ///
-        /// - Throws: `File.System.Delete.Error` on failure.
-        @inlinable
-        public func callAsFunction() throws(File.System.Delete.Error) {
+    /// Deletes the file.
+    ///
+    /// This is the primary action, accessible via `file.delete()`.
+    ///
+    /// - Throws: `File.System.Delete.Error` on failure.
+    @inlinable
+    public func callAsFunction() throws(File.System.Delete.Error) {
+        try File.System.Delete.delete(at: path)
+    }
+
+    /// Deletes the file.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure.
+    @inlinable
+    public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+        let path = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
             try File.System.Delete.delete(at: path)
         }
+    }
 
-        /// Deletes the file.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure.
-        @inlinable
-        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
-            let path = self.path
+    // MARK: - Variants
+
+    /// Deletes the file if it exists, no error if missing.
+    ///
+    /// - Throws: `File.System.Delete.Error` on failure (other than not found).
+    @inlinable
+    public func ifExists() throws(File.System.Delete.Error) {
+        do throws(File.System.Delete.Error) {
+            try File.System.Delete.delete(at: path)
+        } catch {
+            if error.isNotFound {
+                return  // Ignore - file doesn't exist
+            }
+            throw error
+        }
+    }
+
+    /// Deletes the file if it exists, no error if missing.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure (other than not found).
+    @inlinable
+    public func ifExists() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+        let path = self.path
+        do throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
             try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
                 try File.System.Delete.delete(at: path)
             }
-        }
-
-        // MARK: - Variants
-
-        /// Deletes the file if it exists, no error if missing.
-        ///
-        /// - Throws: `File.System.Delete.Error` on failure (other than not found).
-        @inlinable
-        public func ifExists() throws(File.System.Delete.Error) {
-            do {
-                try File.System.Delete.delete(at: path)
-            } catch {
-                if error.isNotFound {
-                    return  // Ignore - file doesn't exist
-                }
-                throw error
+        } catch {
+            if case .right(let deleteError) = error, deleteError.isNotFound {
+                return  // Ignore - file doesn't exist
             }
-        }
-
-        /// Deletes the file if it exists, no error if missing.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure (other than not found).
-        @inlinable
-        public func ifExists() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
-            let path = self.path
-            do {
-                try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
-                    try File.System.Delete.delete(at: path)
-                }
-            } catch {
-                if case .right(let deleteError) = error, deleteError.isNotFound {
-                    return  // Ignore - file doesn't exist
-                }
-                throw error
-            }
+            throw error
         }
     }
 }

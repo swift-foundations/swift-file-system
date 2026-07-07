@@ -12,7 +12,7 @@ extension File.System.Write.Atomic.Options {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -93,7 +93,7 @@ extension File.System.Write.Atomic.Options.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Atomic.Options.Test.EdgeCase {
+extension File.System.Write.Atomic.Options.Test.`Edge Case` {
     @Test
     func `all preservation enabled with strict ownership`() {
         let options = File.System.Write.Atomic.Options(

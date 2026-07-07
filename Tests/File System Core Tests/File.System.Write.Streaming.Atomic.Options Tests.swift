@@ -12,7 +12,7 @@ extension File.System.Write.Streaming.Atomic.Options {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -69,7 +69,7 @@ extension File.System.Write.Streaming.Atomic.Options.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Streaming.Atomic.Options.Test.EdgeCase {
+extension File.System.Write.Streaming.Atomic.Options.Test.`Edge Case` {
     @Test
     func `noClobber with none durability`() {
         let options = File.System.Write.Streaming.Atomic.Options(

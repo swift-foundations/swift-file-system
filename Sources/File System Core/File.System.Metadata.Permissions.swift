@@ -16,47 +16,49 @@ extension File.System.Metadata {
         public init(rawValue: UInt16) {
             self.rawValue = rawValue
         }
-
-        // Owner permissions
-        public static let ownerRead = Self(rawValue: 0o400)
-        public static let ownerWrite = Self(rawValue: 0o200)
-        public static let ownerExecute = Self(rawValue: 0o100)
-
-        // Group permissions
-        public static let groupRead = Self(rawValue: 0o040)
-        public static let groupWrite = Self(rawValue: 0o020)
-        public static let groupExecute = Self(rawValue: 0o010)
-
-        // Other permissions
-        public static let otherRead = Self(rawValue: 0o004)
-        public static let otherWrite = Self(rawValue: 0o002)
-        public static let otherExecute = Self(rawValue: 0o001)
-
-        // Special bits
-        public static let setuid = Self(rawValue: 0o4000)
-        public static let setgid = Self(rawValue: 0o2000)
-        public static let sticky = Self(rawValue: 0o1000)
-
-        // Common combinations
-        public static let ownerAll: Permissions = [.ownerRead, .ownerWrite, .ownerExecute]
-        public static let groupAll: Permissions = [.groupRead, .groupWrite, .groupExecute]
-        public static let otherAll: Permissions = [.otherRead, .otherWrite, .otherExecute]
-
-        /// Default file permissions (644).
-        public static let defaultFile: Permissions = [
-            .ownerRead, .ownerWrite, .groupRead, .otherRead,
-        ]
-
-        /// Default directory permissions (755).
-        public static let defaultDirectory: Permissions = [
-            .ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute,
-        ]
-
-        /// Executable file permissions (755).
-        public static let executable: Permissions = [
-            .ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute,
-        ]
     }
+}
+
+extension File.System.Metadata.Permissions {
+    // Owner permissions
+    public static let ownerRead = Self(rawValue: 0o400)
+    public static let ownerWrite = Self(rawValue: 0o200)
+    public static let ownerExecute = Self(rawValue: 0o100)
+
+    // Group permissions
+    public static let groupRead = Self(rawValue: 0o040)
+    public static let groupWrite = Self(rawValue: 0o020)
+    public static let groupExecute = Self(rawValue: 0o010)
+
+    // Other permissions
+    public static let otherRead = Self(rawValue: 0o004)
+    public static let otherWrite = Self(rawValue: 0o002)
+    public static let otherExecute = Self(rawValue: 0o001)
+
+    // Special bits
+    public static let setuid = Self(rawValue: 0o4000)
+    public static let setgid = Self(rawValue: 0o2000)
+    public static let sticky = Self(rawValue: 0o1000)
+
+    // Common combinations
+    public static let ownerAll: Self = [.ownerRead, .ownerWrite, .ownerExecute]
+    public static let groupAll: Self = [.groupRead, .groupWrite, .groupExecute]
+    public static let otherAll: Self = [.otherRead, .otherWrite, .otherExecute]
+
+    /// Default file permissions (644).
+    public static let defaultFile: Self = [
+        .ownerRead, .ownerWrite, .groupRead, .otherRead,
+    ]
+
+    /// Default directory permissions (755).
+    public static let defaultDirectory: Self = [
+        .ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute,
+    ]
+
+    /// Executable file permissions (755).
+    public static let executable: Self = [
+        .ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute,
+    ]
 }
 
 // MARK: - Error (Union of Kernel Errors)
@@ -130,7 +132,7 @@ extension File.System.Metadata.Permissions {
         // POSIX-shaped permissions (readonly bit → write mask, directory
         // attribute → execute bits), so the placeholder .defaultFile
         // short-circuit is retired.
-        do {
+        do throws(Kernel.File.Stats.Error) {
             let stats = try Kernel.File.Stats.get(path: path.kernelPath)
             self.init(rawValue: stats.permissions.rawValue)
         } catch {
@@ -156,7 +158,7 @@ extension File.System.Metadata.Permissions {
             // Windows doesn't have POSIX permissions - this is a no-op
             return
         #else
-            do {
+            do throws(Kernel.File.Attributes.Error) {
                 try Kernel.File.Attributes.set(
                     Kernel.File.Permissions(rawValue: permissions.rawValue),
                     at: path.kernelPath

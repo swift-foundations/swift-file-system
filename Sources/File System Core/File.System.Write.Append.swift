@@ -114,7 +114,7 @@ extension File.System.Write.Append {
         // WHEN TO REMOVE: once the underlying compiler bug is fixed upstream.
         // TRACKING: swift-file-system/HANDOFF.md follow-up item 4 (compiler-bug dossiers).
         var descriptor: Kernel.Descriptor = .invalid
-        do {
+        do throws(Kernel.File.Open.Error) {
             descriptor = try Kernel.File.Open.open(
                 path: path.kernelPath,
                 mode: .write,

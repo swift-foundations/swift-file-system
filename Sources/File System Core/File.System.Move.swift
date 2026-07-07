@@ -186,10 +186,10 @@ extension File.System.Move {
             followSymlinks: true
         )
 
-        do {
+        do throws(File.System.Copy.Error) {
             try File.System.Copy.copy(from: source, to: destination, options: copyOptions)
-        } catch let copyError {
-            throw .copy(copyError)
+        } catch {
+            throw .copy(error)
         }
 
         // Delete source — cleanup failure after successful copy is a soft failure.

@@ -12,7 +12,7 @@ extension File.System.Write.Atomic.Strategy {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -56,7 +56,7 @@ extension File.System.Write.Atomic.Strategy.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Atomic.Strategy.Test.EdgeCase {
+extension File.System.Write.Atomic.Strategy.Test.`Edge Case` {
     @Test
     func `invalid rawValue returns nil`() {
         #expect(File.System.Write.Atomic.Strategy(rawValue: 255) == nil)

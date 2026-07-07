@@ -33,63 +33,65 @@ extension File.Directory {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - callAsFunction (Primary Action)
+extension File.Directory.Create {
+    // MARK: - callAsFunction (Primary Action)
 
-        /// Creates the directory.
-        ///
-        /// This is the primary action, accessible via `dir.create()`.
-        /// Fails if the parent directory doesn't exist.
-        ///
-        /// - Parameter options: Create options.
-        /// - Throws: `File.System.Create.Directory.Error` on failure.
-        @inlinable
-        public func callAsFunction(
-            options: File.System.Create.Directory.Options = .init()
-        ) throws(File.System.Create.Directory.Error) {
+    /// Creates the directory.
+    ///
+    /// This is the primary action, accessible via `dir.create()`.
+    /// Fails if the parent directory doesn't exist.
+    ///
+    /// - Parameter options: Create options.
+    /// - Throws: `File.System.Create.Directory.Error` on failure.
+    @inlinable
+    public func callAsFunction(
+        options: File.System.Create.Directory.Options = .init()
+    ) throws(File.System.Create.Directory.Error) {
+        try File.System.Create.Directory.create(at: path, options: options)
+    }
+
+    /// Creates the directory.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>` on failure.
+    @inlinable
+    public func callAsFunction(
+        options: File.System.Create.Directory.Options = .init()
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>) {
+        let path = self.path
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
             try File.System.Create.Directory.create(at: path, options: options)
         }
+    }
 
-        /// Creates the directory.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>` on failure.
-        @inlinable
-        public func callAsFunction(
-            options: File.System.Create.Directory.Options = .init()
-        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>) {
-            let path = self.path
-            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
-                try File.System.Create.Directory.create(at: path, options: options)
-            }
-        }
+    // MARK: - Variants
 
-        // MARK: - Variants
+    /// Creates the directory and any missing parent directories.
+    ///
+    /// - Parameter options: Create options.
+    /// - Throws: `File.System.Create.Directory.Error` on failure.
+    @inlinable
+    public func recursive(
+        options: File.System.Create.Directory.Options = .init()
+    ) throws(File.System.Create.Directory.Error) {
+        try File.System.Create.Directory.create(at: path, options: options, createIntermediates: true)
+    }
 
-        /// Creates the directory and any missing parent directories.
-        ///
-        /// - Parameter options: Create options.
-        /// - Throws: `File.System.Create.Directory.Error` on failure.
-        @inlinable
-        public func recursive(
-            options: File.System.Create.Directory.Options = .init()
-        ) throws(File.System.Create.Directory.Error) {
-            try File.System.Create.Directory.create(at: path, options: options, createIntermediates: true)
-        }
-
-        /// Creates the directory and any missing parent directories.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>` on failure.
-        @inlinable
-        public func recursive(
-            options: File.System.Create.Directory.Options = .init()
-        ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>) {
-            let path = self.path
-            let opts = options
-            try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
-                try File.System.Create.Directory.create(at: path, options: opts, createIntermediates: true)
-            }
+    /// Creates the directory and any missing parent directories.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>` on failure.
+    @inlinable
+    public func recursive(
+        options: File.System.Create.Directory.Options = .init()
+    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Create.Directory.Error>) {
+        let path = self.path
+        let opts = options
+        try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
+            try File.System.Create.Directory.create(at: path, options: opts, createIntermediates: true)
         }
     }
 }

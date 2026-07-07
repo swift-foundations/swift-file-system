@@ -15,7 +15,7 @@ extension File.System.Metadata.Permissions {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -167,10 +167,10 @@ extension File.System.Metadata.Permissions.Test.Unit {
             try File.Directory.temporary { dir in
                 let nonExistent = dir.path / "non-existent-\(Int.random(in: (0..<Int.max))).tmp"
 
-                do {
+                do throws(File.System.Metadata.Permissions.Error) {
                     _ = try File.System.Metadata.Permissions(at: nonExistent)
                     Issue.record("Expected error for non-existent file")
-                } catch let error as File.System.Metadata.Permissions.Error {
+                } catch {
                     #expect(error.isNotFound)
                 }
             }
@@ -181,10 +181,10 @@ extension File.System.Metadata.Permissions.Test.Unit {
             try File.Directory.temporary { dir in
                 let nonExistent = dir.path / "non-existent-\(Int.random(in: (0..<Int.max))).tmp"
 
-                do {
+                do throws(File.System.Metadata.Permissions.Error) {
                     try File.System.Metadata.Permissions.set(.defaultFile, at: nonExistent)
                     Issue.record("Expected error for non-existent file")
-                } catch let error as File.System.Metadata.Permissions.Error {
+                } catch {
                     #expect(error.isNotFound)
                 }
             }

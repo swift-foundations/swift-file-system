@@ -40,15 +40,17 @@ extension File {
         internal init(path: File.Path, options: Kernel.File.Open.Options) {
             self._open = File.Handle.Open(path: path, options: options)
         }
-
-        /// The path to open.
-        @inlinable
-        public var path: File.Path { _open.path }
-
-        /// Options for opening.
-        @inlinable
-        public var options: Kernel.File.Open.Options { _open.options }
     }
+}
+
+extension File.Open {
+    /// The path to open.
+    @inlinable
+    public var path: File.Path { _open.path }
+
+    /// Options for opening.
+    @inlinable
+    public var options: Kernel.File.Open.Options { _open.options }
 }
 
 // MARK: - Error Type Alias

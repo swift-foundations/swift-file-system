@@ -12,7 +12,7 @@ extension File.Directory {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -105,7 +105,7 @@ extension File.Directory.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.Directory.Test.EdgeCase {
+extension File.Directory.Test.`Edge Case` {
     @Test
     func `Directory with root path`() throws {
         let path: File.Path = "/"

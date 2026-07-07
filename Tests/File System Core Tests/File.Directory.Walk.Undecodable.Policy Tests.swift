@@ -12,7 +12,7 @@ extension File.Directory.Walk.Undecodable.Policy {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -184,7 +184,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.Directory.Walk.Undecodable.Policy.Test.EdgeCase {
+extension File.Directory.Walk.Undecodable.Policy.Test.`Edge Case` {
 
     @Test
     func `Policy in optional`() {

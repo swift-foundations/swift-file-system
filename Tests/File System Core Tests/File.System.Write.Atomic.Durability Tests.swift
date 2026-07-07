@@ -12,7 +12,7 @@ extension File.System.Write.Durability {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -116,7 +116,7 @@ extension File.System.Write.Durability.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Durability.Test.EdgeCase {
+extension File.System.Write.Durability.Test.`Edge Case` {
     @Test
     func `Hashable conformance`() {
         let set: Set<File.System.Write.Durability> = [.full, .dataOnly, .none]

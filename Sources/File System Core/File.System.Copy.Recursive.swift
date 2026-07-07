@@ -71,7 +71,7 @@ extension File.System.Copy {
                 throw .destinationExists
             }
             // Remove existing destination
-            do {
+            do throws(File.System.Delete.Error) {
                 try File.System.Delete.delete(
                     at: destination,
                     recursive: true
@@ -82,7 +82,7 @@ extension File.System.Copy {
         }
 
         // Create destination directory
-        do {
+        do throws(File.System.Create.Directory.Error) {
             try File.System.Create.Directory.create(at: destination)
         } catch {
             throw .operation("Failed to create destination directory: \(error)")
@@ -112,9 +112,9 @@ extension File.System.Copy {
 
         // Enumerate and copy contents
         let entries: [File.Directory.Entry]
-        do {
+        do throws(File.Directory.Contents.Error) {
             entries = try File.Directory.Contents.list(at: File.Directory(source))
-        } catch let error {
+        } catch {
             throw mapContentsError(error, source: source)
         }
 
@@ -127,7 +127,7 @@ extension File.System.Copy {
 
             // Build destination path from entry name
             let destPath: File.Path
-            do {
+            do throws(Paths.Path.Component.Error) {
                 destPath = destination / (try entry.name.asPathComponent())
             } catch {
                 // Skip entries with invalid path components or undecodable names
@@ -265,7 +265,7 @@ extension File.System.Copy {
             }
 
             // Set destination permissions using Kernel API
-            do {
+            do throws(Kernel.File.Attributes.Error) {
                 let kernelPermissions = Kernel.File.Permissions(rawValue: sourceInfo.permissions.rawValue)
                 try Kernel.File.Attributes.set(kernelPermissions, at: destination.kernelPath)
             } catch {
@@ -289,7 +289,7 @@ extension File.System.Copy {
             }
 
             // Set destination timestamps using Kernel API
-            do {
+            do throws(Kernel.File.Times.Error) {
                 try Kernel.File.Times.set(
                     access: sourceInfo.accessTime,
                     modification: sourceInfo.modificationTime,

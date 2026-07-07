@@ -15,7 +15,7 @@ extension File.System.Link.Read.Target {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -104,10 +104,10 @@ extension File.System.Link.Read.Target.Test.Unit {
             let filePath = dir.path / "file.bin"
             try File.System.Write.Atomic.write([1, 2, 3].span, to: filePath)
 
-            do {
+            do throws(File.System.Link.Read.Target.Error) {
                 _ = try File.System.Link.Read.Target.target(of: filePath)
                 Issue.record("Expected error for regular file")
-            } catch let error as File.System.Link.Read.Target.Error {
+            } catch {
                 #expect(error.isNotASymlink)
             }
         }
@@ -119,10 +119,10 @@ extension File.System.Link.Read.Target.Test.Unit {
             let dirPath = dir.path / "subdir"
             try File.System.Create.Directory.create(at: dirPath)
 
-            do {
+            do throws(File.System.Link.Read.Target.Error) {
                 _ = try File.System.Link.Read.Target.target(of: dirPath)
                 Issue.record("Expected error for directory")
-            } catch let error as File.System.Link.Read.Target.Error {
+            } catch {
                 #expect(error.isNotASymlink)
             }
         }
@@ -133,10 +133,10 @@ extension File.System.Link.Read.Target.Test.Unit {
         try File.Directory.temporary { dir in
             let nonExistent = dir.path / "non-existent"
 
-            do {
+            do throws(File.System.Link.Read.Target.Error) {
                 _ = try File.System.Link.Read.Target.target(of: nonExistent)
                 Issue.record("Expected error for non-existent path")
-            } catch let error as File.System.Link.Read.Target.Error {
+            } catch {
                 #expect(error.isNotFound)
             }
         }

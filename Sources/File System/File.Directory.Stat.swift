@@ -30,58 +30,60 @@ extension File.Directory {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - Existence Checks
+extension File.Directory.Stat {
+    // MARK: - Existence Checks
 
-        /// Returns `true` if the directory exists.
-        @inlinable
-        public var exists: Bool {
-            File.System.Stat.exists(at: path)
+    /// Returns `true` if the directory exists.
+    @inlinable
+    public var exists: Bool {
+        File.System.Stat.exists(at: path)
+    }
+
+    /// Returns `true` if the path is a directory.
+    @inlinable
+    public var isDirectory: Bool {
+        File.System.Stat.isDirectory(at: path)
+    }
+
+    /// Returns `true` if the path is a symbolic link.
+    @inlinable
+    public var isSymlink: Bool {
+        File.System.Stat.isSymlink(at: path)
+    }
+
+    // MARK: - Metadata
+
+    /// Returns directory metadata information.
+    ///
+    /// - Throws: `Kernel.File.Stats.Error` on failure.
+    @inlinable
+    public var info: File.System.Metadata.Info {
+        get throws(Kernel.File.Stats.Error) {
+            try File.System.Stat.info(at: path)
         }
+    }
 
-        /// Returns `true` if the path is a directory.
-        @inlinable
-        public var isDirectory: Bool {
-            File.System.Stat.isDirectory(at: path)
+    /// Returns the directory permissions.
+    ///
+    /// - Throws: `Kernel.File.Stats.Error` on failure.
+    @inlinable
+    public var permissions: File.System.Metadata.Permissions {
+        get throws(Kernel.File.Stats.Error) {
+            try info.permissions
         }
+    }
 
-        /// Returns `true` if the path is a symbolic link.
-        @inlinable
-        public var isSymlink: Bool {
-            File.System.Stat.isSymlink(at: path)
-        }
-
-        // MARK: - Metadata
-
-        /// Returns directory metadata information.
-        ///
-        /// - Throws: `Kernel.File.Stats.Error` on failure.
-        @inlinable
-        public var info: File.System.Metadata.Info {
-            get throws(Kernel.File.Stats.Error) {
-                try File.System.Stat.info(at: path)
-            }
-        }
-
-        /// Returns the directory permissions.
-        ///
-        /// - Throws: `Kernel.File.Stats.Error` on failure.
-        @inlinable
-        public var permissions: File.System.Metadata.Permissions {
-            get throws(Kernel.File.Stats.Error) {
-                try info.permissions
-            }
-        }
-
-        /// Returns whether the directory is empty.
-        ///
-        /// - Returns: `true` if the directory contains no entries.
-        /// - Throws: `File.Directory.Contents.Error` on failure.
-        @inlinable
-        public var isEmpty: Bool {
-            get throws(File.Directory.Contents.Error) {
-                try File.Directory.Contents.list(at: File.Directory(path)).isEmpty
-            }
+    /// Returns whether the directory is empty.
+    ///
+    /// - Returns: `true` if the directory contains no entries.
+    /// - Throws: `File.Directory.Contents.Error` on failure.
+    @inlinable
+    public var isEmpty: Bool {
+        get throws(File.Directory.Contents.Error) {
+            try File.Directory.Contents.list(at: File.Directory(path)).isEmpty
         }
     }
 }

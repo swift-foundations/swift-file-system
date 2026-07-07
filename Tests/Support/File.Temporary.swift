@@ -34,50 +34,6 @@ extension File {
             self.ext = ext
             self.prefix = prefix
         }
-
-        /// Executes a closure with a temporary file path, automatically cleaned up on exit.
-        ///
-        /// - Parameter body: Closure that receives the temporary file path.
-        /// - Returns: The value returned by the closure.
-        /// - Throws: Any error from directory creation or the closure.
-        @discardableResult
-        public func callAsFunction<T>(
-            _ body: (File.Path) throws -> T
-        ) throws -> T {
-            let base = try File.Directory.Temporary.system
-            let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
-            let dirPath = base.path / dirName
-
-            try File.System.Create.Directory.create(at: dirPath)
-            defer { try? File.System.Delete.delete(at: dirPath, recursive: true) }
-
-            let fileName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)")
-            let filePath = dirPath / fileName
-
-            return try body(filePath)
-        }
-
-        /// Async variant: executes a closure with a temporary file path, automatically cleaned up on exit.
-        ///
-        /// - Parameter body: Async closure that receives the temporary file path.
-        /// - Returns: The value returned by the closure.
-        /// - Throws: Any error from directory creation or the closure.
-        @discardableResult
-        public func callAsFunction<T>(
-            _ body: (File.Path) async throws -> T
-        ) async throws -> T {
-            let base = try File.Directory.Temporary.system
-            let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
-            let dirPath = base.path / dirName
-
-            try File.System.Create.Directory.create(at: dirPath)
-            defer { try? File.System.Delete.delete(at: dirPath, recursive: true) }
-
-            let fileName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)")
-            let filePath = dirPath / fileName
-
-            return try await body(filePath)
-        }
     }
 
     /// Creates a temporary file wrapper.
@@ -91,5 +47,51 @@ extension File {
         prefix: Swift.String = "test"
     ) -> Temporary {
         Temporary(extension: ext, prefix: prefix)
+    }
+}
+
+extension File.Temporary {
+    /// Executes a closure with a temporary file path, automatically cleaned up on exit.
+    ///
+    /// - Parameter body: Closure that receives the temporary file path.
+    /// - Returns: The value returned by the closure.
+    /// - Throws: Any error from directory creation or the closure.
+    @discardableResult
+    public func callAsFunction<T>(
+        _ body: (File.Path) throws -> T
+    ) throws -> T {
+        let base = try File.Directory.Temporary.system
+        let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
+        let dirPath = base.path / dirName
+
+        try File.System.Create.Directory.create(at: dirPath)
+        defer { try? File.System.Delete.delete(at: dirPath, recursive: true) }
+
+        let fileName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)")
+        let filePath = dirPath / fileName
+
+        return try body(filePath)
+    }
+
+    /// Async variant: executes a closure with a temporary file path, automatically cleaned up on exit.
+    ///
+    /// - Parameter body: Async closure that receives the temporary file path.
+    /// - Returns: The value returned by the closure.
+    /// - Throws: Any error from directory creation or the closure.
+    @discardableResult
+    public func callAsFunction<T>(
+        _ body: (File.Path) async throws -> T
+    ) async throws -> T {
+        let base = try File.Directory.Temporary.system
+        let dirName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID())")
+        let dirPath = base.path / dirName
+
+        try File.System.Create.Directory.create(at: dirPath)
+        defer { try? File.System.Delete.delete(at: dirPath, recursive: true) }
+
+        let fileName = try File.Path.Component("\(prefix)-\(File.Directory.Temporary.randomID()).\(ext)")
+        let filePath = dirPath / fileName
+
+        return try await body(filePath)
     }
 }
