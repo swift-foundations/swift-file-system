@@ -120,7 +120,6 @@ extension File.Directory.Iterator.Test.Unit {
     }
 
     @Test
-    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error description contains failure message`() {
         let error = File.Directory.Iterator.Error.directory(.notFound)
         #expect(error.description.contains("Directory iteration failed"))

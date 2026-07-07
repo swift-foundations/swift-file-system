@@ -244,7 +244,6 @@ extension File.System.Read.Full.Test.Unit {
     }
 
     @Test
-    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error description contains failure message`() {
         let error = File.System.Read.Full.Error.open(.path(.notFound))
         #expect(error.description.contains("Open failed"))

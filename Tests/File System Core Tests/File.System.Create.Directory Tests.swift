@@ -176,7 +176,6 @@ extension File.System.Create.Directory.Test.Unit {
     }
 
     @Test
-    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error description contains failure message`() {
         let error = File.System.Create.Directory.Error.mkdir(.exists)
         #expect(error.description.contains("Directory creation failed"))

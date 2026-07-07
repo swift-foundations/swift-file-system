@@ -253,7 +253,6 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     }
 
     @Test
-    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error is Sendable`() {
         let error: File.System.Write.Streaming.Error = .destinationExists(path: "/tmp/test.txt")
         Task {
@@ -262,7 +261,6 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     }
 
     @Test
-    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error conforms to Swift.Error`() {
         let error: any Swift.Error = File.System.Write.Streaming.Error.destinationExists(path: "/tmp/test.txt")
         #expect(error is File.System.Write.Streaming.Error)
