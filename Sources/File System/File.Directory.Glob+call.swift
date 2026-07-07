@@ -87,8 +87,8 @@ extension File.Directory.Glob {
     /// ```
     ///
     /// - Parameters:
-    ///   - include: Pattern strings to include (e.g., `"**/*.swift"`).
-    ///   - excluding: Pattern strings to exclude (e.g., `"**/Tests/**"`).
+    ///   - include: Pattern strings to include, such as `"**/*.swift"`.
+    ///   - excluding: Pattern strings to exclude, such as `"**/Tests/**"`.
     ///   - options: Optional matching/traversal options.
     /// - Returns: Matching entries as `Match` values.
     /// - Throws: `Glob.Error` on failure (including pattern-parse errors).

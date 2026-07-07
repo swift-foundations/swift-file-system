@@ -6,6 +6,6 @@
 //
 
 extension File.System {
-    /// Namespace for file metadata operations (permissions, timestamps, etc.).
+    /// Namespace for file metadata operations: permissions, timestamps, and ownership.
     public enum Metadata {}
 }

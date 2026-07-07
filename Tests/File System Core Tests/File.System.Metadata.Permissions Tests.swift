@@ -280,6 +280,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
     }
 
     @Test
+    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error is Sendable`() async {
         let error = File.System.Metadata.Permissions.Error.chmod(.path(.notFound))
 

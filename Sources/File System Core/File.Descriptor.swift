@@ -19,8 +19,8 @@ extension File {
     /// ## Example
     /// ```swift
     /// let descriptor = try File.Descriptor.open(path, mode: .read)
-    /// defer { try? descriptor.close() }
     /// // use descriptor...
+    /// try descriptor.close()
     /// ```
     /// An owning file descriptor wrapper.
     ///

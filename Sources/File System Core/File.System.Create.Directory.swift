@@ -19,7 +19,7 @@ extension File.System.Create.Directory {
     ///
     /// - Parameters:
     ///   - path: The path where the directory should be created.
-    ///   - options: Creation options (e.g., permissions).
+    ///   - options: Creation options, such as permissions.
     ///   - createIntermediates: If `true`, creates intermediate directories as needed.
     /// - Throws: `File.System.Create.Directory.Error` on failure.
     public static func create(

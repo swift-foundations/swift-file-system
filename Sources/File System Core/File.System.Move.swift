@@ -148,7 +148,13 @@ extension File.System.Move {
     ) throws(Self.Error) {
         // Check if destination exists (when overwrite is disabled)
         if !options.overwrite {
-            let destExists = (try? Kernel.File.Stats.get(path: destination.kernelPath)) != nil
+            let destExists: Bool
+            do throws(Kernel.File.Stats.Error) {
+                _ = try Kernel.File.Stats.get(path: destination.kernelPath)
+                destExists = true
+            } catch {
+                destExists = false
+            }
             if destExists {
                 throw .destinationExists(copy destination)
             }
