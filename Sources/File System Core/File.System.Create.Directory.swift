@@ -43,7 +43,7 @@ extension File.System.Create.Directory {
         at path: File.Path,
         permissions: Kernel.File.Permissions
     ) throws(Self.Error) {
-        do {
+        do throws(Kernel.Directory.Create.Error) {
             try Kernel.Directory.Create.create(path.kernelPath, permissions: permissions)
         } catch {
             throw .mkdir(error)
@@ -57,7 +57,7 @@ extension File.System.Create.Directory {
     ) throws(Self.Error) {
         // Check if directory already exists
         let existsAsDirectory: Bool
-        do {
+        do throws(Kernel.File.Stats.Error) {
             let stats = try Kernel.File.Stats.get(path: path.kernelPath)
             existsAsDirectory = stats.type == .directory
         } catch {
@@ -75,13 +75,13 @@ extension File.System.Create.Directory {
         }
 
         // Now create this directory
-        do {
+        do throws(Kernel.Directory.Create.Error) {
             try Kernel.Directory.Create.create(path.kernelPath, permissions: permissions)
         } catch {
             // Check if it was created by another process/thread in the meantime
             if case .exists = error {
                 let isDir: Bool
-                do {
+                do throws(Kernel.File.Stats.Error) {
                     let stats = try Kernel.File.Stats.get(path: path.kernelPath)
                     isDir = stats.type == .directory
                 } catch {

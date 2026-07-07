@@ -10,8 +10,8 @@ import Testing
 
 // Note: Cannot use #Tests macro due to `Type` being a Swift keyword
 
-@Suite("File.System.Metadata.Kind Tests")
-struct FileSystemMetadataTypeTests {
+@Suite
+struct `File.System.Metadata.Kind Tests` {
     @Suite("Unit")
     struct Unit {
         @Test
@@ -103,8 +103,8 @@ struct FileSystemMetadataTypeTests {
         }
     }
 
-    @Suite("EdgeCase")
-    struct EdgeCase {
+    @Suite
+    struct `EdgeCase` {
         @Test
         func `invalid rawValue returns nil`() {
             #expect(File.System.Metadata.Kind(rawValue: 255) == nil)

@@ -24,7 +24,7 @@ extension File.System.Metadata.Ownership {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -105,10 +105,10 @@ extension File.System.Metadata.Ownership.Test.Unit {
         try File.Directory.temporary { dir in
             let path = dir.path / "non-existent.txt"
 
-            do {
+            do throws(File.System.Metadata.Ownership.Error) {
                 _ = try File.System.Metadata.Ownership(at: path)
                 Issue.record("Expected error for non-existent file")
-            } catch let error as File.System.Metadata.Ownership.Error {
+            } catch {
                 #expect(error.isNotFound)
             }
         }
@@ -124,10 +124,10 @@ extension File.System.Metadata.Ownership.Test.Unit {
 
                 let ownership = File.System.Metadata.Ownership(uid: 0, gid: 0)
 
-                do {
+                do throws(File.System.Metadata.Ownership.Error) {
                     try File.System.Metadata.Ownership.set(ownership, at: path)
                     Issue.record("Expected error for non-existent file")
-                } catch let error as File.System.Metadata.Ownership.Error {
+                } catch {
                     #expect(error.isNotFound)
                 }
             }

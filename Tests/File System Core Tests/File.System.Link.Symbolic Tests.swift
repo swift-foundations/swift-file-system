@@ -15,7 +15,7 @@ extension File.System.Link.Symbolic {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -100,10 +100,10 @@ extension File.System.Link.Symbolic {
                 let linkPath = dir.path / "existing.bin"
                 try File.System.Write.Atomic.write([4, 5, 6].span, to: linkPath)
 
-                do {
+                do throws(File.System.Link.Symbolic.Error) {
                     try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
                     Issue.record("Expected error for existing path")
-                } catch let error as File.System.Link.Symbolic.Error {
+                } catch {
                     #expect(error.isAlreadyExists)
                 }
             }

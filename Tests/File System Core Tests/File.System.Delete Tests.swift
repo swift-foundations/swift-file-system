@@ -15,7 +15,7 @@ extension File.System.Delete {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -136,10 +136,10 @@ extension File.System.Delete.Test.Unit {
         try File.Directory.temporary { dir in
             let missingPath = dir.path / "non-existing.txt"
 
-            do {
+            do throws(File.System.Delete.Error) {
                 try File.System.Delete.delete(at: missingPath)
                 Issue.record("Expected error for non-existing path")
-            } catch let error as File.System.Delete.Error {
+            } catch {
                 #expect(error.isNotFound)
                 #expect(!error.isPermissionDenied)
             }
@@ -153,10 +153,10 @@ extension File.System.Delete.Test.Unit {
             try File.System.Create.Directory.create(at: subdir)
             try File.System.Write.Atomic.write(Array("content".utf8), to: subdir / "file.txt")
 
-            do {
+            do throws(File.System.Delete.Error) {
                 try File.System.Delete.delete(at: subdir)
                 Issue.record("Expected error for non-empty directory")
-            } catch let error as File.System.Delete.Error {
+            } catch {
                 #expect(error.isDirectoryNotEmpty)
             }
         }

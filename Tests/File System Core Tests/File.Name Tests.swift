@@ -13,7 +13,7 @@ extension File.Name {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -244,7 +244,7 @@ extension File.Name {
 
     // MARK: - Edge Cases
 
-    extension File.Name.Test.EdgeCase {
+    extension File.Name.Test.`Edge Case` {
 
         @Test
         func `empty name`() {

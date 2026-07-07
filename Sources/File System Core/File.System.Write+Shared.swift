@@ -29,7 +29,7 @@ extension File.System.Write {
 
 extension File.System.Write {
     internal static func fileExists(_ path: File.Path) -> Bool {
-        do {
+        do throws(Kernel.File.Stats.Error) {
             _ = try Kernel.File.Stats.lget(path: path.kernelPath)
             return true
         } catch {
@@ -49,7 +49,7 @@ extension File.System.Write {
             capacity: length
         ) { buffer throws(Self.Error) -> Swift.String in
             let rawBuffer = UnsafeMutableRawBufferPointer(buffer)
-            do {
+            do throws(Random.Error) {
                 try unsafe Random.fill(rawBuffer)
             } catch {
                 throw .random("CSPRNG syscall failed: \(error)")
@@ -194,14 +194,14 @@ extension File.System.Write {
     ) throws(Self.Error) {
         switch durability {
         case .full:
-            do {
+            do throws(Kernel.File.Flush.Error) {
                 try Kernel.File.Flush.flush(fd)
             } catch {
                 throw .sync("fsync failed: \(error)")
             }
 
         case .dataOnly:
-            do {
+            do throws(Kernel.File.Flush.Error) {
                 try Kernel.File.Flush.data(fd)
             } catch {
                 throw .sync("data sync failed: \(error)")
@@ -215,7 +215,7 @@ extension File.System.Write {
     internal static func closeFile(
         _ fd: consuming Kernel.Descriptor
     ) throws(Self.Error) {
-        do {
+        do throws(Kernel.Close.Error) {
             try Kernel.Close.close(fd)
         } catch {
             throw .close("close failed: \(error)")
@@ -231,7 +231,7 @@ extension File.System.Write {
         from source: File.Path,
         to dest: File.Path
     ) throws(Self.Error) {
-        do {
+        do throws(Kernel.File.Move.Error) {
             try Kernel.File.Move.move(from: source.kernelPath, to: dest.kernelPath)
         } catch {
             throw .rename(from: source, to: dest, "\(error)")
@@ -253,7 +253,7 @@ extension File.System.Write {
         if File.System.Stat.exists(at: dest) {
             throw .exists(path: dest)
         }
-        do {
+        do throws(Kernel.File.Move.Error) {
             try Kernel.File.Move.move(from: source.kernelPath, to: dest.kernelPath)
         } catch {
             throw .rename(from: source, to: dest, "\(error)")

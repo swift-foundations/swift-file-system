@@ -165,10 +165,10 @@ import Testing
                 let filePath = dir.path / "regular.txt"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
-                do {
+                do throws(File.System.Link.Read.Target.Error) {
                     _ = try File.System.Link.Read.Target.target(of: filePath)
                     Issue.record("Expected error for non-symlink")
-                } catch let error as File.System.Link.Read.Target.Error {
+                } catch {
                     #expect(error.isNotASymlink)
                 }
             }
@@ -179,10 +179,10 @@ import Testing
             try File.Directory.temporary { dir in
                 let nonExistent = dir.path / "nonexistent"
 
-                do {
+                do throws(File.System.Link.Read.Target.Error) {
                     _ = try File.System.Link.Read.Target.target(of: nonExistent)
                     Issue.record("Expected error for non-existent path")
-                } catch let error as File.System.Link.Read.Target.Error {
+                } catch {
                     #expect(error.isNotFound)
                 }
             }

@@ -15,7 +15,7 @@ extension File.System.Link.Hard {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -113,10 +113,10 @@ extension File.System.Link.Hard {
                 let existingPath = dir.path / "non-existent.bin"
                 let linkPath = dir.path / "link.bin"
 
-                do {
+                do throws(File.System.Link.Hard.Error) {
                     try File.System.Link.Hard.create(at: linkPath, to: existingPath)
                     Issue.record("Expected error for non-existent source")
-                } catch let error as File.System.Link.Hard.Error {
+                } catch {
                     #expect(error.isSourceNotFound)
                 }
             }
@@ -131,10 +131,10 @@ extension File.System.Link.Hard {
                 try File.System.Write.Atomic.write([1, 2, 3].span, to: existingPath)
                 try File.System.Write.Atomic.write([4, 5, 6].span, to: linkPath)
 
-                do {
+                do throws(File.System.Link.Hard.Error) {
                     try File.System.Link.Hard.create(at: linkPath, to: existingPath)
                     Issue.record("Expected error for existing path")
-                } catch let error as File.System.Link.Hard.Error {
+                } catch {
                     #expect(error.isAlreadyExists)
                 }
             }

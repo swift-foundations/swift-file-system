@@ -20,30 +20,34 @@ extension File.Directory.Contents {
         internal init(stream: Kernel.Directory.Stream) {
             self._stream = stream
         }
+    }
+}
 
-        public mutating func next() -> File.Name? {
-            guard !_finished else { return nil }
+extension File.Directory.Contents.Iterator {
+    public mutating func next() -> File.Name? {
+        guard !_finished else { return nil }
 
-            do {
-                guard let entry = try _stream.next() else {
-                    _finished = true
-                    return nil
-                }
-
-                // Skip . and ..
-                if entry.isDotOrDotDot {
-                    return next()
-                }
-
-                return File.Name(from: entry)
-            } catch {
+        do throws(Kernel.Directory.Error) {
+            guard let entry = try _stream.next() else {
                 _finished = true
-                _lastError = error
                 return nil
             }
+
+            // Skip . and ..
+            if entry.isDotOrDotDot {
+                return next()
+            }
+
+            return File.Name(from: entry)
+        } catch {
+            _finished = true
+            _lastError = error
+            return nil
         }
     }
+}
 
+extension File.Directory.Contents {
     /// Creates an iterator for directory names.
     ///
     /// The caller is responsible for closing the handle via `closeIterator(_:)`.

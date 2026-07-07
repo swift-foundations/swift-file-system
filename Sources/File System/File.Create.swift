@@ -28,33 +28,35 @@ extension File {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - Touch (Sync)
+extension File.Create {
+    // MARK: - Touch (Sync)
 
-        /// Creates an empty file or updates its timestamp if it exists.
-        ///
-        /// - Returns: The file for chaining.
-        /// - Throws: `File.Handle.Open.Error<Never>` on failure.
-        @discardableResult
-        @inlinable
-        public func touch() throws(File.Handle.Open.Error<Never>) -> File {
-            try File.Handle.open(path, options: [.create]).readWrite { _ in }
-            return File(path)
-        }
+    /// Creates an empty file or updates its timestamp if it exists.
+    ///
+    /// - Returns: The file for chaining.
+    /// - Throws: `File.Handle.Open.Error<Never>` on failure.
+    @discardableResult
+    @inlinable
+    public func touch() throws(File.Handle.Open.Error<Never>) -> File {
+        try File.Handle.open(path, options: [.create]).readWrite { _ in }
+        return File(path)
+    }
 
-        // MARK: - Touch (Async)
+    // MARK: - Touch (Async)
 
-        /// Creates an empty file or updates its timestamp if it exists.
-        ///
-        /// Async variant.
-        /// - Returns: The file for chaining.
-        /// - Throws: `File.Handle.Open.Error<Never>` on failure.
-        @discardableResult
-        @inlinable
-        public func touch() async throws(File.Handle.Open.Error<Never>) -> File {
-            try File.Handle.open(path, options: [.create]).readWrite { _ in }
-            return File(path)
-        }
+    /// Creates an empty file or updates its timestamp if it exists.
+    ///
+    /// Async variant.
+    /// - Returns: The file for chaining.
+    /// - Throws: `File.Handle.Open.Error<Never>` on failure.
+    @discardableResult
+    @inlinable
+    public func touch() async throws(File.Handle.Open.Error<Never>) -> File {
+        try File.Handle.open(path, options: [.create]).readWrite { _ in }
+        return File(path)
     }
 }
 

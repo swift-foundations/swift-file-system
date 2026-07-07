@@ -10,8 +10,8 @@ import Testing
 
 // Note: Cannot use #Tests macro due to `Type` being a Swift keyword
 
-@Suite("File.Directory.Entry.Kind Tests")
-struct FileDirectoryEntryTypeTests {
+@Suite
+struct `File.Directory.Entry.Kind Tests` {
     @Suite("Unit")
     struct Unit {
         @Test
@@ -89,8 +89,8 @@ struct FileDirectoryEntryTypeTests {
         }
     }
 
-    @Suite("EdgeCase")
-    struct EdgeCase {
+    @Suite
+    struct `EdgeCase` {
         @Test
         func `invalid rawValue returns nil`() {
             #expect(File.Directory.Entry.Kind(rawValue: 255) == nil)

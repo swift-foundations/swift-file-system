@@ -17,8 +17,8 @@ import Memory_Primitives
 import Span_Raw_Primitives
 import Testing
 
-@Suite("File.System.IO — smoke tests")
-struct FileSystemIOTests {
+@Suite
+struct `File.System.IO — smoke tests` {
 
     @Test
     func `open → stat → close via blocking strategy`() async throws {

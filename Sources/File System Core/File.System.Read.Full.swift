@@ -123,7 +123,7 @@ extension File.System.Read.Full {
     ) throws(Self.Error) -> R {
         // Open file for reading
         let descriptor: Kernel.Descriptor
-        do {
+        do throws(Kernel.File.Open.Error) {
             descriptor = try Kernel.File.Open.open(
                 path: path.kernelPath,
                 mode: .read,

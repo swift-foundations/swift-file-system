@@ -41,7 +41,7 @@ extension File.System.Stat {
     /// - Returns: `true` if the path exists, `false` otherwise.
     @inlinable
     public static func exists(at path: borrowing File.Path) -> Bool {
-        do {
+        do throws(Kernel.File.Stats.Error) {
             _ = try Kernel.File.Stats.get(path: path.kernelPath)
             return true
         } catch {

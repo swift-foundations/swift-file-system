@@ -15,7 +15,7 @@ extension File.System.Move {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -160,10 +160,10 @@ extension File.System.Move.Test.Unit {
             try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
             try File.System.Write.Atomic.write([99].span, to: destPath)
 
-            do {
+            do throws(File.System.Move.Error) {
                 try File.System.Move.move(from: sourcePath, to: destPath)
                 Issue.record("Expected error for existing destination")
-            } catch let error as File.System.Move.Error {
+            } catch {
                 #expect(error.isDestinationExists)
             }
         }
@@ -177,10 +177,10 @@ extension File.System.Move.Test.Unit {
             let sourcePath = dir.path / "non-existent.bin"
             let destPath = dir.path / "dest.bin"
 
-            do {
+            do throws(File.System.Move.Error) {
                 try File.System.Move.move(from: sourcePath, to: destPath)
                 Issue.record("Expected error for non-existent source")
-            } catch let error as File.System.Move.Error {
+            } catch {
                 #expect(error.isSourceNotFound)
                 #expect(!error.isDestinationExists)
             }
@@ -196,10 +196,10 @@ extension File.System.Move.Test.Unit {
             try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
             try File.System.Write.Atomic.write([99].span, to: destPath)
 
-            do {
+            do throws(File.System.Move.Error) {
                 try File.System.Move.move(from: sourcePath, to: destPath)
                 Issue.record("Expected error for existing destination")
-            } catch let error as File.System.Move.Error {
+            } catch {
                 #expect(error.isDestinationExists)
                 #expect(!error.isSourceNotFound)
             }

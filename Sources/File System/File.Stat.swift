@@ -30,73 +30,75 @@ extension File {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - Existence Checks
+extension File.Stat {
+    // MARK: - Existence Checks
 
-        /// Returns `true` if the file exists.
-        @inlinable
-        public var exists: Bool {
-            File.System.Stat.exists(at: path)
+    /// Returns `true` if the file exists.
+    @inlinable
+    public var exists: Bool {
+        File.System.Stat.exists(at: path)
+    }
+
+    /// Returns `true` if the path is a regular file.
+    @inlinable
+    public var isFile: Bool {
+        File.System.Stat.isFile(at: path)
+    }
+
+    /// Returns `true` if the path is a directory.
+    @inlinable
+    public var isDirectory: Bool {
+        File.System.Stat.isDirectory(at: path)
+    }
+
+    /// Returns `true` if the path is a symbolic link.
+    @inlinable
+    public var isSymlink: Bool {
+        File.System.Stat.isSymlink(at: path)
+    }
+
+    // MARK: - Metadata
+
+    /// Returns file metadata information.
+    ///
+    /// - Throws: `Kernel.File.Stats.Error` on failure.
+    @inlinable
+    public var info: File.System.Metadata.Info {
+        get throws(Kernel.File.Stats.Error) {
+            try File.System.Stat.info(at: path)
         }
+    }
 
-        /// Returns `true` if the path is a regular file.
-        @inlinable
-        public var isFile: Bool {
-            File.System.Stat.isFile(at: path)
+    /// Returns the file size in bytes.
+    ///
+    /// - Throws: `Kernel.File.Stats.Error` on failure.
+    @inlinable
+    public var size: Kernel.File.Size {
+        get throws(Kernel.File.Stats.Error) {
+            try info.size
         }
+    }
 
-        /// Returns `true` if the path is a directory.
-        @inlinable
-        public var isDirectory: Bool {
-            File.System.Stat.isDirectory(at: path)
+    /// Returns the file permissions.
+    ///
+    /// - Throws: `Kernel.File.Stats.Error` on failure.
+    @inlinable
+    public var permissions: File.System.Metadata.Permissions {
+        get throws(Kernel.File.Stats.Error) {
+            try info.permissions
         }
+    }
 
-        /// Returns `true` if the path is a symbolic link.
-        @inlinable
-        public var isSymlink: Bool {
-            File.System.Stat.isSymlink(at: path)
-        }
-
-        // MARK: - Metadata
-
-        /// Returns file metadata information.
-        ///
-        /// - Throws: `Kernel.File.Stats.Error` on failure.
-        @inlinable
-        public var info: File.System.Metadata.Info {
-            get throws(Kernel.File.Stats.Error) {
-                try File.System.Stat.info(at: path)
-            }
-        }
-
-        /// Returns the file size in bytes.
-        ///
-        /// - Throws: `Kernel.File.Stats.Error` on failure.
-        @inlinable
-        public var size: Kernel.File.Size {
-            get throws(Kernel.File.Stats.Error) {
-                try info.size
-            }
-        }
-
-        /// Returns the file permissions.
-        ///
-        /// - Throws: `Kernel.File.Stats.Error` on failure.
-        @inlinable
-        public var permissions: File.System.Metadata.Permissions {
-            get throws(Kernel.File.Stats.Error) {
-                try info.permissions
-            }
-        }
-
-        /// Returns `true` if the file is empty (size is 0).
-        ///
-        /// - Throws: `Kernel.File.Stats.Error` on failure.
-        @inlinable
-        public var isEmpty: Bool {
-            get throws(Kernel.File.Stats.Error) {
-                try size.isZero
-            }
+    /// Returns `true` if the file is empty (size is 0).
+    ///
+    /// - Throws: `Kernel.File.Stats.Error` on failure.
+    @inlinable
+    public var isEmpty: Bool {
+        get throws(Kernel.File.Stats.Error) {
+            try size.isZero
         }
     }
 }

@@ -106,7 +106,7 @@ extension File.System.Write.Streaming {
         options: Options = Options()
     ) throws(Error) {
         let context = try open(path: path, options: options)
-        do {
+        do throws(Error) {
             try write(chunk: bytes, to: context)
             try commit(context)
         } catch {
@@ -192,7 +192,7 @@ extension File.System.Write.Streaming {
             }
         }
 
-        do {
+        do throws(Error) {
             try commit(context)
         } catch {
             writeError = error
@@ -211,7 +211,7 @@ extension File.System.Write.Streaming {
     ) throws(Error) -> Context {
         let pathString = Swift.String(path)
         let resolvedPath: File.Path
-        do {
+        do throws(File.Path.Error) {
             resolvedPath = try File.Path(pathString)
         } catch {
             throw .invalidPath(error)
@@ -278,7 +278,7 @@ extension File.System.Write.Streaming {
         chunk span: borrowing Swift.Span<Byte>,
         to context: borrowing Context
     ) throws(Error) {
-        do {
+        do throws(File.System.Write.Error) {
             try context.write(chunk: span)
         } catch { throw Self.Error(error) }
     }
@@ -290,7 +290,7 @@ extension File.System.Write.Streaming {
         chunk buffer: UnsafeRawBufferPointer,
         to context: borrowing Context
     ) throws(Error) {
-        do {
+        do throws(File.System.Write.Error) {
             try context.write(chunk: buffer)
         } catch { throw Self.Error(error) }
     }
@@ -300,14 +300,14 @@ extension File.System.Write.Streaming {
     public static func commit(
         _ context: borrowing Context
     ) throws(Error) {
-        do {
+        do throws(File.System.Write.Error) {
             try context.sync()
         } catch { throw Self.Error(error) }
 
         if context.isAtomic, let tempPath = context.tempPath {
             switch context.strategy {
             case .replaceExisting, .none:
-                do {
+                do throws(File.System.Write.Error) {
                     try File.System.Write.atomicRename(
                         from: tempPath,
                         to: context.resolvedPath
@@ -315,7 +315,7 @@ extension File.System.Write.Streaming {
                 } catch { throw Self.Error(error) }
 
             case .noClobber:
-                do {
+                do throws(File.System.Write.Error) {
                     try File.System.Write.atomicRenameNoClobber(
                         from: tempPath,
                         to: context.resolvedPath
@@ -324,7 +324,7 @@ extension File.System.Write.Streaming {
             }
 
             if context.durability == .full {
-                do {
+                do throws(File.System.Write.Error) {
                     try File.System.Write.syncDirectory(context.parentPath)
                 } catch {
                     if case .directory(let path, let msg) = error {
@@ -405,7 +405,7 @@ extension File.System.Write.Streaming {
             options.insert(.truncate)
         }
 
-        do {
+        do throws(Kernel.File.Open.Error) {
             return try Kernel.File.Open.open(
                 path: path.kernelPath,
                 mode: .write,
@@ -433,7 +433,7 @@ extension File.System.Write.Streaming {
             )
         }
         let random: Swift.String
-        do {
+        do throws(File.System.Write.Error) {
             random = try File.System.Write.randomToken(length: 12)
         } catch { throw Self.Error(error) }
         let tempComponent: File.Path.Component =

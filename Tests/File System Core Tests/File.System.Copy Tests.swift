@@ -19,7 +19,7 @@ extension File.System.Copy {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -244,8 +244,8 @@ extension File.System.Copy.Test.Unit {
 
     #if canImport(Darwin)
         #if canImport(Foundation)
-            @Suite("EdgeCase")
-            struct EdgeCase {
+            @Suite
+            struct `EdgeCase` {
 
                 @Test
                 func `Overwrite when destination is directory fails appropriately`() throws {
@@ -454,8 +454,8 @@ extension File.System.Copy.Test.Unit {
 
     #if os(Linux)
         #if canImport(Foundation)
-            @Suite("EdgeCase")
-            struct EdgeCase {
+            @Suite
+            struct `EdgeCase` {
 
                 // MARK: - Test 1: Partial copy_file_range handling
 

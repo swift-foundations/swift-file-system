@@ -22,7 +22,7 @@
         @Suite
         struct Test {
             @Suite struct Unit {}
-            @Suite struct EdgeCase {}
+            @Suite struct `Edge Case` {}
             @Suite struct Integration {}
             @Suite(.serialized) struct Performance {}
         }
@@ -368,7 +368,7 @@
 
     // MARK: - Edge Cases
 
-    extension File.Directory.Glob.Test.EdgeCase {
+    extension File.Directory.Glob.Test.`Edge Case` {
         @Test
         func `Match empty pattern`() throws {
             try File.Directory.temporary { dir in

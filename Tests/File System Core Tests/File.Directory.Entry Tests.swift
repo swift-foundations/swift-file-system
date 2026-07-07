@@ -13,7 +13,7 @@ extension File.Directory.Entry {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -125,7 +125,7 @@ extension File.Directory.Entry {
 
     // MARK: - Edge Cases
 
-    extension File.Directory.Entry.Test.EdgeCase {
+    extension File.Directory.Entry.Test.`Edge Case` {
         @Test
         func `entry with name containing spaces`() throws {
             let parent: File.Path = "/tmp"

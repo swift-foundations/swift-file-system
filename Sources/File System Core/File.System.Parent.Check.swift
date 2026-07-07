@@ -68,13 +68,13 @@ extension File.System.Parent.Check {
     }
 
     private static func createParent(at path: File.Path) throws(Self.Error) {
-        do {
+        do throws(File.System.Create.Directory.Error) {
             try File.System.Create.Directory.create(
                 at: path,
                 createIntermediates: true
             )
-        } catch let createError {
-            throw .creationFailed(path: path, underlying: createError)
+        } catch {
+            throw .creationFailed(path: path, underlying: error)
         }
     }
 }

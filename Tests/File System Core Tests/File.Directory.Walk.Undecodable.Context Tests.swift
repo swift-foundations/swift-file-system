@@ -12,7 +12,7 @@ extension File.Directory.Walk.Undecodable.Context {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -219,7 +219,7 @@ extension File.Directory.Walk.Undecodable.Context {
 
     // MARK: - Edge Cases
 
-    extension File.Directory.Walk.Undecodable.Context.Test.EdgeCase {
+    extension File.Directory.Walk.Undecodable.Context.Test.`Edge Case` {
 
         @Test
         func `context with root path as parent`() {

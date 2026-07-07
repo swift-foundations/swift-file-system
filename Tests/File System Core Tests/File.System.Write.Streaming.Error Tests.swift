@@ -12,7 +12,7 @@ extension File.System.Write.Streaming.Error {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -269,7 +269,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Streaming.Error.Test.EdgeCase {
+extension File.System.Write.Streaming.Error.Test.`Edge Case` {
     @Test
     func `Equatable conformance`() {
         let path: File.Path = "/tmp/test.txt"

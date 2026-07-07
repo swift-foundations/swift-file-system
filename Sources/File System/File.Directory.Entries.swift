@@ -33,30 +33,32 @@ extension File.Directory {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - callAsFunction (Primary Action)
+extension File.Directory.Entries {
+    // MARK: - callAsFunction (Primary Action)
 
-        /// Returns the contents of the directory.
-        ///
-        /// This is the primary action, accessible via `dir.entries()`.
-        ///
-        /// - Returns: An array of directory entries.
-        /// - Throws: `File.Directory.Contents.Error` on failure.
-        @inlinable
-        public func callAsFunction() throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
+    /// Returns the contents of the directory.
+    ///
+    /// This is the primary action, accessible via `dir.entries()`.
+    ///
+    /// - Returns: An array of directory entries.
+    /// - Throws: `File.Directory.Contents.Error` on failure.
+    @inlinable
+    public func callAsFunction() throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
+        try File.Directory.Contents.list(at: File.Directory(path))
+    }
+
+    /// Returns the contents of the directory.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>` on failure.
+    @inlinable
+    public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>) -> [File.Directory.Entry] {
+        let path = self.path
+        return try await Kernel.Thread.Pool.shared.run { () throws(File.Directory.Contents.Error) in
             try File.Directory.Contents.list(at: File.Directory(path))
-        }
-
-        /// Returns the contents of the directory.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>` on failure.
-        @inlinable
-        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>) -> [File.Directory.Entry] {
-            let path = self.path
-            return try await Kernel.Thread.Pool.shared.run { () throws(File.Directory.Contents.Error) in
-                try File.Directory.Contents.list(at: File.Directory(path))
-            }
         }
     }
 }

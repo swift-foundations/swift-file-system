@@ -13,8 +13,8 @@ import Testing
 
 // MARK: - Test Suite for recursive copy
 
-@Suite("File.System.Copy.recursive")
-struct CopyRecursiveTests {
+@Suite
+struct `File.System.Copy.recursive` {
     // MARK: - Basic Copy
 
     @Test

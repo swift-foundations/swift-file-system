@@ -158,7 +158,7 @@ extension File.Handle {
     ) throws(Kernel.IO.Write.Error) -> Int {
         guard unsafe !buffer.isEmpty else { return 0 }
 
-        do {
+        do throws(Kernel.IO.Write.Error) {
             return try unsafe Kernel.IO.Write.pwrite(
                 _descriptor.kernelDescriptor,
                 from: buffer,

@@ -224,7 +224,7 @@ extension File.Directory.Walk {
         // Iterate directory contents
         var walkError: File.Directory.Walk.Error?
 
-        do {
+        do throws(File.Directory.Contents.Error) {
             try File.Directory.Contents.iterate(at: directory) { entry in
                 // Filter hidden files
                 if !options.includeHidden && entry.name.isHiddenByDotPrefix {

@@ -12,7 +12,7 @@ extension File.System.Write.Atomic.Error {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -251,7 +251,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
 
 // MARK: - Edge Cases
 
-extension File.System.Write.Atomic.Error.Test.EdgeCase {
+extension File.System.Write.Atomic.Error.Test.`Edge Case` {
     @Test
     func `Error.writeFailed with zero bytes`() {
         let error = File.System.Write.Atomic.Error.writeFailed(

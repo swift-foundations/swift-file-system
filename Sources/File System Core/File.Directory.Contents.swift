@@ -231,7 +231,7 @@ extension File.Directory.Contents {
             return .other
         }
 
-        do {
+        do throws(Kernel.File.Stats.Error) {
             let stats = try Kernel.File.Stats.lget(path: entryPath.kernelPath)
             switch stats.type {
             case .regular:

@@ -22,7 +22,7 @@ extension File.System {
     @Suite
     struct Test {
         @Suite struct Unit {}
-        @Suite struct EdgeCase {}
+        @Suite struct `Edge Case` {}
         @Suite struct Integration {}
         @Suite(.serialized) struct Performance {}
     }
@@ -30,7 +30,7 @@ extension File.System {
 
 #if os(macOS) || os(Linux)
 
-    extension File.System.Test.EdgeCase {
+    extension File.System.Test.`Edge Case` {
         // MARK: - Test Fixtures
 
         private func createTempPath() -> Swift.String {
@@ -102,7 +102,7 @@ extension File.System {
         func `Empty path is rejected`() throws {
             let emptyString = ""
             var didThrow = false
-            do {
+            do throws(File.Path.Error) {
                 _ = try File.Path(emptyString)
             } catch {
                 didThrow = true
@@ -134,7 +134,7 @@ extension File.System {
             // Paths with control characters (like newlines) are rejected for safety
             let pathString = "/tmp/edge-test-with\nnewline-\(Int.random(in: (0..<Int.max)))"
             var didThrow = false
-            do {
+            do throws(File.Path.Error) {
                 _ = try File.Path(pathString)
             } catch {
                 didThrow = true
@@ -275,7 +275,7 @@ extension File.System {
 
             // Seeking to -1 from start should fail
             var didThrow = false
-            do {
+            do throws(Kernel.File.Seek.Error) {
                 _ = try handle.seek(to: -1, from: .start)
             } catch {
                 didThrow = true
@@ -646,7 +646,7 @@ extension File.System {
 
             // Move to existing destination should fail (safe API behavior)
             var didThrow = false
-            do {
+            do throws(File.System.Move.Error) {
                 try File.System.Move.move(from: srcPath, to: dstPath)
             } catch {
                 didThrow = true

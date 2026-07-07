@@ -33,34 +33,36 @@ extension File.Directory {
         internal init(_ path: File.Path) {
             self.path = path
         }
+    }
+}
 
-        // MARK: - callAsFunction (Primary Action)
+extension File.Directory.Files {
+    // MARK: - callAsFunction (Primary Action)
 
-        /// Returns all files in the directory.
-        ///
-        /// This is the primary action, accessible via `dir.files()`.
-        ///
-        /// - Returns: An array of files.
-        /// - Throws: `File.Directory.Contents.Error` on failure.
-        @inlinable
-        public func callAsFunction() throws(File.Directory.Contents.Error) -> [File] {
+    /// Returns all files in the directory.
+    ///
+    /// This is the primary action, accessible via `dir.files()`.
+    ///
+    /// - Returns: An array of files.
+    /// - Throws: `File.Directory.Contents.Error` on failure.
+    @inlinable
+    public func callAsFunction() throws(File.Directory.Contents.Error) -> [File] {
+        try File.Directory.Contents.list(at: File.Directory(path))
+            .filter { $0.type == .file }
+            .compactMap { $0.pathIfValid.map { File($0) } }
+    }
+
+    /// Returns all files in the directory.
+    ///
+    /// Async variant - runs blocking I/O on a dedicated thread pool.
+    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>` on failure.
+    @inlinable
+    public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>) -> [File] {
+        let path = self.path
+        return try await Kernel.Thread.Pool.shared.run { () throws(File.Directory.Contents.Error) in
             try File.Directory.Contents.list(at: File.Directory(path))
                 .filter { $0.type == .file }
                 .compactMap { $0.pathIfValid.map { File($0) } }
-        }
-
-        /// Returns all files in the directory.
-        ///
-        /// Async variant - runs blocking I/O on a dedicated thread pool.
-        /// - Throws: `Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>` on failure.
-        @inlinable
-        public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.Directory.Contents.Error>) -> [File] {
-            let path = self.path
-            return try await Kernel.Thread.Pool.shared.run { () throws(File.Directory.Contents.Error) in
-                try File.Directory.Contents.list(at: File.Directory(path))
-                    .filter { $0.type == .file }
-                    .compactMap { $0.pathIfValid.map { File($0) } }
-            }
         }
     }
 }
