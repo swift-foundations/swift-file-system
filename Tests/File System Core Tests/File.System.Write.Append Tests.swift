@@ -192,7 +192,6 @@ extension File.System.Write.Append.Test.Unit {
     #endif
 
     @Test
-    // swiftlint:disable:next swift_error_qualification - backtick test description, not a type reference
     func `Error description contains failure message`() {
         let error = File.System.Write.Append.Error.open(.path(.notFound))
         #expect(error.description.contains("Open failed"))
