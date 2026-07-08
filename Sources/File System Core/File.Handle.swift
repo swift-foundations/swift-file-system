@@ -118,7 +118,7 @@ extension File.Handle {
 
     /// Writes all bytes from a raw buffer, looping for partial writes.
     @inlinable
-    internal mutating func writeAll(
+    package mutating func writeAll(
         _ buffer: UnsafeRawBufferPointer
     ) throws(Kernel.IO.Write.Error) {
         var totalWritten = 0
