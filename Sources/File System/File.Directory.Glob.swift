@@ -67,7 +67,7 @@ extension File.Directory.Glob {
     /// via ``matchPaths(include:excluding:options:)-{String overload}`` and
     /// delegate here.
     @inlinable
-    internal func matchPaths(
+    package func matchPaths(
         include: [Glob.Pattern],
         excluding: [Glob.Pattern],
         options: Glob.Options
@@ -91,7 +91,7 @@ extension File.Directory.Glob {
     /// `Glob.Pattern` values SHOULD use the typed overload directly to avoid
     /// re-parsing.
     @inlinable
-    internal func matchPaths(
+    package func matchPaths(
         include: [Swift.String],
         excluding: [Swift.String],
         options: Glob.Options
