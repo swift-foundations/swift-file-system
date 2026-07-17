@@ -12,8 +12,8 @@ import Testing
 
 @Suite
 struct `File.System.Metadata.Kind Tests` {
-    @Suite("Unit")
-    struct Unit {
+    @Suite
+    struct `Unit` {
         @Test
         func `all cases are distinct`() {
             let allCases: [File.System.Metadata.Kind] = [
