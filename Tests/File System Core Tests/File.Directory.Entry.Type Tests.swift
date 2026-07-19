@@ -12,8 +12,8 @@ import Testing
 
 @Suite
 struct `File.Directory.Entry.Kind Tests` {
-    @Suite("Unit")
-    struct Unit {
+    @Suite
+    struct `Unit` {
         @Test
         func `all cases are distinct`() {
             let allCases: [File.Directory.Entry.Kind] = [.file, .directory, .symbolicLink, .other]
