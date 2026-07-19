@@ -177,3 +177,89 @@ extension File.System.Delete.Test.Unit {
         #expect(!error.isNotFound)
     }
 }
+
+// MARK: - Symlink Semantics (F-002)
+
+extension File.System.Delete.Test.`Edge Case` {
+    // Windows symlink creation requires Developer Mode or admin privileges
+    // CI runners typically don't have — see File.System.Stat Tests.swift.
+    #if !os(Windows)
+        @Test
+        func `Delete symlink to directory leaves target contents intact`() throws {
+            try File.Directory.temporary { dir in
+                let targetDir = dir.path / "target"
+                try File.System.Create.Directory.create(at: targetDir)
+                let targetFile = targetDir / "keep-me.txt"
+                try File.System.Write.Atomic.write(Array("preserved".utf8).map(Byte.init), to: targetFile)
+
+                let linkPath = dir.path / "link-to-target"
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetDir)
+
+                try File.System.Delete.delete(at: linkPath, recursive: true)
+
+                // The link itself is gone…
+                #expect(!File.System.Stat.exists(at: linkPath))
+                // …but the target directory and its contents are untouched.
+                #expect(File.System.Stat.exists(at: targetDir))
+                #expect(File.System.Stat.exists(at: targetFile))
+            }
+        }
+
+        @Test
+        func `Delete symlink to directory without recursive also leaves target intact`() throws {
+            try File.Directory.temporary { dir in
+                let targetDir = dir.path / "target"
+                try File.System.Create.Directory.create(at: targetDir)
+                let targetFile = targetDir / "keep-me.txt"
+                try File.System.Write.Atomic.write(Array("preserved".utf8).map(Byte.init), to: targetFile)
+
+                let linkPath = dir.path / "link-to-target"
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetDir)
+
+                try File.System.Delete.delete(at: linkPath)
+
+                #expect(!File.System.Stat.exists(at: linkPath))
+                #expect(File.System.Stat.exists(at: targetDir))
+                #expect(File.System.Stat.exists(at: targetFile))
+            }
+        }
+
+        @Test
+        func `Delete dangling symlink succeeds`() throws {
+            try File.Directory.temporary { dir in
+                let missingTarget = dir.path / "does-not-exist"
+                let linkPath = dir.path / "dangling-link"
+                try File.System.Link.Symbolic.create(at: linkPath, pointingTo: missingTarget)
+
+                try File.System.Delete.delete(at: linkPath)
+
+                #expect(!File.System.Stat.exists(at: linkPath))
+            }
+        }
+
+        @Test
+        func `Recursive delete of tree containing symlinks removes links not targets`() throws {
+            try File.Directory.temporary { dir in
+                let targetDir = dir.path / "outside-target"
+                try File.System.Create.Directory.create(at: targetDir)
+                let targetFile = targetDir / "keep-me.txt"
+                try File.System.Write.Atomic.write(Array("preserved".utf8).map(Byte.init), to: targetFile)
+
+                let tree = dir.path / "tree"
+                try File.System.Create.Directory.create(at: tree)
+                try File.System.Write.Atomic.write(Array("data".utf8).map(Byte.init), to: tree / "file.txt")
+
+                let linkInTree = tree / "link-to-outside"
+                try File.System.Link.Symbolic.create(at: linkInTree, pointingTo: targetDir)
+
+                try File.System.Delete.delete(at: tree, recursive: true)
+
+                // The whole tree (including the symlink entry) is gone…
+                #expect(!File.System.Stat.exists(at: tree))
+                // …but the linked-to directory outside the tree survives.
+                #expect(File.System.Stat.exists(at: targetDir))
+                #expect(File.System.Stat.exists(at: targetFile))
+            }
+        }
+    #endif
+}
