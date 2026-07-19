@@ -107,32 +107,41 @@ extension File.Handle {
     /// Writes bytes to the file.
     ///
     /// - Parameter bytes: The bytes to write.
-    /// - Throws: `Kernel.IO.Write.Error` on failure.
+    /// - Throws: `File.Handle.Error` on failure — including `.shortWrite` if
+    ///   the underlying `write()` returns `0` before all bytes are written.
     @inlinable
-    public mutating func write(_ bytes: borrowing Swift.Span<Byte>) throws(Kernel.IO.Write.Error) {
+    public mutating func write(_ bytes: borrowing Swift.Span<Byte>) throws(File.Handle.Error) {
         if bytes.count == 0 { return }
-        try unsafe bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(Kernel.IO.Write.Error) in
+        try unsafe bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(File.Handle.Error) in
             try unsafe writeAll(rawBuffer)
         }
     }
 
     /// Writes all bytes from a raw buffer, looping for partial writes.
+    ///
+    /// A `write()` call that returns `0` for a non-empty buffer is treated
+    /// as a typed failure (`.shortWrite`) — never silent truncation, never
+    /// an unbounded retry loop.
     @inlinable
     package mutating func writeAll(
         _ buffer: UnsafeRawBufferPointer
-    ) throws(Kernel.IO.Write.Error) {
+    ) throws(File.Handle.Error) {
         var totalWritten = 0
         while totalWritten < buffer.count {
             let remaining = unsafe UnsafeRawBufferPointer(
                 start: buffer.baseAddress?.advanced(by: totalWritten),
                 count: buffer.count - totalWritten
             )
-            let written = try unsafe Kernel.IO.Write.write(
-                _descriptor.kernelDescriptor,
-                from: remaining
-            )
-            guard written > 0 else { return }
-            totalWritten += written
+            let written: Int
+            do throws(Kernel.IO.Write.Error) {
+                written = try unsafe Kernel.IO.Write.write(
+                    _descriptor.kernelDescriptor,
+                    from: remaining
+                )
+            } catch {
+                throw .write(error)
+            }
+            totalWritten = try Self.advance(totalWritten: totalWritten, by: written, expected: buffer.count)
         }
     }
 
@@ -182,15 +191,19 @@ extension File.Handle {
     ///
     /// This is a convenience wrapper around `pwrite` that ensures all bytes are written.
     ///
+    /// A `pwrite()` call that returns `0` for a non-empty buffer is treated
+    /// as a typed failure (`.shortWrite`) — never silent truncation, never
+    /// an unbounded retry loop.
+    ///
     /// - Parameters:
     ///   - buffer: The bytes to write.
     ///   - offset: Absolute file offset to start writing at.
-    /// - Throws: `Kernel.IO.Write.Error` on failure.
+    /// - Throws: `File.Handle.Error` on failure.
     @usableFromInline
     package mutating func pwriteAll(
         _ buffer: UnsafeRawBufferPointer,
         at offset: Int64
-    ) throws(Kernel.IO.Write.Error) {
+    ) throws(File.Handle.Error) {
         guard unsafe !buffer.isEmpty else { return }
 
         var totalWritten = 0
@@ -201,12 +214,13 @@ extension File.Handle {
                 start: buffer.baseAddress?.advanced(by: totalWritten),
                 count: buffer.count - totalWritten
             )
-            let written = try unsafe pwrite(remaining, at: currentOffset)
-            if written == 0 {
-                // Should not happen for regular files, but guard against infinite loop
-                return
+            let written: Int
+            do throws(Kernel.IO.Write.Error) {
+                written = try unsafe pwrite(remaining, at: currentOffset)
+            } catch {
+                throw .write(error)
             }
-            totalWritten += written
+            totalWritten = try Self.advance(totalWritten: totalWritten, by: written, expected: buffer.count)
             currentOffset += Int64(written)
         }
     }

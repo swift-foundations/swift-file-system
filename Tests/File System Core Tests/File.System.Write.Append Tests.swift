@@ -197,3 +197,44 @@ extension File.System.Write.Append.Test.Unit {
         #expect(error.description.contains("Open failed"))
     }
 }
+
+// MARK: - Write-Loop Zero-Progress Handling (F-003)
+//
+// `write()` returning `0` for a non-empty buffer cannot be triggered
+// portably through a real file descriptor (POSIX regular-file semantics
+// make it effectively unreachable). This test exercises `advance` — the
+// single decision point the append write loop uses to classify a
+// syscall's return value — directly, which is the shared canonical logic
+// the fix introduced. Before the fix, an equivalent zero-progress
+// syscall result was silently ignored, spinning the retry loop forever
+// making no progress.
+
+extension File.System.Write.Append.Test.`Edge Case` {
+    @Test
+    func `advance throws shortWrite when a syscall reports zero progress`() {
+        #expect(throws: File.System.Write.Append.Error.self) {
+            _ = try File.System.Write.Append.advance(totalWritten: 2, by: 0, expected: 8)
+        }
+    }
+
+    @Test
+    func `advance shortWrite carries the written and expected byte counts`() {
+        do throws(File.System.Write.Append.Error) {
+            _ = try File.System.Write.Append.advance(totalWritten: 2, by: 0, expected: 8)
+            Issue.record("Expected .shortWrite to be thrown")
+        } catch {
+            guard case .shortWrite(let written, let expected) = error else {
+                Issue.record("Expected .shortWrite, got \(error)")
+                return
+            }
+            #expect(written == 2)
+            #expect(expected == 8)
+        }
+    }
+
+    @Test
+    func `advance accumulates progress when a syscall reports bytes written`() throws {
+        let total = try File.System.Write.Append.advance(totalWritten: 2, by: 4, expected: 8)
+        #expect(total == 6)
+    }
+}
