@@ -119,12 +119,24 @@ extension File.System.Delete {
         at path: borrowing File.Path,
         recursive: Bool = false
     ) throws(Error) {
-        // First, stat the path to determine what it is
+        // Classify the deletion root with lstat (never following symlinks):
+        // a symlink whose target is a directory must never be traversed
+        // into (it would delete the target's contents instead of the
+        // link), and a dangling symlink must still be deletable even
+        // though its target does not exist.
         let stats: Kernel.File.Stats
         do throws(Kernel.File.Stats.Error) {
-            stats = try stat(path)
+            stats = try lstat(path)
         } catch {
             throw .stat(error)
+        }
+
+        if case .link = stats.type {
+            // The path itself is a symlink. Always unlink the link, never
+            // the target — regardless of `recursive`, regardless of what
+            // (or whether) it points at.
+            try unlink(at: path)
+            return
         }
 
         let isDirectory = stats.type == .directory
@@ -142,10 +154,10 @@ extension File.System.Delete {
         }
     }
 
-    /// Stats a path using Kernel.File.Stats.
+    /// Stats a path without following symlinks, using Kernel.File.Stats.
     @usableFromInline
-    internal static func stat(_ path: File.Path) throws(Kernel.File.Stats.Error) -> Kernel.File.Stats {
-        try Kernel.File.Stats.get(path: path.kernelPath)
+    internal static func lstat(_ path: File.Path) throws(Kernel.File.Stats.Error) -> Kernel.File.Stats {
+        try Kernel.File.Stats.lget(path: path.kernelPath)
     }
 
     /// Removes a file using Kernel.File.Delete.
