@@ -118,11 +118,13 @@ extension File.Directory.Walk {
         body: (File.Directory.Entry) -> File.Directory.Contents.Control
     ) throws(Self.Error) {
         var visited: Set<InodeKey> = []
+        var stopped = false
         try Self.walkCallback(
             at: File.Directory(path),
             options: options,
             depth: 0,
             visited: &visited,
+            stopped: &stopped,
             body: body
         )
     }
@@ -204,8 +206,15 @@ extension File.Directory.Walk {
         options: Options,
         depth: Int,
         visited: inout Set<InodeKey>,
+        stopped: inout Bool,
         body: (File.Directory.Entry) -> File.Directory.Contents.Control
     ) throws(Self.Error) {
+        // A nested level already signaled early exit (`.break`) — do not
+        // descend into further siblings or subdirectories at this level.
+        if stopped {
+            return
+        }
+
         // Check depth limit
         if let maxDepth = options.maxDepth, depth > maxDepth {
             return
@@ -238,6 +247,7 @@ extension File.Directory.Walk {
                         break
 
                     case .break:
+                        stopped = true
                         return .break
                     }
 
@@ -250,10 +260,14 @@ extension File.Directory.Walk {
                                 options: options,
                                 depth: depth + 1,
                                 visited: &visited,
+                                stopped: &stopped,
                                 body: body
                             )
                         } catch {
                             walkError = error
+                            return .break
+                        }
+                        if stopped {
                             return .break
                         }
                     } else if entry.type == .symbolicLink && options.followSymlinks {
@@ -273,10 +287,14 @@ extension File.Directory.Walk {
                                     options: options,
                                     depth: depth + 1,
                                     visited: &visited,
+                                    stopped: &stopped,
                                     body: body
                                 )
                             } catch {
                                 walkError = error
+                                return .break
+                            }
+                            if stopped {
                                 return .break
                             }
                         }
@@ -299,6 +317,7 @@ extension File.Directory.Walk {
                             break
 
                         case .break:
+                            stopped = true
                             return .break
                         }
 
