@@ -345,5 +345,83 @@ extension File.Directory.Walk {
                 }
             }
         }
+
+        // MARK: - `.break` propagation across recursion (F-001)
+        //
+        // Both trees below are symmetric by construction (two sibling
+        // subdirectories, each holding exactly one file) precisely so the
+        // assertions hold regardless of which sibling `Kernel.Directory`
+        // enumeration visits first — directory entry order is not
+        // guaranteed by POSIX. Whichever subdirectory is visited first,
+        // `.break` fired from inside it must stop the ENTIRE walk before
+        // the other subdirectory is ever touched.
+
+        @Test
+        func `break at depth 1 stops the entire walk, not just its level`() throws {
+            try File.Directory.temporary { dir in
+                let subdirX = dir.path / "subdirX"
+                let subdirY = dir.path / "subdirY"
+                try File.System.Create.Directory.create(at: subdirX)
+                try File.System.Create.Directory.create(at: subdirY)
+                let h1 = try File.Handle.open(subdirX / "fileX.txt", mode: .write, options: [.create, .execClose])
+                try h1.close()
+                let h2 = try File.Handle.open(subdirY / "fileY.txt", mode: .write, options: [.create, .execClose])
+                try h2.close()
+
+                var visited: [Swift.String] = []
+                try dir.walk.iterate { entry in
+                    visited.append(Swift.String(entry.name) ?? "?")
+                    if entry.type == .directory {
+                        return .continue
+                    }
+                    // Break the instant we see a file — whichever
+                    // subdirectory got there first, at depth 1.
+                    return .break
+                }
+
+                // Exactly one directory entry and its one file were
+                // visited: the directory that was entered, plus the file
+                // that triggered `.break`. The sibling subdirectory (and
+                // its file) must never have been touched.
+                #expect(visited.count == 2)
+            }
+        }
+
+        @Test
+        func `throwing body in nested directory stops the entire walk, not just its level`() throws {
+            try File.Directory.temporary { dir in
+                let subdirX = dir.path / "subdirX"
+                let subdirY = dir.path / "subdirY"
+                try File.System.Create.Directory.create(at: subdirX)
+                try File.System.Create.Directory.create(at: subdirY)
+                let h1 = try File.Handle.open(subdirX / "poisonX.txt", mode: .write, options: [.create, .execClose])
+                try h1.close()
+                let h2 = try File.Handle.open(subdirY / "poisonY.txt", mode: .write, options: [.create, .execClose])
+                try h2.close()
+
+                struct Poison: Swift.Error {}
+
+                var callCount = 0
+                do {
+                    try dir.walk.iterate { (entry: File.Directory.Entry) throws(Poison) -> File.Directory.Contents.Control in
+                        callCount += 1
+                        if entry.type == .directory {
+                            return .continue
+                        }
+                        throw Poison()
+                    }
+                    Issue.record("Expected the walk to propagate the thrown error")
+                } catch {
+                    // Expected: the throwing body aborts the walk.
+                }
+
+                // The body must be called exactly twice: the directory
+                // that was entered, and the file inside it that threw.
+                // The sibling subdirectory's file must never be visited —
+                // the walk must not keep calling the body after it has
+                // already asked to abort.
+                #expect(callCount == 2)
+            }
+        }
     }
 #endif
