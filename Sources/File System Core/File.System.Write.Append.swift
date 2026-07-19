@@ -25,6 +25,9 @@ extension File.System.Write.Append {
         case open(Kernel.File.Open.Error)
         /// Error from write operation.
         case write(Kernel.IO.Write.Error)
+        /// The write loop made no progress: `write()` returned `0` bytes
+        /// for a non-empty buffer before `expected` bytes were written.
+        case shortWrite(written: Int, expected: Int)
     }
 }
 
@@ -89,7 +92,40 @@ extension File.System.Write.Append.Error {
         case .write(let e):
             if case .platform(let p) = e, p.code.isNoSpace { return true }
             return false
+
+        case .shortWrite:
+            return false
         }
+    }
+}
+
+// MARK: - Write-Loop Progress
+
+extension File.System.Write.Append {
+    /// Advances the append write-loop's progress counter after one syscall
+    /// attempt.
+    ///
+    /// This is the single decision point the append write loop uses: a
+    /// syscall that reports `0` bytes written for a non-empty remaining
+    /// region is always a typed failure — never silently ignored (which
+    /// would spin the retry loop forever making no progress).
+    ///
+    /// - Parameters:
+    ///   - totalWritten: Bytes written so far, before this syscall attempt.
+    ///   - writtenThisCall: Bytes reported written by this syscall attempt.
+    ///   - expected: Total bytes the loop is trying to write.
+    /// - Returns: The updated `totalWritten`.
+    /// - Throws: `.shortWrite(written:expected:)` if `writtenThisCall == 0`.
+    @usableFromInline
+    internal static func advance(
+        totalWritten: Int,
+        by writtenThisCall: Int,
+        expected: Int
+    ) throws(Self.Error) -> Int {
+        guard writtenThisCall > 0 else {
+            throw .shortWrite(written: totalWritten, expected: expected)
+        }
+        return totalWritten + writtenThisCall
     }
 }
 
@@ -128,31 +164,29 @@ extension File.System.Write.Append {
         if bytes.count == 0 { return }
 
         // Write all bytes
-        do throws(Kernel.IO.Write.Error) {
-            try unsafe bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(Kernel.IO.Write.Error) in
-                try unsafe writeAll(descriptor, from: rawBuffer)
-            }
-        } catch {
-            throw .write(error)
+        try unsafe bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(Self.Error) in
+            try unsafe writeAll(descriptor, from: rawBuffer)
         }
     }
 
     /// Writes all bytes from a raw buffer, looping for partial writes with EINTR retry.
+    ///
+    /// A `write()` call that returns `0` for a non-empty buffer is treated
+    /// as a typed failure (`.shortWrite`) — never silently dropped (which
+    /// would spin the `while` loop forever making no progress).
     private static func writeAll(
         _ descriptor: borrowing Kernel.Descriptor,
         from buffer: UnsafeRawBufferPointer
-    ) throws(Kernel.IO.Write.Error) {
+    ) throws(Self.Error) {
         var totalWritten = 0
         while totalWritten < buffer.count {
             let slice = unsafe UnsafeRawBufferPointer(
                 start: buffer.baseAddress?.advanced(by: totalWritten),
                 count: buffer.count - totalWritten
             )
+            let written: Int
             do throws(Kernel.IO.Write.Error) {
-                let written = try unsafe Kernel.IO.Write.write(descriptor, from: slice)
-                if written > 0 {
-                    totalWritten += written
-                }
+                written = try unsafe Kernel.IO.Write.write(descriptor, from: slice)
             } catch {
                 // Check for EINTR (interrupted) - retry. POSIX vocabulary;
                 // Windows syscalls are not interruptible in the signal sense.
@@ -163,8 +197,9 @@ extension File.System.Write.Append {
                         continue
                     }
                 #endif
-                throw error
+                throw .write(error)
             }
+            totalWritten = try Self.advance(totalWritten: totalWritten, by: written, expected: buffer.count)
         }
     }
 }
@@ -200,6 +235,9 @@ extension File.System.Write.Append.Error: CustomStringConvertible {
 
         case .write(let error):
             return "Write failed: \(error)"
+
+        case .shortWrite(let written, let expected):
+            return "Short write: wrote \(written) of \(expected) bytes, write() returned 0"
         }
     }
 }

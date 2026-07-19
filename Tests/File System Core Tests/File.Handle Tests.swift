@@ -469,3 +469,43 @@ extension File.Handle.Test.Unit {
     }
 
 }
+
+// MARK: - Write-Loop Zero-Progress Handling (F-003)
+//
+// `write()` returning `0` for a non-empty buffer cannot be triggered
+// portably through a real file descriptor (POSIX regular-file semantics
+// make it effectively unreachable). These tests exercise `advance` — the
+// single decision point `writeAll`/`pwriteAll` share for classifying a
+// syscall's return value — directly, which is the shared canonical logic
+// the fix introduced.
+
+extension File.Handle.Test.`Edge Case` {
+    @Test
+    func `advance throws shortWrite when a syscall reports zero progress`() {
+        #expect(throws: File.Handle.Error.self) {
+            _ = try File.Handle.advance(totalWritten: 3, by: 0, expected: 10)
+        }
+    }
+
+    @Test
+    func `advance shortWrite carries the written and expected byte counts`() {
+        do throws(File.Handle.Error) {
+            _ = try File.Handle.advance(totalWritten: 3, by: 0, expected: 10)
+            Issue.record("Expected .shortWrite to be thrown")
+        } catch {
+            guard case .shortWrite(let written, let expected) = error else {
+                Issue.record("Expected .shortWrite, got \(error)")
+                return
+            }
+            #expect(written == 3)
+            #expect(expected == 10)
+            #expect(error.isShortWrite)
+        }
+    }
+
+    @Test
+    func `advance accumulates progress when a syscall reports bytes written`() throws {
+        let total = try File.Handle.advance(totalWritten: 3, by: 4, expected: 10)
+        #expect(total == 7)
+    }
+}
