@@ -126,7 +126,9 @@ extension File.System.Write.Atomic {
             // CRITICAL: After renamedPublished, NEVER unlink destination!
             if phase < .renamedPublished {
                 do throws(Kernel.File.Delete.Error) {
-                    try Kernel.File.Delete.delete(tempPath.kernelPath)
+                    try tempPath.withKernelPath { kernelPath throws(Kernel.File.Delete.Error) in
+                        try Kernel.File.Delete.delete(kernelPath)
+                    }
                 } catch {
                     // Best-effort cleanup; ignore failures.
                 }
@@ -211,7 +213,9 @@ extension File.System.Write.Atomic {
         _ path: File.Path
     ) -> Kernel.File.Stats? {
         do throws(Kernel.File.Stats.Error) {
-            return try Kernel.File.Stats.lget(path: path.kernelPath)
+            return try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.lget(path: kernelPath)
+            }
         } catch {
             return nil
         }
@@ -253,12 +257,19 @@ extension File.System.Write.Atomic {
             let tempPath = parent.appending(tempComponent)
 
             do throws(Kernel.File.Open.Error) {
-                let fd = try Kernel.File.Open.open(
-                    path: tempPath.kernelPath,
-                    mode: .readWrite,
-                    options: [.create, .exclusive],
-                    permissions: .ownerReadWrite
-                )
+                // Non-optional `var` storage, not a closure return:
+                // `Kernel.Descriptor` is `~Copyable`, and `withKernelPath`'s
+                // generic `R` requires Copyable, so the opened descriptor
+                // cannot flow out as the closure's result.
+                var fd: Kernel.Descriptor = .invalid
+                try tempPath.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
+                    fd = try Kernel.File.Open.open(
+                        path: kernelPath,
+                        mode: .readWrite,
+                        options: [.create, .exclusive],
+                        permissions: .ownerReadWrite
+                    )
+                }
                 return TempFile(descriptor: fd, path: tempPath)
             } catch {
                 if case .path(.exists) = error,

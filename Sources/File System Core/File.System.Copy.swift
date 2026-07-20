@@ -43,6 +43,10 @@ extension File.System.Copy {
         to destination: borrowing File.Path,
         options: Options = .init()
     ) throws(Error) {
-        try Kernel.File.Copy.copy(from: source.kernelPath, to: destination.kernelPath, options: options)
+        try source.withKernelPath { sourceKernelPath throws(Error) in
+            try destination.withKernelPath { destinationKernelPath throws(Error) in
+                try Kernel.File.Copy.copy(from: sourceKernelPath, to: destinationKernelPath, options: options)
+            }
+        }
     }
 }

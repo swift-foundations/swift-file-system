@@ -98,14 +98,18 @@ extension File.System.Metadata.Ownership {
             // File.System.Metadata.Permissions.init(at:)) so a nonexistent
             // path throws like POSIX instead of silently synthesizing (0, 0).
             do throws(Kernel.File.Stats.Error) {
-                _ = try Kernel.File.Stats.get(path: path.kernelPath)
+                _ = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                    try Kernel.File.Stats.get(path: kernelPath)
+                }
             } catch {
                 throw .stat(error)
             }
             self.init(uid: 0, gid: 0)
         #else
             do throws(Kernel.File.Stats.Error) {
-                let stats = try Kernel.File.Stats.get(path: path.kernelPath)
+                let stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                    try Kernel.File.Stats.get(path: kernelPath)
+                }
                 self.init(uid: stats.uid, gid: stats.gid)
             } catch {
                 throw .stat(error)
@@ -134,11 +138,13 @@ extension File.System.Metadata.Ownership {
         // semantics for platforms without real ownership — this L3 domain
         // layer no longer special-cases Windows here.
         do throws(Kernel.File.Chown.Error) {
-            try Kernel.File.Chown.chown(
-                path: path.kernelPath,
-                uid: ownership.uid,
-                gid: ownership.gid
-            )
+            try path.withKernelPath { kernelPath throws(Kernel.File.Chown.Error) in
+                try Kernel.File.Chown.chown(
+                    path: kernelPath,
+                    uid: ownership.uid,
+                    gid: ownership.gid
+                )
+            }
         } catch {
             throw .chown(error)
         }

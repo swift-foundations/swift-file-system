@@ -23,12 +23,21 @@ extension Kernel.Thread.Actor {
         mode: Kernel.File.Open.Mode
     ) throws(File.System.IO.Error) -> Kernel.Descriptor {
         do throws(Kernel.File.Open.Error) {
-            return try Kernel.File.Open.open(
-                path: path.kernelPath,
-                mode: mode,
-                options: [.execClose],
-                permissions: Kernel.File.Permissions(rawValue: 0)
-            )
+            // Non-optional `var` storage, not a closure return: `Kernel.Descriptor`
+            // is `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
+            // so the opened descriptor cannot flow out as the closure's result.
+            // Matches the established `.invalid`-sentinel pattern (see
+            // `File.System.Write.Append.append`) rather than an `Optional` + `take()`.
+            var descriptor: Kernel.Descriptor = .invalid
+            try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
+                descriptor = try Kernel.File.Open.open(
+                    path: kernelPath,
+                    mode: mode,
+                    options: [.execClose],
+                    permissions: Kernel.File.Permissions(rawValue: 0)
+                )
+            }
+            return descriptor
         } catch {
             throw .open(error)
         }
@@ -39,7 +48,9 @@ extension Kernel.Thread.Actor {
         _ path: borrowing File.Path
     ) throws(File.System.IO.Error) -> Kernel.File.Stats {
         do throws(Kernel.File.Stats.Error) {
-            return try Kernel.File.Stats.get(path: path.kernelPath)
+            return try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.get(path: kernelPath)
+            }
         } catch {
             throw .stat(error)
         }

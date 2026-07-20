@@ -46,7 +46,9 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) where Chunks.Element == [Byte] {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try Self.write(chunks, to: path.kernelPath, options: options)
+        try path.withKernelPath { kernelPath throws(Error) in
+            try Self.write(chunks, to: kernelPath, options: options)
+        }
     }
 }
 
@@ -69,7 +71,9 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try Self.write(bytes, to: path.kernelPath, options: options)
+        try path.withKernelPath { kernelPath throws(Error) in
+            try Self.write(bytes, to: kernelPath, options: options)
+        }
     }
 
     /// Writes a byte slice to a file path (zero-copy when contiguous).
@@ -94,8 +98,16 @@ extension File.System.Write.Streaming {
 
         let wasContiguous = unsafe bytes.withContiguousStorageIfAvailable { buffer -> Bool in
             do throws(Error) {
-                let kp = path.kernelPath
-                let context = try Self.open(path: kp, options: options)
+                // Non-optional-turned-`Optional` + `take()` once: `Context` is
+                // `~Copyable`, and `withKernelPath`'s generic `R` requires
+                // Copyable, so the opened context cannot flow out as the
+                // closure's result directly (unlike `Kernel.Descriptor`,
+                // `Context` has no `.invalid` sentinel to pre-seed a `var`).
+                var contextStorage: Context? = nil
+                try path.withKernelPath { kernelPath throws(Error) in
+                    contextStorage = try Self.open(path: kernelPath, options: options)
+                }
+                let context = contextStorage.take()!
                 var succeeded = false
                 defer {
                     if !succeeded {
@@ -141,7 +153,9 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try Self.write(bytes, to: path.kernelPath, options: options)
+        try path.withKernelPath { kernelPath throws(Error) in
+            try Self.write(bytes, to: kernelPath, options: options)
+        }
     }
 }
 
@@ -169,7 +183,9 @@ extension File.System.Write.Streaming {
         fill: (inout [Byte]) throws(E) -> Int
     ) throws(Error) {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        try Self.write(to: path.kernelPath, options: options, using: &buffer, fill: fill)
+        try path.withKernelPath { kernelPath throws(Error) in
+            try Self.write(to: kernelPath, options: options, using: &buffer, fill: fill)
+        }
     }
 }
 
@@ -192,7 +208,15 @@ extension File.System.Write.Streaming {
         createIntermediates: Bool = false
     ) throws(Error) -> Context {
         try ensureParent(for: path, createIntermediates: createIntermediates)
-        return try Self.open(path: path.kernelPath, options: options)
+        // Non-optional-turned-`Optional` + `take()` once: `Context` is
+        // `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
+        // so the opened context cannot flow out as the closure's result
+        // directly.
+        var contextStorage: Context? = nil
+        try path.withKernelPath { kernelPath throws(Error) in
+            contextStorage = try Self.open(path: kernelPath, options: options)
+        }
+        return contextStorage.take()!
     }
 
 }

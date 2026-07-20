@@ -133,7 +133,9 @@ extension File.System.Metadata.Permissions {
         // attribute → execute bits), so the placeholder .defaultFile
         // short-circuit is retired.
         do throws(Kernel.File.Stats.Error) {
-            let stats = try Kernel.File.Stats.get(path: path.kernelPath)
+            let stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.get(path: kernelPath)
+            }
             self.init(rawValue: stats.permissions.rawValue)
         } catch {
             throw .stat(error)
@@ -159,10 +161,12 @@ extension File.System.Metadata.Permissions {
             return
         #else
             do throws(Kernel.File.Attributes.Error) {
-                try Kernel.File.Attributes.set(
-                    Kernel.File.Permissions(rawValue: permissions.rawValue),
-                    at: path.kernelPath
-                )
+                try path.withKernelPath { kernelPath throws(Kernel.File.Attributes.Error) in
+                    try Kernel.File.Attributes.set(
+                        Kernel.File.Permissions(rawValue: permissions.rawValue),
+                        at: kernelPath
+                    )
+                }
             } catch {
                 throw .chmod(error)
             }

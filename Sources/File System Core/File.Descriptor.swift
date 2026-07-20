@@ -84,12 +84,18 @@ extension File.Descriptor {
         mode: Kernel.File.Open.Mode,
         options: Kernel.File.Open.Options = [.execClose]
     ) throws(Kernel.File.Open.Error) -> File.Descriptor {
-        let descriptor = try Kernel.File.Open.open(
-            path: path.kernelPath,
-            mode: mode,
-            options: options,
-            permissions: Kernel.File.Permissions(rawValue: 0o644)
-        )
+        // Non-optional `var` storage, not a closure return: `Kernel.Descriptor`
+        // is `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
+        // so the opened descriptor cannot flow out as the closure's result.
+        var descriptor: Kernel.Descriptor = .invalid
+        try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
+            descriptor = try Kernel.File.Open.open(
+                path: kernelPath,
+                mode: mode,
+                options: options,
+                permissions: Kernel.File.Permissions(rawValue: 0o644)
+            )
+        }
         return File.Descriptor(__unchecked: descriptor)
     }
 

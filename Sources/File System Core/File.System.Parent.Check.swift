@@ -32,7 +32,9 @@ extension File.System.Parent.Check {
     ) throws(Self.Error) {
         let stats: Kernel.File.Stats
         do throws(Kernel.File.Stats.Error) {
-            stats = try Kernel.File.Stats.get(path: path.kernelPath)
+            stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.get(path: kernelPath)
+            }
         } catch {
             // Map Kernel.File.Stats.Error to Parent.Check.Error
             switch error {

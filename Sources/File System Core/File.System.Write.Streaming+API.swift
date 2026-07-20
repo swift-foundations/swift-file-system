@@ -345,7 +345,9 @@ extension File.System.Write.Streaming {
     public static func cleanup(_ context: borrowing Context) {
         if let tempPath = context.tempPath {
             do throws(Kernel.File.Delete.Error) {
-                try Kernel.File.Delete.delete(tempPath.kernelPath)
+                try tempPath.withKernelPath { kernelPath throws(Kernel.File.Delete.Error) in
+                    try Kernel.File.Delete.delete(kernelPath)
+                }
             } catch {
                 // Best-effort cleanup; ignore failures.
             }
@@ -406,12 +408,20 @@ extension File.System.Write.Streaming {
         }
 
         do throws(Kernel.File.Open.Error) {
-            return try Kernel.File.Open.open(
-                path: path.kernelPath,
-                mode: .write,
-                options: options,
-                permissions: .standard
-            )
+            // Non-optional `var` storage, not a closure return:
+            // `Kernel.Descriptor` is `~Copyable`, and `withKernelPath`'s
+            // generic `R` requires Copyable, so the opened descriptor
+            // cannot flow out as the closure's result.
+            var descriptor: Kernel.Descriptor = .invalid
+            try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
+                descriptor = try Kernel.File.Open.open(
+                    path: kernelPath,
+                    mode: .write,
+                    options: options,
+                    permissions: .standard
+                )
+            }
+            return descriptor
         } catch {
             throw .fileCreationFailed(
                 path: path,
