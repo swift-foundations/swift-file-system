@@ -44,7 +44,9 @@ extension File.System.Create.Directory {
         permissions: Kernel.File.Permissions
     ) throws(Self.Error) {
         do throws(Kernel.Directory.Create.Error) {
-            try Kernel.Directory.Create.create(path.kernelPath, permissions: permissions)
+            try path.withKernelPath { kernelPath throws(Kernel.Directory.Create.Error) in
+                try Kernel.Directory.Create.create(kernelPath, permissions: permissions)
+            }
         } catch {
             throw .mkdir(error)
         }
@@ -58,7 +60,9 @@ extension File.System.Create.Directory {
         // Check if directory already exists
         let existsAsDirectory: Bool
         do throws(Kernel.File.Stats.Error) {
-            let stats = try Kernel.File.Stats.get(path: path.kernelPath)
+            let stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.get(path: kernelPath)
+            }
             existsAsDirectory = stats.type == .directory
         } catch {
             // Path doesn't exist or error occurred, that's fine
@@ -76,13 +80,17 @@ extension File.System.Create.Directory {
 
         // Now create this directory
         do throws(Kernel.Directory.Create.Error) {
-            try Kernel.Directory.Create.create(path.kernelPath, permissions: permissions)
+            try path.withKernelPath { kernelPath throws(Kernel.Directory.Create.Error) in
+                try Kernel.Directory.Create.create(kernelPath, permissions: permissions)
+            }
         } catch {
             // Check if it was created by another process/thread in the meantime
             if case .exists = error {
                 let isDir: Bool
                 do throws(Kernel.File.Stats.Error) {
-                    let stats = try Kernel.File.Stats.get(path: path.kernelPath)
+                    let stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                        try Kernel.File.Stats.get(path: kernelPath)
+                    }
                     isDir = stats.type == .directory
                 } catch {
                     isDir = false

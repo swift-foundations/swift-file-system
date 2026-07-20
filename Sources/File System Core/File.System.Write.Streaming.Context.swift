@@ -20,7 +20,7 @@ extension File.System.Write.Streaming {
     /// ## Usage
     ///
     /// ```swift
-    /// let context = try File.System.Write.Streaming.open(path: kernelPath, options: options)
+    /// let context = try File.System.Write.Streaming.open(path: path, options: options)
     /// try File.System.Write.Streaming.write(chunk: span, to: context)
     /// try File.System.Write.Streaming.commit(context)
     /// ```

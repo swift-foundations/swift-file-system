@@ -95,7 +95,9 @@ extension File.System.Link.Read.Target {
         // First check if it's a symlink using lstat (doesn't follow symlinks)
         let stats: Kernel.File.Stats
         do throws(Kernel.File.Stats.Error) {
-            stats = try Kernel.File.Stats.lget(path: path.kernelPath)
+            stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.lget(path: kernelPath)
+            }
         } catch {
             throw .stat(error)
         }
@@ -107,8 +109,10 @@ extension File.System.Link.Read.Target {
         // Read the symlink target
         let targetString: Swift.String
         do throws(Kernel.Link.Symbolic.Error) {
-            let kernelString = try Kernel.Link.Symbolic.readTarget(at: path.kernelPath)
-            targetString = Swift.String(kernelString.view)
+            targetString = try path.withKernelPath { kernelPath throws(Kernel.Link.Symbolic.Error) in
+                let kernelString = try Kernel.Link.Symbolic.readTarget(at: kernelPath)
+                return Swift.String(kernelString.view)
+            }
         } catch {
             throw .readlink(error)
         }

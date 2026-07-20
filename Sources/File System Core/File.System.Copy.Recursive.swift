@@ -209,8 +209,10 @@ extension File.System.Copy {
             // Read the symlink target using Kernel API
             let target: Swift.String
             do throws(Kernel.Link.Symbolic.Error) {
-                let kernelString = try Kernel.Link.Symbolic.readTarget(at: source.kernelPath)
-                target = Swift.String(kernelString.view)
+                target = try source.withKernelPath { sourceKernelPath throws(Kernel.Link.Symbolic.Error) in
+                    let kernelString = try Kernel.Link.Symbolic.readTarget(at: sourceKernelPath)
+                    return Swift.String(kernelString.view)
+                }
             } catch {
                 throw .operation("symlink read failed: \(error)")
             }
@@ -223,7 +225,11 @@ extension File.System.Copy {
                 } catch {
                     throw Kernel.Link.Symbolic.Error.notFound
                 }
-                try Kernel.Link.Symbolic.create(target: targetPath.kernelPath, at: destination.kernelPath)
+                try targetPath.withKernelPath { targetKernelPath throws(Kernel.Link.Symbolic.Error) in
+                    try destination.withKernelPath { destinationKernelPath throws(Kernel.Link.Symbolic.Error) in
+                        try Kernel.Link.Symbolic.create(target: targetKernelPath, at: destinationKernelPath)
+                    }
+                }
             } catch {
                 throw .operation("symlink create failed: \(error)")
             }
@@ -267,7 +273,9 @@ extension File.System.Copy {
             // Set destination permissions using Kernel API
             do throws(Kernel.File.Attributes.Error) {
                 let kernelPermissions = Kernel.File.Permissions(rawValue: sourceInfo.permissions.rawValue)
-                try Kernel.File.Attributes.set(kernelPermissions, at: destination.kernelPath)
+                try destination.withKernelPath { destinationKernelPath throws(Kernel.File.Attributes.Error) in
+                    try Kernel.File.Attributes.set(kernelPermissions, at: destinationKernelPath)
+                }
             } catch {
                 // Best effort - ignore errors
             }
@@ -290,11 +298,13 @@ extension File.System.Copy {
 
             // Set destination timestamps using Kernel API
             do throws(Kernel.File.Times.Error) {
-                try Kernel.File.Times.set(
-                    access: sourceInfo.accessTime,
-                    modification: sourceInfo.modificationTime,
-                    at: destination.kernelPath
-                )
+                try destination.withKernelPath { destinationKernelPath throws(Kernel.File.Times.Error) in
+                    try Kernel.File.Times.set(
+                        access: sourceInfo.accessTime,
+                        modification: sourceInfo.modificationTime,
+                        at: destinationKernelPath
+                    )
+                }
             } catch {
                 // Best effort - ignore errors
             }

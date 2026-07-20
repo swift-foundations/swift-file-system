@@ -30,7 +30,9 @@ extension File.System.Write {
 extension File.System.Write {
     internal static func fileExists(_ path: File.Path) -> Bool {
         do throws(Kernel.File.Stats.Error) {
-            _ = try Kernel.File.Stats.lget(path: path.kernelPath)
+            _ = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.lget(path: kernelPath)
+            }
             return true
         } catch {
             return false
@@ -232,7 +234,11 @@ extension File.System.Write {
         to dest: File.Path
     ) throws(Self.Error) {
         do throws(Kernel.File.Move.Error) {
-            try Kernel.File.Move.move(from: source.kernelPath, to: dest.kernelPath)
+            try source.withKernelPath { sourceKernelPath throws(Kernel.File.Move.Error) in
+                try dest.withKernelPath { destKernelPath throws(Kernel.File.Move.Error) in
+                    try Kernel.File.Move.move(from: sourceKernelPath, to: destKernelPath)
+                }
+            }
         } catch {
             throw .rename(from: source, to: dest, "\(error)")
         }
@@ -254,7 +260,11 @@ extension File.System.Write {
             throw .exists(path: dest)
         }
         do throws(Kernel.File.Move.Error) {
-            try Kernel.File.Move.move(from: source.kernelPath, to: dest.kernelPath)
+            try source.withKernelPath { sourceKernelPath throws(Kernel.File.Move.Error) in
+                try dest.withKernelPath { destKernelPath throws(Kernel.File.Move.Error) in
+                    try Kernel.File.Move.move(from: sourceKernelPath, to: destKernelPath)
+                }
+            }
         } catch {
             throw .rename(from: source, to: dest, "\(error)")
         }
@@ -268,12 +278,19 @@ extension File.System.Write {
             _ = path
         #else
             do {
-                let fd = try Kernel.File.Open.open(
-                    path: path.kernelPath,
-                    mode: .read,
-                    options: [.execClose],
-                    permissions: .none
-                )
+                // Non-optional `var` storage, not a closure return:
+                // `Kernel.Descriptor` is `~Copyable`, and `withKernelPath`'s
+                // generic `R` requires Copyable, so the opened descriptor
+                // cannot flow out as the closure's result.
+                var fd: Kernel.Descriptor = .invalid
+                try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
+                    fd = try Kernel.File.Open.open(
+                        path: kernelPath,
+                        mode: .read,
+                        options: [.execClose],
+                        permissions: .none
+                    )
+                }
                 try Kernel.File.Flush.flush(fd)
                 // fd closes via deinit at end of scope
             } catch {

@@ -122,14 +122,19 @@ extension File.System.Read.Full {
         body: (Swift.Span<Byte>) -> R
     ) throws(Self.Error) -> R {
         // Open file for reading
-        let descriptor: Kernel.Descriptor
+        // Non-optional `var` storage, not a closure return: `Kernel.Descriptor`
+        // is `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
+        // so the opened descriptor cannot flow out as the closure's result.
+        var descriptor: Kernel.Descriptor = .invalid
         do throws(Kernel.File.Open.Error) {
-            descriptor = try Kernel.File.Open.open(
-                path: path.kernelPath,
-                mode: .read,
-                options: [],
-                permissions: Kernel.File.Permissions(rawValue: 0)
-            )
+            try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
+                descriptor = try Kernel.File.Open.open(
+                    path: kernelPath,
+                    mode: .read,
+                    options: [],
+                    permissions: Kernel.File.Permissions(rawValue: 0)
+                )
+            }
         } catch {
             throw .open(error)
         }

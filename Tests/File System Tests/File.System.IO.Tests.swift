@@ -32,13 +32,20 @@ struct `File.System.IO — smoke tests` {
 
         // Create the file via kernel open (independent of io.open), then
         // exercise io.stat + io.close on it.
-        let fd = try Kernel.File.Open.open(
-            path: path.kernelPath,
-            mode: .readWrite,
-            options: [.create, .execClose],
-            permissions: Kernel.File.Permissions(rawValue: 0o644)
-        )
-        defer { try? Kernel.File.Delete.delete(path.kernelPath) }
+        //
+        // Non-optional `var` storage, not a closure return: `Kernel.Descriptor`
+        // is `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
+        // so the opened descriptor cannot flow out as the closure's result.
+        var fd: Kernel.Descriptor = .invalid
+        try path.withKernelPath { kernelPath in
+            fd = try Kernel.File.Open.open(
+                path: kernelPath,
+                mode: .readWrite,
+                options: [.create, .execClose],
+                permissions: Kernel.File.Permissions(rawValue: 0o644)
+            )
+        }
+        defer { try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) } }
 
         let stats = try await io.stat(path)
         #expect(stats.size.underlying == 0)
@@ -56,13 +63,16 @@ struct `File.System.IO — smoke tests` {
         // strategy default() selected on this host.
         let pathString = Kernel.Temporary.filePath(prefix: "fs-io-default")
         let path = try File.Path(pathString)
-        defer { try? Kernel.File.Delete.delete(path.kernelPath) }
-        let fd = try Kernel.File.Open.open(
-            path: path.kernelPath,
-            mode: .readWrite,
-            options: [.create, .execClose],
-            permissions: Kernel.File.Permissions(rawValue: 0o644)
-        )
+        defer { try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) } }
+        var fd: Kernel.Descriptor = .invalid
+        try path.withKernelPath { kernelPath in
+            fd = try Kernel.File.Open.open(
+                path: kernelPath,
+                mode: .readWrite,
+                options: [.create, .execClose],
+                permissions: Kernel.File.Permissions(rawValue: 0o644)
+            )
+        }
 
         let stats = try await io.stat(path)
         #expect(stats.size.underlying == 0)
@@ -79,14 +89,17 @@ struct `File.System.IO — smoke tests` {
 
         let pathString = Kernel.Temporary.filePath(prefix: "fs-io-rw")
         let path = try File.Path(pathString)
-        defer { try? Kernel.File.Delete.delete(path.kernelPath) }
+        defer { try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) } }
 
-        let fd = try Kernel.File.Open.open(
-            path: path.kernelPath,
-            mode: .readWrite,
-            options: [.create, .truncate, .execClose],
-            permissions: Kernel.File.Permissions(rawValue: 0o644)
-        )
+        var fd: Kernel.Descriptor = .invalid
+        try path.withKernelPath { kernelPath in
+            fd = try Kernel.File.Open.open(
+                path: kernelPath,
+                mode: .readWrite,
+                options: [.create, .truncate, .execClose],
+                permissions: Kernel.File.Permissions(rawValue: 0o644)
+            )
+        }
 
         let payload: [Byte] = [0xDE, 0xAD, 0xBE, 0xEF]
         let writePtr = unsafe UnsafeMutableRawBufferPointer.allocate(

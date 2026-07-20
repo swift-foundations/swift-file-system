@@ -85,7 +85,9 @@ extension File.Directory.Contents {
 
         let stream: Kernel.Directory.Stream
         do throws(Kernel.Directory.Error) {
-            stream = try Kernel.Directory.open(at: path.kernelPath)
+            stream = try path.withKernelPath { kernelPath throws(Kernel.Directory.Error) in
+                try Kernel.Directory.open(at: kernelPath)
+            }
         } catch {
             throw mapKernelError(error, path: path)
         }
@@ -232,7 +234,9 @@ extension File.Directory.Contents {
         }
 
         do throws(Kernel.File.Stats.Error) {
-            let stats = try Kernel.File.Stats.lget(path: entryPath.kernelPath)
+            let stats = try entryPath.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.lget(path: kernelPath)
+            }
             switch stats.type {
             case .regular:
                 return .file

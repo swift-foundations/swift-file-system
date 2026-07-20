@@ -57,10 +57,12 @@ import Testing
                 // Kernel.File.Attributes (mirrors the synthesis direction
                 // documented on File.System.Metadata.Permissions.init(at:):
                 // readonly attribute -> owner-write bit cleared).
-                try Kernel.File.Attributes.set(
-                    Kernel.File.Permissions(rawValue: 0o444),
-                    at: filePath.kernelPath
-                )
+                try filePath.withKernelPath { kernelPath in
+                    try Kernel.File.Attributes.set(
+                        Kernel.File.Permissions(rawValue: 0o444),
+                        at: kernelPath
+                    )
+                }
 
                 let perms = try File.System.Metadata.Permissions(at: filePath)
                 #expect(!perms.contains(.ownerWrite))

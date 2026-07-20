@@ -157,14 +157,18 @@ extension File.System.Delete {
     /// Stats a path without following symlinks, using Kernel.File.Stats.
     @usableFromInline
     internal static func lstat(_ path: File.Path) throws(Kernel.File.Stats.Error) -> Kernel.File.Stats {
-        try Kernel.File.Stats.lget(path: path.kernelPath)
+        try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+            try Kernel.File.Stats.lget(path: kernelPath)
+        }
     }
 
     /// Removes a file using Kernel.File.Delete.
     @usableFromInline
     internal static func unlink(at path: File.Path) throws(Error) {
         do throws(Kernel.File.Delete.Error) {
-            try Kernel.File.Delete.delete(path.kernelPath)
+            try path.withKernelPath { kernelPath throws(Kernel.File.Delete.Error) in
+                try Kernel.File.Delete.delete(kernelPath)
+            }
         } catch {
             throw .unlink(error)
         }
@@ -174,7 +178,9 @@ extension File.System.Delete {
     @usableFromInline
     internal static func rmdir(at path: File.Path) throws(Error) {
         do throws(Kernel.Directory.Remove.Error) {
-            try Kernel.Directory.Remove.remove(path.kernelPath)
+            try path.withKernelPath { kernelPath throws(Kernel.Directory.Remove.Error) in
+                try Kernel.Directory.Remove.remove(kernelPath)
+            }
         } catch {
             throw .rmdir(error)
         }
@@ -188,7 +194,9 @@ extension File.System.Delete {
         // Open directory
         let stream: Kernel.Directory.Stream
         do throws(Kernel.Directory.Error) {
-            stream = try Kernel.Directory.open(at: path.kernelPath)
+            stream = try path.withKernelPath { kernelPath throws(Kernel.Directory.Error) in
+                try Kernel.Directory.open(at: kernelPath)
+            }
         } catch {
             throw .directory(error)
         }

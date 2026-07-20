@@ -150,7 +150,9 @@ extension File.System.Move {
         if !options.overwrite {
             let destExists: Bool
             do throws(Kernel.File.Stats.Error) {
-                _ = try Kernel.File.Stats.get(path: destination.kernelPath)
+                _ = try destination.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                    try Kernel.File.Stats.get(path: kernelPath)
+                }
                 destExists = true
             } catch {
                 destExists = false
@@ -162,7 +164,11 @@ extension File.System.Move {
 
         // Try rename
         do throws(Kernel.File.Move.Error) {
-            try Kernel.File.Move.move(from: source.kernelPath, to: destination.kernelPath)
+            try source.withKernelPath { sourceKernelPath throws(Kernel.File.Move.Error) in
+                try destination.withKernelPath { destinationKernelPath throws(Kernel.File.Move.Error) in
+                    try Kernel.File.Move.move(from: sourceKernelPath, to: destinationKernelPath)
+                }
+            }
         } catch {
             // If cross-device, fall back to copy+delete
             if case .crossDevice = error {
@@ -195,7 +201,9 @@ extension File.System.Move {
         // Delete source — cleanup failure after successful copy is a soft failure.
         // The data is at the destination, but source still exists.
         do throws(Kernel.File.Delete.Error) {
-            try Kernel.File.Delete.delete(source.kernelPath)
+            try source.withKernelPath { kernelPath throws(Kernel.File.Delete.Error) in
+                try Kernel.File.Delete.delete(kernelPath)
+            }
         } catch {
             throw .cleanup(error)
         }

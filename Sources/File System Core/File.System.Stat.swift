@@ -28,10 +28,11 @@ extension File.System.Stat {
         at path: borrowing File.Path,
         followSymlinks: Bool = true
     ) throws(Kernel.File.Stats.Error) -> File.System.Metadata.Info {
-        let stats =
+        let stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
             followSymlinks
-            ? try Kernel.File.Stats.get(path: path.kernelPath)
-            : try Kernel.File.Stats.lget(path: path.kernelPath)
+                ? try Kernel.File.Stats.get(path: kernelPath)
+                : try Kernel.File.Stats.lget(path: kernelPath)
+        }
         return makeInfo(from: stats)
     }
 
@@ -42,7 +43,9 @@ extension File.System.Stat {
     @inlinable
     public static func exists(at path: borrowing File.Path) -> Bool {
         do throws(Kernel.File.Stats.Error) {
-            _ = try Kernel.File.Stats.get(path: path.kernelPath)
+            _ = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                try Kernel.File.Stats.get(path: kernelPath)
+            }
             return true
         } catch {
             return false
