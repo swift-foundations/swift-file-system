@@ -17,6 +17,34 @@ extension File.Path.Temporary {
     @Suite
     struct Test {
         @Suite struct Deterministic {}
+        @Suite struct Sibling {}
+    }
+}
+
+extension File.Path.Temporary.Test.Sibling {
+    @Test
+    func `Path has requested parent prefix and suffix`() throws {
+        let destination = try File.Path("/work/Packages/swift-example")
+
+        let temporary = try File.Path.Temporary.sibling(
+            of: destination,
+            prefix: ".workspace-swift-example-",
+            suffix: ".clone"
+        )
+
+        #expect(temporary.parent == destination.parent)
+        #expect(temporary.description.contains("/.workspace-swift-example-"))
+        #expect(temporary.description.hasSuffix(".clone"))
+    }
+
+    @Test
+    func `Successive paths are distinct`() throws {
+        let destination = try File.Path("/work/Packages/swift-example")
+
+        let first = try File.Path.Temporary.sibling(of: destination, prefix: ".workspace-")
+        let second = try File.Path.Temporary.sibling(of: destination, prefix: ".workspace-")
+
+        #expect(first != second)
     }
 }
 

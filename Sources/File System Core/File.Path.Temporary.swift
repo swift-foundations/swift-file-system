@@ -18,6 +18,37 @@ extension File.Path {
 }
 
 extension File.Path.Temporary {
+    /// Returns a collision-resistant temporary path beside `path`.
+    ///
+    /// The generated path has the same parent as `path`, making it suitable
+    /// for operations that must finish with a same-filesystem rename. This
+    /// function constructs a candidate path; it does not create a file or
+    /// directory at that path.
+    public static func sibling(
+        of path: File.Path,
+        prefix: Swift.String,
+        suffix: Swift.String = ""
+    ) throws(Error) -> File.Path {
+        guard let parent = path.parent else {
+            throw .parent
+        }
+
+        let token: Swift.String
+        do throws(File.System.Write.Error) {
+            token = try File.System.Write.randomToken(length: 16)
+        } catch {
+            throw .random
+        }
+
+        let component: File.Path.Component
+        do throws(File.Path.Component.Error) {
+            component = try File.Path.Component(prefix + token + suffix)
+        } catch {
+            throw .component(error)
+        }
+        return parent / component
+    }
+
     /// A deterministic temporary `File.Path` keyed on a stable input
     /// string.
     ///
