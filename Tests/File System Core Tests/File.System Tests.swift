@@ -28,6 +28,28 @@ extension File.System {
     }
 }
 
+extension File.System.Test.Unit {
+    @Test
+    func `Same recognizes one object through distinct paths`() throws {
+        try File.Directory.temporary { directory in
+            let first = directory.path
+            let second = try directory.path.appending(".")
+
+            #expect(try File.System.same(first, second))
+        }
+    }
+
+    @Test
+    func `Same rejects distinct objects`() throws {
+        try File.Directory.temporary { first in
+            try File.Directory.temporary { second in
+                let same = try File.System.same(first.path, second.path)
+                #expect(!same)
+            }
+        }
+    }
+}
+
 #if os(macOS) || os(Linux)
 
     extension File.System.Test.`Edge Case` {
