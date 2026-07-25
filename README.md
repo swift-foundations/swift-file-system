@@ -75,6 +75,58 @@ Three library products. `File System` re-exports `File System Core`, so most con
 
 ---
 
+## Error Handling
+
+The Quick Start's `write.atomic(_:)` throws a typed `File.System.Write.Atomic.Error`:
+
+```
+File.System.Write.Atomic.Error
+├── .parentVerificationFailed          // parent directory verification or creation failed
+├── .destinationStatFailed             // stat on the destination file failed
+├── .tempFileCreationFailed            // temp file creation failed
+├── .writeFailed                       // write operation failed (reports bytesWritten/bytesExpected)
+├── .syncFailed                        // fsync/flush of the temp file failed
+├── .closeFailed                       // closing the temp file failed
+├── .metadataPreservationFailed        // preserving owner/mode/xattrs failed
+├── .timestampPreservationFailed       // futimens timestamp preservation failed
+├── .renameFailed                      // the atomic rename into place failed
+├── .destinationExists                 // destination already exists (noClobber mode)
+├── .directorySyncFailed               // directory sync failed before commit completed
+├── .directorySyncFailedAfterCommit    // rename succeeded but directory sync failed — durability compromised
+├── .randomGenerationFailed            // CSPRNG failed; cannot generate secure temp file names
+├── .platformIncompatible              // platform struct-layout incompatibility at runtime
+└── .invalidPath                       // input path failed validation (wraps Paths.Path.Error)
+```
+
+```swift
+do {
+    let config = File(try File.Path("/etc/app/config.json"))
+    try config.write.atomic(#"{ "logLevel": "debug" }"#)
+} catch .parentVerificationFailed {
+} catch .destinationStatFailed {
+} catch .tempFileCreationFailed {
+} catch .writeFailed {
+} catch .syncFailed {
+} catch .closeFailed {
+} catch .metadataPreservationFailed {
+} catch .timestampPreservationFailed {
+} catch .renameFailed {
+} catch .destinationExists {
+    // another writer beat us to it in noClobber mode
+} catch .directorySyncFailed {
+} catch .directorySyncFailedAfterCommit {
+    // file is complete on disk, but durability is not guaranteed — do not retry
+} catch .randomGenerationFailed {
+} catch .platformIncompatible {
+} catch .invalidPath {
+    // the path string could not be validated as a File.Path
+}
+```
+
+Other file-system operations expose their own typed errors with the same exhaustive shape — for example `write.append(_:)` throws `File.System.Write.Append.Error`, directory listing throws `File.Directory.Contents.Error`, and delete throws `File.System.Delete.Error`.
+
+---
+
 ## Community
 
 <!-- BEGIN: discussion -->
