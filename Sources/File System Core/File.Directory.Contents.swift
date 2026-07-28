@@ -24,14 +24,18 @@ extension File.Directory.Contents {
     /// - Parameter directory: The directory to list.
     /// - Returns: An array of directory entries.
     /// - Throws: `File.Directory.Contents.Error` on failure.
-    @inlinable
     public static func list(
         at directory: borrowing File.Directory
-    ) throws(Self.Error) -> [File.Directory.Entry] {
+    ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
         var entries: [File.Directory.Entry] = []
-        try iterate(at: directory) { entry in
-            entries.append(entry)
-            return .continue
+        do throws(Either<File.Directory.Contents.Error, Never>) {
+            try iterate(at: directory) { entry in
+                entries.append(entry)
+                return .continue
+            }
+        } catch {
+            // `E` is `Never` here, so the closure arm is uninhabited.
+            throw error.value
         }
         return entries
     }
@@ -48,39 +52,48 @@ extension File.Directory.Contents {
     /// ## Usage
     ///
     /// ```swift
-    /// // Process entries without allocation
-    /// try File.Directory.Contents.iterate(at: directory) { entry in
-    ///     print(entry.name)
-    ///     return .continue
-    /// }
-    ///
-    /// // Find first match
-    /// var found: File.Directory.Entry?
-    /// try File.Directory.Contents.iterate(at: directory) { entry in
-    ///     if entry.name.string == "target.txt" {
-    ///         found = entry
-    ///         return .break
+    /// // Non-throwing closure: `E` is `Never`, so the closure arm of the thrown
+    /// // `Either` is uninhabited and `error.value` recovers the directory error.
+    /// do throws(Either<File.Directory.Contents.Error, Never>) {
+    ///     try File.Directory.Contents.iterate(at: directory) { entry in
+    ///         print(entry.name)
+    ///         return .continue
     ///     }
-    ///     return .continue
+    /// } catch {
+    ///     let failure: File.Directory.Contents.Error = error.value
     /// }
     ///
-    /// // Collect when needed
-    /// var entries: [File.Directory.Entry] = []
-    /// try File.Directory.Contents.iterate(at: directory) { entry in
-    ///     entries.append(entry)
-    ///     return .continue
+    /// // Throwing closure: both arms are inhabited.
+    /// do throws(Either<File.Directory.Contents.Error, Decode.Error>) {
+    ///     try File.Directory.Contents.iterate(at: directory) { entry in
+    ///         try decode(entry)
+    ///         return .continue
+    ///     }
+    /// } catch {
+    ///     switch error {
+    ///     case .left(let directoryFailure): ...
+    ///     case .right(let closureFailure): ...
+    ///     }
     /// }
+    ///
+    /// // When you just want an array, `list(at:)` absorbs the `Never` arm for you.
+    /// let entries = try File.Directory.Contents.list(at: directory)
     /// ```
+    ///
+    /// A non-throwing closure infers `E` as `Never`, so the thrown type collapses
+    /// to `Either<File.Directory.Contents.Error, Never>` and the closure arm is
+    /// statically uninhabited — recover the directory error with `error.value`.
     ///
     /// - Parameters:
     ///   - directory: The directory to iterate.
     ///   - body: A closure called for each entry. Return `.continue` to keep iterating,
     ///           or `.break` to stop early.
-    /// - Throws: `File.Directory.Contents.Error` on failure.
-    public static func iterate(
+    /// - Throws: `Either<Contents.Error, E>` — `.left` for directory failures,
+    ///   `.right` if the closure throws.
+    public static func iterate<E: Swift.Error>(
         at directory: borrowing File.Directory,
-        body: (File.Directory.Entry) -> Control
-    ) throws(Self.Error) {
+        body: (File.Directory.Entry) throws(E) -> Control
+    ) throws(Either<File.Directory.Contents.Error, E>) {
         let path = directory.path
 
         let stream: Kernel.Directory.Stream
@@ -89,7 +102,7 @@ extension File.Directory.Contents {
                 try Kernel.Directory.open(at: kernelPath)
             }
         } catch {
-            throw mapKernelError(error, path: path)
+            throw .left(mapKernelError(error, path: path))
         }
         defer { stream.close() }
 
@@ -98,7 +111,7 @@ extension File.Directory.Contents {
             do throws(Kernel.Directory.Error) {
                 kernelEntry = try stream.next()
             } catch {
-                throw mapKernelError(error, path: path)
+                throw .left(mapKernelError(error, path: path))
             }
 
             guard let kernelEntry else {
@@ -113,50 +126,20 @@ extension File.Directory.Contents {
             let entryType = mapEntryType(kernelEntry.type, name: name, parent: path)
             let entry = File.Directory.Entry(name: name, parent: path, type: entryType)
 
-            switch body(entry) {
+            let control: Control
+            do throws(E) {
+                control = try body(entry)
+            } catch {
+                throw .right(error)
+            }
+
+            switch control {
             case .continue:
                 continue
 
             case .break:
                 return
             }
-        }
-    }
-
-    /// Iterates over directory contents with a throwing closure.
-    ///
-    /// - Parameters:
-    ///   - directory: The directory to iterate.
-    ///   - body: A throwing closure called for each entry.
-    /// - Throws: `Either<Contents.Error, E>` — `.left` for directory failures,
-    ///   `.right` if the closure throws.
-    ///
-    /// - Note: This overload is disfavored so that a non-throwing closure literal
-    ///   unambiguously selects the non-generic `iterate(at:body:)` above. Without
-    ///   it, a non-throwing closure matches both overloads — the non-generic one
-    ///   directly, and this one with `E` inferred as `Never` — which Swift 6.4
-    ///   reports as `ambiguous use of 'iterate(at:body:)'`. A throwing closure
-    ///   still selects this overload, since it is the only viable candidate.
-    @_disfavoredOverload
-    public static func iterate<E: Swift.Error>(
-        at directory: borrowing File.Directory,
-        body: (File.Directory.Entry) throws(E) -> Control
-    ) throws(Either<File.Directory.Contents.Error, E>) {
-        var bodyError: E?
-        do throws(Self.Error) {
-            try iterate(at: directory) { entry in
-                do throws(E) {
-                    return try body(entry)
-                } catch {
-                    bodyError = error
-                    return .break
-                }
-            }
-        } catch {
-            throw .left(error)
-        }
-        if let error = bodyError {
-            throw .right(error)
         }
     }
 }

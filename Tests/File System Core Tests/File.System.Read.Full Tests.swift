@@ -113,7 +113,9 @@ extension File.System.Read.Full.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "non-existing.txt"
 
-            #expect(throws: File.System.Read.Full.Error.self) {
+            // A non-throwing closure infers `E` as `Never`, so the read failure
+            // arrives in the `.left` arm of `Either<Read.Full.Error, Never>`.
+            #expect(throws: Either<File.System.Read.Full.Error, Never>.self) {
                 try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
             }
         }
@@ -122,7 +124,7 @@ extension File.System.Read.Full.Test.Unit {
     @Test
     func `Read directory throws isDirectory`() throws {
         try File.Directory.temporary { dir in
-            #expect(throws: File.System.Read.Full.Error.self) {
+            #expect(throws: Either<File.System.Read.Full.Error, Never>.self) {
                 try File.System.Read.Full.read(from: dir.path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
             }
         }
