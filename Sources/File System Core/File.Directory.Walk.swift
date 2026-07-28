@@ -136,6 +136,15 @@ extension File.Directory.Walk {
     ///   - body: A throwing closure called for each entry.
     /// - Throws: `Either<Walk.Error, E>` — `.left` for traversal failures,
     ///   `.right` if the closure throws.
+    ///
+    /// - Note: This overload is disfavored so that a non-throwing closure literal
+    ///   unambiguously selects the non-generic `iterate(options:body:)` above.
+    ///   Without it, a non-throwing closure matches both overloads — the
+    ///   non-generic one directly, and this one with `E` inferred as `Never` —
+    ///   which Swift 6.4 reports as `ambiguous use of 'iterate(options:body:)'`.
+    ///   A throwing closure still selects this overload, since it is the only
+    ///   viable candidate.
+    @_disfavoredOverload
     public func iterate<E: Swift.Error>(
         options: borrowing Options = Options(),
         body: (File.Directory.Entry) throws(E) -> File.Directory.Contents.Control

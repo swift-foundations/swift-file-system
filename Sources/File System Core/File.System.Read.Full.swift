@@ -179,6 +179,14 @@ extension File.System.Read.Full {
     /// - Returns: The value returned by the closure.
     /// - Throws: `Either<Read.Full.Error, E>` — `.left` for read failures,
     ///   `.right` if the closure throws.
+    ///
+    /// - Note: This overload is disfavored so that a non-throwing closure literal
+    ///   unambiguously selects the non-generic `read(from:body:)` above. Without
+    ///   it, a non-throwing closure matches both overloads — the non-throwing one
+    ///   directly, and this one with `E` inferred as `Never` — which Swift 6.4
+    ///   reports as `ambiguous use of 'read(from:body:)'`. A throwing closure
+    ///   still selects this overload, since it is the only viable candidate.
+    @_disfavoredOverload
     public static func read<R, E: Swift.Error>(
         from path: borrowing File.Path,
         body: (Swift.Span<Byte>) throws(E) -> R
