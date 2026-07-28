@@ -65,11 +65,15 @@ extension File.Read {
     /// - Parameter body: A closure that receives the file contents as a borrowed span.
     /// - Returns: The value returned by the closure.
     /// - Throws: `File.System.Read.Full.Error` on failure.
-    @inlinable
     public func full<R>(
         _ body: (Swift.Span<Byte>) -> R
     ) throws(File.System.Read.Full.Error) -> R {
-        try File.System.Read.Full.read(from: path, body: body)
+        do throws(Either<File.System.Read.Full.Error, Never>) {
+            return try File.System.Read.Full.read(from: path, body: body)
+        } catch {
+            // `E` is `Never` here, so the closure arm is uninhabited.
+            throw error.value
+        }
     }
 
     /// Reads the file and passes contents to a throwing closure as a borrowed span.
@@ -102,7 +106,12 @@ extension File.Read {
     ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Read.Full.Error>) -> R {
         let path = self.path
         return try await Kernel.Thread.Pool.shared.run { () throws(File.System.Read.Full.Error) -> R in
-            try File.System.Read.Full.read(from: path, body: body)
+            do throws(Either<File.System.Read.Full.Error, Never>) {
+                return try File.System.Read.Full.read(from: path, body: body)
+            } catch {
+                // `E` is `Never` here, so the closure arm is uninhabited.
+                throw error.value
+            }
         }
     }
 

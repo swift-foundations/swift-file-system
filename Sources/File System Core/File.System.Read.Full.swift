@@ -101,26 +101,43 @@ extension File.System.Read.Full {
     /// ## Usage
     ///
     /// ```swift
-    /// // Process without allocation
-    /// let checksum = try File.System.Read.Full.read(from: path) { span in
-    ///     computeChecksum(span)
+    /// // Non-throwing closure: `E` is `Never`, so the closure arm of the thrown
+    /// // `Either` is uninhabited and `error.value` recovers the read error.
+    /// do throws(Either<File.System.Read.Full.Error, Never>) {
+    ///     let checksum = try File.System.Read.Full.read(from: path) { span in
+    ///         computeChecksum(span)
+    ///     }
+    /// } catch {
+    ///     let failure: File.System.Read.Full.Error = error.value
     /// }
     ///
-    /// // Copy only when needed
-    /// let bytes: [UInt8] = try File.System.Read.Full.read(from: path) { span in
-    ///     Array(span)  // Explicit allocation
+    /// // Throwing closure: both arms are inhabited.
+    /// do throws(Either<File.System.Read.Full.Error, Decode.Error>) {
+    ///     let value = try File.System.Read.Full.read(from: path) { span in
+    ///         try decode(span)
+    ///     }
+    /// } catch {
+    ///     switch error {
+    ///     case .left(let readFailure): ...
+    ///     case .right(let closureFailure): ...
+    ///     }
     /// }
     /// ```
+    ///
+    /// A non-throwing closure infers `E` as `Never`, so the thrown type collapses
+    /// to `Either<File.System.Read.Full.Error, Never>` and the closure arm is
+    /// statically uninhabited — recover the read error with `error.value`.
     ///
     /// - Parameters:
     ///   - path: The path to the file to read.
     ///   - body: A closure that receives the file contents as a borrowed span.
     /// - Returns: The value returned by the closure.
-    /// - Throws: `File.System.Read.Full.Error` on failure.
-    public static func read<R>(
+    /// - Throws: `Either<Read.Full.Error, E>` — `.left` for read failures,
+    ///   `.right` if the closure throws.
+    public static func read<R, E: Swift.Error>(
         from path: borrowing File.Path,
-        body: (Swift.Span<Byte>) -> R
-    ) throws(Self.Error) -> R {
+        body: (Swift.Span<Byte>) throws(E) -> R
+    ) throws(Either<File.System.Read.Full.Error, E>) -> R {
         // Open file for reading
         // Non-optional `var` storage, not a closure return: `Kernel.Descriptor`
         // is `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
@@ -136,7 +153,7 @@ extension File.System.Read.Full {
                 )
             }
         } catch {
-            throw .open(error)
+            throw .left(.open(error))
         }
 
         // Get file stats to determine size and type
@@ -144,12 +161,12 @@ extension File.System.Read.Full {
         do throws(Kernel.File.Stats.Error) {
             stats = try Kernel.File.Stats.get(descriptor: descriptor)
         } catch {
-            throw .stat(error)
+            throw .left(.stat(error))
         }
 
         // Check if it's a directory
         if case .directory = stats.type {
-            throw .isDirectory(copy path)
+            throw .left(.isDirectory(copy path))
         }
 
         let fileSize = Int(stats.size.underlying)
@@ -157,7 +174,11 @@ extension File.System.Read.Full {
         // Handle empty file
         if fileSize == 0 {
             let empty: [Byte] = []
-            return body(empty.span)
+            do throws(E) {
+                return try body(empty.span)
+            } catch {
+                throw .right(error)
+            }
         }
 
         // Read all bytes using pread for positional reads
@@ -165,49 +186,12 @@ extension File.System.Read.Full {
         do throws(Kernel.IO.Read.Error) {
             buffer = try readAll(descriptor: descriptor, size: fileSize)
         } catch {
-            throw .read(error)
+            throw .left(.read(error))
         }
 
-        return body(buffer.span)
-    }
-
-    /// Reads a file and passes its contents to a throwing closure as a borrowed span.
-    ///
-    /// - Parameters:
-    ///   - path: The path to the file to read.
-    ///   - body: A throwing closure that receives the file contents as a borrowed span.
-    /// - Returns: The value returned by the closure.
-    /// - Throws: `Either<Read.Full.Error, E>` — `.left` for read failures,
-    ///   `.right` if the closure throws.
-    ///
-    /// - Note: This overload is disfavored so that a non-throwing closure literal
-    ///   unambiguously selects the non-generic `read(from:body:)` above. Without
-    ///   it, a non-throwing closure matches both overloads — the non-throwing one
-    ///   directly, and this one with `E` inferred as `Never` — which Swift 6.4
-    ///   reports as `ambiguous use of 'read(from:body:)'`. A throwing closure
-    ///   still selects this overload, since it is the only viable candidate.
-    @_disfavoredOverload
-    public static func read<R, E: Swift.Error>(
-        from path: borrowing File.Path,
-        body: (Swift.Span<Byte>) throws(E) -> R
-    ) throws(Either<File.System.Read.Full.Error, E>) -> R {
-        let result: Result<R, E>
-        do throws(Self.Error) {
-            result = try read(from: path) { (span: Swift.Span<Byte>) -> Result<R, E> in
-                do throws(E) {
-                    return .success(try body(span))
-                } catch {
-                    return .failure(error)
-                }
-            }
+        do throws(E) {
+            return try body(buffer.span)
         } catch {
-            throw .left(error)
-        }
-        switch result {
-        case .success(let value):
-            return value
-
-        case .failure(let error):
             throw .right(error)
         }
     }

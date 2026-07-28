@@ -66,14 +66,18 @@ extension File.Directory.Walk {
     ///
     /// - Note: When `followSymlinks` is enabled, cycle detection is performed using
     ///   inode-based tracking to prevent infinite loops from symlink cycles.
-    @inlinable
     public func callAsFunction(
         options: borrowing Options = Options()
-    ) throws(Self.Error) -> [File.Directory.Entry] {
+    ) throws(File.Directory.Walk.Error) -> [File.Directory.Entry] {
         var entries: [File.Directory.Entry] = []
-        try iterate(options: options) { entry in
-            entries.append(entry)
-            return .continue
+        do throws(Either<File.Directory.Walk.Error, Never>) {
+            try iterate(options: options) { entry in
+                entries.append(entry)
+                return .continue
+            }
+        } catch {
+            // `E` is `Never` here, so the closure arm is uninhabited.
+            throw error.value
         }
         return entries
     }
@@ -90,75 +94,67 @@ extension File.Directory.Walk {
     /// ## Usage
     ///
     /// ```swift
-    /// // Process entries without allocation
-    /// try dir.walk.iterate { entry in
-    ///     print(entry.name)
-    ///     return .continue
+    /// // Non-throwing closure: `E` is `Never`, so the closure arm of the thrown
+    /// // `Either` is uninhabited and `error.value` recovers the traversal error.
+    /// do throws(Either<File.Directory.Walk.Error, Never>) {
+    ///     try dir.walk.iterate { entry in
+    ///         print(entry.name)
+    ///         return .continue
+    ///     }
+    /// } catch {
+    ///     let failure: File.Directory.Walk.Error = error.value
     /// }
     ///
-    /// // Find first match
-    /// var found: File.Directory.Entry?
-    /// try dir.walk.iterate { entry in
-    ///     if entry.name.string == "target.txt" {
-    ///         found = entry
-    ///         return .break
+    /// // Throwing closure: both arms are inhabited.
+    /// do throws(Either<File.Directory.Walk.Error, Decode.Error>) {
+    ///     try dir.walk.iterate { entry in
+    ///         try decode(entry)
+    ///         return .continue
     ///     }
-    ///     return .continue
+    /// } catch {
+    ///     switch error {
+    ///     case .left(let traversalFailure): ...
+    ///     case .right(let closureFailure): ...
+    ///     }
     /// }
+    ///
+    /// // When you just want an array, `dir.walk()` absorbs the `Never` arm for you.
+    /// let entries = try dir.walk()
     /// ```
+    ///
+    /// A non-throwing closure infers `E` as `Never`, so the thrown type collapses
+    /// to `Either<File.Directory.Walk.Error, Never>` and the closure arm is
+    /// statically uninhabited — recover the traversal error with `error.value`.
     ///
     /// - Parameters:
     ///   - options: Walk options (maxDepth, followSymlinks, includeHidden).
     ///   - body: A closure called for each entry. Return `.continue` to keep walking,
     ///           or `.break` to stop early.
-    /// - Throws: `File.Directory.Walk.Error` on failure.
-    @inlinable
-    public func iterate(
-        options: borrowing Options = Options(),
-        body: (File.Directory.Entry) -> File.Directory.Contents.Control
-    ) throws(Self.Error) {
-        var visited: Set<InodeKey> = []
-        var stopped = false
-        try Self.walkCallback(
-            at: File.Directory(path),
-            options: options,
-            depth: 0,
-            visited: &visited,
-            stopped: &stopped,
-            body: body
-        )
-    }
-
-    /// Recursively walks the directory tree with a throwing closure.
-    ///
-    /// - Parameters:
-    ///   - options: Walk options.
-    ///   - body: A throwing closure called for each entry.
     /// - Throws: `Either<Walk.Error, E>` — `.left` for traversal failures,
     ///   `.right` if the closure throws.
-    ///
-    /// - Note: This overload is disfavored so that a non-throwing closure literal
-    ///   unambiguously selects the non-generic `iterate(options:body:)` above.
-    ///   Without it, a non-throwing closure matches both overloads — the
-    ///   non-generic one directly, and this one with `E` inferred as `Never` —
-    ///   which Swift 6.4 reports as `ambiguous use of 'iterate(options:body:)'`.
-    ///   A throwing closure still selects this overload, since it is the only
-    ///   viable candidate.
-    @_disfavoredOverload
     public func iterate<E: Swift.Error>(
         options: borrowing Options = Options(),
         body: (File.Directory.Entry) throws(E) -> File.Directory.Contents.Control
     ) throws(Either<File.Directory.Walk.Error, E>) {
         var bodyError: E?
-        do throws(Self.Error) {
-            try iterate(options: options) { entry in
-                do throws(E) {
-                    return try body(entry)
-                } catch {
-                    bodyError = error
-                    return .break
+        var visited: Set<InodeKey> = []
+        var stopped = false
+        do throws(File.Directory.Walk.Error) {
+            try Self.walkCallback(
+                at: File.Directory(path),
+                options: options,
+                depth: 0,
+                visited: &visited,
+                stopped: &stopped,
+                body: { entry in
+                    do throws(E) {
+                        return try body(entry)
+                    } catch {
+                        bodyError = error
+                        return .break
+                    }
                 }
-            }
+            )
         } catch {
             throw .left(error)
         }
@@ -173,16 +169,20 @@ extension File.Directory.Walk {
     ///   - options: Walk options.
     ///   - body: A closure called for each file.
     /// - Throws: `File.Directory.Walk.Error` on failure.
-    @inlinable
     public func files(
         options: borrowing Options = Options(),
         body: (File) -> File.Directory.Contents.Control
-    ) throws(Self.Error) {
-        try iterate(options: options) { entry in
-            guard entry.type == .file, let path = entry.pathIfValid else {
-                return .continue
+    ) throws(File.Directory.Walk.Error) {
+        do throws(Either<File.Directory.Walk.Error, Never>) {
+            try iterate(options: options) { entry in
+                guard entry.type == .file, let path = entry.pathIfValid else {
+                    return .continue
+                }
+                return body(File(path))
             }
-            return body(File(path))
+        } catch {
+            // `E` is `Never` here, so the closure arm is uninhabited.
+            throw error.value
         }
     }
 
@@ -192,16 +192,20 @@ extension File.Directory.Walk {
     ///   - options: Walk options.
     ///   - body: A closure called for each directory.
     /// - Throws: `File.Directory.Walk.Error` on failure.
-    @inlinable
     public func directories(
         options: borrowing Options = Options(),
         body: (File.Directory) -> File.Directory.Contents.Control
-    ) throws(Self.Error) {
-        try iterate(options: options) { entry in
-            guard entry.type == .directory, let path = entry.pathIfValid else {
-                return .continue
+    ) throws(File.Directory.Walk.Error) {
+        do throws(Either<File.Directory.Walk.Error, Never>) {
+            try iterate(options: options) { entry in
+                guard entry.type == .directory, let path = entry.pathIfValid else {
+                    return .continue
+                }
+                return body(File.Directory(path))
             }
-            return body(File.Directory(path))
+        } catch {
+            // `E` is `Never` here, so the closure arm is uninhabited.
+            throw error.value
         }
     }
 }
@@ -217,7 +221,7 @@ extension File.Directory.Walk {
         visited: inout Set<InodeKey>,
         stopped: inout Bool,
         body: (File.Directory.Entry) -> File.Directory.Contents.Control
-    ) throws(Self.Error) {
+    ) throws(File.Directory.Walk.Error) {
         // A nested level already signaled early exit (`.break`) — do not
         // descend into further siblings or subdirectories at this level.
         if stopped {
@@ -242,7 +246,7 @@ extension File.Directory.Walk {
         // Iterate directory contents
         var walkError: File.Directory.Walk.Error?
 
-        do throws(File.Directory.Contents.Error) {
+        do throws(Either<File.Directory.Contents.Error, Never>) {
             try File.Directory.Contents.iterate(at: directory) { entry in
                 // Filter hidden files
                 if !options.includeHidden && entry.name.isHiddenByDotPrefix {
@@ -263,7 +267,7 @@ extension File.Directory.Walk {
                     // Recurse into directories
                     if entry.type == .directory {
                         let subdir = File.Directory(entryPath)
-                        do throws(Self.Error) {
+                        do throws(File.Directory.Walk.Error) {
                             try walkCallback(
                                 at: subdir,
                                 options: options,
@@ -290,7 +294,7 @@ extension File.Directory.Walk {
                             info.type == .directory
                         {
                             let subdir = File.Directory(entryPath)
-                            do throws(Self.Error) {
+                            do throws(File.Directory.Walk.Error) {
                                 try walkCallback(
                                     at: subdir,
                                     options: options,
@@ -339,7 +343,8 @@ extension File.Directory.Walk {
                 return .continue
             }
         } catch {
-            switch error {
+            // `E` is `Never` here, so the closure arm is uninhabited.
+            switch error.value {
             case .pathNotFound(let p):
                 throw .pathNotFound(p)
 
