@@ -130,6 +130,14 @@ extension File.Directory.Contents {
     ///   - body: A throwing closure called for each entry.
     /// - Throws: `Either<Contents.Error, E>` — `.left` for directory failures,
     ///   `.right` if the closure throws.
+    ///
+    /// - Note: This overload is disfavored so that a non-throwing closure literal
+    ///   unambiguously selects the non-generic `iterate(at:body:)` above. Without
+    ///   it, a non-throwing closure matches both overloads — the non-generic one
+    ///   directly, and this one with `E` inferred as `Never` — which Swift 6.4
+    ///   reports as `ambiguous use of 'iterate(at:body:)'`. A throwing closure
+    ///   still selects this overload, since it is the only viable candidate.
+    @_disfavoredOverload
     public static func iterate<E: Swift.Error>(
         at directory: borrowing File.Directory,
         body: (File.Directory.Entry) throws(E) -> Control
