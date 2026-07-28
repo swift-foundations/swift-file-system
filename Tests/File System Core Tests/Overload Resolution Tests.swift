@@ -134,6 +134,14 @@ private func walkDirectories(
     return count
 }
 
+// MARK: - `File.Read.full` shares the same collapse
+//
+// `File.Read.full` is the `File System` layer's re-exposure of
+// `Read.Full.read`, and it shipped the same throwing/non-throwing twin in both
+// its sync and async forms. Both were confirmed ambiguous from a separate
+// module, so both were collapsed too. `File_System_Core` cannot see them —
+// that coverage lives in `File System Tests`.
+
 // MARK: - Suite
 
 @Suite
