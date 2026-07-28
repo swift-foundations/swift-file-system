@@ -46,39 +46,34 @@ extension File.Read {
     /// that borrows from an internal buffer. Copy inside the closure if needed.
     ///
     /// ```swift
-    /// // Process without allocation
-    /// let checksum = try file.read.full { span in
-    ///     computeChecksum(span)
+    /// // Non-throwing closure: `E` is `Never`, so the closure arm of the thrown
+    /// // `Either` is uninhabited and `error.value` recovers the read error.
+    /// do throws(Either<File.System.Read.Full.Error, Never>) {
+    ///     let checksum = try file.read.full { span in
+    ///         computeChecksum(span)
+    ///     }
+    /// } catch {
+    ///     let failure: File.System.Read.Full.Error = error.value
     /// }
     ///
-    /// // Copy when needed
-    /// let bytes: [UInt8] = try file.read.full { span in
-    ///     Array(span)
-    /// }
-    ///
-    /// // Decode as string
-    /// let text: String = try file.read.full { span in
-    ///     String(decoding: span, as: UTF8.self)
+    /// // Throwing closure: both arms are inhabited.
+    /// do throws(Either<File.System.Read.Full.Error, Decode.Error>) {
+    ///     let value = try file.read.full { span in
+    ///         try decode(span)
+    ///     }
+    /// } catch {
+    ///     switch error {
+    ///     case .left(let readFailure): ...
+    ///     case .right(let closureFailure): ...
+    ///     }
     /// }
     /// ```
     ///
-    /// - Parameter body: A closure that receives the file contents as a borrowed span.
-    /// - Returns: The value returned by the closure.
-    /// - Throws: `File.System.Read.Full.Error` on failure.
-    public func full<R>(
-        _ body: (Swift.Span<Byte>) -> R
-    ) throws(File.System.Read.Full.Error) -> R {
-        do throws(Either<File.System.Read.Full.Error, Never>) {
-            return try File.System.Read.Full.read(from: path, body: body)
-        } catch {
-            // `E` is `Never` here, so the closure arm is uninhabited.
-            throw error.value
-        }
-    }
-
-    /// Reads the file and passes contents to a throwing closure as a borrowed span.
+    /// A non-throwing closure infers `E` as `Never`, so the thrown type collapses
+    /// to `Either<File.System.Read.Full.Error, Never>` and the closure arm is
+    /// statically uninhabited — recover the read error with `error.value`.
     ///
-    /// - Parameter body: A throwing closure that receives the file contents.
+    /// - Parameter body: A closure that receives the file contents as a borrowed span.
     /// - Returns: The value returned by the closure.
     /// - Throws: `Either<Read.Full.Error, E>` — `.left` for read failures,
     ///   `.right` if the closure throws.
@@ -97,28 +92,8 @@ extension File.Read {
     /// The body closure executes on the blocking lane's OS thread,
     /// receiving a `Swift.Span<Byte>` that borrows from the internal read buffer.
     ///
-    /// - Parameter body: A sendable closure that receives the file contents.
-    /// - Returns: The value returned by the closure.
-    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Read.Full.Error>` on failure.
-    @inlinable
-    public func full<R: Sendable>(
-        _ body: @escaping @Sendable (Swift.Span<Byte>) -> R
-    ) async throws(Either<Kernel.Thread.Pool.Error, File.System.Read.Full.Error>) -> R {
-        let path = self.path
-        return try await Kernel.Thread.Pool.shared.run { () throws(File.System.Read.Full.Error) -> R in
-            do throws(Either<File.System.Read.Full.Error, Never>) {
-                return try File.System.Read.Full.read(from: path, body: body)
-            } catch {
-                // `E` is `Never` here, so the closure arm is uninhabited.
-                throw error.value
-            }
-        }
-    }
-
-    /// Reads the file and passes contents to a throwing closure as a borrowed span.
-    ///
-    /// Async variant - runs blocking I/O on a dedicated thread pool.
-    /// The body closure executes on the blocking lane's OS thread.
+    /// A non-throwing closure infers `E` as `Never`, so the inner arm of the
+    /// thrown `Either` is statically uninhabited.
     ///
     /// - Parameter body: A sendable throwing closure that receives the file contents.
     /// - Returns: The value returned by the closure.
