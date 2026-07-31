@@ -137,18 +137,21 @@ extension File.Name: CustomDebugStringConvertible {
 extension File.Name {
     /// Creates a `File.Name` from a Kernel directory entry.
     ///
-    /// Copies the entry's NUL-excluded code units from `entry.name.span`.
-    /// No platform conditional is needed here: `Path.Char` already resolves to
-    /// the correct element type for the current platform.
+    /// Copies the entry's NUL-excluded code units via `entry.withName`, the
+    /// zero-allocation borrowed-view accessor. No platform conditional is
+    /// needed here: `Path.Char` already resolves to the correct element type
+    /// for the current platform.
     @inlinable
     public init(from entry: Kernel.Directory.Entry) {
-        let span = entry.name.span
-        var bytes: [Path_Primitives.Path.Char] = []
-        bytes.reserveCapacity(span.count)
-        for i in 0..<span.count {
-            bytes.append(span[i])
+        self = entry.withName { view in
+            let span = view.span
+            var bytes: [Path_Primitives.Path.Char] = []
+            bytes.reserveCapacity(span.count)
+            for i in 0..<span.count {
+                bytes.append(span[i])
+            }
+            return File.Name(rawBytes: bytes)
         }
-        self.rawBytes = bytes
     }
 }
 
