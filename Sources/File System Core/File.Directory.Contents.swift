@@ -168,6 +168,12 @@ extension File.Directory.Contents {
         case .io:
             return .readFailed(errno: 0, message: "I/O error")
 
+        case .closed:
+            // Programmer error: the Kernel.Directory.Stream was read after
+            // `close()`. Not path-specific, so classify like the other
+            // non-path Kernel.Directory.Error cases above.
+            return .readFailed(errno: 0, message: "Directory stream used after close")
+
         case .platform(let kernelError):
             let errno = kernelError.code.posix ?? Int32(kernelError.code.win32 ?? 0)
             return .readFailed(errno: errno, message: "\(kernelError)")
