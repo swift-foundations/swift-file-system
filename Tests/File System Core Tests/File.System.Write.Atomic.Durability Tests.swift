@@ -138,7 +138,7 @@ extension File.System.Write.Durability.Test.`Edge Case` {
 
     @Test
     func `all invalid rawValues from 3 to 255 return nil`() {
-        for rawValue in UInt8(3)...UInt8(255) {
+        (UInt8(3)...UInt8(255)).forEach { rawValue in
             #expect(File.System.Write.Durability(rawValue: rawValue) == nil)
         }
     }

@@ -69,7 +69,7 @@ extension File.System.Write.Atomic.Strategy.Test.`Edge Case` {
 
     @Test
     func `all invalid rawValues from 2 to 255 return nil`() {
-        for rawValue in UInt8(2)...UInt8(255) {
+        (UInt8(2)...UInt8(255)).forEach { rawValue in
             #expect(File.System.Write.Atomic.Strategy(rawValue: rawValue) == nil)
         }
     }

@@ -117,7 +117,7 @@ struct `File.System.Metadata.Kind Tests` {
 
         @Test
         func `all invalid rawValues from 7 to 255 return nil`() {
-            for rawValue in UInt8(7)...UInt8(255) {
+            (UInt8(7)...UInt8(255)).forEach { rawValue in
                 #expect(File.System.Metadata.Kind(rawValue: Byte(rawValue)) == nil)
             }
         }

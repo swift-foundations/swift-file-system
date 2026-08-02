@@ -103,7 +103,7 @@ struct `File.Directory.Entry.Kind Tests` {
 
         @Test
         func `all invalid rawValues from 4 to 255 return nil`() {
-            for rawValue in UInt8(4)...UInt8(255) {
+            (UInt8(4)...UInt8(255)).forEach { rawValue in
                 #expect(File.Directory.Entry.Kind(rawValue: Byte(rawValue)) == nil)
             }
         }

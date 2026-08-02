@@ -105,7 +105,7 @@ extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
             .renamedPublished, .directorySyncAttempted, .syncedDirectory,
         ]
 
-        for i in 0..<phases.count - 1 {
+        (0..<phases.count - 1).forEach { i in
             #expect(phases[i] < phases[i + 1])
         }
     }
