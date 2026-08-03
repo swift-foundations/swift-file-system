@@ -33,8 +33,9 @@ extension File.Path.Temporary.Test.Sibling {
         )
 
         #expect(temporary.parent == destination.parent)
-        #expect(temporary.description.contains("/.workspace-swift-example-"))
-        #expect(temporary.description.hasSuffix(".clone"))
+        let component = try #require(temporary.components.last)
+        #expect(component.string.hasPrefix(".workspace-swift-example-"))
+        #expect(component.string.hasSuffix(".clone"))
     }
 
     @Test
