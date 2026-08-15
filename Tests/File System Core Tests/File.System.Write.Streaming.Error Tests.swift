@@ -262,7 +262,9 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test
     func `Error conforms to Swift.Error`() {
-        let error: any Swift.Error = File.System.Write.Streaming.Error.destinationExists(path: "/tmp/test.txt")
+        let error: any Swift.Error = File.System.Write.Streaming.Error.destinationExists(
+            path: "/tmp/test.txt"
+        )
         #expect(error is File.System.Write.Streaming.Error)
     }
 }

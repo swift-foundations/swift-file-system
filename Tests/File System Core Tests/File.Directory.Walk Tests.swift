@@ -99,7 +99,11 @@ extension File.Directory.Walk {
                 // Create visible and hidden files
                 let visible = dir.path / "visible.txt"
                 let hidden = dir.path / ".hidden"
-                let h1 = try File.Handle.open(visible, mode: .write, options: [.create, .execClose])
+                let h1 = try File.Handle.open(
+                    visible,
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try h1.close()
                 let h2 = try File.Handle.open(hidden, mode: .write, options: [.create, .execClose])
                 try h2.close()
@@ -336,7 +340,11 @@ extension File.Directory.Walk {
         func `walk on file throws notADirectory`() throws {
             try File.Directory.temporary { dir in
                 let filePath = dir.path / "testfile.txt"
-                let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+                let handle = try File.Handle.open(
+                    filePath,
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try handle.close()
 
                 let fileAsDir = File.Directory(filePath)
@@ -363,9 +371,17 @@ extension File.Directory.Walk {
                 let subdirY = dir.path / "subdirY"
                 try File.System.Create.Directory.create(at: subdirX)
                 try File.System.Create.Directory.create(at: subdirY)
-                let h1 = try File.Handle.open(subdirX / "fileX.txt", mode: .write, options: [.create, .execClose])
+                let h1 = try File.Handle.open(
+                    subdirX / "fileX.txt",
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try h1.close()
-                let h2 = try File.Handle.open(subdirY / "fileY.txt", mode: .write, options: [.create, .execClose])
+                let h2 = try File.Handle.open(
+                    subdirY / "fileY.txt",
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try h2.close()
 
                 var visited: [Swift.String] = []
@@ -388,22 +404,34 @@ extension File.Directory.Walk {
         }
 
         @Test
-        func `throwing body in nested directory stops the entire walk, not just its level`() throws {
+        func `throwing body in nested directory stops the entire walk, not just its level`() throws
+        {
             try File.Directory.temporary { dir in
                 let subdirX = dir.path / "subdirX"
                 let subdirY = dir.path / "subdirY"
                 try File.System.Create.Directory.create(at: subdirX)
                 try File.System.Create.Directory.create(at: subdirY)
-                let h1 = try File.Handle.open(subdirX / "poisonX.txt", mode: .write, options: [.create, .execClose])
+                let h1 = try File.Handle.open(
+                    subdirX / "poisonX.txt",
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try h1.close()
-                let h2 = try File.Handle.open(subdirY / "poisonY.txt", mode: .write, options: [.create, .execClose])
+                let h2 = try File.Handle.open(
+                    subdirY / "poisonY.txt",
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try h2.close()
 
                 struct Poison: Swift.Error {}
 
                 var callCount = 0
                 do {
-                    try dir.walk.iterate { (entry: File.Directory.Entry) throws(Poison) -> File.Directory.Contents.Control in
+                    try dir.walk.iterate {
+                        (
+                            entry: File.Directory.Entry
+                        ) throws(Poison) -> File.Directory.Contents.Control in
                         callCount += 1
                         if entry.type == .directory {
                             return .continue

@@ -77,7 +77,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             var readHandle = try File.Handle.open(filePath, mode: .read)
@@ -98,7 +102,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            var handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
 
             let emptyArray: [Byte] = []
             try handle.write(emptyArray.span)
@@ -145,7 +153,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             #expect(File.System.Stat.exists(at: filePath))
@@ -172,7 +184,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             #expect(File.System.Stat.exists(at: filePath))
@@ -203,7 +219,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
 
             // Handle should be valid immediately after open
             let isValidBeforeClose = handle.isValid
@@ -220,7 +240,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
 
             // Close should succeed without error
             try handle.close()
@@ -293,7 +317,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            var handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
 
             // Seeking to -1 from start should fail
             var didThrow = false
@@ -339,7 +367,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            var handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
 
             // Write some data
             let data: [Byte] = [1, 2, 3, 4, 5]
@@ -367,7 +399,10 @@ extension File.System.Test.Unit {
             try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
             // The symlink itself exists (use info(followSymlinks: false) which doesn't follow)
-            #expect((try? File.System.Stat.info(at: linkPath, followSymlinks: false))?.type == .symbolicLink)
+            #expect(
+                (try? File.System.Stat.info(at: linkPath, followSymlinks: false))?.type
+                    == .symbolicLink
+            )
 
             // But stat (which follows) should fail
             #expect(throws: Kernel.File.Stats.Error.self) {
@@ -393,8 +428,14 @@ extension File.System.Test.Unit {
             try File.System.Link.Symbolic.create(at: linkB, pointingTo: linkA)
 
             // Both links exist as symlinks (use info(followSymlinks: false) which doesn't follow)
-            #expect((try? File.System.Stat.info(at: linkA, followSymlinks: false))?.type == .symbolicLink)
-            #expect((try? File.System.Stat.info(at: linkB, followSymlinks: false))?.type == .symbolicLink)
+            #expect(
+                (try? File.System.Stat.info(at: linkA, followSymlinks: false))?.type
+                    == .symbolicLink
+            )
+            #expect(
+                (try? File.System.Stat.info(at: linkB, followSymlinks: false))?.type
+                    == .symbolicLink
+            )
 
             // stat should fail with loop error
             #expect(throws: Kernel.File.Stats.Error.self) {
@@ -410,7 +451,10 @@ extension File.System.Test.Unit {
             // Create link pointing to itself
             try File.System.Link.Symbolic.create(at: linkPath, pointingTo: linkPath)
 
-            #expect((try? File.System.Stat.info(at: linkPath, followSymlinks: false))?.type == .symbolicLink)
+            #expect(
+                (try? File.System.Stat.info(at: linkPath, followSymlinks: false))?.type
+                    == .symbolicLink
+            )
 
             // stat should fail
             #expect(throws: Kernel.File.Stats.Error.self) {
@@ -441,7 +485,11 @@ extension File.System.Test.Unit {
 
             // Create file inside
             let filePath = dir / "file.txt"
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             #expect(throws: (any Swift.Error).self) {
@@ -626,7 +674,11 @@ extension File.System.Test.Unit {
             defer { cleanup(path) }
 
             let filePath = try File.Path(path)
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             #expect(throws: (any Swift.Error).self) {
@@ -711,7 +763,11 @@ extension File.System.Test.Unit {
 
             for i in 0..<50 {
                 let path: File.Path = try .init("\(basePath)-\(i)")
-                let handle = try File.Handle.open(path, mode: .write, options: [.create, .execClose])
+                let handle = try File.Handle.open(
+                    path,
+                    mode: .write,
+                    options: [.create, .execClose]
+                )
                 try handle.close()
                 try File.System.Delete.delete(at: path)
             }

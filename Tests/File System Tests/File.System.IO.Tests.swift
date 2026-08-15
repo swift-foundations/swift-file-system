@@ -45,7 +45,9 @@ struct `File.System.IO — smoke tests` {
                 permissions: Kernel.File.Permissions(rawValue: 0o644)
             )
         }
-        defer { try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) } }
+        defer {
+            try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) }
+        }
 
         let stats = try await io.stat(path)
         #expect(stats.size.underlying == 0)
@@ -63,7 +65,9 @@ struct `File.System.IO — smoke tests` {
         // strategy default() selected on this host.
         let pathString = Kernel.Temporary.filePath(prefix: "fs-io-default")
         let path = try File.Path(pathString)
-        defer { try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) } }
+        defer {
+            try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) }
+        }
         var fd: Kernel.Descriptor = .invalid
         try path.withKernelPath { kernelPath in
             fd = try Kernel.File.Open.open(
@@ -89,7 +93,9 @@ struct `File.System.IO — smoke tests` {
 
         let pathString = Kernel.Temporary.filePath(prefix: "fs-io-rw")
         let path = try File.Path(pathString)
-        defer { try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) } }
+        defer {
+            try? path.withKernelPath { kernelPath in try Kernel.File.Delete.delete(kernelPath) }
+        }
 
         var fd: Kernel.Descriptor = .invalid
         try path.withKernelPath { kernelPath in

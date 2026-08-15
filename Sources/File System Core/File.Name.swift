@@ -231,7 +231,12 @@ extension File.Name {
     /// Returns the raw POSIX bytes if available.
     ///
     /// - Returns: The raw bytes if this name uses POSIX encoding, `nil` otherwise.
-    @available(*, deprecated, message: "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `posixBytes` exposed POSIX-specific byte storage and returned nil on Windows.")
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `posixBytes` exposed POSIX-specific byte storage and returned nil on Windows."
+    )
     @inlinable
     public var posixBytes: [UInt8]? {
         #if os(Windows)
@@ -248,7 +253,8 @@ extension File.Name {
     @available(
         *,
         deprecated,
-        message: "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `windowsCodeUnits` exposed Windows-specific code-unit storage and returned nil on POSIX."
+        message:
+            "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `windowsCodeUnits` exposed Windows-specific code-unit storage and returned nil on POSIX."
     )
     @inlinable
     public var windowsCodeUnits: [UInt16]? {
@@ -263,7 +269,12 @@ extension File.Name {
     /// Zero-copy access to raw UTF-8 bytes (POSIX encoding only).
     ///
     /// - Returns: `nil` if the name uses Windows encoding.
-    @available(*, deprecated, message: "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; bridge to UnsafeBufferPointer inside the closure if required.")
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; bridge to UnsafeBufferPointer inside the closure if required."
+    )
     @inlinable
     public func withUnsafeUTF8Bytes<R, E: Swift.Error>(
         _ body: (UnsafeBufferPointer<UInt8>) throws(E) -> R
@@ -275,45 +286,16 @@ extension File.Name {
         #endif
     }
 
-    // substrate: codec (POSIX UTF-8 code units via Span) — deprecated public surface
-    /// Zero-copy access to raw UTF-8 bytes as a Span (POSIX encoding only).
-    ///
-    /// - Returns: `nil` if the name uses Windows encoding.
-    @available(*, deprecated, message: "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `withBytes` was POSIX-only.")
-    @inlinable
-    public func withBytes<R>(
-        _ body: (Swift.Span<UInt8>) -> R
-    ) -> R? {
-        #if os(Windows)
-            return nil
-        #else
-            return body(rawBytes.span)
-        #endif
-    }
-
-    // substrate: codec (POSIX UTF-8 code units via Span) — deprecated public surface
-    /// Zero-copy access to raw UTF-8 bytes as a Span (POSIX encoding only).
-    ///
-    /// Throwing variant for closures that may fail.
-    ///
-    /// - Returns: `nil` if the name uses Windows encoding.
-    @available(*, deprecated, message: "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `withBytes` was POSIX-only.")
-    @inlinable
-    public func withBytes<R, E: Swift.Error>(
-        _ body: (Swift.Span<UInt8>) throws(E) -> R
-    ) throws(E) -> R? {
-        #if os(Windows)
-            return nil
-        #else
-            return try body(rawBytes.span)
-        #endif
-    }
-
     // substrate: stdlib boundary (UnsafeBufferPointer<UInt16> callback) — deprecated public surface
     /// Zero-copy access to raw UTF-16 code units (Windows encoding only).
     ///
     /// - Returns: `nil` if the name uses POSIX encoding.
-    @available(*, deprecated, message: "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; bridge to UnsafeBufferPointer inside the closure if required.")
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; bridge to UnsafeBufferPointer inside the closure if required."
+    )
     @inlinable
     public func withUnsafeCodeUnits<R, E: Swift.Error>(
         _ body: (UnsafeBufferPointer<UInt16>) throws(E) -> R
@@ -372,6 +354,59 @@ extension File.Name {
             return nil
         }
     #endif
+}
+
+// swift-format-ignore: AmbiguousTrailingClosureOverload
+// The two `withBytes(_:)` overloads below are distinguished by their
+// closure's effect signature (non-throwing vs throws(E)) — the standard
+// throwing/non-throwing overload family (P2b carve-out). swift-format's
+// syntactic check sees only the shared base name; call sites resolve
+// unambiguously on the closure's shape. Split into its own extension so
+// the ignore doesn't also blanket-cover the other deprecated accessors above.
+extension File.Name {
+    // substrate: codec (POSIX UTF-8 code units via Span) — deprecated public surface
+    /// Zero-copy access to raw UTF-8 bytes as a Span (POSIX encoding only).
+    ///
+    /// - Returns: `nil` if the name uses Windows encoding.
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `withBytes` was POSIX-only."
+    )
+    @inlinable
+    public func withBytes<R>(
+        _ body: (Swift.Span<UInt8>) -> R
+    ) -> R? {
+        #if os(Windows)
+            return nil
+        #else
+            return body(rawBytes.span)
+        #endif
+    }
+
+    // substrate: codec (POSIX UTF-8 code units via Span) — deprecated public surface
+    /// Zero-copy access to raw UTF-8 bytes as a Span (POSIX encoding only).
+    ///
+    /// Throwing variant for closures that may fail.
+    ///
+    /// - Returns: `nil` if the name uses Windows encoding.
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `withCodeUnits { span in ... }` for cross-platform zero-copy access; `withBytes` was POSIX-only."
+    )
+    @inlinable
+    public func withBytes<R, E: Swift.Error>(
+        _ body: (Swift.Span<UInt8>) throws(E) -> R
+    ) throws(E) -> R? {
+        #if os(Windows)
+            return nil
+        #else
+            return try body(rawBytes.span)
+        #endif
+    }
 }
 
 // MARK: - Binary.Serializable

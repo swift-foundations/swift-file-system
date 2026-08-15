@@ -98,7 +98,10 @@ extension File.System.Stat.Test.Unit {
                 let targetPath = dir.path / "target.txt"
                 let linkPath = dir.path / "link"
 
-                try File.System.Write.Atomic.write(Array("test".utf8).map(Byte.init), to: targetPath)
+                try File.System.Write.Atomic.write(
+                    Array("test".utf8).map(Byte.init),
+                    to: targetPath
+                )
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
                 let info = try File.System.Stat.info(at: linkPath, followSymlinks: false)
@@ -135,7 +138,10 @@ extension File.System.Stat.Test.Unit {
     func `info returns correct type for file`() throws {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "test.txt"
-            try File.System.Write.Atomic.write(Array("Hello, World!".utf8).map(Byte.init), to: filePath)
+            try File.System.Write.Atomic.write(
+                Array("Hello, World!".utf8).map(Byte.init),
+                to: filePath
+            )
 
             let info = try File.System.Stat.info(at: filePath)
 
@@ -164,7 +170,10 @@ extension File.System.Stat.Test.Unit {
                 let targetPath = dir.path / "target.txt"
                 let linkPath = dir.path / "link"
 
-                try File.System.Write.Atomic.write(Array("test".utf8).map(Byte.init), to: targetPath)
+                try File.System.Write.Atomic.write(
+                    Array("test".utf8).map(Byte.init),
+                    to: targetPath
+                )
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
                 let info = try File.System.Stat.info(at: linkPath)
@@ -205,7 +214,9 @@ extension File.System.Stat.Test.Unit {
         // Windows symlink semantics differ from POSIX - stat/lstat may not distinguish the same way
 
         @Test
-        func `info(followSymlinks: false) returns symbolicLink type for symlink (Handle API)`() throws {
+        func `info(followSymlinks: false) returns symbolicLink type for symlink (Handle API)`()
+            throws
+        {
             try File.Directory.temporary { dir in
                 let targetPath = dir.path / "target.txt"
                 let linkPath = dir.path / "link"

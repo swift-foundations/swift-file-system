@@ -56,7 +56,8 @@ extension File.Directory.Glob {
         options: Glob.Options = .init()
     ) async throws(Either<Kernel.Thread.Pool.Error, Glob.Error>) -> [File.Directory] {
         let glob = self
-        return try await Kernel.Thread.Pool.shared.run { () throws(Glob.Error) -> [File.Directory] in
+        return try await Kernel.Thread.Pool.shared.run {
+            () throws(Glob.Error) -> [File.Directory] in
             try glob.directories(include: include, excluding: excluding, options: options)
         }
     }
@@ -112,7 +113,8 @@ extension File.Directory.Glob {
         options: Glob.Options = .init()
     ) async throws(Either<Kernel.Thread.Pool.Error, Glob.Error>) -> [File.Directory] {
         let glob = self
-        return try await Kernel.Thread.Pool.shared.run { () throws(Glob.Error) -> [File.Directory] in
+        return try await Kernel.Thread.Pool.shared.run {
+            () throws(Glob.Error) -> [File.Directory] in
             try glob.directories(include: include, excluding: excluding, options: options)
         }
     }

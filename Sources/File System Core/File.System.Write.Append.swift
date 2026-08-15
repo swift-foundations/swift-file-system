@@ -201,7 +201,11 @@ extension File.System.Write.Append {
                 #endif
                 throw .write(error)
             }
-            totalWritten = try Self.advance(totalWritten: totalWritten, by: written, expected: buffer.count)
+            totalWritten = try Self.advance(
+                totalWritten: totalWritten,
+                by: written,
+                expected: buffer.count
+            )
         }
     }
 }

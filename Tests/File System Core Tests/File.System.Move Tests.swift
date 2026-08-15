@@ -33,13 +33,17 @@ extension File.System.Move.Test.Unit {
 
             try File.System.Write.Atomic.write([10, 20, 30, 40].span, to: sourcePath)
 
-            let originalData = try File.System.Read.Full.read(from: sourcePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let originalData = try File.System.Read.Full.read(from: sourcePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
 
             try File.System.Move.move(from: sourcePath, to: destPath)
 
             #expect(File.System.Stat.exists(at: destPath))
 
-            let destData = try File.System.Read.Full.read(from: destPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let destData = try File.System.Read.Full.read(from: destPath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(originalData == destData)
         }
     }
@@ -104,7 +108,9 @@ extension File.System.Move.Test.Unit {
             let options = File.System.Move.Options(overwrite: true)
             try File.System.Move.move(from: sourcePath, to: destPath, options: options)
 
-            let destData = try File.System.Read.Full.read(from: destPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let destData = try File.System.Read.Full.read(from: destPath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(destData == [1, 2, 3])
         }
     }

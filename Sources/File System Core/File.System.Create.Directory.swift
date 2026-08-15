@@ -28,7 +28,8 @@ extension File.System.Create.Directory {
         createIntermediates: Bool = false
     ) throws(Self.Error) {
         let permissions = Kernel.File.Permissions(
-            rawValue: options.permissions?.rawValue ?? File.System.Metadata.Permissions.defaultDirectory.rawValue
+            rawValue: options.permissions?.rawValue
+                ?? File.System.Metadata.Permissions.defaultDirectory.rawValue
         )
 
         if createIntermediates {
@@ -88,7 +89,8 @@ extension File.System.Create.Directory {
             if case .exists = error {
                 let isDir: Bool
                 do throws(Kernel.File.Stats.Error) {
-                    let stats = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
+                    let stats = try path.withKernelPath {
+                        kernelPath throws(Kernel.File.Stats.Error) in
                         try Kernel.File.Stats.get(path: kernelPath)
                     }
                     isDir = stats.type == .directory

@@ -196,7 +196,9 @@ extension File.Handle.Test.Unit {
             try handle.write(data.span)
             try handle.close()
 
-            let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readBack = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readBack == data)
         }
     }
@@ -213,7 +215,9 @@ extension File.Handle.Test.Unit {
             try handle.write(data.span)
             try handle.close()
 
-            let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readBack = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readBack.isEmpty)
         }
     }
@@ -322,7 +326,11 @@ extension File.Handle.Test.Unit {
             let filePath = dir.path / "pwrite_test.bin"
 
             // Create file and write initial content
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .truncate])
+            var handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .truncate]
+            )
 
             // Write "AAAA" at offset 0
             let bytes1: [Byte] = [0x41, 0x41, 0x41, 0x41]
@@ -341,7 +349,9 @@ extension File.Handle.Test.Unit {
             try handle.close()
 
             // Verify content: should be "AAAABBBB"
-            let content = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let content = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(content == [0x41, 0x41, 0x41, 0x41, 0x42, 0x42, 0x42, 0x42])
         }
     }
@@ -395,7 +405,9 @@ extension File.Handle.Test.Unit {
             try handle.close()
 
             // Should be "XXYYYYXX"
-            let content = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let content = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(content == [0x58, 0x58, 0x59, 0x59, 0x59, 0x59, 0x58, 0x58])
         }
     }
@@ -422,7 +434,11 @@ extension File.Handle.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "pwriteall_test.bin"
 
-            var handle = try File.Handle.open(filePath, mode: .write, options: [.create, .truncate])
+            var handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .truncate]
+            )
 
             // Write 10KB of data using pwriteAll
             let data = [Byte](repeating: 0xAB, count: 10_000)
@@ -433,7 +449,9 @@ extension File.Handle.Test.Unit {
             try handle.close()
 
             // Verify all bytes written
-            let content = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let content = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(content.count == 10_000)
             #expect(content.allSatisfy { $0 == 0xAB })
         }
@@ -459,7 +477,9 @@ extension File.Handle.Test.Unit {
             try handle.close()
 
             // Verify
-            let content = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let content = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(content[50] == 1)
             #expect(content[51] == 2)
             #expect(content[52] == 3)

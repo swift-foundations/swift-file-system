@@ -69,7 +69,9 @@ extension File.System.Link.Symbolic {
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
                 // Read through symlink
-                let data = try File.System.Read.Full.read(from: linkPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let data = try File.System.Read.Full.read(from: linkPath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(data == [10, 20, 30])
             }
         }

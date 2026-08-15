@@ -49,7 +49,9 @@ struct `File.System.Copy.recursive` {
             let copiedFile = destPath / "test.txt"
             #expect(File.System.Stat.exists(at: copiedFile))
 
-            let copiedData = try File.System.Read.Full.read(from: copiedFile) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let copiedData = try File.System.Read.Full.read(from: copiedFile) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(copiedData == [1, 2, 3, 4, 5])
         }
     }
@@ -86,10 +88,14 @@ struct `File.System.Copy.recursive` {
             #expect(File.System.Stat.exists(at: destPath / "root.txt"))
 
             // Verify file contents
-            let copiedData = try File.System.Read.Full.read(from: destPath / "a" / "b" / "c.txt") { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let copiedData = try File.System.Read.Full.read(from: destPath / "a" / "b" / "c.txt") {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(copiedData == [10, 20, 30])
 
-            let rootData = try File.System.Read.Full.read(from: destPath / "root.txt") { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let rootData = try File.System.Read.Full.read(from: destPath / "root.txt") {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(rootData == [99])
         }
     }
@@ -205,7 +211,9 @@ struct `File.System.Copy.recursive` {
             try File.System.Copy.recursive(from: sourcePath, to: destPath)
 
             #expect(File.System.Stat.exists(at: destPath))
-            let data = try File.System.Read.Full.read(from: destPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: destPath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data == [1, 2, 3])
         }
     }
@@ -233,7 +241,9 @@ struct `File.System.Copy.recursive` {
             for i in 0..<10 {
                 let filePath = destPath / "file\(i).txt"
                 #expect(File.System.Stat.exists(at: filePath))
-                let data = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let data = try File.System.Read.Full.read(from: filePath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(data == [Byte(UInt8(i))])
             }
         }

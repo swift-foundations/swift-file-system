@@ -37,7 +37,9 @@ extension File.System.Write.Streaming.Test.Unit {
             let filePath = dir.path / "test.txt"
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100])
         }
     }
@@ -50,7 +52,9 @@ extension File.System.Write.Streaming.Test.Unit {
             let filePath = dir.path / "test.txt"
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData.isEmpty)
         }
     }
@@ -63,7 +67,9 @@ extension File.System.Write.Streaming.Test.Unit {
             let filePath = dir.path / "test.txt"
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [1, 2, 3, 4, 5])
         }
     }
@@ -80,7 +86,9 @@ extension File.System.Write.Streaming.Test.Unit {
             let filePath = dir.path / "test.txt"
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [1, 2, 3, 4, 5, 6])
         }
     }
@@ -97,7 +105,9 @@ extension File.System.Write.Streaming.Test.Unit {
             let filePath = dir.path / "test.bin"
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData.count == 4 * chunkSize)
         }
     }
@@ -115,7 +125,9 @@ extension File.System.Write.Streaming.Test.Unit {
             let filePath = dir.path / "test.bin"
             try File.System.Write.Streaming.write(lazyChunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData.count == 30)
             #expect(readData[0..<10] == ArraySlice([Byte](repeating: 0, count: 10)))
             #expect(readData[10..<20] == ArraySlice([Byte](repeating: 1, count: 10)))
@@ -134,7 +146,9 @@ extension File.System.Write.Streaming.Test.Unit {
             // Default is atomic
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [1, 2, 3])
         }
     }
@@ -150,7 +164,9 @@ extension File.System.Write.Streaming.Test.Unit {
             )
             try File.System.Write.Streaming.write(chunks, to: filePath, options: options)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [4, 5, 6])
         }
     }
@@ -166,7 +182,9 @@ extension File.System.Write.Streaming.Test.Unit {
             )
             try File.System.Write.Streaming.write(chunks, to: filePath, options: options)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [7, 8, 9])
         }
     }
@@ -190,7 +208,9 @@ extension File.System.Write.Streaming.Test.Unit {
             }
 
             // Original content preserved
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [1, 2, 3])
         }
     }
@@ -204,7 +224,11 @@ extension File.System.Write.Streaming.Test.Unit {
             let createOptions = File.System.Write.Streaming.Options(
                 commit: .direct(.init(strategy: .truncate))
             )
-            try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath, options: createOptions)
+            try File.System.Write.Streaming.write(
+                [[1, 2, 3]],
+                to: filePath,
+                options: createOptions
+            )
 
             // Second write with create strategy should fail
             let options = File.System.Write.Streaming.Options(
@@ -230,7 +254,9 @@ extension File.System.Write.Streaming.Test.Unit {
             )
             try File.System.Write.Streaming.write([[4, 5, 6, 7]], to: filePath, options: options)
 
-            let readData = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [4, 5, 6, 7])
         }
     }
@@ -354,7 +380,11 @@ extension File.System.Write.Streaming.Test.Integration {
         try File.Directory.temporary { dir in
             let nested = dir.path / "subdir" / "file.txt"
 
-            try File.System.Write.Streaming.write([[1, 2, 3]], to: nested, createIntermediates: true)
+            try File.System.Write.Streaming.write(
+                [[1, 2, 3]],
+                to: nested,
+                createIntermediates: true
+            )
 
             // Verify file was written
             let readData = try File.System.Read.Full.read(from: nested) {
@@ -401,7 +431,11 @@ extension File.System.Write.Streaming.Test.Integration {
         try File.Directory.temporary { dir in
             let nested = dir.path / "a" / "b" / "c" / "file.txt"
 
-            try File.System.Write.Streaming.write([[1, 2, 3]], to: nested, createIntermediates: true)
+            try File.System.Write.Streaming.write(
+                [[1, 2, 3]],
+                to: nested,
+                createIntermediates: true
+            )
 
             let readData = try File.System.Read.Full.read(from: nested) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
@@ -453,7 +487,12 @@ extension File.System.Write.Streaming.Test.Integration {
                 commit: .atomic(.init(strategy: .noClobber))
             )
 
-            try File.System.Write.Streaming.write([[1, 2, 3]], to: nested, options: options, createIntermediates: true)
+            try File.System.Write.Streaming.write(
+                [[1, 2, 3]],
+                to: nested,
+                options: options,
+                createIntermediates: true
+            )
 
             let readData = try File.System.Read.Full.read(from: nested) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
@@ -468,13 +507,21 @@ extension File.System.Write.Streaming.Test.Integration {
             // Test with different Options configurations to verify orthogonality
             let configurations: [(File.System.Write.Streaming.Options, File.Path.Component)] = [
                 (.init(commit: .atomic(.init(durability: .full))), "atomic-full"),
-                (.init(commit: .atomic(.init(strategy: .noClobber, durability: .dataOnly))), "atomic-noClobber-dataOnly"),
+                (
+                    .init(commit: .atomic(.init(strategy: .noClobber, durability: .dataOnly))),
+                    "atomic-noClobber-dataOnly"
+                ),
                 (.init(commit: .direct(.init(strategy: .truncate))), "direct-truncate"),
             ]
 
             for (options, name) in configurations {
                 let nested = dir.path / name / "file.txt"
-                try File.System.Write.Streaming.write([[1]], to: nested, options: options, createIntermediates: true)
+                try File.System.Write.Streaming.write(
+                    [[1]],
+                    to: nested,
+                    options: options,
+                    createIntermediates: true
+                )
 
                 let readData = try File.System.Read.Full.read(from: nested) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }

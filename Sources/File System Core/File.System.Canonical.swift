@@ -44,7 +44,8 @@ extension File.System.Canonical {
     ) throws(File.System.Canonical.Error) -> File.Path {
         let canonical: Result<File.Path, File.Path.Error>
         do throws(Path_Primitives.Path.Canonical.Error) {
-            canonical = try path.withKernelPath { kernelPath throws(Path_Primitives.Path.Canonical.Error) in
+            canonical = try path.withKernelPath {
+                kernelPath throws(Path_Primitives.Path.Canonical.Error) in
                 try Path_Primitives.Path.Canonical.withCanonicalBytes(kernelPath) { bytes in
                     do throws(File.Path.Error) {
                         return .success(try File.Path(copying: bytes))

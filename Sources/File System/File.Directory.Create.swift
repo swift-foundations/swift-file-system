@@ -77,7 +77,11 @@ extension File.Directory.Create {
     public func recursive(
         options: File.System.Create.Directory.Options = .init()
     ) throws(File.System.Create.Directory.Error) {
-        try File.System.Create.Directory.create(at: path, options: options, createIntermediates: true)
+        try File.System.Create.Directory.create(
+            at: path,
+            options: options,
+            createIntermediates: true
+        )
     }
 
     /// Creates the directory and any missing parent directories.
@@ -91,7 +95,11 @@ extension File.Directory.Create {
         let path = self.path
         let opts = options
         try await Kernel.Thread.Pool.shared.run { () throws(File.System.Create.Directory.Error) in
-            try File.System.Create.Directory.create(at: path, options: opts, createIntermediates: true)
+            try File.System.Create.Directory.create(
+                at: path,
+                options: opts,
+                createIntermediates: true
+            )
         }
     }
 }

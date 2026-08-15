@@ -240,7 +240,9 @@ extension File.System.Read.Full {
         // Rebind the raw bytes to `Byte` (Byte is @frozen, single UInt8 stored
         // property — layout-identical to UInt8, so bindMemory is sound here).
         let typedBuf = unsafe buffer.bindMemory(to: Byte.self)
-        return unsafe Array(UnsafeBufferPointer<Byte>(start: typedBuf.baseAddress, count: totalRead))
+        return unsafe Array(
+            UnsafeBufferPointer<Byte>(start: typedBuf.baseAddress, count: totalRead)
+        )
     }
 }
 

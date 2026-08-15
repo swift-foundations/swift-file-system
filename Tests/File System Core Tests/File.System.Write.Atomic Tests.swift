@@ -33,7 +33,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
             try File.System.Write.Atomic.write(testData, to: path)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == testData)
         }
     }
@@ -46,7 +48,9 @@ extension File.System.Write.Atomic.Test.Unit {
             let empty: [Byte] = []
             try File.System.Write.Atomic.write(empty, to: path)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData.isEmpty)
         }
     }
@@ -59,7 +63,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
             try File.System.Write.Atomic.write(binaryData, to: path)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == binaryData)
         }
     }
@@ -73,7 +79,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
             try File.System.Write.Atomic.write(largeData, to: path)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == largeData)
         }
     }
@@ -114,7 +122,9 @@ extension File.System.Write.Atomic.Test.Unit {
                 let newData: [Byte] = [4, 5, 6, 7, 8]
                 try File.System.Write.Atomic.write(newData, to: path)
 
-                let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let readData = try File.System.Read.Full.read(from: path) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(readData == newData)
             }
         }
@@ -130,7 +140,9 @@ extension File.System.Write.Atomic.Test.Unit {
                 let newData: [Byte] = [7, 8, 9]
                 try File.System.Write.Atomic.write(newData, to: path, options: options)
 
-                let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let readData = try File.System.Read.Full.read(from: path) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(readData == newData)
             }
         }
@@ -153,7 +165,9 @@ extension File.System.Write.Atomic.Test.Unit {
             }
 
             // Original content should be preserved
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == [1, 2, 3])
         }
     }
@@ -167,7 +181,9 @@ extension File.System.Write.Atomic.Test.Unit {
             let data: [Byte] = [1, 2, 3]
             try File.System.Write.Atomic.write(data, to: path, options: options)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == data)
         }
     }
@@ -220,7 +236,9 @@ extension File.System.Write.Atomic.Test.Unit {
             let bytes = testData
             try File.System.Write.Atomic.write(bytes.span, to: path)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == testData)
         }
     }
@@ -235,7 +253,9 @@ extension File.System.Write.Atomic.Test.Unit {
 
             try File.System.Write.Atomic.write(data.span, to: path, options: options)
 
-            let readData = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readData = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readData == data)
         }
     }
@@ -446,7 +466,12 @@ extension File.System.Write.Atomic.Test.Integration {
             let nested = dir.path / "a" / "b" / "file.txt"
             let options = File.System.Write.Atomic.Options(strategy: .noClobber)
 
-            try File.System.Write.Atomic.write([1, 2, 3], to: nested, options: options, createIntermediates: true)
+            try File.System.Write.Atomic.write(
+                [1, 2, 3],
+                to: nested,
+                options: options,
+                createIntermediates: true
+            )
 
             let readData = try File.System.Read.Full.read(from: nested) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
@@ -467,7 +492,12 @@ extension File.System.Write.Atomic.Test.Integration {
 
             for (options, name) in configurations {
                 let nested = dir.path / name / "file.txt"
-                try File.System.Write.Atomic.write([1], to: nested, options: options, createIntermediates: true)
+                try File.System.Write.Atomic.write(
+                    [1],
+                    to: nested,
+                    options: options,
+                    createIntermediates: true
+                )
 
                 let readData = try File.System.Read.Full.read(from: nested) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }

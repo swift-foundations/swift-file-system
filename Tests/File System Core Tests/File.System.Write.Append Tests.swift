@@ -34,7 +34,9 @@ extension File.System.Write.Append.Test.Unit {
             let appendData: [Byte] = [4, 5, 6]
             try File.System.Write.Append.append(appendData.span, to: path)
 
-            let data = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data == [1, 2, 3, 4, 5, 6])
         }
     }
@@ -49,7 +51,9 @@ extension File.System.Write.Append.Test.Unit {
 
             #expect(File.System.Stat.exists(at: path))
 
-            let data = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data == [10, 20, 30])
         }
     }
@@ -63,7 +67,9 @@ extension File.System.Write.Append.Test.Unit {
             let emptyData: [Byte] = []
             try File.System.Write.Append.append(emptyData.span, to: path)
 
-            let data = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data == [1, 2, 3])
         }
     }
@@ -82,7 +88,9 @@ extension File.System.Write.Append.Test.Unit {
             try File.System.Write.Append.append(data2.span, to: path)
             try File.System.Write.Append.append(data3.span, to: path)
 
-            let data = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data == [1, 2, 3, 4, 5, 6])
         }
     }
@@ -97,7 +105,9 @@ extension File.System.Write.Append.Test.Unit {
             let appendData: [Byte] = [1, 2, 3]
             try File.System.Write.Append.append(appendData.span, to: path)
 
-            let data = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data == [1, 2, 3])
         }
     }
@@ -112,7 +122,9 @@ extension File.System.Write.Append.Test.Unit {
             let largeData = [Byte](repeating: 42, count: 100_000)
             try File.System.Write.Append.append(largeData.span, to: path)
 
-            let data = try File.System.Read.Full.read(from: path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let data = try File.System.Read.Full.read(from: path) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(data.count == 100_000)
         }
     }
@@ -147,7 +159,9 @@ extension File.System.Write.Append.Test.Unit {
     #if !os(Windows)
         @Test
         func `isPermissionDenied semantic accessor`() {
-            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
+            let error = File.System.Write.Append.Error.open(
+                .platform(Error_Primitives.Error(code: .POSIX.EACCES))
+            )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
         }
@@ -157,7 +171,9 @@ extension File.System.Write.Append.Test.Unit {
     #if os(Windows)
         @Test
         func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
-            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED)))
+            let error = File.System.Write.Append.Error.open(
+                .platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED))
+            )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
         }
@@ -175,7 +191,9 @@ extension File.System.Write.Append.Test.Unit {
     #if !os(Windows)
         @Test
         func `isReadOnly semantic accessor`() {
-            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EROFS)))
+            let error = File.System.Write.Append.Error.open(
+                .platform(Error_Primitives.Error(code: .POSIX.EROFS))
+            )
             #expect(error.isReadOnly)
             #expect(!error.isPermissionDenied)
         }
@@ -185,7 +203,9 @@ extension File.System.Write.Append.Test.Unit {
     #if !os(Windows)
         @Test
         func `isNoSpace semantic accessor`() {
-            let error = File.System.Write.Append.Error.open(.platform(Error_Primitives.Error(code: .POSIX.ENOSPC)))
+            let error = File.System.Write.Append.Error.open(
+                .platform(Error_Primitives.Error(code: .POSIX.ENOSPC))
+            )
             #expect(error.isNoSpace)
             #expect(!error.isNotFound)
         }

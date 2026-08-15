@@ -8,6 +8,7 @@
 public import Kernel
 
 extension File.Directory {
+    // NOT Sendable - owns mutable directory handle
     /// A streaming directory iterator that yields entries one at a time.
     ///
     /// This is a ~Copyable type that owns the underlying directory handle
@@ -17,7 +18,7 @@ extension File.Directory {
     /// `Iterator` is **NOT** `Sendable`. It owns mutable state (the directory handle)
     /// and is not safe for concurrent use. For cross-task usage, wrap in an actor
     /// or use the async layer.
-    public struct Iterator: ~Copyable /* NOT Sendable - owns mutable directory handle */ {
+    public struct Iterator: ~Copyable {
         private var _stream: Kernel.Directory.Stream?
         private let _basePath: File.Path
 
@@ -96,7 +97,8 @@ extension File.Directory.Iterator {
     ) throws(Self.Error) -> File.Directory.Iterator {
         let stream: Kernel.Directory.Stream
         do throws(Kernel.Directory.Error) {
-            stream = try directory.path.withKernelPath { kernelPath throws(Kernel.Directory.Error) in
+            stream = try directory.path.withKernelPath {
+                kernelPath throws(Kernel.Directory.Error) in
                 try Kernel.Directory.open(at: kernelPath)
             }
         } catch {

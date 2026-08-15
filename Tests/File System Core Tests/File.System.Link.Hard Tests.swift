@@ -40,8 +40,12 @@ extension File.System.Link.Hard {
                 #expect(File.System.Stat.exists(at: linkPath))
 
                 // Both files should have same content
-                let existingData = try File.System.Read.Full.read(from: existingPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
-                let linkData = try File.System.Read.Full.read(from: linkPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let existingData = try File.System.Read.Full.read(from: existingPath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
+                let linkData = try File.System.Read.Full.read(from: linkPath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(existingData == linkData)
             }
         }
@@ -80,7 +84,9 @@ extension File.System.Link.Hard {
                 try handle.close()
 
                 // Original should also be modified (same inode)
-                let originalData = try File.System.Read.Full.read(from: existingPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let originalData = try File.System.Read.Full.read(from: existingPath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(originalData == [10, 20, 30])
             }
         }
@@ -100,7 +106,9 @@ extension File.System.Link.Hard {
 
                 // Hard link should still exist and have the data
                 #expect(File.System.Stat.exists(at: linkPath))
-                let data = try File.System.Read.Full.read(from: linkPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let data = try File.System.Read.Full.read(from: linkPath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(data == [1, 2, 3])
             }
         }

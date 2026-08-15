@@ -230,7 +230,10 @@ extension File {
     ///   - options: Options for opening the file.
     /// - Returns: An `Open` instance.
     @inlinable
-    public static func open(_ path: borrowing File.Path, options: Kernel.File.Open.Options = []) -> Open {
+    public static func open(
+        _ path: borrowing File.Path,
+        options: Kernel.File.Open.Options = []
+    ) -> Open {
         Open(path: copy path, options: options)
     }
 }

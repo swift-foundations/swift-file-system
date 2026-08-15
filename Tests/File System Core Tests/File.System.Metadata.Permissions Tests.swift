@@ -121,7 +121,9 @@ extension File.System.Metadata.Permissions.Test.Unit {
                 let filePath = dir.path / "test.txt"
                 try File.System.Write.Atomic.write([], to: filePath)
 
-                let newPerms: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite, .groupRead]
+                let newPerms: File.System.Metadata.Permissions = [
+                    .ownerRead, .ownerWrite, .groupRead,
+                ]
 
                 try File.System.Metadata.Permissions.set(newPerms, at: filePath)
 

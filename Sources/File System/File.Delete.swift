@@ -54,7 +54,9 @@ extension File.Delete {
     /// Async variant - runs blocking I/O on a dedicated thread pool.
     /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure.
     @inlinable
-    public func callAsFunction() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+    public func callAsFunction() async throws(Either<
+        Kernel.Thread.Pool.Error, File.System.Delete.Error
+    >) {
         let path = self.path
         try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
             try File.System.Delete.delete(at: path)
@@ -83,7 +85,8 @@ extension File.Delete {
     /// Async variant - runs blocking I/O on a dedicated thread pool.
     /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>` on failure (other than not found).
     @inlinable
-    public func ifExists() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
+    public func ifExists() async throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>)
+    {
         let path = self.path
         do throws(Either<Kernel.Thread.Pool.Error, File.System.Delete.Error>) {
             try await Kernel.Thread.Pool.shared.run { () throws(File.System.Delete.Error) in
