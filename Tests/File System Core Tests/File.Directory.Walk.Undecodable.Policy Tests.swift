@@ -203,7 +203,9 @@ extension File.Directory.Walk.Undecodable.Policy.Test.`Edge Case` {
 
     @Test
     func `Policy in Result type`() {
-        let result: Result<File.Directory.Walk.Undecodable.Policy, any Swift.Error> = .success(.skip)
+        let result: Result<File.Directory.Walk.Undecodable.Policy, any Swift.Error> = .success(
+            .skip
+        )
 
         switch result {
         case .success(let policy):

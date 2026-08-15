@@ -15,16 +15,33 @@ extension File.System.Write.Atomic {
     /// Errors that can occur during atomic write operations.
     public enum Error: Swift.Error, Equatable, Sendable {
         /// Parent directory verification or creation failed.
-        case parentVerificationFailed(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case parentVerificationFailed(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Stat on destination file failed.
-        case destinationStatFailed(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case destinationStatFailed(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Temp file creation failed.
-        case tempFileCreationFailed(directory: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case tempFileCreationFailed(
+            directory: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Write operation failed.
-        case writeFailed(bytesWritten: Int, bytesExpected: Int, code: Error_Primitives.Error.Code, message: Swift.String)
+        case writeFailed(
+            bytesWritten: Int,
+            bytesExpected: Int,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// File sync (fsync/flush) failed.
         case syncFailed(code: Error_Primitives.Error.Code, message: Swift.String)
@@ -33,32 +50,53 @@ extension File.System.Write.Atomic {
         case closeFailed(code: Error_Primitives.Error.Code, message: Swift.String)
 
         /// Metadata preservation failed.
-        case metadataPreservationFailed(operation: Swift.String, code: Error_Primitives.Error.Code, message: Swift.String)
+        case metadataPreservationFailed(
+            operation: Swift.String,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Timestamp preservation failed.
         case timestampPreservationFailed(Kernel.File.Times.Error)
 
         /// Atomic rename failed.
-        case renameFailed(from: File.Path, to: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case renameFailed(
+            from: File.Path,
+            to: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Destination already exists (noClobber mode).
         case destinationExists(path: File.Path)
 
         /// Directory sync failed (before commit completed).
-        case directorySyncFailed(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case directorySyncFailed(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Directory sync failed after successful rename.
         ///
         /// File exists with complete content, but durability is compromised.
         /// This is an I/O error, not cancellation. The caller should NOT attempt
         /// to "finish durability" - this is not reliably possible.
-        case directorySyncFailedAfterCommit(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case directorySyncFailedAfterCommit(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// CSPRNG failed - cannot generate secure temp file names.
         ///
         /// This indicates a fundamental system failure, such as a getrandom syscall failure.
         /// The operation cannot proceed safely without secure random bytes.
-        case randomGenerationFailed(code: Error_Primitives.Error.Code, operation: Swift.String, message: Swift.String)
+        case randomGenerationFailed(
+            code: Error_Primitives.Error.Code,
+            operation: Swift.String,
+            message: Swift.String
+        )
 
         /// Platform layout incompatibility at runtime.
         ///

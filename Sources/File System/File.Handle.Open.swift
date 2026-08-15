@@ -1,3 +1,10 @@
+// swift-format-ignore-file: AmbiguousTrailingClosureOverload
+//
+// The callAsFunction/read/write/appending/readWrite overload pairs below are
+// distinguished by their closure's effect signature (sync vs async) — the
+// standard sync/async overload family (P2b carve-out). swift-format's
+// syntactic check sees only the shared base name; call sites resolve
+// unambiguously on the closure's shape.
 //
 //  File.Handle.Open.swift
 //  swift-file-system

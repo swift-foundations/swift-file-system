@@ -135,7 +135,10 @@ extension File.Directory.Contents.Test.Unit {
             #expect(Swift.String(entry.name) == "test.txt")
             // Check the entry path ends with the filename (use platform-agnostic check)
             let expectedSuffix: File.Path = "test.txt"
-            #expect(entry.pathIfValid?.components.last.map { Swift.String($0) } == expectedSuffix.components.last.map { Swift.String($0) })
+            #expect(
+                entry.pathIfValid?.components.last.map { Swift.String($0) }
+                    == expectedSuffix.components.last.map { Swift.String($0) }
+            )
         }
     }
 

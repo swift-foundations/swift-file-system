@@ -79,7 +79,8 @@ extension File.System.Canonical.Test.Unit {
                 rawTarget.append(0x01)
                 rawTarget.append(0)
 
-                try unsafe rawTarget.withUnsafeBufferPointer { pointer throws(Kernel.Directory.Create.Error) in
+                try unsafe rawTarget.withUnsafeBufferPointer {
+                    pointer throws(Kernel.Directory.Create.Error) in
                     let path = unsafe Path.Borrowed(
                         pointer.baseAddress!,
                         count: pointer.count - 1
@@ -87,7 +88,8 @@ extension File.System.Canonical.Test.Unit {
                     try Kernel.Directory.Create.create(path)
                 }
                 defer {
-                    try? unsafe rawTarget.withUnsafeBufferPointer { pointer throws(Kernel.Directory.Remove.Error) in
+                    try? unsafe rawTarget.withUnsafeBufferPointer {
+                        pointer throws(Kernel.Directory.Remove.Error) in
                         let path = unsafe Path.Borrowed(
                             pointer.baseAddress!,
                             count: pointer.count - 1
@@ -97,7 +99,8 @@ extension File.System.Canonical.Test.Unit {
                 }
 
                 let link = directory.path / "link"
-                try unsafe rawTarget.withUnsafeBufferPointer { targetPointer throws(Kernel.Link.Symbolic.Error) in
+                try unsafe rawTarget.withUnsafeBufferPointer {
+                    targetPointer throws(Kernel.Link.Symbolic.Error) in
                     let target = unsafe Path.Borrowed(
                         targetPointer.baseAddress!,
                         count: targetPointer.count - 1

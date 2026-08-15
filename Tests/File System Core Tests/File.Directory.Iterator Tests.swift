@@ -46,7 +46,11 @@ extension File.Directory.Iterator.Test.Unit {
         try File.Directory.temporary { dir in
             // Create a file in the directory
             let filePath = dir.path / "testfile.txt"
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             var iterator = try File.Directory.Iterator.open(at: dir)
@@ -143,7 +147,11 @@ extension File.Directory.Iterator.Test.`Edge Case` {
         try File.Directory.temporary { dir in
             // Create a file, not a directory
             let filePath = dir.path / "iter-file-test.txt"
-            let handle = try File.Handle.open(filePath, mode: .write, options: [.create, .execClose])
+            let handle = try File.Handle.open(
+                filePath,
+                mode: .write,
+                options: [.create, .execClose]
+            )
             try handle.close()
 
             #expect(throws: File.Directory.Iterator.Error.self) {

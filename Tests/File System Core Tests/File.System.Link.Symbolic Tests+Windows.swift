@@ -64,7 +64,9 @@ import Testing
                 #expect(File.System.Stat.exists(at: linkPath))
 
                 // Verify we can read through the link
-                let data = try File.System.Read.Full.read(from: linkPath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let data = try File.System.Read.Full.read(from: linkPath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(data == [1, 2, 3])
             }
         }
@@ -91,7 +93,9 @@ import Testing
 
                 // Verify we can access file through the link
                 let linkedFilePath = linkPath / "file.txt"
-                let data = try File.System.Read.Full.read(from: linkedFilePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let data = try File.System.Read.Full.read(from: linkedFilePath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(data == [1])
             }
         }

@@ -84,8 +84,14 @@ extension File.System.Delete.Test.Unit {
             // Create nested structure
             let nested = dir.path / "a" / "b" / "c"
             try File.System.Create.Directory.create(at: nested, createIntermediates: true)
-            try File.System.Write.Atomic.write(Array("file1".utf8), to: dir.path / "a" / "file1.txt")
-            try File.System.Write.Atomic.write(Array("file2".utf8), to: dir.path / "a" / "b" / "file2.txt")
+            try File.System.Write.Atomic.write(
+                Array("file1".utf8),
+                to: dir.path / "a" / "file1.txt"
+            )
+            try File.System.Write.Atomic.write(
+                Array("file2".utf8),
+                to: dir.path / "a" / "b" / "file2.txt"
+            )
 
             let targetDir = dir.path / "a"
             try File.System.Delete.delete(at: targetDir, recursive: true)
@@ -120,7 +126,10 @@ extension File.System.Delete.Test.Unit {
         try File.Directory.temporary { dir in
             let nested = dir.path / "nested" / "deep"
             try File.System.Create.Directory.create(at: nested, createIntermediates: true)
-            try File.System.Write.Atomic.write(Array("content".utf8), to: dir.path / "nested" / "file.txt")
+            try File.System.Write.Atomic.write(
+                Array("content".utf8),
+                to: dir.path / "nested" / "file.txt"
+            )
 
             let targetDir = dir.path / "nested"
             try File.System.Delete.delete(at: targetDir, recursive: true)
@@ -190,7 +199,10 @@ extension File.System.Delete.Test.`Edge Case` {
                 let targetDir = dir.path / "target"
                 try File.System.Create.Directory.create(at: targetDir)
                 let targetFile = targetDir / "keep-me.txt"
-                try File.System.Write.Atomic.write(Array("preserved".utf8).map(Byte.init), to: targetFile)
+                try File.System.Write.Atomic.write(
+                    Array("preserved".utf8).map(Byte.init),
+                    to: targetFile
+                )
 
                 let linkPath = dir.path / "link-to-target"
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetDir)
@@ -211,7 +223,10 @@ extension File.System.Delete.Test.`Edge Case` {
                 let targetDir = dir.path / "target"
                 try File.System.Create.Directory.create(at: targetDir)
                 let targetFile = targetDir / "keep-me.txt"
-                try File.System.Write.Atomic.write(Array("preserved".utf8).map(Byte.init), to: targetFile)
+                try File.System.Write.Atomic.write(
+                    Array("preserved".utf8).map(Byte.init),
+                    to: targetFile
+                )
 
                 let linkPath = dir.path / "link-to-target"
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetDir)
@@ -243,11 +258,17 @@ extension File.System.Delete.Test.`Edge Case` {
                 let targetDir = dir.path / "outside-target"
                 try File.System.Create.Directory.create(at: targetDir)
                 let targetFile = targetDir / "keep-me.txt"
-                try File.System.Write.Atomic.write(Array("preserved".utf8).map(Byte.init), to: targetFile)
+                try File.System.Write.Atomic.write(
+                    Array("preserved".utf8).map(Byte.init),
+                    to: targetFile
+                )
 
                 let tree = dir.path / "tree"
                 try File.System.Create.Directory.create(at: tree)
-                try File.System.Write.Atomic.write(Array("data".utf8).map(Byte.init), to: tree / "file.txt")
+                try File.System.Write.Atomic.write(
+                    Array("data".utf8).map(Byte.init),
+                    to: tree / "file.txt"
+                )
 
                 let linkInTree = tree / "link-to-outside"
                 try File.System.Link.Symbolic.create(at: linkInTree, pointingTo: targetDir)

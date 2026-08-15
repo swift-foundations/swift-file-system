@@ -15,13 +15,25 @@ extension File.System.Write.Streaming {
     /// Errors that can occur during streaming write operations.
     public enum Error: Swift.Error, Equatable, Sendable {
         /// Parent directory verification or creation failed.
-        case parentVerificationFailed(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case parentVerificationFailed(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// File creation failed.
-        case fileCreationFailed(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case fileCreationFailed(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Write operation failed.
-        case writeFailed(bytesWritten: Int, code: Error_Primitives.Error.Code, message: Swift.String)
+        case writeFailed(
+            bytesWritten: Int,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// File sync (fsync/flush) failed.
         case syncFailed(code: Error_Primitives.Error.Code, message: Swift.String)
@@ -30,13 +42,22 @@ extension File.System.Write.Streaming {
         case closeFailed(code: Error_Primitives.Error.Code, message: Swift.String)
 
         /// Atomic rename failed.
-        case renameFailed(from: File.Path, to: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case renameFailed(
+            from: File.Path,
+            to: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Destination already exists (noClobber mode).
         case destinationExists(path: File.Path)
 
         /// Directory sync failed (before commit completed).
-        case directorySyncFailed(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case directorySyncFailed(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// Write completed but durability guarantee not met due to cancellation.
         ///
@@ -50,7 +71,11 @@ extension File.System.Write.Streaming {
         ///
         /// File exists with complete content, but durability is compromised.
         /// This is an I/O error, not cancellation.
-        case directorySyncFailedAfterCommit(path: File.Path, code: Error_Primitives.Error.Code, message: Swift.String)
+        case directorySyncFailedAfterCommit(
+            path: File.Path,
+            code: Error_Primitives.Error.Code,
+            message: Swift.String
+        )
 
         /// The streaming write is not in a valid state for this operation.
         ///

@@ -33,7 +33,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "test.bin"
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent == content)
         }
     }
@@ -44,7 +46,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "empty.bin"
             try File.System.Write.Atomic.write([Byte]().span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent.isEmpty)
         }
     }
@@ -74,7 +78,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "binary.bin"
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent == content)
         }
     }
@@ -87,7 +93,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "large.bin"
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent.count == 64 * 1024)
             #expect(readContent == content)
         }
@@ -101,7 +109,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "bytes.bin"
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent == content)
         }
     }
@@ -116,7 +126,9 @@ extension File.System.Read.Full.Test.Unit {
             // A non-throwing closure infers `E` as `Never`, so the read failure
             // arrives in the `.left` arm of `Either<Read.Full.Error, Never>`.
             #expect(throws: Either<File.System.Read.Full.Error, Never>.self) {
-                try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                try File.System.Read.Full.read(from: filePath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
             }
         }
     }
@@ -125,7 +137,9 @@ extension File.System.Read.Full.Test.Unit {
     func `Read directory throws isDirectory`() throws {
         try File.Directory.temporary { dir in
             #expect(throws: Either<File.System.Read.Full.Error, Never>.self) {
-                try File.System.Read.Full.read(from: dir.path) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                try File.System.Read.Full.read(from: dir.path) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
             }
         }
     }
@@ -139,7 +153,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "async.bin"
             try File.System.Write.Atomic.write(content.span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent == content)
         }
     }
@@ -150,7 +166,9 @@ extension File.System.Read.Full.Test.Unit {
             let filePath = dir.path / "async-empty.bin"
             try File.System.Write.Atomic.write([Byte]().span, to: filePath)
 
-            let readContent = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+            let readContent = try File.System.Read.Full.read(from: filePath) {
+                $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+            }
             #expect(readContent.isEmpty)
         }
     }
@@ -194,7 +212,9 @@ extension File.System.Read.Full.Test.Unit {
                 }
                 #expect(bodyError == BodyError())
             } catch {
-                Issue.record("Expected Either<Read.Full.Error, BodyError>, got \(type(of: error)): \(error)")
+                Issue.record(
+                    "Expected Either<Read.Full.Error, BodyError>, got \(type(of: error)): \(error)"
+                )
             }
         }
     }
@@ -213,7 +233,9 @@ extension File.System.Read.Full.Test.Unit {
     #if !os(Windows)
         @Test
         func `isPermissionDenied semantic accessor`() {
-            let error = File.System.Read.Full.Error.open(.platform(Error_Primitives.Error(code: .POSIX.EACCES)))
+            let error = File.System.Read.Full.Error.open(
+                .platform(Error_Primitives.Error(code: .POSIX.EACCES))
+            )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
         }
@@ -223,7 +245,9 @@ extension File.System.Read.Full.Test.Unit {
     #if os(Windows)
         @Test
         func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
-            let error = File.System.Read.Full.Error.open(.platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED)))
+            let error = File.System.Read.Full.Error.open(
+                .platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED))
+            )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
         }

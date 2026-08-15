@@ -209,7 +209,8 @@ extension File.System.Copy {
             // Read the symlink target using Kernel API
             let target: Swift.String
             do throws(Kernel.Link.Symbolic.Error) {
-                target = try source.withKernelPath { sourceKernelPath throws(Kernel.Link.Symbolic.Error) in
+                target = try source.withKernelPath {
+                    sourceKernelPath throws(Kernel.Link.Symbolic.Error) in
                     let kernelString = try Kernel.Link.Symbolic.readTarget(at: sourceKernelPath)
                     return Swift.String(kernelString.view)
                 }
@@ -225,9 +226,14 @@ extension File.System.Copy {
                 } catch {
                     throw Kernel.Link.Symbolic.Error.notFound
                 }
-                try targetPath.withKernelPath { targetKernelPath throws(Kernel.Link.Symbolic.Error) in
-                    try destination.withKernelPath { destinationKernelPath throws(Kernel.Link.Symbolic.Error) in
-                        try Kernel.Link.Symbolic.create(target: targetKernelPath, at: destinationKernelPath)
+                try targetPath.withKernelPath {
+                    targetKernelPath throws(Kernel.Link.Symbolic.Error) in
+                    try destination.withKernelPath {
+                        destinationKernelPath throws(Kernel.Link.Symbolic.Error) in
+                        try Kernel.Link.Symbolic.create(
+                            target: targetKernelPath,
+                            at: destinationKernelPath
+                        )
                     }
                 }
             } catch {
@@ -272,8 +278,11 @@ extension File.System.Copy {
 
             // Set destination permissions using Kernel API
             do throws(Kernel.File.Attributes.Error) {
-                let kernelPermissions = Kernel.File.Permissions(rawValue: sourceInfo.permissions.rawValue)
-                try destination.withKernelPath { destinationKernelPath throws(Kernel.File.Attributes.Error) in
+                let kernelPermissions = Kernel.File.Permissions(
+                    rawValue: sourceInfo.permissions.rawValue
+                )
+                try destination.withKernelPath {
+                    destinationKernelPath throws(Kernel.File.Attributes.Error) in
                     try Kernel.File.Attributes.set(kernelPermissions, at: destinationKernelPath)
                 }
             } catch {
@@ -298,7 +307,8 @@ extension File.System.Copy {
 
             // Set destination timestamps using Kernel API
             do throws(Kernel.File.Times.Error) {
-                try destination.withKernelPath { destinationKernelPath throws(Kernel.File.Times.Error) in
+                try destination.withKernelPath {
+                    destinationKernelPath throws(Kernel.File.Times.Error) in
                     try Kernel.File.Times.set(
                         access: sourceInfo.accessTime,
                         modification: sourceInfo.modificationTime,

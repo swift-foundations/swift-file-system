@@ -55,7 +55,9 @@ import Testing
 
                 try File.System.Write.Atomic.write(content, to: filePath)
 
-                let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let readBack = try File.System.Read.Full.read(from: filePath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(readBack == content)
             }
         }
@@ -71,7 +73,9 @@ import Testing
                 try File.System.Write.Atomic.write([1, 2, 3], to: filePath)
                 #expect(File.System.Stat.exists(at: filePath))
 
-                let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let readBack = try File.System.Read.Full.read(from: filePath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(readBack == [1, 2, 3])
             }
         }
@@ -84,7 +88,9 @@ import Testing
                 try File.System.Write.Atomic.write([1, 2, 3], to: filePath)
                 #expect(File.System.Stat.exists(at: filePath))
 
-                let readBack = try File.System.Read.Full.read(from: filePath) { $0.withUnsafeBytes { unsafe $0.map(Byte.init) } }
+                let readBack = try File.System.Read.Full.read(from: filePath) {
+                    $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
+                }
                 #expect(readBack == [1, 2, 3])
             }
         }

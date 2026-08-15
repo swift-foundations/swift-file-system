@@ -156,7 +156,9 @@ extension File.System.Delete {
 
     /// Stats a path without following symlinks, using Kernel.File.Stats.
     @usableFromInline
-    internal static func lstat(_ path: File.Path) throws(Kernel.File.Stats.Error) -> Kernel.File.Stats {
+    internal static func lstat(
+        _ path: File.Path
+    ) throws(Kernel.File.Stats.Error) -> Kernel.File.Stats {
         try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
             try Kernel.File.Stats.lget(path: kernelPath)
         }

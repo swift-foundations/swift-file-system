@@ -109,7 +109,8 @@ extension File.System.Link.Read.Target {
         // Read the symlink target
         let targetString: Swift.String
         do throws(Kernel.Link.Symbolic.Error) {
-            targetString = try path.withKernelPath { kernelPath throws(Kernel.Link.Symbolic.Error) in
+            targetString = try path.withKernelPath {
+                kernelPath throws(Kernel.Link.Symbolic.Error) in
                 let kernelString = try Kernel.Link.Symbolic.readTarget(at: kernelPath)
                 return Swift.String(kernelString.view)
             }

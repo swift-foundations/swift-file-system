@@ -15,7 +15,12 @@ extension [UInt8] {
     ///
     /// - Parameter fileName: The file name to copy bytes from.
     /// - Returns: `nil` if the file name uses Windows encoding.
-    @available(*, deprecated, message: "Use `name.withCodeUnits { span in Array(span) }` (POSIX) for cross-platform zero-copy access; this POSIX-only allocating convenience is superseded.")
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `name.withCodeUnits { span in Array(span) }` (POSIX) for cross-platform zero-copy access; this POSIX-only allocating convenience is superseded."
+    )
     @inlinable
     public init?(copying fileName: File.Name) {
         #if os(Windows)
@@ -34,7 +39,12 @@ extension [UInt16] {
     ///
     /// - Parameter fileName: The file name to copy code units from.
     /// - Returns: `nil` if the file name uses POSIX encoding.
-    @available(*, deprecated, message: "Use `name.withCodeUnits { span in Array(span) }` (Windows) for cross-platform zero-copy access; this Windows-only allocating convenience is superseded.")
+    @available(
+        *,
+        deprecated,
+        message:
+            "Use `name.withCodeUnits { span in Array(span) }` (Windows) for cross-platform zero-copy access; this Windows-only allocating convenience is superseded."
+    )
     @inlinable
     public init?(copying fileName: File.Name) {
         #if os(Windows)

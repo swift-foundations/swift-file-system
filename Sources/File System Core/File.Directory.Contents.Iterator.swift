@@ -60,7 +60,8 @@ extension File.Directory.Contents {
     ) throws(Self.Error) -> (iterator: Iterator, handle: IteratorHandle) {
         let stream: Kernel.Directory.Stream
         do throws(Kernel.Directory.Error) {
-            stream = try directory.path.withKernelPath { kernelPath throws(Kernel.Directory.Error) in
+            stream = try directory.path.withKernelPath {
+                kernelPath throws(Kernel.Directory.Error) in
                 try Kernel.Directory.open(at: kernelPath)
             }
         } catch {

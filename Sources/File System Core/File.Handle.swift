@@ -37,7 +37,11 @@ extension File {
 
         /// Creates a handle from an existing descriptor.
         @usableFromInline
-        internal init(descriptor: consuming File.Descriptor, mode: Kernel.File.Open.Mode, path: File.Path) {
+        internal init(
+            descriptor: consuming File.Descriptor,
+            mode: Kernel.File.Open.Mode,
+            path: File.Path
+        ) {
             self._descriptor = descriptor
             self.mode = mode
             self.path = path
@@ -83,10 +87,14 @@ extension File.Handle {
         let rawBuffer = UnsafeMutableRawBufferPointer.allocate(byteCount: count, alignment: 1)
         defer { unsafe rawBuffer.deallocate() }
 
-        let bytesRead = try unsafe Kernel.IO.Read.read(_descriptor.kernelDescriptor, into: rawBuffer)
+        let bytesRead = try unsafe Kernel.IO.Read.read(
+            _descriptor.kernelDescriptor,
+            into: rawBuffer
+        )
 
         // Copy to array — byte-domain return type
-        return unsafe Array(UnsafeRawBufferPointer(start: rawBuffer.baseAddress, count: bytesRead)).map(Byte.init)
+        return unsafe Array(UnsafeRawBufferPointer(start: rawBuffer.baseAddress, count: bytesRead))
+            .map(Byte.init)
     }
 
     /// Reads bytes into a caller-provided buffer.
@@ -112,7 +120,8 @@ extension File.Handle {
     @inlinable
     public mutating func write(_ bytes: borrowing Swift.Span<Byte>) throws(File.Handle.Error) {
         if bytes.count == 0 { return }
-        try unsafe bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(File.Handle.Error) in
+        try unsafe bytes.withUnsafeBytes {
+            (rawBuffer: UnsafeRawBufferPointer) throws(File.Handle.Error) in
             try unsafe writeAll(rawBuffer)
         }
     }
@@ -141,7 +150,11 @@ extension File.Handle {
             } catch {
                 throw .write(error)
             }
-            totalWritten = try Self.advance(totalWritten: totalWritten, by: written, expected: buffer.count)
+            totalWritten = try Self.advance(
+                totalWritten: totalWritten,
+                by: written,
+                expected: buffer.count
+            )
         }
     }
 
@@ -180,7 +193,10 @@ extension File.Handle {
             // reliably, so no fallback there.
             #if !os(Windows)
                 if case .platform(let p) = error, p.code == .POSIX.ESPIPE, offset == 0 {
-                    return try unsafe Kernel.IO.Write.write(_descriptor.kernelDescriptor, from: buffer)
+                    return try unsafe Kernel.IO.Write.write(
+                        _descriptor.kernelDescriptor,
+                        from: buffer
+                    )
                 }
             #endif
             throw error
@@ -220,7 +236,11 @@ extension File.Handle {
             } catch {
                 throw .write(error)
             }
-            totalWritten = try Self.advance(totalWritten: totalWritten, by: written, expected: buffer.count)
+            totalWritten = try Self.advance(
+                totalWritten: totalWritten,
+                by: written,
+                expected: buffer.count
+            )
             currentOffset += Int64(written)
         }
     }

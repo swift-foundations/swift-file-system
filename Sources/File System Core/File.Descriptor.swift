@@ -124,7 +124,9 @@ extension File.Descriptor {
     ///
     /// - Parameter other: The file descriptor to duplicate.
     /// - Throws: `Kernel.Descriptor.Duplicate.Error` on failure.
-    public init(duplicating other: borrowing File.Descriptor) throws(Kernel.Descriptor.Duplicate.Error) {
+    public init(
+        duplicating other: borrowing File.Descriptor
+    ) throws(Kernel.Descriptor.Duplicate.Error) {
         let newDescriptor = try Kernel.Descriptor.Duplicate.duplicate(other._descriptor)
         self.init(__unchecked: newDescriptor)
     }

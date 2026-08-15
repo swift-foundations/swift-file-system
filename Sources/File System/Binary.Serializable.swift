@@ -23,7 +23,12 @@ extension Binary.Serializable {
         options: File.System.Write.Atomic.Options = .init(),
         createIntermediates: Bool = false
     ) throws(File.System.Write.Atomic.Error) {
-        try File.System.Write.Atomic.write(self, to: path, options: options, createIntermediates: createIntermediates)
+        try File.System.Write.Atomic.write(
+            self,
+            to: path,
+            options: options,
+            createIntermediates: createIntermediates
+        )
     }
 
     /// Writes this serializable value atomically to a file.

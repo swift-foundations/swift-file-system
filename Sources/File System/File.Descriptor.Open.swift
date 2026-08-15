@@ -1,3 +1,10 @@
+// swift-format-ignore-file: AmbiguousTrailingClosureOverload
+//
+// The callAsFunction/read/write/appending/readWrite overload pairs below are
+// distinguished by their closure's effect signature (sync vs async) — the
+// standard sync/async overload family (P2b carve-out). swift-format's
+// syntactic check sees only the shared base name; call sites resolve
+// unambiguously on the closure's shape.
 //
 //  File.Descriptor.Open.swift
 //  swift-file-system
@@ -222,7 +229,10 @@ extension File.Descriptor.Open {
     ) throws(Error<E>) -> Result {
         var opts = options
         opts.insert(.append)
-        return try File.Descriptor.Open(path: path, options: opts).scoped(mode: Kernel.File.Open.Mode.write, body)
+        return try File.Descriptor.Open(path: path, options: opts).scoped(
+            mode: Kernel.File.Open.Mode.write,
+            body
+        )
     }
 
     /// Async variant of appending.
@@ -232,7 +242,10 @@ extension File.Descriptor.Open {
     ) async throws(Error<E>) -> Result {
         var opts = options
         opts.insert(.append)
-        return try await File.Descriptor.Open(path: path, options: opts).scoped(mode: Kernel.File.Open.Mode.write, body)
+        return try await File.Descriptor.Open(path: path, options: opts).scoped(
+            mode: Kernel.File.Open.Mode.write,
+            body
+        )
     }
 }
 
@@ -279,7 +292,10 @@ extension File.Descriptor {
     ///   - options: Options for opening the file.
     /// - Returns: An `Open` instance.
     @inlinable
-    public static func open(_ path: borrowing File.Path, options: Kernel.File.Open.Options = []) -> Open {
+    public static func open(
+        _ path: borrowing File.Path,
+        options: Kernel.File.Open.Options = []
+    ) -> Open {
         Open(path: copy path, options: options)
     }
 }

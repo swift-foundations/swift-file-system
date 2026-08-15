@@ -45,7 +45,11 @@ extension File.System.Copy {
     ) throws(Error) {
         try source.withKernelPath { sourceKernelPath throws(Error) in
             try destination.withKernelPath { destinationKernelPath throws(Error) in
-                try Kernel.File.Copy.copy(from: sourceKernelPath, to: destinationKernelPath, options: options)
+                try Kernel.File.Copy.copy(
+                    from: sourceKernelPath,
+                    to: destinationKernelPath,
+                    options: options
+                )
             }
         }
     }

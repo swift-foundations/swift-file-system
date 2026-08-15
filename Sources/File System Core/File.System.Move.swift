@@ -165,7 +165,8 @@ extension File.System.Move {
         // Try rename
         do throws(Kernel.File.Move.Error) {
             try source.withKernelPath { sourceKernelPath throws(Kernel.File.Move.Error) in
-                try destination.withKernelPath { destinationKernelPath throws(Kernel.File.Move.Error) in
+                try destination.withKernelPath {
+                    destinationKernelPath throws(Kernel.File.Move.Error) in
                     try Kernel.File.Move.move(from: sourceKernelPath, to: destinationKernelPath)
                 }
             }
