@@ -1,8 +1,0 @@
-# SwiftLint configuration for swift-file-system
-# Inherits from the shared parent configuration in swift-foundations
-
-parent_config: https://raw.githubusercontent.com/swift-foundations/.github/main/.swiftlint.yml
-
-# Package-specific overrides
-disabled_rules:
-  - function_parameter_count
