@@ -1,19 +1,19 @@
-// swift-tools-version: 6.3.3
+// swift-tools-version: 6.4
 
 import PackageDescription
 
 let package = Package(
     name: "swift-file-system",
     platforms: [
-        .macOS("27"),
-        .iOS("27"),
-        .tvOS("27"),
-        .watchOS("27")
+        .macOS(.v27),
+        .iOS(.v27),
+        .tvOS(.v27),
+        .watchOS(.v27),
     ],
     products: [
         .library(name: "File System", targets: ["File System"]),
         .library(name: "File System Core", targets: ["File System Core"]),
-        .library(name: "File System Test Support", targets: ["File System Test Support"])
+        .library(name: "File System Test Support", targets: ["File System Test Support"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swift-foundations/swift-ascii.git", branch: "main"),
@@ -23,13 +23,31 @@ let package = Package(
         .package(url: "https://github.com/swift-foundations/swift-strings.git", branch: "main"),
         .package(url: "https://github.com/swift-foundations/swift-io.git", branch: "main"),
         .package(url: "https://github.com/swift-foundations/swift-threads.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-either-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-binary-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-span-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-glob-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-path-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-primitives/swift-tagged-primitives.git", branch: "main"),
-        .package(url: "https://github.com/swift-ietf/swift-rfc-4648.git", branch: "main")
+        .package(
+            url: "https://github.com/swift-primitives/swift-either-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-binary-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-span-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-glob-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-path-primitives.git",
+            branch: "main"
+        ),
+        .package(
+            url: "https://github.com/swift-primitives/swift-tagged-primitives.git",
+            branch: "main"
+        ),
+        .package(url: "https://github.com/swift-ietf/swift-rfc-4648.git", branch: "main"),
     ],
     targets: [
         .target(
@@ -43,7 +61,7 @@ let package = Package(
                 .product(name: "Either Primitives", package: "swift-either-primitives"),
                 .product(name: "Binary Primitives", package: "swift-binary-primitives"),
                 .product(name: "ASCII", package: "swift-ascii"),
-                .product(name: "RFC 4648", package: "swift-rfc-4648")
+                .product(name: "RFC 4648", package: "swift-rfc-4648"),
             ]
         ),
         .target(
@@ -54,7 +72,7 @@ let package = Package(
                 .product(name: "IO", package: "swift-io"),
                 .product(name: "Span Raw Primitives", package: "swift-span-primitives"),
                 .product(name: "Thread Pool", package: "swift-threads"),
-                .product(name: "Thread Actor", package: "swift-threads")
+                .product(name: "Thread Actor", package: "swift-threads"),
             ]
         ),
         .target(
@@ -73,7 +91,10 @@ let package = Package(
                 "File System Core",
                 "File System Test Support",
                 .product(name: "Kernel", package: "swift-kernel"),
-                .product(name: "Tagged Primitives Standard Library Integration", package: "swift-tagged-primitives")
+                .product(
+                    name: "Tagged Primitives Standard Library Integration",
+                    package: "swift-tagged-primitives"
+                ),
             ]
         ),
         .testTarget(
@@ -82,9 +103,12 @@ let package = Package(
                 "File System",
                 "File System Test Support",
                 .product(name: "Kernel", package: "swift-kernel"),
-                .product(name: "Tagged Primitives Standard Library Integration", package: "swift-tagged-primitives")
+                .product(
+                    name: "Tagged Primitives Standard Library Integration",
+                    package: "swift-tagged-primitives"
+                ),
             ]
-        )
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
