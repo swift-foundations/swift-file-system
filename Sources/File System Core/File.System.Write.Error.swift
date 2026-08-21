@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Kernel
+import Kernel
 
 extension File.System.Write {
     /// Internal error for shared write operations.

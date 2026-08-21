@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Kernel
+import Kernel
 
 extension File.System.Write.Atomic {
     /// Ownership preservation behavior during atomic write.

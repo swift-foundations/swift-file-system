@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Kernel
+import Kernel
 
 extension File.System.Write.Atomic.Commit {
     /// Tracks progress through the atomic write operation.

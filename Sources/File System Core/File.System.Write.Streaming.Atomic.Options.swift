@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Kernel
+import Kernel
 
 extension File.System.Write.Streaming.Atomic {
     /// Options for atomic streaming writes.

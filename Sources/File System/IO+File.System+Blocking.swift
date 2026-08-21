@@ -9,7 +9,7 @@
 
 public import Executors
 public import IO
-public import Thread_Actor
+import Thread_Actor
 
 extension IO where Capabilities == File.System.IO.Capabilities {
     /// Blocking-strategy file-system I/O bound to an explicit executor.

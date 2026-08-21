@@ -9,7 +9,7 @@
 
 public import IO
 public import Kernel
-public import Memory_Primitives
+import Memory_Primitives
 public import Span_Raw_Primitives
 
 extension IO where Capabilities == File.System.IO.Capabilities {
@@ -58,6 +58,6 @@ extension IO where Capabilities == File.System.IO.Capabilities {
     /// The `UnownedSerialExecutor` this bundle is pinned to.
     @inlinable
     public var unownedExecutor: UnownedSerialExecutor {
-        runner.executor()
+        unsafe runner.executor()
     }
 }

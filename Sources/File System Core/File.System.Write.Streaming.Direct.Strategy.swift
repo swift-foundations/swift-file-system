@@ -9,7 +9,7 @@
 //
 // ===----------------------------------------------------------------------===//
 
-public import Kernel
+import Kernel
 
 extension File.System.Write.Streaming.Direct {
     /// Strategy for direct (non-atomic) writes.

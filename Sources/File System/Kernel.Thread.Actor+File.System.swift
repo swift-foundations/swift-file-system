@@ -11,7 +11,7 @@
 
 public import IO
 public import Kernel
-public import Memory_Primitives
+import Memory_Primitives
 public import Span_Raw_Primitives
 public import Thread_Actor
 

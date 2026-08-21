@@ -4,7 +4,7 @@
 //
 
 public import Kernel
-public import Memory_Primitives
+import Memory_Primitives
 public import Span_Raw_Primitives
 
 extension File.System.IO {

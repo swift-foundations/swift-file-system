@@ -10,7 +10,7 @@
 //  the multi-domain pattern is confirmed.
 //
 
-public import IO
+import IO
 
 extension File.System {
     /// Namespace for the file-system `IO<Capabilities>` bundle.
