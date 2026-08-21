@@ -122,7 +122,6 @@ for target in package.targets where ![.system, .binary, .plugin, .macro].contain
         .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
         .enableExperimentalFeature("LifetimeDependence"),
         .enableExperimentalFeature("Lifetimes"),
-        .enableExperimentalFeature("SuppressedAssociatedTypes"),
         .enableUpcomingFeature("InferIsolatedConformances"),
         .enableUpcomingFeature("LifetimeDependence"),
     ]
