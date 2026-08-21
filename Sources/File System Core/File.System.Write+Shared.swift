@@ -1,17 +1,4 @@
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-kernel open source project
-//
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-kernel project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
 import Kernel
-
-// MARK: - Path Resolution
 
 extension File.System.Write {
     internal static func resolvePaths(
@@ -25,8 +12,6 @@ extension File.System.Write {
     }
 }
 
-// MARK: - File Existence
-
 extension File.System.Write {
     internal static func fileExists(_ path: File.Path) -> Bool {
         do throws(Kernel.File.Stats.Error) {
@@ -39,8 +24,6 @@ extension File.System.Write {
         }
     }
 }
-
-// MARK: - Random Token
 
 extension File.System.Write {
     internal static func randomToken(
@@ -76,10 +59,8 @@ extension File.System.Write {
     }
 }
 
-// MARK: - Write All
-
 extension File.System.Write {
-    /// Writes all bytes from a span to a file descriptor, handling partial writes.
+
     internal static func writeAll(
         _ span: borrowing Swift.Span<Byte>,
         to fd: borrowing Kernel.Descriptor
@@ -131,7 +112,6 @@ extension File.System.Write {
         }
     }
 
-    /// Writes all bytes from a raw buffer to a file descriptor, handling partial writes.
     internal static func writeAllRaw(
         _ buffer: UnsafeRawBufferPointer,
         to fd: borrowing Kernel.Descriptor
@@ -182,14 +162,8 @@ extension File.System.Write {
     }
 }
 
-// MARK: - Sync and Close
-
 extension File.System.Write {
-    /// Syncs file data according to durability mode.
-    ///
-    /// - `.full`: fsync (or F_FULLFSYNC on Darwin)
-    /// - `.dataOnly`: fdatasync on Linux, F_BARRIERFSYNC on Darwin, fsync elsewhere
-    /// - `.none`: no-op
+
     internal static func syncFile(
         _ fd: borrowing Kernel.Descriptor,
         durability: File.System.Write.Durability
@@ -225,10 +199,8 @@ extension File.System.Write {
     }
 }
 
-// MARK: - Rename Operations
-
 extension File.System.Write {
-    /// Atomically renames a file, propagating the actual error on failure.
+
     internal static func atomicRename(
         from source: File.Path,
         to dest: File.Path
@@ -244,14 +216,6 @@ extension File.System.Write {
         }
     }
 
-    /// Renames without overwriting.
-    ///
-    /// TODO: Currently a non-atomic existence-check + move (TOCTOU race window).
-    /// Promote to atomic when `Kernel.File.Move.noClobber` lands upstream
-    /// (requires `renameat2(RENAME_NOREPLACE)` on Linux, `renamex_np(RENAME_EXCL)`
-    /// on macOS, `SetFileInformationByHandle` on Windows — currently fragmented
-    /// across `Linux.Kernel.File.Rename`, `Darwin.Kernel.File.Move` extension,
-    /// and `Windows.\`32\`.Kernel.File.Rename`).
     internal static func atomicRenameNoClobber(
         from source: File.Path,
         to dest: File.Path
@@ -270,7 +234,6 @@ extension File.System.Write {
         }
     }
 
-    /// Syncs a directory to persist rename operations.
     internal static func syncDirectory(
         _ path: File.Path
     ) throws(Self.Error) {
@@ -278,10 +241,7 @@ extension File.System.Write {
             _ = path
         #else
             do {
-                // Non-optional `var` storage, not a closure return:
-                // `Kernel.Descriptor` is `~Copyable`, and `withKernelPath`'s
-                // generic `R` requires Copyable, so the opened descriptor
-                // cannot flow out as the closure's result.
+
                 var fd: Kernel.Descriptor = .invalid
                 try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
                     fd = try Kernel.File.Open.open(
@@ -292,7 +252,7 @@ extension File.System.Write {
                     )
                 }
                 try Kernel.File.Flush.flush(fd)
-                // fd closes via deinit at end of scope
+
             } catch {
                 throw .directory(
                     path: path,

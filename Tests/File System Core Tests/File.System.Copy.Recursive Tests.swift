@@ -1,21 +1,11 @@
-//
-//  File.System.Copy.Recursive Tests.swift
-//  swift-file-system
-//
-//  Created by Claude Code on 13/01/2026.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
 
 @testable import File_System_Core
 
-// MARK: - Test Suite for recursive copy
-
 @Suite
 struct `File.System.Copy.recursive` {
-    // MARK: - Basic Copy
 
     @Test
     func `Copy empty directory`() throws {
@@ -62,7 +52,6 @@ struct `File.System.Copy.recursive` {
             let sourcePath = dir.path / "source"
             let destPath = dir.path / "dest"
 
-            // Create structure: source/a/b/c.txt
             let dirA = sourcePath / "a"
             let dirB = dirA / "b"
 
@@ -74,20 +63,17 @@ struct `File.System.Copy.recursive` {
             let filePath = dirB / "c.txt"
             try File.System.Write.Atomic.write([10, 20, 30].span, to: filePath)
 
-            // Also add a file at root level
             let rootFile = sourcePath / "root.txt"
             try File.System.Write.Atomic.write([99].span, to: rootFile)
 
             try File.System.Copy.recursive(from: sourcePath, to: destPath)
 
-            // Verify structure
             #expect(File.System.Stat.exists(at: destPath))
             #expect(File.System.Stat.exists(at: destPath / "a"))
             #expect(File.System.Stat.exists(at: destPath / "a" / "b"))
             #expect(File.System.Stat.exists(at: destPath / "a" / "b" / "c.txt"))
             #expect(File.System.Stat.exists(at: destPath / "root.txt"))
 
-            // Verify file contents
             let copiedData = try File.System.Read.Full.read(from: destPath / "a" / "b" / "c.txt") {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -112,13 +98,10 @@ struct `File.System.Copy.recursive` {
 
             try File.System.Copy.recursive(from: sourcePath, to: destPath)
 
-            // Source should still exist
             #expect(File.System.Stat.exists(at: sourcePath))
             #expect(File.System.Stat.exists(at: filePath))
         }
     }
-
-    // MARK: - Options
 
     @Test
     func `Copy with overwrite option`() throws {
@@ -126,19 +109,15 @@ struct `File.System.Copy.recursive` {
             let sourcePath = dir.path / "source"
             let destPath = dir.path / "dest"
 
-            // Create source with file
             try File.System.Create.Directory.create(at: sourcePath)
             try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath / "new.txt")
 
-            // Create existing destination with different file
             try File.System.Create.Directory.create(at: destPath)
             try File.System.Write.Atomic.write([99].span, to: destPath / "old.txt")
 
-            // Copy with overwrite
             let options = File.System.Copy.Options(overwrite: true)
             try File.System.Copy.recursive(from: sourcePath, to: destPath, options: options)
 
-            // New file should exist, old file should not
             #expect(File.System.Stat.exists(at: destPath / "new.txt"))
             #expect(!File.System.Stat.exists(at: destPath / "old.txt"))
         }
@@ -168,8 +147,6 @@ struct `File.System.Copy.recursive` {
         #expect(options.followSymlinks == true)
     }
 
-    // MARK: - Error Cases
-
     @Test
     func `Copy non-existent source throws sourceNotFound`() throws {
         try File.Directory.temporary { dir in
@@ -197,8 +174,6 @@ struct `File.System.Copy.recursive` {
         }
     }
 
-    // MARK: - File Fallback
-
     @Test
     func `Copy file delegates to file copy`() throws {
         try File.Directory.temporary { dir in
@@ -207,7 +182,6 @@ struct `File.System.Copy.recursive` {
 
             try File.System.Write.Atomic.write([1, 2, 3].span, to: sourcePath)
 
-            // Recursive copy should work on files too
             try File.System.Copy.recursive(from: sourcePath, to: destPath)
 
             #expect(File.System.Stat.exists(at: destPath))
@@ -218,8 +192,6 @@ struct `File.System.Copy.recursive` {
         }
     }
 
-    // MARK: - Edge Cases
-
     @Test
     func `Copy directory with many files`() throws {
         try File.Directory.temporary { dir in
@@ -228,7 +200,6 @@ struct `File.System.Copy.recursive` {
 
             try File.System.Create.Directory.create(at: sourcePath)
 
-            // Create 10 files
             for i in 0..<10 {
                 let filePath = sourcePath / "file\(i).txt"
                 let bytes: [Byte] = [Byte(UInt8(i))]
@@ -237,7 +208,6 @@ struct `File.System.Copy.recursive` {
 
             try File.System.Copy.recursive(from: sourcePath, to: destPath)
 
-            // Verify all files copied
             for i in 0..<10 {
                 let filePath = destPath / "file\(i).txt"
                 #expect(File.System.Stat.exists(at: filePath))
@@ -255,7 +225,6 @@ struct `File.System.Copy.recursive` {
             let sourcePath = dir.path / "source"
             let destPath = dir.path / "dest"
 
-            // Create deep structure: source/1/2/3/4/5/file.txt
             var currentPath = sourcePath
             for i in 1...5 {
                 let component: File.Path.Component = "\(i)"
@@ -270,7 +239,6 @@ struct `File.System.Copy.recursive` {
 
             try File.System.Copy.recursive(from: sourcePath, to: destPath)
 
-            // Verify deep file exists
             var destFile = destPath
             for component: File.Path.Component in ["1", "2", "3", "4", "5", "file.txt"] {
                 destFile = destFile.appending(component)

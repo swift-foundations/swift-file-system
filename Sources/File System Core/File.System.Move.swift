@@ -1,23 +1,14 @@
-//
-//  File.System.Move.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 17/12/2025.
-//
-
 public import Kernel
 
 extension File.System {
-    /// Namespace for file move/rename operations.
+
     public enum Move {}
 }
 
-// MARK: - Options
-
 extension File.System.Move {
-    /// Options for move operations.
+
     public struct Options: Sendable {
-        /// Overwrite existing destination.
+
         public var overwrite: Bool
 
         public init(overwrite: Bool = false) {
@@ -26,30 +17,22 @@ extension File.System.Move {
     }
 }
 
-// MARK: - Error (Union of Kernel Errors)
-
 extension File.System.Move {
-    /// Errors that can occur during move operations.
-    ///
-    /// This is a union of the kernel errors that the move operation can produce.
-    /// Use semantic accessors like `isSourceNotFound` or `isPermissionDenied` for common checks,
-    /// or match on specific cases for full error details.
+
     public enum Error: Swift.Error, Sendable {
-        /// Destination exists when overwrite is disabled (pre-check).
+
         case destinationExists(File.Path)
-        /// Error from rename operation.
+
         case rename(Kernel.File.Move.Error)
-        /// Error from copy operation (cross-device fallback).
+
         case copy(File.System.Copy.Error)
-        /// Error from cleanup after successful copy (cross-device).
+
         case cleanup(Kernel.File.Delete.Error)
     }
 }
 
-// MARK: - Semantic Accessors
-
 extension File.System.Move.Error {
-    /// Returns `true` if the error indicates the source was not found.
+
     public var isSourceNotFound: Bool {
         switch self {
         case .destinationExists:
@@ -67,7 +50,6 @@ extension File.System.Move.Error {
         }
     }
 
-    /// Returns `true` if the error indicates the destination already exists.
     public var isDestinationExists: Bool {
         switch self {
         case .destinationExists:
@@ -85,7 +67,6 @@ extension File.System.Move.Error {
         }
     }
 
-    /// Returns `true` if the error indicates permission was denied.
     public var isPermissionDenied: Bool {
         switch self {
         case .destinationExists:
@@ -104,7 +85,6 @@ extension File.System.Move.Error {
         }
     }
 
-    /// Returns `true` if the error indicates a cross-device move.
     public var isCrossDevice: Bool {
         switch self {
         case .rename(let e):
@@ -115,7 +95,6 @@ extension File.System.Move.Error {
         }
     }
 
-    /// Returns `true` if the source path is a directory.
     public var isDirectory: Bool {
         switch self {
         case .rename(let e):
@@ -131,22 +110,14 @@ extension File.System.Move.Error {
     }
 }
 
-// MARK: - Core API
-
 extension File.System.Move {
-    /// Moves (renames) a file from source to destination with options.
-    ///
-    /// - Parameters:
-    ///   - source: The source file path.
-    ///   - destination: The destination file path.
-    ///   - options: Move options.
-    /// - Throws: `File.System.Move.Error` on failure.
+
     public static func move(
         from source: borrowing File.Path,
         to destination: borrowing File.Path,
         options: borrowing Options = .init()
     ) throws(Self.Error) {
-        // Check if destination exists (when overwrite is disabled)
+
         if !options.overwrite {
             let destExists: Bool
             do throws(Kernel.File.Stats.Error) {
@@ -162,7 +133,6 @@ extension File.System.Move {
             }
         }
 
-        // Try rename
         do throws(Kernel.File.Move.Error) {
             try source.withKernelPath { sourceKernelPath throws(Kernel.File.Move.Error) in
                 try destination.withKernelPath {
@@ -171,7 +141,7 @@ extension File.System.Move {
                 }
             }
         } catch {
-            // If cross-device, fall back to copy+delete
+
             if case .crossDevice = error {
                 try copyAndDelete(from: source, to: destination, options: options)
                 return
@@ -180,13 +150,12 @@ extension File.System.Move {
         }
     }
 
-    /// Fallback: copy then delete for cross-device moves.
     private static func copyAndDelete(
         from source: File.Path,
         to destination: File.Path,
         options: Options
     ) throws(Self.Error) {
-        // Use Copy to copy the file
+
         let copyOptions = File.System.Copy.Options(
             overwrite: options.overwrite,
             copyAttributes: true,
@@ -199,8 +168,6 @@ extension File.System.Move {
             throw .copy(error)
         }
 
-        // Delete source — cleanup failure after successful copy is a soft failure.
-        // The data is at the destination, but source still exists.
         do throws(Kernel.File.Delete.Error) {
             try source.withKernelPath { kernelPath throws(Kernel.File.Delete.Error) in
                 try Kernel.File.Delete.delete(kernelPath)
@@ -211,8 +178,6 @@ extension File.System.Move {
     }
 
 }
-
-// MARK: - CustomStringConvertible for Error
 
 extension File.System.Move.Error: CustomStringConvertible {
     public var description: Swift.String {

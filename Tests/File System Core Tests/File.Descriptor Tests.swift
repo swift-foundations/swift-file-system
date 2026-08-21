@@ -1,10 +1,3 @@
-//
-//  File.Descriptor Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System
 import File_System_Test_Support
 import Kernel
@@ -23,7 +16,6 @@ extension File.Descriptor {
 }
 
 extension File.Descriptor.Test.Unit {
-    // MARK: - Opening
 
     @Test
     func `Open file in read mode`() throws {
@@ -75,8 +67,6 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    // MARK: - Options
-
     @Test
     func `Open with create option creates file`() throws {
         try File.Directory.temporary { dir in
@@ -121,8 +111,6 @@ extension File.Descriptor.Test.Unit {
         }
     }
 
-    // MARK: - Closing
-
     @Test
     func `Close makes descriptor invalid`() throws {
         try File.Directory.temporary { dir in
@@ -133,7 +121,7 @@ extension File.Descriptor.Test.Unit {
             let isValid = descriptor.isValid
             #expect(isValid)
             try descriptor.close()
-            // After close, descriptor is consumed, can't check isValid
+
         }
     }
 
@@ -146,8 +134,6 @@ extension File.Descriptor.Test.Unit {
             let descriptor = try File.Descriptor.open(file.path, mode: .read)
             try descriptor.close()
 
-            // Can't actually test double close since close() is consuming
-            // The descriptor is consumed after first close
         }
     }
 }

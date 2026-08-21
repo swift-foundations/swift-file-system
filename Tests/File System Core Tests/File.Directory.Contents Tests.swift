@@ -1,10 +1,3 @@
-//
-//  File.Directory.Contents Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,7 +15,6 @@ extension File.Directory.Contents {
 }
 
 extension File.Directory.Contents.Test.Unit {
-    // MARK: - Listing
 
     @Test
     func `List empty directory`() throws {
@@ -35,7 +27,7 @@ extension File.Directory.Contents.Test.Unit {
     @Test
     func `List directory with files`() throws {
         try File.Directory.temporary { dir in
-            // Create some files
+
             try File.System.Write.Atomic.write([], to: dir.path / "file1.txt")
             try File.System.Write.Atomic.write([], to: dir.path / "file2.txt")
             try File.System.Write.Atomic.write([], to: dir.path / "file3.txt")
@@ -51,7 +43,7 @@ extension File.Directory.Contents.Test.Unit {
     @Test
     func `List directory with subdirectories`() throws {
         try File.Directory.temporary { dir in
-            // Create subdirectories
+
             try File.System.Create.Directory.create(at: dir.path / "subdir1")
             try File.System.Create.Directory.create(at: dir.path / "subdir2")
 
@@ -67,10 +59,9 @@ extension File.Directory.Contents.Test.Unit {
     @Test
     func `List directory with mixed content`() throws {
         try File.Directory.temporary { dir in
-            // Create file
+
             try File.System.Write.Atomic.write([], to: dir.path / "file.txt")
 
-            // Create subdirectory
             try File.System.Create.Directory.create(at: dir.path / "subdir")
 
             let entries = try File.Directory.Contents.list(at: dir)
@@ -98,15 +89,13 @@ extension File.Directory.Contents.Test.Unit {
     }
 
     #if !os(Windows)
-        // Windows symlink handling differs - may return .other instead of .symbolicLink
 
         @Test
         func `List directory with symlink`() throws {
             try File.Directory.temporary { dir in
-                // Create a regular file
+
                 try File.System.Write.Atomic.write([], to: dir.path / "target.txt")
 
-                // Create a symlink
                 try File.System.Link.Symbolic.create(
                     at: dir.path / "link.txt",
                     pointingTo: dir.path / "target.txt"
@@ -121,8 +110,6 @@ extension File.Directory.Contents.Test.Unit {
         }
     #endif
 
-    // MARK: - Entry Properties
-
     @Test
     func `Entry has correct path`() throws {
         try File.Directory.temporary { dir in
@@ -133,7 +120,7 @@ extension File.Directory.Contents.Test.Unit {
 
             let entry = entries[0]
             #expect(Swift.String(entry.name) == "test.txt")
-            // Check the entry path ends with the filename (use platform-agnostic check)
+
             let expectedSuffix: File.Path = "test.txt"
             #expect(
                 entry.pathIfValid?.components.last.map { Swift.String($0) }
@@ -141,8 +128,6 @@ extension File.Directory.Contents.Test.Unit {
             )
         }
     }
-
-    // MARK: - Error Cases
 
     @Test
     func `List non-existent directory throws pathNotFound`() throws {
@@ -168,8 +153,6 @@ extension File.Directory.Contents.Test.Unit {
             }
         }
     }
-
-    // MARK: - Error Descriptions
 
     @Test
     func `pathNotFound error description`() {
@@ -198,8 +181,6 @@ extension File.Directory.Contents.Test.Unit {
         #expect(error.description.contains("Read failed"))
         #expect(error.description.contains("I/O error"))
     }
-
-    // MARK: - Entry Type
 
     @Test
     func `EntryType file case`() {

@@ -1,10 +1,3 @@
-//
-//  File.System.Link.Read.Target Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,11 +15,8 @@ extension File.System.Link.Read.Target {
 }
 
 extension File.System.Link.Read.Target.Test.Unit {
-    // MARK: - Read Target
 
     #if !os(Windows)
-        // Windows symlink target reading returns the link path instead of the actual target path
-        // These tests require POSIX symlink semantics
 
         @Test
         func `Read target of symlink to file`() throws {
@@ -96,8 +86,6 @@ extension File.System.Link.Read.Target.Test.Unit {
         }
     #endif
 
-    // MARK: - Error Cases
-
     @Test
     func `Read target of regular file throws error with isNotASymlink`() throws {
         try File.Directory.temporary { dir in
@@ -141,8 +129,6 @@ extension File.System.Link.Read.Target.Test.Unit {
             }
         }
     }
-
-    // MARK: - Semantic Accessors
 
     @Test
     func `notASymlink error has correct description`() throws {

@@ -1,8 +1,3 @@
-//
-//  File.System.Link Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,15 +13,11 @@ extension File.System.Link {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Link.Test.Unit {
-    // File.System.Link is a namespace enum
-    // Tests verify the namespace and nested types exist
 
     @Test
     func `Link namespace exists`() {
-        // Verify nested types are accessible through the namespace
+
         _ = File.System.Link.self
         _ = File.System.Link.Hard.self
         _ = File.System.Link.Symbolic.self

@@ -1,12 +1,3 @@
-//
-//  File.System.IO.Tests.swift
-//  swift-file-system
-//
-//  Validates the experimental File.System.IO bundle: a second domain
-//  (after swift-io's Basic test-support domain) using the
-//  IO<Capabilities> + Runner architecture.
-//
-
 import Executors
 import File_System
 import File_System_Test_Support
@@ -30,12 +21,6 @@ struct `File.System.IO — smoke tests` {
         let pathString = Kernel.Temporary.filePath(prefix: "fs-io-test")
         let path = try File.Path(pathString)
 
-        // Create the file via kernel open (independent of io.open), then
-        // exercise io.stat + io.close on it.
-        //
-        // Non-optional `var` storage, not a closure return: `Kernel.Descriptor`
-        // is `~Copyable`, and `withKernelPath`'s generic `R` requires Copyable,
-        // so the opened descriptor cannot flow out as the closure's result.
         var fd: Kernel.Descriptor = .invalid
         try path.withKernelPath { kernelPath in
             fd = try Kernel.File.Open.open(
@@ -61,8 +46,6 @@ struct `File.System.IO — smoke tests` {
         defer { executor.shutdown() }
         let io: IO<File.System.IO.Capabilities> = .default(on: executor)
 
-        // Round-trip stat of an empty temp file through whichever
-        // strategy default() selected on this host.
         let pathString = Kernel.Temporary.filePath(prefix: "fs-io-default")
         let path = try File.Path(pathString)
         defer {

@@ -1,15 +1,5 @@
-//
-//  File.Directory.Walk.Error.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
-//
-
 extension File.Directory.Walk {
-    /// Errors that can occur during directory walk operations.
-    ///
-    /// Directory walk uses recursive iteration through subdirectories.
-    /// This error type provides semantic categories for common failure modes.
+
     public enum Error: Swift.Error, Equatable, Sendable {
         case pathNotFound(File.Path)
         case permissionDenied(File.Path)
@@ -19,35 +9,28 @@ extension File.Directory.Walk {
     }
 }
 
-// MARK: - Semantic Accessors
-
 extension File.Directory.Walk.Error {
-    /// Returns `true` if the path was not found.
+
     public var isNotFound: Bool {
         if case .pathNotFound = self { return true }
         return false
     }
 
-    /// Returns `true` if permission was denied.
     public var isPermissionDenied: Bool {
         if case .permissionDenied = self { return true }
         return false
     }
 
-    /// Returns `true` if the path is not a directory.
     public var isNotADirectory: Bool {
         if case .notADirectory = self { return true }
         return false
     }
 
-    /// Returns `true` if an entry could not be decoded.
     public var isUndecodableEntry: Bool {
         if case .undecodableEntry = self { return true }
         return false
     }
 }
-
-// MARK: - CustomStringConvertible
 
 extension File.Directory.Walk.Error: CustomStringConvertible {
     public var description: Swift.String {

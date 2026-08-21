@@ -1,8 +1,3 @@
-//
-//  File.Name.Decode.Error Tests.swift
-//  swift-file-system
-//
-
 import ASCII
 import Kernel
 import Testing
@@ -21,11 +16,7 @@ extension File.Name.Decode.Error {
 
 #if os(macOS) || os(Linux)
 
-    // MARK: - Unit Tests
-
     extension File.Name.Decode.Error.Test.Unit {
-
-        // MARK: - Initialization
 
         @Test
         func `init stores the undecodable name`() {
@@ -33,8 +24,6 @@ extension File.Name.Decode.Error {
             let error = File.Name.Decode.Error(name: name)
             #expect(error.name == name)
         }
-
-        // MARK: - Error Conformance
 
         @Test
         func `Decode.Error conforms to Swift.Error`() {
@@ -56,8 +45,6 @@ extension File.Name.Decode.Error {
             }
         }
 
-        // MARK: - Equatable
-
         @Test
         func `Decode.Error is Equatable - same name`() {
             let name = File.Name(rawBytes: [0x80, 0x81])
@@ -75,8 +62,6 @@ extension File.Name.Decode.Error {
             #expect(error1 != error2)
         }
 
-        // MARK: - Sendable
-
         @Test
         func `Decode.Error is Sendable`() async {
             let name = File.Name(rawBytes: [0x80])
@@ -89,8 +74,6 @@ extension File.Name.Decode.Error {
             #expect(result == name)
         }
 
-        // MARK: - CustomStringConvertible
-
         @Test
         func `description includes debug description of name`() {
             let name = File.Name(rawBytes: [0x80, 0x81])
@@ -101,8 +84,7 @@ extension File.Name.Decode.Error {
 
         @Test
         func `description for valid UTF-8 name shows name`() {
-            // This case shouldn't happen in practice (why throw for valid UTF-8?)
-            // but the error should still work correctly
+
             let name = File.Name(rawBytes: Array("valid".utf8))
             let error = File.Name.Decode.Error(name: name)
 
@@ -110,15 +92,13 @@ extension File.Name.Decode.Error {
             #expect(error.description.contains("valid"))
         }
 
-        // MARK: - debugRawBytes
-
         @Test
         func `debugRawBytes returns hex-encoded bytes`() {
             let name = File.Name(rawBytes: [0x80, 0x81, 0x82])
             let error = File.Name.Decode.Error(name: name)
 
             let hex = error.debugRawBytes
-            // Hex encoding of [0x80, 0x81, 0x82]
+
             #expect(hex.contains("80"))
             #expect(hex.contains("81"))
             #expect(hex.contains("82"))
@@ -136,7 +116,7 @@ extension File.Name.Decode.Error {
 
         @Test
         func `debugRawBytes for valid ASCII shows hex`() {
-            let name = File.Name(rawBytes: [0x41, 0x42])  // "AB"
+            let name = File.Name(rawBytes: [0x41, 0x42])
             let error = File.Name.Decode.Error(name: name)
 
             let hex = error.debugRawBytes
@@ -153,8 +133,6 @@ extension File.Name.Decode.Error {
             #expect(hex.isEmpty)
         }
     }
-
-    // MARK: - Edge Cases
 
     extension File.Name.Decode.Error.Test.`Edge Case` {
 
@@ -173,7 +151,7 @@ extension File.Name.Decode.Error {
             let error = File.Name.Decode.Error(name: name)
 
             let hex = error.debugRawBytes
-            // 100 bytes * 2 hex chars = 200 characters
+
             #expect(hex.count == 200)
         }
 

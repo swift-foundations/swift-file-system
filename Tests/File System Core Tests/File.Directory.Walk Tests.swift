@@ -1,7 +1,3 @@
-//
-//  File.Directory.Walk Tests.swift
-//  swift-file-system
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -19,7 +15,6 @@ extension File.Directory.Walk {
 }
 
 #if os(macOS) || os(Linux)
-    // MARK: - Unit Tests
 
     extension File.Directory.Walk.Test.Unit {
         @Test
@@ -33,7 +28,7 @@ extension File.Directory.Walk {
         @Test
         func `walk returns entries for non-empty directory`() throws {
             try File.Directory.temporary { dir in
-                // Create files
+
                 let file1 = dir.path / "file1.txt"
                 let file2 = dir.path / "file2.txt"
                 let h1 = try File.Handle.open(file1, mode: .write, options: [.create, .execClose])
@@ -52,7 +47,7 @@ extension File.Directory.Walk {
         @Test
         func `walk recurses into subdirectories`() throws {
             try File.Directory.temporary { dir in
-                // Create subdir with file
+
                 let subdir = dir.path / "subdir"
                 try File.System.Create.Directory.create(at: subdir)
 
@@ -61,7 +56,7 @@ extension File.Directory.Walk {
                 try h.close()
 
                 let entries = try dir.walk()
-                #expect(entries.count == 2)  // subdir + nested.txt
+                #expect(entries.count == 2)
 
                 let names = entries.compactMap { Swift.String($0.name) }.sorted()
                 #expect(names.contains("subdir"))
@@ -72,7 +67,7 @@ extension File.Directory.Walk {
         @Test
         func `Options.maxDepth limits recursion`() throws {
             try File.Directory.temporary { dir in
-                // Create nested structure: dir/a/b/c.txt
+
                 let a = dir.path / "a"
                 let b = a / "b"
                 try File.System.Create.Directory.create(at: a)
@@ -82,12 +77,10 @@ extension File.Directory.Walk {
                 let h = try File.Handle.open(c, mode: .write, options: [.create, .execClose])
                 try h.close()
 
-                // maxDepth: 0 should only return immediate children
                 let entries0 = try dir.walk(options: .init(maxDepth: 0))
                 #expect(entries0.count == 1)
                 #expect(Swift.String(entries0[0].name) == "a")
 
-                // maxDepth: 1 should return dir/a and dir/a/b
                 let entries1 = try dir.walk(options: .init(maxDepth: 1))
                 #expect(entries1.count == 2)
             }
@@ -96,7 +89,7 @@ extension File.Directory.Walk {
         @Test
         func `Options.includeHidden filters hidden files`() throws {
             try File.Directory.temporary { dir in
-                // Create visible and hidden files
+
                 let visible = dir.path / "visible.txt"
                 let hidden = dir.path / ".hidden"
                 let h1 = try File.Handle.open(
@@ -108,11 +101,9 @@ extension File.Directory.Walk {
                 let h2 = try File.Handle.open(hidden, mode: .write, options: [.create, .execClose])
                 try h2.close()
 
-                // includeHidden: true (default)
                 let entriesWithHidden = try dir.walk(options: .init(includeHidden: true))
                 #expect(entriesWithHidden.count == 2)
 
-                // includeHidden: false
                 let entriesWithoutHidden = try dir.walk(options: .init(includeHidden: false))
                 #expect(entriesWithoutHidden.count == 1)
                 #expect(Swift.String(entriesWithoutHidden[0].name) == "visible.txt")
@@ -138,8 +129,6 @@ extension File.Directory.Walk {
             #expect(options.followSymlinks == true)
             #expect(options.includeHidden == false)
         }
-
-        // MARK: - onUndecodable Callback Tests
 
         @Test
         func `Options default onUndecodable returns skip`() {
@@ -204,11 +193,10 @@ extension File.Directory.Walk {
 
         @Test
         func `Options onUndecodable callback receives context properties`() {
-            // Test that the callback can access context properties
-            // by returning different policies based on context
+
             let options = File.Directory.Walk.Options(
                 onUndecodable: { context in
-                    // Callback can read all context properties
+
                     if context.depth > 2 && context.type == .directory {
                         return .stopAndThrow
                     }
@@ -216,7 +204,6 @@ extension File.Directory.Walk {
                 }
             )
 
-            // Test with shallow file - should skip
             let shallowFile = File.Directory.Walk.Undecodable.Context(
                 parent: "/tmp",
                 name: File.Name(rawBytes: [0x80]),
@@ -231,7 +218,6 @@ extension File.Directory.Walk {
                 Issue.record("Expected skip for shallow file")
             }
 
-            // Test with deep directory - should stopAndThrow
             let deepDir = File.Directory.Walk.Undecodable.Context(
                 parent: "/a/b/c",
                 name: File.Name(rawBytes: [0x80]),
@@ -247,8 +233,6 @@ extension File.Directory.Walk {
             }
         }
     }
-
-    // MARK: - Error Tests
 
     extension File.Directory.Walk.Test.Unit {
         @Test
@@ -323,8 +307,6 @@ extension File.Directory.Walk {
         }
     }
 
-    // MARK: - Edge Cases
-
     extension File.Directory.Walk.Test.`Edge Case` {
         @Test
         func `walk on non-existent directory throws`() throws {
@@ -354,16 +336,6 @@ extension File.Directory.Walk {
             }
         }
 
-        // MARK: - `.break` propagation across recursion (F-001)
-        //
-        // Both trees below are symmetric by construction (two sibling
-        // subdirectories, each holding exactly one file) precisely so the
-        // assertions hold regardless of which sibling `Kernel.Directory`
-        // enumeration visits first — directory entry order is not
-        // guaranteed by POSIX. Whichever subdirectory is visited first,
-        // `.break` fired from inside it must stop the ENTIRE walk before
-        // the other subdirectory is ever touched.
-
         @Test
         func `break at depth 1 stops the entire walk, not just its level`() throws {
             try File.Directory.temporary { dir in
@@ -390,15 +362,10 @@ extension File.Directory.Walk {
                     if entry.type == .directory {
                         return .continue
                     }
-                    // Break the instant we see a file — whichever
-                    // subdirectory got there first, at depth 1.
+
                     return .break
                 }
 
-                // Exactly one directory entry and its one file were
-                // visited: the directory that was entered, plus the file
-                // that triggered `.break`. The sibling subdirectory (and
-                // its file) must never have been touched.
                 #expect(visited.count == 2)
             }
         }
@@ -440,14 +407,9 @@ extension File.Directory.Walk {
                     }
                     Issue.record("Expected the walk to propagate the thrown error")
                 } catch {
-                    // Expected: the throwing body aborts the walk.
+
                 }
 
-                // The body must be called exactly twice: the directory
-                // that was entered, and the file inside it that threw.
-                // The sibling subdirectory's file must never be visited —
-                // the walk must not keep calling the body after it has
-                // already asked to abort.
                 #expect(callCount == 2)
             }
         }

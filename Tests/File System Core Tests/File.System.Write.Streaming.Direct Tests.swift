@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Direct Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,11 +13,7 @@ extension File.System.Write.Streaming.Direct {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Write.Streaming.Direct.Test.Unit {
-    // File.System.Write.Streaming.Direct is a namespace enum
-    // Tests verify the namespace and nested types exist
 
     @Test
     func `Direct namespace exists`() {

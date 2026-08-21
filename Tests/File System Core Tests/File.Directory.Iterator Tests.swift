@@ -1,8 +1,3 @@
-//
-//  File.Directory.Iterator Tests.swift
-//  swift-file-system
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -18,8 +13,6 @@ extension File.Directory.Iterator {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.Directory.Iterator.Test.Unit {
     @Test
@@ -44,7 +37,7 @@ extension File.Directory.Iterator.Test.Unit {
     @Test
     func `next returns entries for non-empty directory`() throws {
         try File.Directory.temporary { dir in
-            // Create a file in the directory
+
             let filePath = dir.path / "testfile.txt"
             let handle = try File.Handle.open(
                 filePath,
@@ -68,7 +61,6 @@ extension File.Directory.Iterator.Test.Unit {
         try File.Directory.temporary { dir in
             var iterator = try File.Directory.Iterator.open(at: dir)
 
-            // Collect all entries
             var entries: [Swift.String] = []
             while let entry = try iterator.next() {
                 if let name = Swift.String(entry.name) {
@@ -87,12 +79,10 @@ extension File.Directory.Iterator.Test.Unit {
         try File.Directory.temporary { dir in
             let iterator = try File.Directory.Iterator.open(at: dir)
             iterator.close()
-            // close() is consuming, so this is the only call
+
         }
     }
 }
-
-// MARK: - Semantic Accessor Tests
 
 extension File.Directory.Iterator.Test.Unit {
     @Test
@@ -130,8 +120,6 @@ extension File.Directory.Iterator.Test.Unit {
     }
 }
 
-// MARK: - Edge Cases
-
 extension File.Directory.Iterator.Test.`Edge Case` {
     @Test
     func `open on non-existent directory throws pathNotFound`() throws {
@@ -145,7 +133,7 @@ extension File.Directory.Iterator.Test.`Edge Case` {
     @Test
     func `open on file throws notADirectory`() throws {
         try File.Directory.temporary { dir in
-            // Create a file, not a directory
+
             let filePath = dir.path / "iter-file-test.txt"
             let handle = try File.Handle.open(
                 filePath,

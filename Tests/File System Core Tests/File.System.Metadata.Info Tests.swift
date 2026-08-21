@@ -1,10 +1,3 @@
-//
-//  File.System.Metadata.Info Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Tagged_Primitives_Standard_Library_Integration
 import Testing
@@ -22,8 +15,6 @@ extension File.System.Metadata.Info {
 }
 
 extension File.System.Metadata.Info.Test.Unit {
-
-    // MARK: - Initialization
 
     @Test
     func `Info initialization`() throws {
@@ -53,8 +44,6 @@ extension File.System.Metadata.Info.Test.Unit {
         #expect(info.device == 1)
         #expect(info.linkCount == 1)
     }
-
-    // MARK: - FileType
 
     @Test
     func `FileType regular case`() {
@@ -107,8 +96,6 @@ extension File.System.Metadata.Info.Test.Unit {
         #expect(File.System.Metadata.Kind.characterDevice != .fifo)
         #expect(File.System.Metadata.Kind.fifo != .socket)
     }
-
-    // MARK: - Info Properties
 
     @Test
     func `Info size property`() throws {
@@ -213,8 +200,6 @@ extension File.System.Metadata.Info.Test.Unit {
 
         #expect(file1.inode != file2.inode)
     }
-
-    // MARK: - Sendable
 
     @Test
     func `Info is sendable`() async throws {

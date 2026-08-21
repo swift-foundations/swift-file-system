@@ -1,20 +1,7 @@
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-kernel open source project
-//
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-kernel project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
 public import Kernel
 
-// MARK: - Error Mapping
-
 extension File.System.Write.Streaming.Error {
-    /// Creates a Streaming error from a shared write error.
+
     init(_ error: File.System.Write.Error) {
         switch error {
         case .sync(let msg):
@@ -57,12 +44,8 @@ extension File.System.Write.Streaming.Error {
     }
 }
 
-// MARK: - Core Streaming Write API
-
 extension File.System.Write.Streaming {
-    /// Writes a sequence of byte chunks to a file path.
-    ///
-    /// Memory-efficient for large files - processes one chunk at a time.
+
     public static func write<Chunks: Swift.Sequence>(
         _ chunks: Chunks,
         to path: borrowing Path_Primitives.Path.Borrowed,
@@ -81,7 +64,6 @@ extension File.System.Write.Streaming {
         }
     }
 
-    /// Writes a single byte array to a file path.
     @inlinable
     public static func write(
         _ bytes: [Byte],
@@ -98,7 +80,6 @@ extension File.System.Write.Streaming {
         }
     }
 
-    /// Writes a span of bytes to a file path (zero-copy).
     @inlinable
     public static func write(
         _ bytes: borrowing Swift.Span<Byte>,
@@ -116,21 +97,8 @@ extension File.System.Write.Streaming {
     }
 }
 
-// MARK: - Reusable-Buffer Streaming API
-
 extension File.System.Write.Streaming {
-    /// Streams data to a file using a caller-owned reusable buffer.
-    ///
-    /// This is the **performance-grade** streaming API. It guarantees no allocations
-    /// in the write hot loop by requiring the caller to provide a fixed-capacity buffer.
-    ///
-    /// - Parameters:
-    ///   - path: Destination file path
-    ///   - options: Write options
-    ///   - buffer: Caller-owned buffer (pre-sized to desired chunk size)
-    ///   - fill: Closure that fills the buffer and returns number of valid bytes.
-    ///           Return 0 to signal completion.
-    /// - Throws: `File.System.Write.Streaming.Error` on failure
+
     public static func write<E: Swift.Error>(
         to path: borrowing Path_Primitives.Path.Borrowed,
         options: Options = Options(),
@@ -169,12 +137,6 @@ extension File.System.Write.Streaming {
                 throw writeError!
             }
 
-            // Route through the borrowing Context method (via the static
-            // wrapper), not a direct `context.descriptor!` projection: the
-            // §A23 structural fix — projecting the @guaranteed field out of
-            // the borrowed ~Copyable Context lets CopyPropagation shorten
-            // the borrow to end before the consuming call, aborting the SIL
-            // ownership verifier ("Found outside of lifetime use?!").
             do throws(Error) {
                 try buffer.withUnsafeBufferPointer { ptr throws(Error) in
                     guard let base = ptr.baseAddress else { return }
@@ -201,10 +163,8 @@ extension File.System.Write.Streaming {
     }
 }
 
-// MARK: - Multi-Phase API
-
 extension File.System.Write.Streaming {
-    /// Opens a file for multi-phase streaming write.
+
     public static func open(
         path: borrowing Path_Primitives.Path.Borrowed,
         options: Options
@@ -273,7 +233,6 @@ extension File.System.Write.Streaming {
         }
     }
 
-    /// Writes a chunk to an open streaming context.
     public static func write(
         chunk span: borrowing Swift.Span<Byte>,
         to context: borrowing Context
@@ -283,9 +242,6 @@ extension File.System.Write.Streaming {
         } catch { throw Self.Error(error) }
     }
 
-    /// Writes a raw buffer chunk to an open streaming context.
-    ///
-    /// Distinguished from the `Swift.Span<Byte>` overload by parameter type.
     public static func write(
         chunk buffer: UnsafeRawBufferPointer,
         to context: borrowing Context
@@ -295,8 +251,6 @@ extension File.System.Write.Streaming {
         } catch { throw Self.Error(error) }
     }
 
-    /// Commits a streaming write, syncing and performing the atomic
-    /// rename if needed. Descriptor closes via deinit when context drops.
     public static func commit(
         _ context: borrowing Context
     ) throws(Error) {
@@ -340,8 +294,6 @@ extension File.System.Write.Streaming {
         }
     }
 
-    /// Cleans up a failed streaming write.
-    /// Descriptor closes via deinit when context drops.
     public static func cleanup(_ context: borrowing Context) {
         if let tempPath = context.tempPath {
             do throws(Kernel.File.Delete.Error) {
@@ -349,51 +301,30 @@ extension File.System.Write.Streaming {
                     try Kernel.File.Delete.delete(kernelPath)
                 }
             } catch {
-                // Best-effort cleanup; ignore failures.
+
             }
         }
     }
 }
 
-// MARK: - Context Descriptor Operations
-
-// These `borrowing` methods house the descriptor-consuming throwing helper calls
-// so that `self`'s borrow and the `descriptor` field projection sit inside one
-// function-level `@guaranteed` scope. The static API maps the helper error at the
-// call boundary (`do { try context.<op>() } catch { throw Error(error) }`), where
-// the wrapped call takes the whole `context` as `@guaranteed self`.
-//
-// STRUCTURAL FIX for the SIL ownership-verifier abort catalogued at §A23
-// (Issues/swift-issue-file-system-streaming-write-ownership): Swift 6.3.x
-// CopyPropagation shortens the borrow of a `borrowing ~Copyable` Context to end
-// before a call consuming its `@guaranteed descriptor` field, aborting `-O`
-// ("Found outside of lifetime use?!"). Empirically the abort fires on a plain
-// `apply` as well as a `try_apply`, so it is the field-projected borrow scope —
-// not the typed-throws continuation — that must be eliminated: a whole-function
-// `@guaranteed self` parameter has no shortenable nested borrow scope. Correct on
-// all toolchains, so no compiler gate is needed.
 extension File.System.Write.Streaming.Context {
-    /// Writes a span chunk to this context's descriptor.
+
     borrowing func write(
         chunk span: borrowing Swift.Span<Byte>
     ) throws(File.System.Write.Error) {
         try File.System.Write.writeAll(span, to: descriptor)
     }
 
-    /// Writes a raw buffer chunk to this context's descriptor.
     borrowing func write(
         chunk buffer: UnsafeRawBufferPointer
     ) throws(File.System.Write.Error) {
         try unsafe File.System.Write.writeAllRaw(buffer, to: descriptor)
     }
 
-    /// Syncs this context's descriptor according to its durability setting.
     borrowing func sync() throws(File.System.Write.Error) {
         try File.System.Write.syncFile(descriptor, durability: durability)
     }
 }
-
-// MARK: - File Operations (Streaming-Specific)
 
 extension File.System.Write.Streaming {
     private static func createFile(
@@ -408,10 +339,7 @@ extension File.System.Write.Streaming {
         }
 
         do throws(Kernel.File.Open.Error) {
-            // Non-optional `var` storage, not a closure return:
-            // `Kernel.Descriptor` is `~Copyable`, and `withKernelPath`'s
-            // generic `R` requires Copyable, so the opened descriptor
-            // cannot flow out as the closure's result.
+
             var descriptor: Kernel.Descriptor = .invalid
             try path.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
                 descriptor = try Kernel.File.Open.open(

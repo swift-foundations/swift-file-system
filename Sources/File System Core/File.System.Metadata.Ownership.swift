@@ -1,20 +1,12 @@
-//
-//  File.System.Metadata.Ownership.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 17/12/2025.
-//
-
 import Binary_Primitives
 public import Kernel
 
 extension File.System.Metadata {
-    /// File ownership information.
+
     public struct Ownership: Sendable, Equatable {
-        /// User ID of the owner.
+
         public var uid: Kernel.User.ID
 
-        /// Group ID of the owner.
         public var gid: Kernel.Group.ID
 
         public init(uid: Kernel.User.ID, gid: Kernel.Group.ID) {
@@ -24,26 +16,18 @@ extension File.System.Metadata {
     }
 }
 
-// MARK: - Error (Union of Kernel Errors)
-
 extension File.System.Metadata.Ownership {
-    /// Errors that can occur during ownership operations.
-    ///
-    /// This is a union of the kernel errors that ownership operations can produce.
-    /// Use semantic accessors like `isNotFound` or `isPermissionDenied` for common checks,
-    /// or match on specific cases for full error details.
+
     public enum Error: Swift.Error, Sendable {
-        /// Error from stat operation (reading ownership).
+
         case stat(Kernel.File.Stats.Error)
-        /// Error from chown operation (setting ownership).
+
         case chown(Kernel.File.Chown.Error)
     }
 }
 
-// MARK: - Semantic Accessors
-
 extension File.System.Metadata.Ownership.Error {
-    /// Returns `true` if the path was not found.
+
     public var isNotFound: Bool {
         switch self {
         case .stat(let e):
@@ -56,7 +40,6 @@ extension File.System.Metadata.Ownership.Error {
         }
     }
 
-    /// Returns `true` if permission was denied.
     public var isPermissionDenied: Bool {
         switch self {
         case .stat(let e):
@@ -70,7 +53,6 @@ extension File.System.Metadata.Ownership.Error {
         }
     }
 
-    /// Returns `true` if the filesystem is read-only.
     public var isReadOnly: Bool {
         switch self {
         case .chown(let e):
@@ -83,20 +65,11 @@ extension File.System.Metadata.Ownership.Error {
     }
 }
 
-// MARK: - Init from Path
-
 extension File.System.Metadata.Ownership {
-    /// Creates ownership by reading from a file path.
-    ///
-    /// - Parameter path: The path to the file.
-    /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
+
     public init(at path: borrowing File.Path) throws(Self.Error) {
         #if os(Windows)
-            // Windows doesn't expose uid/gid, but the path must still exist —
-            // route through the same Stats call the POSIX branch uses below
-            // (mirrors the Windows-side Stats read in
-            // File.System.Metadata.Permissions.init(at:)) so a nonexistent
-            // path throws like POSIX instead of silently synthesizing (0, 0).
+
             do throws(Kernel.File.Stats.Error) {
                 _ = try path.withKernelPath { kernelPath throws(Kernel.File.Stats.Error) in
                     try Kernel.File.Stats.get(path: kernelPath)
@@ -118,25 +91,13 @@ extension File.System.Metadata.Ownership {
     }
 }
 
-// MARK: - Set API
-
 extension File.System.Metadata.Ownership {
-    /// Sets the ownership of a file.
-    ///
-    /// Requires appropriate privileges (usually root).
-    ///
-    /// - Parameters:
-    ///   - ownership: The ownership to set.
-    ///   - path: The path to the file.
-    /// - Throws: `File.System.Metadata.Ownership.Error` on failure.
+
     public static func set(
         _ ownership: Self,
         at path: borrowing File.Path
     ) throws(Self.Error) {
-        // Windows has no chown syscall; Kernel.File.Chown is the single
-        // cross-platform entry point and owns the no-op/conditional
-        // semantics for platforms without real ownership — this L3 domain
-        // layer no longer special-cases Windows here.
+
         do throws(Kernel.File.Chown.Error) {
             try path.withKernelPath { kernelPath throws(Kernel.File.Chown.Error) in
                 try Kernel.File.Chown.chown(
@@ -151,8 +112,6 @@ extension File.System.Metadata.Ownership {
     }
 }
 
-// MARK: - CustomStringConvertible for Error
-
 extension File.System.Metadata.Ownership.Error: CustomStringConvertible {
     public var description: Swift.String {
         switch self {
@@ -164,8 +123,6 @@ extension File.System.Metadata.Ownership.Error: CustomStringConvertible {
         }
     }
 }
-
-// MARK: - Binary.Serializable
 
 extension File.System.Metadata.Ownership: Binary.Serializable {
     @inlinable

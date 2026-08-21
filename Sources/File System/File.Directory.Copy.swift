@@ -1,30 +1,12 @@
-//
-//  File.Directory.Copy.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 28/12/2025.
-//
-
 public import IO
 public import Thread_Pool
 
-// MARK: - Copy Namespace
-
 extension File.Directory {
-    /// Namespace for directory copy operations.
-    ///
-    /// Access via the `copy` property on a `File.Directory` instance:
-    /// ```swift
-    /// let dir: File.Directory = "/tmp/source"
-    ///
-    /// let copy = try dir.copy.to("/tmp/dest")
-    /// let copy2 = try await dir.copy.to(otherDir, options: .init(overwrite: true))
-    /// ```
+
     public struct Copy: Sendable {
-        /// The source path to copy from.
+
         public let path: File.Path
 
-        /// Creates a Copy instance.
         @usableFromInline
         internal init(_ path: File.Path) {
             self.path = path
@@ -33,15 +15,7 @@ extension File.Directory {
 }
 
 extension File.Directory.Copy {
-    // MARK: - Copy (Sync)
 
-    /// Copies the directory to a destination path.
-    ///
-    /// - Parameters:
-    ///   - destination: The destination path.
-    ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
-    /// - Returns: A `File.Directory` representing the copy at the destination.
-    /// - Throws: `File.System.Copy.Error` on failure.
     @discardableResult
     @inlinable
     public func to(
@@ -52,13 +26,6 @@ extension File.Directory.Copy {
         return File.Directory(destination)
     }
 
-    /// Copies the directory to a destination.
-    ///
-    /// - Parameters:
-    ///   - destination: The destination directory.
-    ///   - options: Copy options (overwrite, copyAttributes, followSymlinks).
-    /// - Returns: The destination `File.Directory`.
-    /// - Throws: `File.System.Copy.Error` on failure.
     @discardableResult
     @inlinable
     public func to(
@@ -69,13 +36,6 @@ extension File.Directory.Copy {
         return destination
     }
 
-    // MARK: - Copy (Async)
-
-    /// Copies the directory to a destination path.
-    ///
-    /// Async variant - runs blocking I/O on a dedicated thread pool.
-    /// - Returns: A `File.Directory` representing the copy at the destination.
-    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
     @discardableResult
     @inlinable
     public func to(
@@ -89,11 +49,6 @@ extension File.Directory.Copy {
         return File.Directory(destination)
     }
 
-    /// Copies the directory to a destination.
-    ///
-    /// Async variant - runs blocking I/O on a dedicated thread pool.
-    /// - Returns: The destination `File.Directory`.
-    /// - Throws: `Either<Kernel.Thread.Pool.Error, File.System.Copy.Error>` on failure.
     @discardableResult
     @inlinable
     public func to(
@@ -108,16 +63,8 @@ extension File.Directory.Copy {
     }
 }
 
-// MARK: - Instance Property
-
 extension File.Directory {
-    /// Access to copy operations.
-    ///
-    /// Use this property to copy directories:
-    /// ```swift
-    /// let copy = try dir.copy.to("/tmp/dest")
-    /// let copy2 = try dir.copy.to(otherDir, options: .init(overwrite: true))
-    /// ```
+
     public var copy: Copy {
         Copy(path)
     }

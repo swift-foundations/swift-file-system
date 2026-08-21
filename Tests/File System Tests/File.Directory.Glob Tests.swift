@@ -1,14 +1,3 @@
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-file-system open source project
-//
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-file-system project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
 #if !os(Windows)
 
     import Testing
@@ -27,8 +16,6 @@
             @Suite(.serialized) struct Performance {}
         }
     }
-
-    // MARK: - Unit Tests
 
     extension File.Directory.Glob.Test.Unit {
         @Test
@@ -111,8 +98,6 @@
         }
     }
 
-    // MARK: - Double Star Tests
-
     extension File.Directory.Glob.Test.Unit {
         @Test
         func `Match double star recursive`() throws {
@@ -147,8 +132,6 @@
         }
     }
 
-    // MARK: - Files Variant Tests
-
     extension File.Directory.Glob.Test.Unit {
         @Test
         func `files() returns only files`() throws {
@@ -157,10 +140,8 @@
 
                 let files = try dir.glob.files(include: ["*"])
 
-                // Should only return files, not directories
-                #expect(files.count == 3)  // file1.txt, file2.txt, file3.md
+                #expect(files.count == 3)
 
-                // All results are File type (not Directory)
                 for file in files {
                     #expect(!File.System.Stat.isDirectory(at: file.path))
                 }
@@ -184,8 +165,6 @@
         }
     }
 
-    // MARK: - Directories Variant Tests
-
     extension File.Directory.Glob.Test.Unit {
         @Test
         func `directories() returns only directories`() throws {
@@ -194,7 +173,6 @@
 
                 let dirs = try dir.glob.directories(include: ["*"])
 
-                // Should only return directories: src, docs
                 #expect(dirs.count == 2)
 
                 let paths = dirs.map { Swift.String($0.path) }
@@ -210,7 +188,6 @@
 
                 let dirs = try dir.glob.directories(include: ["**/*"])
 
-                // Should find: src, docs (excluding hidden .config)
                 #expect(dirs.count >= 2)
 
                 let paths = dirs.map { Swift.String($0.path) }
@@ -219,8 +196,6 @@
             }
         }
     }
-
-    // MARK: - Match Type Tests
 
     extension File.Directory.Glob.Test.Unit {
         @Test
@@ -267,8 +242,6 @@
             }
         }
     }
-
-    // MARK: - Include/Exclude Tests
 
     extension File.Directory.Glob.Test.Unit {
         @Test
@@ -318,8 +291,6 @@
         }
     }
 
-    // MARK: - Options Tests
-
     extension File.Directory.Glob.Test.Unit {
         @Test
         func `Dotfiles explicit policy excludes hidden files`() throws {
@@ -329,7 +300,6 @@
                 let options = Glob.Options(dotfiles: .explicit)
                 let matches = try dir.glob(include: ["*.txt"], options: options)
 
-                // Should not include .hidden.txt
                 #expect(matches.count == 2)
                 let paths = matches.map { Swift.String($0.path) }
                 #expect(!paths.contains(where: { $0.hasSuffix("/.hidden.txt") }))
@@ -344,7 +314,6 @@
                 let options = Glob.Options(dotfiles: .always)
                 let matches = try dir.glob(include: ["*.txt"], options: options)
 
-                // Should include .hidden.txt
                 #expect(matches.count == 3)
                 let paths = matches.map { Swift.String($0.path) }
                 #expect(paths.contains(where: { $0.hasSuffix("/.hidden.txt") }))
@@ -359,14 +328,11 @@
                 let options = Glob.Options(ordering: .deterministic)
                 let matches = try dir.glob(include: ["*.txt"], options: options)
 
-                // Results should be sorted
                 let paths = matches.map { Swift.String($0.path) }
                 #expect(paths == paths.sorted())
             }
         }
     }
-
-    // MARK: - Edge Cases
 
     extension File.Directory.Glob.Test.`Edge Case` {
         @Test
@@ -374,7 +340,6 @@
             try File.Directory.temporary { dir in
                 let matches = try dir.glob(include: [""])
 
-                // Empty pattern matches the directory itself
                 #expect(matches.count == 1)
             }
         }
@@ -386,8 +351,7 @@
 
                 let matches = try dir.glob(include: ["*"])
 
-                // Should match all non-hidden files and directories at root
-                #expect(matches.count >= 4)  // file1.txt, file2.txt, file3.md, src/, docs/
+                #expect(matches.count >= 4)
             }
         }
 

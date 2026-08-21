@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Durability Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,8 +13,6 @@ extension File.System.Write.Durability {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Write.Durability.Test.Unit {
     @Test
     func `all cases are distinct`() {
@@ -32,7 +25,7 @@ extension File.System.Write.Durability.Test.Unit {
     func `.full case`() {
         let durability: File.System.Write.Durability = .full
         if case .full = durability {
-            // Success
+
         } else {
             Issue.record("Expected full case")
         }
@@ -42,7 +35,7 @@ extension File.System.Write.Durability.Test.Unit {
     func `.dataOnly case`() {
         let durability: File.System.Write.Durability = .dataOnly
         if case .dataOnly = durability {
-            // Success
+
         } else {
             Issue.record("Expected dataOnly case")
         }
@@ -52,7 +45,7 @@ extension File.System.Write.Durability.Test.Unit {
     func `.none case`() {
         let durability: File.System.Write.Durability = .none
         if case .none = durability {
-            // Success
+
         } else {
             Issue.record("Expected none case")
         }
@@ -113,8 +106,6 @@ extension File.System.Write.Durability.Test.Unit {
     }
 
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Durability.Test.`Edge Case` {
     @Test

@@ -1,10 +1,3 @@
-//
-//  File.System.Write.Atomic Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -23,12 +16,10 @@ extension File.System.Write.Atomic {
 
 extension File.System.Write.Atomic.Test.Unit {
 
-    // MARK: - Basic write
-
     @Test
     func `Write and read back bytes`() throws {
         try File.Directory.temporary { dir in
-            let testData: [Byte] = [72, 101, 108, 108, 111]  // "Hello"
+            let testData: [Byte] = [72, 101, 108, 108, 111]
             let path = dir.path / "test.txt"
 
             try File.System.Write.Atomic.write(testData, to: path)
@@ -74,7 +65,7 @@ extension File.System.Write.Atomic.Test.Unit {
     func `Write large file`() throws {
         try File.Directory.temporary { dir in
             let path = dir.path / "large.txt"
-            // 64KB of data
+
             let largeData = [Byte](repeating: 0xAB, count: 64 * 1024)
 
             try File.System.Write.Atomic.write(largeData, to: path)
@@ -85,8 +76,6 @@ extension File.System.Write.Atomic.Test.Unit {
             #expect(readData == largeData)
         }
     }
-
-    // MARK: - Path validation errors
 
     @Test
     func `Invalid path - empty`() {
@@ -104,21 +93,15 @@ extension File.System.Write.Atomic.Test.Unit {
         }
     }
 
-    // MARK: - Strategy: replaceExisting
-
     #if !os(Windows)
-        // Windows atomic rename with MOVEFILE_REPLACE_EXISTING can fail intermittently
-        // with ACCESS_DENIED (error 5) due to filesystem delays releasing the target file.
 
         @Test
         func `Replace existing file (default strategy)`() throws {
             try File.Directory.temporary { dir in
                 let path = dir.path / "replace.txt"
 
-                // First write
                 try File.System.Write.Atomic.write([1, 2, 3], to: path)
 
-                // Second write should replace
                 let newData: [Byte] = [4, 5, 6, 7, 8]
                 try File.System.Write.Atomic.write(newData, to: path)
 
@@ -148,23 +131,18 @@ extension File.System.Write.Atomic.Test.Unit {
         }
     #endif
 
-    // MARK: - Strategy: noClobber
-
     @Test
     func `NoClobber strategy prevents overwrite`() throws {
         try File.Directory.temporary { dir in
             let path = dir.path / "noclobber.txt"
 
-            // First write should succeed
             try File.System.Write.Atomic.write([1, 2, 3], to: path)
 
-            // Second write with noClobber should fail
             let options = File.System.Write.Atomic.Options(strategy: .noClobber)
             #expect(throws: File.System.Write.Atomic.Error.self) {
                 try File.System.Write.Atomic.write([4, 5, 6], to: path, options: options)
             }
 
-            // Original content should be preserved
             let readData = try File.System.Read.Full.read(from: path) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -187,8 +165,6 @@ extension File.System.Write.Atomic.Test.Unit {
             #expect(readData == data)
         }
     }
-
-    // MARK: - Options
 
     @Test
     func `Options default values`() {
@@ -213,8 +189,6 @@ extension File.System.Write.Atomic.Test.Unit {
         #expect(options.ownership == .preserve(strict: true))
     }
 
-    // MARK: - Strategy enum
-
     @Test
     func `Strategy enum values`() {
         let replace = File.System.Write.Atomic.Strategy.replaceExisting
@@ -224,8 +198,6 @@ extension File.System.Write.Atomic.Test.Unit {
         #expect(replace == .replaceExisting)
         #expect(noClobber == .noClobber)
     }
-
-    // MARK: - Async variants
 
     @Test
     func `Async write and read back`() async throws {
@@ -259,8 +231,6 @@ extension File.System.Write.Atomic.Test.Unit {
             #expect(readData == data)
         }
     }
-
-    // MARK: - Error descriptions
 
     @Test
     func `parentVerificationFailed error description`() {
@@ -360,8 +330,6 @@ extension File.System.Write.Atomic.Test.Unit {
     }
 }
 
-// MARK: - createIntermediates tests
-
 extension File.System.Write.Atomic.Test.Integration {
 
     @Test
@@ -371,13 +339,11 @@ extension File.System.Write.Atomic.Test.Integration {
 
             try File.System.Write.Atomic.write([1, 2, 3], to: nested, createIntermediates: true)
 
-            // Verify file was written
             let readData = try File.System.Read.Full.read(from: nested) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
             #expect(readData == [1, 2, 3])
 
-            // Verify parent directory has correct permissions (execute bit set)
             let parentPath = dir.path / "subdir"
             let permissions = try File.System.Metadata.Permissions(at: parentPath)
             #expect(
@@ -444,11 +410,9 @@ extension File.System.Write.Atomic.Test.Integration {
             let existingFile = subdir / "old.txt"
             try File.System.Write.Atomic.write([1], to: existingFile)
 
-            // Write a new file with createIntermediates into the same directory
             let newFile = subdir / "new.txt"
             try File.System.Write.Atomic.write([2], to: newFile, createIntermediates: true)
 
-            // Both files should exist
             let oldData = try File.System.Read.Full.read(from: existingFile) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -483,7 +447,7 @@ extension File.System.Write.Atomic.Test.Integration {
     @Test
     func `createIntermediates is independent of Options`() throws {
         try File.Directory.temporary { dir in
-            // Test with different Options configurations to verify orthogonality
+
             let configurations: [(File.System.Write.Atomic.Options, File.Path.Component)] = [
                 (.init(strategy: .replaceExisting, durability: .full), "replaceExisting-full"),
                 (.init(strategy: .noClobber, durability: .dataOnly), "noClobber-dataOnly"),

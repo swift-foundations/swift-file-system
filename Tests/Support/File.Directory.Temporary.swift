@@ -1,10 +1,3 @@
-//
-//  File.Directory.Temporary.swift
-//  swift-file-system
-//
-//  Test support for temporary directories with automatic cleanup.
-//
-
 import File_System
 public import File_System_Core
 
@@ -19,23 +12,20 @@ public import File_System_Core
     import WinSDK
 #endif
 
-// MARK: - File.Directory.Temporary (namespace)
-
 extension File.Directory {
-    /// Namespace for temporary directory operations.
+
     public enum Temporary {}
 }
 
 extension File.Directory.Temporary {
     #if os(Windows)
-        /// Gets an environment variable using Windows API.
+
         private static func getEnvironmentVariable(_ name: Swift.String) -> String? {
             name.withCString(encodedAs: UTF16.self) { wName in
-                // First call to get required buffer size
+
                 let requiredSize = GetEnvironmentVariableW(wName, nil, 0)
                 guard requiredSize > 0 else { return nil }
 
-                // Allocate buffer and get the value
                 var buffer = [WCHAR](repeating: 0, count: Int(requiredSize))
                 let written = GetEnvironmentVariableW(wName, &buffer, requiredSize)
                 guard written > 0 && written < requiredSize else { return nil }
@@ -45,11 +35,6 @@ extension File.Directory.Temporary {
         }
     #endif
 
-    /// Returns the system temp directory path.
-    ///
-    /// Uses platform-appropriate environment variables:
-    /// - Unix: `TMPDIR`, falling back to "/tmp"
-    /// - Windows: `TEMP` or `TMP`, falling back to "C:\Temp"
     public static var system: File.Directory {
         get throws {
             let path: Swift.String
@@ -72,12 +57,6 @@ extension File.Directory.Temporary {
         }
     }
 
-    /// Cleans up leftover temporary directories matching the prefix.
-    ///
-    /// Useful for CI cleanup when tests may have been interrupted.
-    ///
-    /// - Parameter prefix: Prefix to match (default: "test").
-    /// - Throws: Directory listing errors.
     public static func cleanup(prefix: Swift.String = "test") throws {
         let base = try system
         let contents = try File.Directory.Contents.list(at: base)
@@ -92,35 +71,17 @@ extension File.Directory.Temporary {
         }
     }
 
-    /// Generates a random identifier for unique temp paths.
     internal static func randomID() -> Swift.String {
         Swift.String(Int.random(in: (0..<Int.max)), radix: 36)
     }
 }
 
-// MARK: - File.Directory.Temporary.Scope (wrapper)
-
 extension File.Directory.Temporary {
-    /// Wrapper for scoped temporary directory operations.
-    ///
-    /// Provides a temporary directory with automatic cleanup when the closure exits.
-    ///
-    /// ## Example
-    /// ```swift
-    /// try File.Directory.temporary { dir in
-    ///     // dir is a File.Directory wrapping a newly created temp directory
-    ///     // automatically deleted when the closure exits
-    ///     let file = dir[file: "test.txt"]
-    ///     try file.write("hello")
-    /// }
-    /// ```
+
     public struct Scope: Sendable {
-        /// The prefix for the temp directory name.
+
         public let prefix: Swift.String
 
-        /// Creates a Scope instance.
-        ///
-        /// - Parameter prefix: Prefix for the temp directory name (default: "test").
         public init(prefix: Swift.String = "test") {
             self.prefix = prefix
         }
@@ -129,11 +90,7 @@ extension File.Directory.Temporary {
 }
 
 extension File.Directory.Temporary.Scope {
-    /// Executes a closure with a temporary directory, automatically cleaned up on exit.
-    ///
-    /// - Parameter body: Closure that receives the temporary directory.
-    /// - Returns: The value returned by the closure.
-    /// - Throws: Any error from directory creation or the closure.
+
     @discardableResult
     public func callAsFunction<T>(
         _ body: (File.Directory) throws -> T
@@ -148,11 +105,6 @@ extension File.Directory.Temporary.Scope {
         return try body(File.Directory(path))
     }
 
-    /// Async variant: executes a closure with a temporary directory, automatically cleaned up on exit.
-    ///
-    /// - Parameter body: Async closure that receives the temporary directory.
-    /// - Returns: The value returned by the closure.
-    /// - Throws: Any error from directory creation or the closure.
     @discardableResult
     public func callAsFunction<T>(
         _ body: (File.Directory) async throws -> T
@@ -174,22 +126,8 @@ extension File.Directory.Temporary.Scope {
     }
 }
 
-// MARK: - File.Directory convenience
-
 extension File.Directory {
-    /// Creates a temporary directory wrapper with default prefix "test".
-    ///
-    /// ## Example
-    /// ```swift
-    /// try File.Directory.temporary { dir in
-    ///     // dir is a File.Directory wrapping a newly created temp directory
-    ///     // automatically deleted when the closure exits
-    ///     let file = dir[file: "test.txt"]
-    ///     try file.write("hello")
-    /// }
-    /// ```
-    ///
-    /// For custom prefix, use `File.Directory.Temporary.Scope(prefix:)` directly.
+
     public static var temporary: Temporary.Scope {
         Temporary.Scope()
     }

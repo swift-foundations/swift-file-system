@@ -1,17 +1,7 @@
-//
-//  File.Directory.Contents.Iterator.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 21/12/2025.
-//
-
 import Kernel
 
 extension File.Directory.Contents {
-    /// Iterator for directory names.
-    ///
-    /// Yields `File.Name` values one-by-one without constructing paths.
-    /// Use this for performance-critical iteration where you only need names.
+
     public struct Iterator: IteratorProtocol {
         internal let _stream: Kernel.Directory.Stream
         internal var _finished: Bool = false
@@ -33,7 +23,6 @@ extension File.Directory.Contents.Iterator {
                 return nil
             }
 
-            // Skip . and ..
             if entry.isDotOrDotDot {
                 return next()
             }
@@ -48,13 +37,7 @@ extension File.Directory.Contents.Iterator {
 }
 
 extension File.Directory.Contents {
-    /// Creates an iterator for directory names.
-    ///
-    /// The caller is responsible for closing the handle via `closeIterator(_:)`.
-    ///
-    /// - Parameter directory: The directory to iterate.
-    /// - Returns: A tuple of the iterator and a handle for cleanup.
-    /// - Throws: `Error` if the directory cannot be opened.
+
     public static func makeIterator(
         at directory: File.Directory
     ) throws(Self.Error) -> (iterator: Iterator, handle: IteratorHandle) {
@@ -72,23 +55,10 @@ extension File.Directory.Contents {
         return (Iterator(stream: stream), handle)
     }
 
-    /// Closes an iterator handle.
-    ///
-    /// Must be called after iteration is complete to release system resources.
-    ///
-    /// - Parameter handle: The handle returned by `makeIterator(at:)`.
     public static func closeIterator(_ handle: IteratorHandle) {
         handle.stream.close()
     }
 
-    /// Checks if there was an error during iteration.
-    ///
-    /// Call this after the iterator returns `nil` to check if iteration
-    /// ended due to an error or end-of-stream.
-    ///
-    /// - Parameter iterator: The iterator to check.
-    /// - Parameter directory: The directory being iterated (for error context).
-    /// - Returns: An error if one occurred, `nil` otherwise.
     public static func iteratorError(
         for iterator: Iterator,
         directory: File.Directory
@@ -100,10 +70,8 @@ extension File.Directory.Contents {
     }
 }
 
-// MARK: - Error Mapping
-
 extension File.Directory.Contents {
-    /// Maps Kernel.Directory.Error to File.Directory.Contents.Error for read operations.
+
     private static func mapKernelReadError(
         _ error: Kernel.Directory.Error,
         path: File.Path

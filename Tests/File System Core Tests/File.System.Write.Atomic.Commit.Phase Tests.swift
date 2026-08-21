@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Atomic.Commit.Phase Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.System.Write.Atomic.Commit.Phase {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
     @Test
@@ -124,8 +117,6 @@ extension File.System.Write.Atomic.Commit.Phase.Test.Unit {
         #expect(File.System.Write.Atomic.Commit.Phase.pending != .writing)
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Atomic.Commit.Phase.Test.`Edge Case` {
     @Test

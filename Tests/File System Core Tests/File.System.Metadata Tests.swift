@@ -1,8 +1,3 @@
-//
-//  File.System.Metadata Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,15 +13,11 @@ extension File.System.Metadata {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Metadata.Test.Unit {
-    // File.System.Metadata is a namespace enum with no cases
-    // Tests verify the namespace exists and nested types are accessible
 
     @Test
     func `Metadata namespace exists`() {
-        // Verify nested types are accessible through the namespace
+
         _ = File.System.Metadata.Kind.self
         _ = File.System.Metadata.Permissions.self
         _ = File.System.Metadata.Ownership.self

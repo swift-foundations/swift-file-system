@@ -1,10 +1,3 @@
-//
-//  File.System.Create.Directory Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,7 +15,6 @@ extension File.System.Create.Directory {
 }
 
 extension File.System.Create.Directory.Test.Unit {
-    // MARK: - create() basic
 
     @Test
     func `Create directory at path`() throws {
@@ -59,8 +51,6 @@ extension File.System.Create.Directory.Test.Unit {
         }
     }
 
-    // MARK: - create() with options
-
     @Test
     func `Create directory with createIntermediates`() throws {
         try File.Directory.temporary { dir in
@@ -95,11 +85,9 @@ extension File.System.Create.Directory.Test.Unit {
             try File.System.Create.Directory.create(at: testDir, options: options)
 
             #expect(File.System.Stat.exists(at: testDir))
-            // Directory should exist (permission verification is platform-specific)
+
         }
     }
-
-    // MARK: - Options
 
     @Test
     func `Options default values`() {
@@ -115,8 +103,6 @@ extension File.System.Create.Directory.Test.Unit {
         )
         #expect(options.permissions == permissions)
     }
-
-    // MARK: - Additional variants
 
     @Test
     func `Create directory variant`() throws {
@@ -137,8 +123,6 @@ extension File.System.Create.Directory.Test.Unit {
             #expect(File.System.Stat.exists(at: nestedPath))
         }
     }
-
-    // MARK: - Semantic Accessors
 
     @Test
     func `isAlreadyExists semantic accessor`() {
@@ -180,8 +164,6 @@ extension File.System.Create.Directory.Test.Unit {
         let error = File.System.Create.Directory.Error.mkdir(.exists)
         #expect(error.description.contains("Directory creation failed"))
     }
-
-    // MARK: - Error Equatable
 
     @Test
     func `Errors are equatable`() {

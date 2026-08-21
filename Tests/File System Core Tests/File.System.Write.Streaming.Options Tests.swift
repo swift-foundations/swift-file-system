@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Options Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,14 +13,11 @@ extension File.System.Write.Streaming.Options {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Write.Streaming.Options.Test.Unit {
     @Test
     func `default init values`() {
         let options = File.System.Write.Streaming.Options()
 
-        // Default commit is atomic with default atomic options
         if case .atomic(let atomicOptions) = options.commit {
             #expect(atomicOptions.strategy == .replaceExisting)
             #expect(atomicOptions.durability == .full)
@@ -53,7 +45,7 @@ extension File.System.Write.Streaming.Options.Test.Unit {
 
         options.commit = .direct(.init())
         if case .direct = options.commit {
-            // Success
+
         } else {
             Issue.record("Expected direct commit policy")
         }
@@ -67,8 +59,6 @@ extension File.System.Write.Streaming.Options.Test.Unit {
         }
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Streaming.Options.Test.`Edge Case` {
     @Test

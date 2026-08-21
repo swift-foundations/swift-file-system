@@ -1,10 +1,3 @@
-//
-//  File.System.Metadata.Permissions Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,8 +15,6 @@ extension File.System.Metadata.Permissions {
 }
 
 extension File.System.Metadata.Permissions.Test.Unit {
-
-    // MARK: - OptionSet Values
 
     @Test
     func `Owner permission values`() {
@@ -95,8 +86,6 @@ extension File.System.Metadata.Permissions.Test.Unit {
         #expect(defaultDir.contains(.otherExecute))
     }
 
-    // MARK: - Get/Set
-
     @Test
     func `Get permissions of file`() throws {
         try File.Directory.temporary { dir in
@@ -105,15 +94,11 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
             let perms = try File.System.Metadata.Permissions(at: filePath)
 
-            // File should have some permissions
             #expect(perms.rawValue != 0)
         }
     }
 
     #if !os(Windows)
-        // Unix-style permission set/get tests are skipped on Windows because
-        // Windows uses ACLs rather than Unix mode bits, and chmod semantics
-        // don't map cleanly to Windows security model.
 
         @Test
         func `Set permissions of file`() throws {
@@ -151,7 +136,6 @@ extension File.System.Metadata.Permissions.Test.Unit {
                 try File.System.Metadata.Permissions.set(testPerms, at: filePath)
                 let readBack = try File.System.Metadata.Permissions(at: filePath)
 
-                // Check the permission bits we set
                 #expect(readBack.contains(.ownerRead))
                 #expect(readBack.contains(.ownerWrite))
                 #expect(readBack.contains(.ownerExecute))
@@ -161,8 +145,6 @@ extension File.System.Metadata.Permissions.Test.Unit {
                 #expect(!readBack.contains(.otherWrite))
             }
         }
-
-        // MARK: - Error Cases
 
         @Test
         func `Get permissions of non-existent file throws error with isNotFound`() throws {
@@ -193,8 +175,6 @@ extension File.System.Metadata.Permissions.Test.Unit {
         }
     #endif
 
-    // MARK: - Semantic Accessors
-
     @Test
     func `isNotFound semantic accessor for chmod error`() {
         let error = File.System.Metadata.Permissions.Error.chmod(.path(.notFound))
@@ -215,8 +195,6 @@ extension File.System.Metadata.Permissions.Test.Unit {
         #expect(error.isReadOnly)
         #expect(!error.isPermissionDenied)
     }
-
-    // MARK: - OptionSet Operations
 
     @Test
     func `Permissions OptionSet union`() {
@@ -266,7 +244,7 @@ extension File.System.Metadata.Permissions.Test.Unit {
     func `Binary.Serializable - serialize produces correct bytes`() {
         var buffer: [Byte] = []
         File.System.Metadata.Permissions.serialize(.ownerRead, into: &buffer)
-        // UInt16 in little-endian: 0o400 = 256 = [0, 1]
+
         #expect(buffer.count == 2)
     }
 
@@ -289,11 +267,8 @@ extension File.System.Metadata.Permissions.Test.Unit {
             error
         }.value
 
-        // Sendability check - if this compiles, the type is Sendable
         #expect(result.isNotFound)
     }
-
-    // MARK: - Special Bit Combinations
 
     @Test
     func `setuid with executable`() {
@@ -327,27 +302,23 @@ extension File.System.Metadata.Permissions.Test.Unit {
 
     @Test
     func `common permission patterns`() {
-        // 777 - all permissions
+
         let all: File.System.Metadata.Permissions = [.ownerAll, .groupAll, .otherAll]
         #expect(all.rawValue == 0o777)
 
-        // 644 - typical file
         let file: File.System.Metadata.Permissions = [
             .ownerRead, .ownerWrite, .groupRead, .otherRead,
         ]
         #expect(file.rawValue == 0o644)
 
-        // 755 - typical directory/executable
         let dir: File.System.Metadata.Permissions = [
             .ownerAll, .groupRead, .groupExecute, .otherRead, .otherExecute,
         ]
         #expect(dir.rawValue == 0o755)
 
-        // 600 - private file
         let privateFile: File.System.Metadata.Permissions = [.ownerRead, .ownerWrite]
         #expect(privateFile.rawValue == 0o600)
 
-        // 700 - private directory
         let privateDir: File.System.Metadata.Permissions = [.ownerAll]
         #expect(privateDir.rawValue == 0o700)
     }

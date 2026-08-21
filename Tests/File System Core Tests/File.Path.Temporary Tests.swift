@@ -1,14 +1,3 @@
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-file-system open source project
-//
-// Copyright (c) 2026 Coen ten Thije Boonkkamp and the swift-file-system project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
 import Testing
 
 @testable import File_System_Core
@@ -107,9 +96,7 @@ extension File.Path.Temporary.Test.Deterministic {
             key: "https://example.com/some/file.swift",
             suffix: ".tmp"
         )
-        // Slashes / colons in the key map to underscores; the
-        // resulting path must not contain runs of slash characters
-        // beyond those introduced by the directory separator.
+
         let asString = path.description
         #expect(asString.contains("https___example.com_some_file.swift"))
     }
@@ -131,14 +118,11 @@ extension File.Path.Temporary.Test.Deterministic {
             key: "anything",
             suffix: ".tmp"
         )
-        // The platform temp root (TMPDIR or /tmp on POSIX; TEMP/TMP or
-        // C:\Temp on Windows) plus a trailing segment matching the
-        // prefix-key-suffix join.
+
         let asString = path.description
         #if os(Windows)
             #expect(asString.contains("\\p-anything.tmp"))
-            // Rooted: either a drive-letter path (colon at index 1, e.g.
-            // "C:\...") or a UNC/rooted path starting with a backslash.
+
             let isDriveLetterRooted =
                 asString.count > 1
                 && asString[asString.index(asString.startIndex, offsetBy: 1)] == ":"

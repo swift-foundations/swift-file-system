@@ -1,10 +1,3 @@
-//
-//  EdgeCase Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Tagged_Primitives_Standard_Library_Integration
@@ -53,7 +46,6 @@ extension File.System.Test.Unit {
 #if os(macOS) || os(Linux)
 
     extension File.System.Test.`Edge Case` {
-        // MARK: - Test Fixtures
 
         private func createTempPath() -> Swift.String {
             "/tmp/edge-test-\(Int.random(in: (0..<Int.max)))"
@@ -68,8 +60,6 @@ extension File.System.Test.Unit {
         private func cleanupPath(_ path: File.Path) {
             try? File.System.Delete.delete(at: path, recursive: true)
         }
-
-        // MARK: - Empty File Operations
 
         @Test
         func `Read from empty file returns zero bytes`() throws {
@@ -117,8 +107,6 @@ extension File.System.Test.Unit {
             #expect(info.size == 0)
         }
 
-        // MARK: - Path Edge Cases
-
         @Test
         func `Path with embedded NUL byte is rejected`() throws {
             let pathWithNul = "/tmp/test\0hidden"
@@ -142,7 +130,7 @@ extension File.System.Test.Unit {
 
         @Test
         func `Path with only spaces is handled`() throws {
-            // This is actually a valid path on POSIX
+
             let path: File.Path = try .init("/tmp/   ")
             #expect(path == "/tmp/   ")
         }
@@ -165,7 +153,7 @@ extension File.System.Test.Unit {
 
         @Test
         func `Path with newline in name is rejected`() throws {
-            // Paths with control characters (like newlines) are rejected for safety
+
             let pathString = "/tmp/edge-test-with\nnewline-\(Int.random(in: (0..<Int.max)))"
             var didThrow = false
             do throws(File.Path.Error) {
@@ -178,7 +166,7 @@ extension File.System.Test.Unit {
 
         @Test
         func `Very long path component`() throws {
-            // Most filesystems limit name to 255 bytes
+
             let longName = Swift.String(repeating: "a", count: 255)
             let path = "/tmp/\(longName)"
             defer { cleanup(path) }
@@ -211,8 +199,6 @@ extension File.System.Test.Unit {
             }
         }
 
-        // MARK: - Handle State Edge Cases
-
         @Test
         func `Handle is valid after open and before close`() throws {
             let path = createTempPath()
@@ -225,13 +211,11 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Handle should be valid immediately after open
             let isValidBeforeClose = handle.isValid
             #expect(isValidBeforeClose)
 
             try handle.close()
-            // Note: After close(), handle is consumed (non-copyable type)
-            // Double close and operations after close are prevented at compile-time
+
         }
 
         @Test
@@ -246,10 +230,8 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Close should succeed without error
             try handle.close()
 
-            // File should still exist after close
             #expect(File.System.Stat.exists(at: filePath))
         }
 
@@ -265,14 +247,11 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Write should work
             let data: [Byte] = [1, 2, 3, 4, 5]
             try handle.write(data.span)
 
-            // Seek should work
             _ = try handle.seek(to: 0, from: .start)
 
-            // Read should work
             var readBuffer = [Byte](repeating: 0, count: 5)
             let bytesRead = try readBuffer.withUnsafeMutableBytes { ptr in
                 try handle.read(into: ptr)
@@ -289,7 +268,6 @@ extension File.System.Test.Unit {
             let path = createTempPath()
             defer { cleanup(path) }
 
-            // Create the file first
             let filePath = try File.Path(path)
             let createHandle = try File.Handle.open(
                 filePath,
@@ -298,7 +276,6 @@ extension File.System.Test.Unit {
             )
             try createHandle.close()
 
-            // Open read-only
             var handle = try File.Handle.open(filePath, mode: .read)
 
             let data: [Byte] = [1, 2, 3]
@@ -308,8 +285,6 @@ extension File.System.Test.Unit {
 
             try handle.close()
         }
-
-        // MARK: - Seek Edge Cases
 
         @Test
         func `Seek to negative position fails`() throws {
@@ -323,7 +298,6 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Seeking to -1 from start should fail
             var didThrow = false
             do throws(Kernel.File.Seek.Error) {
                 _ = try handle.seek(to: -1, from: .start)
@@ -348,10 +322,8 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Seek far past end
             _ = try handle.seek(to: 1000, from: .start)
 
-            // Write something
             let data: [Byte] = [42]
             try handle.write(data.span)
 
@@ -373,18 +345,14 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Write some data
             let data: [Byte] = [1, 2, 3, 4, 5]
             try handle.write(data.span)
 
-            // Seek to end
             let pos = try handle.seek(to: 0, from: .end)
             try handle.close()
 
             #expect(pos == 5)
         }
-
-        // MARK: - Symlink Edge Cases
 
         @Test
         func `Dangling symlink - stat follows and fails`() throws {
@@ -395,21 +363,17 @@ extension File.System.Test.Unit {
                 cleanupPath(targetPath)
             }
 
-            // Create symlink to non-existent target
             try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-            // The symlink itself exists (use info(followSymlinks: false) which doesn't follow)
             #expect(
                 (try? File.System.Stat.info(at: linkPath, followSymlinks: false))?.type
                     == .symbolicLink
             )
 
-            // But stat (which follows) should fail
             #expect(throws: Kernel.File.Stats.Error.self) {
                 _ = try File.System.Stat.info(at: linkPath)
             }
 
-            // info(followSymlinks: false) should work (doesn't follow)
             let info = try File.System.Stat.info(at: linkPath, followSymlinks: false)
             #expect(info.type == .symbolicLink)
         }
@@ -423,11 +387,9 @@ extension File.System.Test.Unit {
                 cleanupPath(linkB)
             }
 
-            // Create A -> B -> A cycle
             try File.System.Link.Symbolic.create(at: linkA, pointingTo: linkB)
             try File.System.Link.Symbolic.create(at: linkB, pointingTo: linkA)
 
-            // Both links exist as symlinks (use info(followSymlinks: false) which doesn't follow)
             #expect(
                 (try? File.System.Stat.info(at: linkA, followSymlinks: false))?.type
                     == .symbolicLink
@@ -437,7 +399,6 @@ extension File.System.Test.Unit {
                     == .symbolicLink
             )
 
-            // stat should fail with loop error
             #expect(throws: Kernel.File.Stats.Error.self) {
                 _ = try File.System.Stat.info(at: linkA)
             }
@@ -448,7 +409,6 @@ extension File.System.Test.Unit {
             let linkPath = try File.Path(createTempPath() + ".self")
             defer { cleanupPath(linkPath) }
 
-            // Create link pointing to itself
             try File.System.Link.Symbolic.create(at: linkPath, pointingTo: linkPath)
 
             #expect(
@@ -456,13 +416,10 @@ extension File.System.Test.Unit {
                     == .symbolicLink
             )
 
-            // stat should fail
             #expect(throws: Kernel.File.Stats.Error.self) {
                 _ = try File.System.Stat.info(at: linkPath)
             }
         }
-
-        // MARK: - Directory Edge Cases
 
         @Test
         func `Create directory that already exists fails`() throws {
@@ -483,7 +440,6 @@ extension File.System.Test.Unit {
 
             try File.System.Create.Directory.create(at: dir)
 
-            // Create file inside
             let filePath = dir / "file.txt"
             let handle = try File.Handle.open(
                 filePath,
@@ -512,8 +468,6 @@ extension File.System.Test.Unit {
             #expect(entry == nil)
         }
 
-        // MARK: - Concurrent Access Edge Cases
-
         @Test
         func `Multiple handles to same file`() throws {
             let path = createTempPath()
@@ -521,7 +475,6 @@ extension File.System.Test.Unit {
 
             let filePath = try File.Path(path)
 
-            // Create and write with first handle
             var handle1 = try File.Handle.open(
                 filePath,
                 mode: .readWrite,
@@ -530,7 +483,6 @@ extension File.System.Test.Unit {
             let data: [Byte] = [1, 2, 3, 4, 5]
             try handle1.write(data.span)
 
-            // Open second handle for reading
             var handle2 = try File.Handle.open(filePath, mode: .read)
 
             var buffer = [Byte](repeating: 0, count: 5)
@@ -545,8 +497,6 @@ extension File.System.Test.Unit {
             #expect(buffer == data)
         }
 
-        // MARK: - Buffer Edge Cases
-
         @Test
         func `Read with zero-size buffer`() throws {
             let path = createTempPath()
@@ -559,13 +509,11 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Write some data
             let data: [Byte] = [1, 2, 3]
             try handle.write(data.span)
 
             _ = try handle.seek(to: 0, from: .start)
 
-            // Read with zero-size buffer
             var emptyBuffer: [Byte] = []
             let bytesRead = try emptyBuffer.withUnsafeMutableBytes { ptr in
                 try handle.read(into: ptr)
@@ -588,7 +536,6 @@ extension File.System.Test.Unit {
                 options: [.create, .execClose]
             )
 
-            // Write data
             let data: [Byte] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
             try handle.write(data.span)
 
@@ -610,15 +557,13 @@ extension File.System.Test.Unit {
             #expect(allRead == data)
         }
 
-        // MARK: - Permission Edge Cases
-
         #if !os(Windows)
             @Test
             func `Open file without read permission fails`() throws {
-                // Skip when running as root - root bypasses permission checks
+
                 #if canImport(Glibc)
                     if geteuid() == 0 {
-                        // Running as root, permission test is not meaningful
+
                         return
                     }
                 #endif
@@ -628,7 +573,6 @@ extension File.System.Test.Unit {
 
                 let filePath = try File.Path(path)
 
-                // Create file with no permissions
                 let handle = try File.Handle.open(
                     filePath,
                     mode: .write,
@@ -636,21 +580,14 @@ extension File.System.Test.Unit {
                 )
                 try handle.close()
 
-                // Remove all permissions
                 chmod(path, 0o000)
-                defer { chmod(path, 0o644) }  // Restore for cleanup
+                defer { chmod(path, 0o644) }
 
                 #expect(throws: Kernel.File.Open.Error.self) {
                     _ = try File.Handle.open(filePath, mode: .read)
                 }
             }
         #endif
-
-        // MARK: - Special File Types
-
-        // Note: /dev/null stat tests are skipped because stat on special device files
-        // may return unusual metadata values that cause integer conversion issues.
-        // This is a known limitation with special files.
 
         @Test
         func `Write to /dev/null succeeds`() throws {
@@ -662,11 +599,9 @@ extension File.System.Test.Unit {
                 let data: [Byte] = [1, 2, 3, 4, 5]
                 try handle.write(data.span)
                 try handle.close()
-            // No assertion needed - just shouldn't crash
+
             #endif
         }
-
-        // MARK: - Copy/Move Edge Cases
 
         @Test
         func `Copy file to itself fails`() throws {
@@ -698,7 +633,6 @@ extension File.System.Test.Unit {
             let srcPath = try File.Path(src)
             let dstPath = try File.Path(dst)
 
-            // Create source with content
             var srcHandle = try File.Handle.open(
                 srcPath,
                 mode: .write,
@@ -708,7 +642,6 @@ extension File.System.Test.Unit {
             try srcHandle.write(srcData.span)
             try srcHandle.close()
 
-            // Create destination with different content
             var dstHandle = try File.Handle.open(
                 dstPath,
                 mode: .write,
@@ -718,7 +651,6 @@ extension File.System.Test.Unit {
             try dstHandle.write(dstData.span)
             try dstHandle.close()
 
-            // Move to existing destination should fail (safe API behavior)
             var didThrow = false
             do throws(File.System.Move.Error) {
                 try File.System.Move.move(from: srcPath, to: dstPath)
@@ -728,12 +660,9 @@ extension File.System.Test.Unit {
 
             #expect(didThrow)
 
-            // Both files should still exist
             #expect(File.System.Stat.exists(at: srcPath))
             #expect(File.System.Stat.exists(at: dstPath))
         }
-
-        // MARK: - Rapid Operations
 
         @Test
         func `Rapid open-write-close cycles`() throws {
@@ -771,7 +700,7 @@ extension File.System.Test.Unit {
                 try handle.close()
                 try File.System.Delete.delete(at: path)
             }
-            // Just shouldn't crash or leak
+
         }
 
     }

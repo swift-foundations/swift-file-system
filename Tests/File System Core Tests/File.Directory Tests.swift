@@ -1,8 +1,3 @@
-//
-//  File.Directory Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.Directory {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.Directory.Test.Unit {
     @Test
@@ -80,7 +73,7 @@ extension File.Directory.Test.Unit {
         let path1 = File.Path("/tmp/dir1")
         let path2 = File.Path("/tmp/dir2")
         let dir1 = File.Directory(path1)
-        let dir2 = File.Directory(path1)  // same as dir1
+        let dir2 = File.Directory(path1)
         let dir3 = File.Directory(path2)
 
         let set: Set<File.Directory> = [dir1, dir2, dir3]
@@ -102,8 +95,6 @@ extension File.Directory.Test.Unit {
         #expect(dict[dir2] == 2)
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.Directory.Test.`Edge Case` {
     @Test

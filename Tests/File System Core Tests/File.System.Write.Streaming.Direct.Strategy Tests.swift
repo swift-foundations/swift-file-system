@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Direct.Strategy Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,8 +13,6 @@ extension File.System.Write.Streaming.Direct.Strategy {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Write.Streaming.Direct.Strategy.Test.Unit {
     @Test
     func `all cases are distinct`() {
@@ -34,7 +27,7 @@ extension File.System.Write.Streaming.Direct.Strategy.Test.Unit {
     func `.create case`() {
         let strategy: File.System.Write.Streaming.Direct.Strategy = .create
         if case .create = strategy {
-            // Success
+
         } else {
             Issue.record("Expected create case")
         }
@@ -44,7 +37,7 @@ extension File.System.Write.Streaming.Direct.Strategy.Test.Unit {
     func `.truncate case`() {
         let strategy: File.System.Write.Streaming.Direct.Strategy = .truncate
         if case .truncate = strategy {
-            // Success
+
         } else {
             Issue.record("Expected truncate case")
         }

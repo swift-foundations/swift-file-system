@@ -1,27 +1,18 @@
-//
-//  File.Directory.Entry.Kind.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 17/12/2025.
-//
-
 import Binary_Primitives
 
 extension File.Directory.Entry {
-    /// The type of a directory entry.
+
     public enum Kind: Sendable {
-        /// A regular file.
+
         case file
-        /// A directory (folder).
+
         case directory
-        /// A symbolic link pointing to another path.
+
         case symbolicLink
-        /// Block device, character device, socket, FIFO, or unknown type.
+
         case other
     }
 }
-
-// MARK: - RawRepresentable
 
 extension File.Directory.Entry.Kind: RawRepresentable {
     public var rawValue: Byte {
@@ -43,8 +34,6 @@ extension File.Directory.Entry.Kind: RawRepresentable {
         }
     }
 }
-
-// MARK: - Binary.Serializable
 
 extension File.Directory.Entry.Kind: Binary.Serializable {
     @inlinable

@@ -1,14 +1,7 @@
-//
-//  File.System.Metadata.Kind.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 17/12/2025.
-//
-
 import Binary_Primitives
 
 extension File.System.Metadata {
-    /// File type classification.
+
     public enum Kind: Sendable {
         case regular
         case directory
@@ -19,8 +12,6 @@ extension File.System.Metadata {
         case socket
     }
 }
-
-// MARK: - RawRepresentable
 
 extension File.System.Metadata.Kind: RawRepresentable {
     public var rawValue: Byte {
@@ -48,8 +39,6 @@ extension File.System.Metadata.Kind: RawRepresentable {
         }
     }
 }
-
-// MARK: - Binary.Serializable
 
 extension File.System.Metadata.Kind: Binary.Serializable {
     @inlinable

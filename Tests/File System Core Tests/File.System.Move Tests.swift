@@ -1,10 +1,3 @@
-//
-//  File.System.Move Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,8 +15,6 @@ extension File.System.Move {
 }
 
 extension File.System.Move.Test.Unit {
-
-    // MARK: - Basic Move
 
     @Test
     func `Move file to new location`() throws {
@@ -58,7 +49,6 @@ extension File.System.Move.Test.Unit {
 
             try File.System.Move.move(from: sourcePath, to: destPath)
 
-            // Source should no longer exist
             #expect(!File.System.Stat.exists(at: sourcePath))
         }
     }
@@ -93,8 +83,6 @@ extension File.System.Move.Test.Unit {
             #expect(File.System.Stat.exists(at: destPath))
         }
     }
-
-    // MARK: - Options
 
     @Test
     func `Move with overwrite option`() throws {
@@ -143,8 +131,6 @@ extension File.System.Move.Test.Unit {
         #expect(options.overwrite == true)
     }
 
-    // MARK: - Error Cases
-
     @Test
     func `Move non-existent source throws sourceNotFound`() throws {
         try File.Directory.temporary { dir in
@@ -174,8 +160,6 @@ extension File.System.Move.Test.Unit {
             }
         }
     }
-
-    // MARK: - Semantic Accessors
 
     @Test
     func `isSourceNotFound semantic accessor`() throws {

@@ -1,20 +1,7 @@
-//
-//  File.Name+Convenience.swift
-//  swift-file-system
-//
-//  Convenience copying initializers for File.Name bytes.
-//
-
 import File_System_Core
 
 extension [UInt8] {
-    // substrate: codec (POSIX UTF-8 byte materialization) — deprecated public surface; `withCodeUnits` is the canonical zero-copy path
-    /// Creates a byte array by copying the file name's raw UTF-8 bytes.
-    ///
-    /// For zero-copy access, use `name.withCodeUnits { span in ... }` instead.
-    ///
-    /// - Parameter fileName: The file name to copy bytes from.
-    /// - Returns: `nil` if the file name uses Windows encoding.
+
     @available(
         *,
         deprecated,
@@ -32,13 +19,7 @@ extension [UInt8] {
 }
 
 extension [UInt16] {
-    // substrate: codec (Windows UTF-16 code-unit materialization) — deprecated public surface; `withCodeUnits` is the canonical zero-copy path
-    /// Creates a code unit array by copying the file name's raw UTF-16 code units.
-    ///
-    /// For zero-copy access, use `name.withCodeUnits { span in ... }` instead.
-    ///
-    /// - Parameter fileName: The file name to copy code units from.
-    /// - Returns: `nil` if the file name uses POSIX encoding.
+
     @available(
         *,
         deprecated,

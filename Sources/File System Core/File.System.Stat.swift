@@ -1,28 +1,12 @@
-//
-//  File.System.Stat.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 17/12/2025.
-//
-
 public import Kernel
 
 extension File.System {
-    /// File status and existence checks.
+
     public enum Stat {}
 }
 
-// MARK: - Core API
-
 extension File.System.Stat {
-    /// Gets file metadata information.
-    ///
-    /// - Parameters:
-    ///   - path: The path to stat.
-    ///   - followSymlinks: If `true` (the default), follows symlinks and returns info
-    ///     about the target. If `false`, returns info about the link itself.
-    /// - Returns: File metadata information.
-    /// - Throws: `Kernel.File.Stats.Error` on failure.
+
     @inlinable
     public static func info(
         at path: borrowing File.Path,
@@ -36,10 +20,6 @@ extension File.System.Stat {
         return makeInfo(from: stats)
     }
 
-    /// Checks if a path exists.
-    ///
-    /// - Parameter path: The path to check.
-    /// - Returns: `true` if the path exists, `false` otherwise.
     @inlinable
     public static func exists(at path: borrowing File.Path) -> Bool {
         do throws(Kernel.File.Stats.Error) {
@@ -53,10 +33,8 @@ extension File.System.Stat {
     }
 }
 
-// MARK: - Kernel Mapping
-
 extension File.System.Stat {
-    /// Creates Info from Kernel.File.Stats.
+
     @usableFromInline
     internal static func makeInfo(from stats: Kernel.File.Stats) -> File.System.Metadata.Info {
         let fileType: File.System.Metadata.Kind

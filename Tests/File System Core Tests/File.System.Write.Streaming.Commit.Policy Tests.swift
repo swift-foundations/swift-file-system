@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Commit.Policy Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.System.Write.Streaming.Commit.Policy {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.System.Write.Streaming.Commit.Policy.Test.Unit {
     @Test
@@ -85,8 +78,6 @@ extension File.System.Write.Streaming.Commit.Policy.Test.Unit {
         }
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Streaming.Commit.Policy.Test.`Edge Case` {
     @Test

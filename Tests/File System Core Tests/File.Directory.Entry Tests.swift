@@ -1,8 +1,3 @@
-//
-//  File.Directory.Entry Tests.swift
-//  swift-file-system
-//
-
 import ASCII
 import Kernel
 import Testing
@@ -20,8 +15,6 @@ extension File.Directory.Entry {
 }
 
 #if os(macOS) || os(Linux)
-
-    // MARK: - Unit Tests
 
     extension File.Directory.Entry.Test.Unit {
         @Test
@@ -123,8 +116,6 @@ extension File.Directory.Entry {
         }
     }
 
-    // MARK: - Edge Cases
-
     extension File.Directory.Entry.Test.`Edge Case` {
         @Test
         func `entry with name containing spaces`() throws {
@@ -143,7 +134,7 @@ extension File.Directory.Entry {
         @Test
         func `entry with unicode name`() throws {
             let parent: File.Path = "/tmp"
-            // Use UTF-8 bytes directly for non-ASCII names
+
             let name = File.Name(rawBytes: Array("日本語ファイル.txt".utf8))
             let entry = File.Directory.Entry(
                 name: name,
@@ -183,11 +174,6 @@ extension File.Directory.Entry {
                 (entry.name, entry.pathIfValid, entry.type)
             }.value
 
-            // Annotate `String?` to select the domain-specific
-            // `String.init?(_:File.Name)` (strict decode) over the generic
-            // `String.init<T: Binary.Serializable>(_:)` overloads that the
-            // byte-typed-primitives cascade introduced via ASCII / Binary
-            // Serializable Primitives.
             let decodedName: Swift.String? = Swift.String(result.0)
             #expect(decodedName == "file.txt")
             #expect(result.1.map(Swift.String.init) == "/tmp/file.txt")
@@ -197,24 +183,23 @@ extension File.Directory.Entry {
         @Test
         func `Entry with undecodable name`() {
             let parent: File.Path = "/tmp"
-            let name = File.Name(rawBytes: [0x80, 0x81, 0x82])  // Invalid UTF-8
+            let name = File.Name(rawBytes: [0x80, 0x81, 0x82])
             let entry = File.Directory.Entry(
                 name: name,
                 parent: parent,
                 type: .file
             )
 
-            // Name cannot be decoded to String
             #expect(Swift.String(entry.name) == nil)
-            // But lossy decoding works
+
             #expect(Swift.String(lossy: entry.name).contains("\u{FFFD}"))
-            // pathIfValid is nil for undecodable names
+
             #expect(entry.pathIfValid == nil)
-            // path() throws for undecodable names
+
             #expect(throws: File.Path.Component.Error.self) {
                 _ = try entry.path()
             }
-            // Parent is still accessible
+
             #expect(entry.parent == parent)
         }
 

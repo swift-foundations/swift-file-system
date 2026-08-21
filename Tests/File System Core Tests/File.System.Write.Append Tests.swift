@@ -1,10 +1,3 @@
-//
-//  File.System.Write.Append Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,8 +15,6 @@ extension File.System.Write.Append {
 }
 
 extension File.System.Write.Append.Test.Unit {
-
-    // MARK: - Basic Append
 
     @Test
     func `Append to existing file`() throws {
@@ -129,15 +120,11 @@ extension File.System.Write.Append.Test.Unit {
         }
     }
 
-    // MARK: - Error Cases
-
     @Test
     func `Append to directory throws error`() throws {
         try File.Directory.temporary { dir in
             let path = dir.path
 
-            // Windows returns permissionDenied for directory write attempts,
-            // while POSIX systems return isDirectory
             #expect(throws: File.System.Write.Append.Error.self) {
                 let bytes: [Byte] = [1, 2, 3]
                 try File.System.Write.Append.append(bytes.span, to: path)
@@ -145,9 +132,6 @@ extension File.System.Write.Append.Test.Unit {
         }
     }
 
-    // MARK: - Semantic Accessors
-
-    // Structural error-case construction (.path(.notFound)); platform-neutral.
     @Test
     func `isNotFound semantic accessor`() {
         let error = File.System.Write.Append.Error.open(.path(.notFound))
@@ -155,7 +139,6 @@ extension File.System.Write.Append.Test.Unit {
         #expect(!error.isPermissionDenied)
     }
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
         @Test
         func `isPermissionDenied semantic accessor`() {
@@ -167,7 +150,6 @@ extension File.System.Write.Append.Test.Unit {
         }
     #endif
 
-    // Windows twin of the POSIX-gated test above: same accessor, Win32 code.
     #if os(Windows)
         @Test
         func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
@@ -179,7 +161,6 @@ extension File.System.Write.Append.Test.Unit {
         }
     #endif
 
-    // Structural error-case construction (.path(.isDirectory)); platform-neutral.
     @Test
     func `isDirectory semantic accessor`() {
         let error = File.System.Write.Append.Error.open(.path(.isDirectory))
@@ -187,7 +168,6 @@ extension File.System.Write.Append.Test.Unit {
         #expect(!error.isNotFound)
     }
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
         @Test
         func `isReadOnly semantic accessor`() {
@@ -199,7 +179,6 @@ extension File.System.Write.Append.Test.Unit {
         }
     #endif
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
         @Test
         func `isNoSpace semantic accessor`() {
@@ -217,17 +196,6 @@ extension File.System.Write.Append.Test.Unit {
         #expect(error.description.contains("Open failed"))
     }
 }
-
-// MARK: - Write-Loop Zero-Progress Handling (F-003)
-//
-// `write()` returning `0` for a non-empty buffer cannot be triggered
-// portably through a real file descriptor (POSIX regular-file semantics
-// make it effectively unreachable). This test exercises `advance` — the
-// single decision point the append write loop uses to classify a
-// syscall's return value — directly, which is the shared canonical logic
-// the fix introduced. Before the fix, an equivalent zero-progress
-// syscall result was silently ignored, spinning the retry loop forever
-// making no progress.
 
 extension File.System.Write.Append.Test.`Edge Case` {
     @Test

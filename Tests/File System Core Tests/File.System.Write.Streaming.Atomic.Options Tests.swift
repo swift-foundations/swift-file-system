@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Atomic.Options Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.System.Write.Streaming.Atomic.Options {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.System.Write.Streaming.Atomic.Options.Test.Unit {
     @Test
@@ -66,8 +59,6 @@ extension File.System.Write.Streaming.Atomic.Options.Test.Unit {
         }
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Streaming.Atomic.Options.Test.`Edge Case` {
     @Test

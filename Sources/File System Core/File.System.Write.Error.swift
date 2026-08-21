@@ -1,21 +1,7 @@
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-kernel open source project
-//
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-kernel project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
 import Kernel
 
 extension File.System.Write {
-    /// Internal error for shared write operations.
-    ///
-    /// Both `Atomic` and `Streaming` APIs catch and remap
-    /// to their domain-specific error types.
+
     internal enum Error: Swift.Error, Sendable {
         case sync(Swift.String)
         case close(Swift.String)

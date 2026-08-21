@@ -1,10 +1,3 @@
-//
-//  File.System.Link.Symbolic Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -25,8 +18,6 @@ extension File.System.Link.Symbolic {
 
     extension File.System.Link.Symbolic.Test.Unit {
 
-        // MARK: - Create Symlink
-
         @Test
         func `Create symlink to file`() throws {
             try File.Directory.temporary { dir in
@@ -36,10 +27,8 @@ extension File.System.Link.Symbolic {
                 let linkPath = dir.path / "link"
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-                // Verify symlink exists
                 #expect(File.System.Stat.exists(at: linkPath))
 
-                // Verify it's a symlink using info(followSymlinks: false)
                 let info = try File.System.Stat.info(at: linkPath, followSymlinks: false)
                 #expect(info.type == .symbolicLink)
             }
@@ -68,7 +57,6 @@ extension File.System.Link.Symbolic {
                 let linkPath = dir.path / "link"
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-                // Read through symlink
                 let data = try File.System.Read.Full.read(from: linkPath) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
                 }
@@ -82,16 +70,12 @@ extension File.System.Link.Symbolic {
                 let targetPath = dir.path / "non-existent-target"
                 let linkPath = dir.path / "link"
 
-                // Creating symlink to non-existent target should succeed
-                // (it's a dangling symlink, but that's allowed)
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
                 let info = try File.System.Stat.info(at: linkPath, followSymlinks: false)
                 #expect(info.type == .symbolicLink)
             }
         }
-
-        // MARK: - Error Cases
 
         @Test
         func `Create symlink at existing path throws error with isAlreadyExists`() throws {
@@ -110,8 +94,6 @@ extension File.System.Link.Symbolic {
                 }
             }
         }
-
-        // MARK: - Semantic Accessors
 
         @Test
         func `isAlreadyExists semantic accessor`() {

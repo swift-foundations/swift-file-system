@@ -1,10 +1,3 @@
-//
-//  File.Handle Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -30,7 +23,6 @@ extension File.Handle {
 }
 
 extension File.Handle.Test.Unit {
-    // MARK: - Opening
 
     @Test
     func `Open file for reading`() throws {
@@ -117,8 +109,6 @@ extension File.Handle.Test.Unit {
         }
     }
 
-    // MARK: - Reading
-
     @Test
     func `Read bytes from file`() throws {
         try File.Directory.temporary { dir in
@@ -160,7 +150,7 @@ extension File.Handle.Test.Unit {
 
             var handle = try File.Handle.open(filePath, mode: .read)
 
-            _ = try handle.read(count: 3)  // Read all
+            _ = try handle.read(count: 3)
             let atEOF = try handle.read(count: 10)
             #expect(atEOF.isEmpty)
             try handle.close()
@@ -181,8 +171,6 @@ extension File.Handle.Test.Unit {
             try handle.close()
         }
     }
-
-    // MARK: - Writing
 
     @Test
     func `Write bytes to file`() throws {
@@ -222,8 +210,6 @@ extension File.Handle.Test.Unit {
         }
     }
 
-    // MARK: - Seeking
-
     @Test
     func `Seek from start`() throws {
         try File.Directory.temporary { dir in
@@ -251,8 +237,8 @@ extension File.Handle.Test.Unit {
 
             var handle = try File.Handle.open(filePath, mode: .read)
 
-            _ = try handle.read(count: 3)  // Position at 3
-            let newPos = try handle.seek(to: 2, from: .current)  // Now at 5
+            _ = try handle.read(count: 3)
+            let newPos = try handle.seek(to: 2, from: .current)
             #expect(newPos == 5)
 
             let readData = try handle.read(count: 1)
@@ -297,8 +283,6 @@ extension File.Handle.Test.Unit {
         }
     }
 
-    // MARK: - Sync
-
     @Test
     func `Sync flushes to disk`() throws {
         try File.Directory.temporary { dir in
@@ -310,14 +294,11 @@ extension File.Handle.Test.Unit {
             try handle.sync()
             try handle.close()
 
-            // File should exist and have content
             #expect(File.System.Stat.exists(at: filePath))
         }
     }
 
 }
-
-// MARK: - Positional Write Tests (pwrite)
 
 extension File.Handle.Test.Unit {
     @Test
@@ -325,21 +306,18 @@ extension File.Handle.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "pwrite_test.bin"
 
-            // Create file and write initial content
             var handle = try File.Handle.open(
                 filePath,
                 mode: .write,
                 options: [.create, .truncate]
             )
 
-            // Write "AAAA" at offset 0
             let bytes1: [Byte] = [0x41, 0x41, 0x41, 0x41]
             try bytes1.withUnsafeBytes { buffer in
                 let written = try handle.pwrite(buffer, at: 0)
                 #expect(written == 4)
             }
 
-            // Write "BBBB" at offset 4
             let bytes2: [Byte] = [0x42, 0x42, 0x42, 0x42]
             try bytes2.withUnsafeBytes { buffer in
                 let written = try handle.pwrite(buffer, at: 4)
@@ -348,7 +326,6 @@ extension File.Handle.Test.Unit {
 
             try handle.close()
 
-            // Verify content: should be "AAAABBBB"
             let content = try File.System.Read.Full.read(from: filePath) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -361,23 +338,19 @@ extension File.Handle.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "pwrite_pos_test.bin"
 
-            // Create a file with some initial content for seeking
             let initial: [Byte] = [0, 0, 0, 0, 0, 0, 0, 0]
             try File.System.Write.Atomic.write(initial.span, to: filePath)
 
             var handle = try File.Handle.open(filePath, mode: .readWrite)
 
-            // Get initial position
             let pos1 = try handle.seek(to: 0, from: .current)
             #expect(pos1 == 0)
 
-            // Write at offset 4 using pwrite
             let bytes: [Byte] = [0xFF, 0xFF]
             try bytes.withUnsafeBytes { buffer in
                 _ = try handle.pwrite(buffer, at: 4)
             }
 
-            // Position should still be 0 (not advanced)
             let pos2 = try handle.seek(to: 0, from: .current)
             #expect(pos2 == 0)
 
@@ -390,13 +363,11 @@ extension File.Handle.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "pwrite_overwrite.bin"
 
-            // Create file with "XXXXXXXX"
             let initial: [Byte] = [0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58]
             try File.System.Write.Atomic.write(initial.span, to: filePath)
 
             var handle = try File.Handle.open(filePath, mode: .write)
 
-            // Overwrite bytes 2-5 with "YYYY"
             let bytes: [Byte] = [0x59, 0x59, 0x59, 0x59]
             try bytes.withUnsafeBytes { buffer in
                 _ = try handle.pwrite(buffer, at: 2)
@@ -404,7 +375,6 @@ extension File.Handle.Test.Unit {
 
             try handle.close()
 
-            // Should be "XXYYYYXX"
             let content = try File.System.Read.Full.read(from: filePath) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -440,7 +410,6 @@ extension File.Handle.Test.Unit {
                 options: [.create, .truncate]
             )
 
-            // Write 10KB of data using pwriteAll
             let data = [Byte](repeating: 0xAB, count: 10_000)
             try data.withUnsafeBytes { buffer in
                 try handle.pwriteAll(buffer, at: 0)
@@ -448,7 +417,6 @@ extension File.Handle.Test.Unit {
 
             try handle.close()
 
-            // Verify all bytes written
             let content = try File.System.Read.Full.read(from: filePath) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -462,13 +430,11 @@ extension File.Handle.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "pwriteall_offset.bin"
 
-            // Create file with zeros
             let initial = [Byte](repeating: 0, count: 100)
             try File.System.Write.Atomic.write(initial.span, to: filePath)
 
             var handle = try File.Handle.open(filePath, mode: .write)
 
-            // Write at offset 50
             let data: [Byte] = [1, 2, 3, 4, 5]
             try data.withUnsafeBytes { buffer in
                 try handle.pwriteAll(buffer, at: 50)
@@ -476,7 +442,6 @@ extension File.Handle.Test.Unit {
 
             try handle.close()
 
-            // Verify
             let content = try File.System.Read.Full.read(from: filePath) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -489,15 +454,6 @@ extension File.Handle.Test.Unit {
     }
 
 }
-
-// MARK: - Write-Loop Zero-Progress Handling (F-003)
-//
-// `write()` returning `0` for a non-empty buffer cannot be triggered
-// portably through a real file descriptor (POSIX regular-file semantics
-// make it effectively unreachable). These tests exercise `advance` — the
-// single decision point `writeAll`/`pwriteAll` share for classifying a
-// syscall's return value — directly, which is the shared canonical logic
-// the fix introduced.
 
 extension File.Handle.Test.`Edge Case` {
     @Test

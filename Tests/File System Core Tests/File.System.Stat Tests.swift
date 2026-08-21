@@ -1,10 +1,3 @@
-//
-//  File.System.Stat Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Tagged_Primitives_Standard_Library_Integration
@@ -23,8 +16,6 @@ extension File.System.Stat {
 }
 
 extension File.System.Stat.Test.Unit {
-
-    // MARK: - exists()
 
     @Test
     func `exists returns true for existing file`() throws {
@@ -53,8 +44,6 @@ extension File.System.Stat.Test.Unit {
             #expect(File.System.Stat.exists(at: filePath) == false)
         }
     }
-
-    // MARK: - Type checks via info()
 
     @Test
     func `info returns regular type for file`() throws {
@@ -88,9 +77,6 @@ extension File.System.Stat.Test.Unit {
         }
     }
 
-    // Note: Symlink tests are in platform-specific test files.
-    // Windows symlink creation requires Developer Mode or admin privileges,
-    // which CI runners typically don't have.
     #if !os(Windows)
         @Test
         func `info(followSymlinks: false) returns symbolicLink type for symlink`() throws {
@@ -132,8 +118,6 @@ extension File.System.Stat.Test.Unit {
         }
     }
 
-    // MARK: - info()
-
     @Test
     func `info returns correct type for file`() throws {
         try File.Directory.temporary { dir in
@@ -146,7 +130,7 @@ extension File.System.Stat.Test.Unit {
             let info = try File.System.Stat.info(at: filePath)
 
             #expect(info.type == .regular)
-            #expect(info.size == 13)  // "Hello, World!" is 13 bytes
+            #expect(info.size == 13)
         }
     }
 
@@ -162,7 +146,6 @@ extension File.System.Stat.Test.Unit {
     }
 
     #if !os(Windows)
-        // Windows symlink behavior differs from POSIX - it may not follow symlinks the same way
 
         @Test
         func `info returns correct type for symlink`() throws {
@@ -178,13 +161,10 @@ extension File.System.Stat.Test.Unit {
 
                 let info = try File.System.Stat.info(at: linkPath)
 
-                // info() follows symlinks by default, so it should return the target type
                 #expect(info.type == .regular)
             }
         }
     #endif
-
-    // MARK: - Async variants
 
     @Test
     func `async exists works`() throws {
@@ -208,10 +188,7 @@ extension File.System.Stat.Test.Unit {
         }
     }
 
-    // MARK: - info(followSymlinks: false) tests
-
     #if !os(Windows)
-        // Windows symlink semantics differ from POSIX - stat/lstat may not distinguish the same way
 
         @Test
         func `info(followSymlinks: false) returns symbolicLink type for symlink (Handle API)`()
@@ -221,7 +198,6 @@ extension File.System.Stat.Test.Unit {
                 let targetPath = dir.path / "target.txt"
                 let linkPath = dir.path / "link"
 
-                // Create target file using our API
                 var handle = try File.Handle.open(
                     targetPath,
                     mode: .write,
@@ -233,14 +209,11 @@ extension File.System.Stat.Test.Unit {
                 }
                 try handle.close()
 
-                // Create symlink using our API
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-                // info(followSymlinks: false) should return symbolicLink type (doesn't follow)
                 let lstatInfo = try File.System.Stat.info(at: linkPath, followSymlinks: false)
                 #expect(lstatInfo.type == .symbolicLink)
 
-                // info should return regular type (follows symlink)
                 let statInfo = try File.System.Stat.info(at: linkPath)
                 #expect(statInfo.type == .regular)
             }
@@ -252,7 +225,6 @@ extension File.System.Stat.Test.Unit {
                 let targetPath = dir.path / "target.txt"
                 let linkPath = dir.path / "link"
 
-                // Create target file using our API
                 var handle = try File.Handle.open(
                     targetPath,
                     mode: .write,
@@ -264,20 +236,15 @@ extension File.System.Stat.Test.Unit {
                 }
                 try handle.close()
 
-                // Create symlink using our API
                 try File.System.Link.Symbolic.create(at: linkPath, pointingTo: targetPath)
 
-                // info(followSymlinks: false) returns the symlink's own inode
                 let lstatInfo = try File.System.Stat.info(at: linkPath, followSymlinks: false)
 
-                // info on symlink follows to target, should have same inode as target
                 let statInfo = try File.System.Stat.info(at: linkPath)
                 let targetInfo = try File.System.Stat.info(at: targetPath)
 
-                // The symlink has its own inode, different from the target
                 #expect(lstatInfo.inode != targetInfo.inode)
 
-                // info() on symlink should return the target's inode
                 #expect(statInfo.inode == targetInfo.inode)
             }
         }
@@ -288,7 +255,6 @@ extension File.System.Stat.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "regular.txt"
 
-            // Create file using our API
             var handle = try File.Handle.open(
                 filePath,
                 mode: .write,
@@ -303,7 +269,6 @@ extension File.System.Stat.Test.Unit {
             let lstatInfo = try File.System.Stat.info(at: filePath, followSymlinks: false)
             let statInfo = try File.System.Stat.info(at: filePath)
 
-            // For regular files, both should return the same info
             #expect(lstatInfo.type == statInfo.type)
             #expect(lstatInfo.inode == statInfo.inode)
             #expect(lstatInfo.size == statInfo.size)

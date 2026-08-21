@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Commit Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,11 +13,7 @@ extension File.System.Write.Streaming.Commit {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Write.Streaming.Commit.Test.Unit {
-    // File.System.Write.Streaming.Commit is a namespace enum
-    // Tests verify the namespace and nested types exist
 
     @Test
     func `Commit namespace exists`() {

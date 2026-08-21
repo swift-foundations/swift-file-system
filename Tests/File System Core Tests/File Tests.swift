@@ -1,8 +1,3 @@
-//
-//  File Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.Test.Unit {
     @Test
@@ -74,7 +67,7 @@ extension File.Test.Unit {
         let path1 = File.Path("/tmp/test1.txt")
         let path2 = File.Path("/tmp/test2.txt")
         let file1 = File(path1)
-        let file2 = File(path1)  // same as file1
+        let file2 = File(path1)
         let file3 = File(path2)
 
         let set: Set<File> = [file1, file2, file3]
@@ -96,8 +89,6 @@ extension File.Test.Unit {
         #expect(dict[file2] == 2)
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.Test.`Edge Case` {
     @Test

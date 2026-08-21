@@ -1,10 +1,3 @@
-//
-//  File.System.Link.Hard Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -25,8 +18,6 @@ extension File.System.Link.Hard {
 
     extension File.System.Link.Hard.Test.Unit {
 
-        // MARK: - Create Hard Link
-
         @Test
         func `Create hard link to file`() throws {
             try File.Directory.temporary { dir in
@@ -39,7 +30,6 @@ extension File.System.Link.Hard {
 
                 #expect(File.System.Stat.exists(at: linkPath))
 
-                // Both files should have same content
                 let existingData = try File.System.Read.Full.read(from: existingPath) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
                 }
@@ -60,7 +50,6 @@ extension File.System.Link.Hard {
 
                 try File.System.Link.Hard.create(at: linkPath, to: existingPath)
 
-                // Get inode numbers using our stat API
                 let existingInfo = try File.System.Stat.info(at: existingPath)
                 let linkInfo = try File.System.Stat.info(at: linkPath)
 
@@ -78,12 +67,10 @@ extension File.System.Link.Hard {
 
                 try File.System.Link.Hard.create(at: linkPath, to: existingPath)
 
-                // Modify through the link using in-place write (not atomic write which replaces the file)
                 var handle = try File.Handle.open(linkPath, mode: .write, options: [.truncate])
                 try handle.write([10, 20, 30].span)
                 try handle.close()
 
-                // Original should also be modified (same inode)
                 let originalData = try File.System.Read.Full.read(from: existingPath) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
                 }
@@ -101,10 +88,8 @@ extension File.System.Link.Hard {
 
                 try File.System.Link.Hard.create(at: linkPath, to: existingPath)
 
-                // Delete original
                 try File.System.Delete.delete(at: existingPath)
 
-                // Hard link should still exist and have the data
                 #expect(File.System.Stat.exists(at: linkPath))
                 let data = try File.System.Read.Full.read(from: linkPath) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
@@ -112,8 +97,6 @@ extension File.System.Link.Hard {
                 #expect(data == [1, 2, 3])
             }
         }
-
-        // MARK: - Error Cases
 
         @Test
         func `Create hard link to non-existent file throws error with isSourceNotFound`() throws {
@@ -147,8 +130,6 @@ extension File.System.Link.Hard {
                 }
             }
         }
-
-        // MARK: - Semantic Accessors
 
         @Test
         func `isSourceNotFound semantic accessor`() {

@@ -1,10 +1,3 @@
-//
-//  File.System.Delete Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -22,8 +15,6 @@ extension File.System.Delete {
 }
 
 extension File.System.Delete.Test.Unit {
-
-    // MARK: - Delete file
 
     @Test
     func `Delete existing file`() throws {
@@ -48,8 +39,6 @@ extension File.System.Delete.Test.Unit {
         }
     }
 
-    // MARK: - Delete directory
-
     @Test
     func `Delete empty directory`() throws {
         try File.Directory.temporary { dir in
@@ -73,7 +62,6 @@ extension File.System.Delete.Test.Unit {
                 try File.System.Delete.delete(at: subdir)
             }
 
-            // Directory should still exist
             #expect(File.System.Stat.exists(at: subdir))
         }
     }
@@ -81,7 +69,7 @@ extension File.System.Delete.Test.Unit {
     @Test
     func `Delete non-empty directory with recursive option`() throws {
         try File.Directory.temporary { dir in
-            // Create nested structure
+
             let nested = dir.path / "a" / "b" / "c"
             try File.System.Create.Directory.create(at: nested, createIntermediates: true)
             try File.System.Write.Atomic.write(
@@ -100,14 +88,10 @@ extension File.System.Delete.Test.Unit {
         }
     }
 
-    // MARK: - Options
-
     @Test
     func `Options default values`() {
         let _ = File.System.Delete.Options()
     }
-
-    // MARK: - Additional variants
 
     @Test
     func `Delete file variant`() throws {
@@ -137,8 +121,6 @@ extension File.System.Delete.Test.Unit {
             #expect(!File.System.Stat.exists(at: targetDir))
         }
     }
-
-    // MARK: - Semantic accessors
 
     @Test
     func `isNotFound semantic accessor`() throws {
@@ -173,7 +155,7 @@ extension File.System.Delete.Test.Unit {
 
     @Test
     func `isDirectory semantic accessor`() {
-        // Test the semantic accessor on a manually constructed error
+
         let error = File.System.Delete.Error.unlink(.isDirectory)
         #expect(error.isDirectory)
         #expect(!error.isNotFound)
@@ -187,11 +169,8 @@ extension File.System.Delete.Test.Unit {
     }
 }
 
-// MARK: - Symlink Semantics (F-002)
-
 extension File.System.Delete.Test.`Edge Case` {
-    // Windows symlink creation requires Developer Mode or admin privileges
-    // CI runners typically don't have — see File.System.Stat Tests.swift.
+
     #if !os(Windows)
         @Test
         func `Delete symlink to directory leaves target contents intact`() throws {
@@ -209,9 +188,8 @@ extension File.System.Delete.Test.`Edge Case` {
 
                 try File.System.Delete.delete(at: linkPath, recursive: true)
 
-                // The link itself is gone…
                 #expect(!File.System.Stat.exists(at: linkPath))
-                // …but the target directory and its contents are untouched.
+
                 #expect(File.System.Stat.exists(at: targetDir))
                 #expect(File.System.Stat.exists(at: targetFile))
             }
@@ -275,9 +253,8 @@ extension File.System.Delete.Test.`Edge Case` {
 
                 try File.System.Delete.delete(at: tree, recursive: true)
 
-                // The whole tree (including the symlink entry) is gone…
                 #expect(!File.System.Stat.exists(at: tree))
-                // …but the linked-to directory outside the tree survives.
+
                 #expect(File.System.Stat.exists(at: targetDir))
                 #expect(File.System.Stat.exists(at: targetFile))
             }

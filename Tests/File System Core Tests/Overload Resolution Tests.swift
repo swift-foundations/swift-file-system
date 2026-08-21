@@ -1,8 +1,3 @@
-//
-//  Overload Resolution Tests.swift
-//  swift-file-system
-//
-
 import Either_Primitives
 import File_System_Test_Support
 import Kernel
@@ -10,31 +5,7 @@ import Testing
 
 @testable import File_System_Core
 
-// MARK: - Regression: one typed-throws form per operation
-//
-// `Contents.iterate(at:body:)`, `Walk.iterate(options:body:)` and
-// `Read.Full.read(from:body:)` each used to ship as a pair of overloads that
-// differed only in the throwing-ness of the closure: a non-generic form taking
-// a non-throwing closure, and a generic form taking a `throws(E)` closure.
-//
-// A non-throwing closure literal was viable for BOTH — the non-generic form
-// directly, and the generic one with `E` inferred as `Never`. Swift 6.3.3
-// ranked the non-generic form higher; Swift 6.4 no longer does, so every such
-// call became `ambiguous use of ...`, for consumers as well as for this
-// package's own wrappers.
-//
-// Throwing-ness is not an overload axis, so each pair was collapsed to a single
-// typed-throws generic form naming its concrete error type. With one candidate
-// there is nothing to rank and the ambiguity cannot recur.
-//
-// These helpers are the regression test. Their explicit typed-throws signatures
-// PIN the inferred thrown type: a non-throwing closure must infer `E == Never`
-// and yield `Either<X, Never>`. If the collapse were reverted, or a second
-// overload reintroduced, these would fail to compile.
-
 private struct Sentinel: Swift.Error, Equatable {}
-
-// MARK: Non-throwing closure -> E == Never
 
 private func countContents(
     in directory: borrowing File.Directory
@@ -66,8 +37,6 @@ private func byteCount(
     }
 }
 
-// MARK: Throwing closure -> E == Sentinel
-
 private func contentsThrowing(
     in directory: borrowing File.Directory
 ) throws(Either<File.Directory.Contents.Error, Sentinel>) {
@@ -94,11 +63,6 @@ private func readThrowing(
         throw Sentinel()
     }
 }
-
-// MARK: Convenience wrappers keep their concrete error type
-//
-// The wrappers absorb the `Never` arm via `error.value`, so their public thrown
-// type is unchanged by the collapse. These signatures pin that.
 
 private func listContents(
     in directory: borrowing File.Directory
@@ -134,16 +98,6 @@ private func walkDirectories(
     return count
 }
 
-// MARK: - `File.Read.full` shares the same collapse
-//
-// `File.Read.full` is the `File System` layer's re-exposure of
-// `Read.Full.read`, and it shipped the same throwing/non-throwing twin in both
-// its sync and async forms. Both were confirmed ambiguous from a separate
-// module, so both were collapsed too. `File_System_Core` cannot see them —
-// that coverage lives in `File System Tests`.
-
-// MARK: - Suite
-
 @Suite
 struct `Overload Resolution` {
     @Suite struct `Non Throwing Closure` {}
@@ -168,7 +122,6 @@ extension `Overload Resolution`.`Non Throwing Closure` {
             try File.System.Create.Directory.create(at: dir.path / "sub")
             try File.System.Write.Atomic.write([], to: dir.path / "sub" / "a.txt")
 
-            // The subdirectory itself plus the file inside it.
             #expect(try countWalked(in: dir) == 2)
         }
     }
@@ -231,8 +184,6 @@ extension `Overload Resolution`.`Throwing Closure` {
 }
 
 extension `Overload Resolution`.`Never Elimination` {
-    // The operational half: the `.left` arm must still carry the real failure
-    // out through the wrappers, which is what `error.value` absorbs.
 
     @Test
     func `Contents list surfaces the directory error`() throws {

@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Atomic.Error Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.System.Write.Atomic.Error {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.System.Write.Atomic.Error.Test.Unit {
     @Test
@@ -248,8 +241,6 @@ extension File.System.Write.Atomic.Error.Test.Unit {
         }
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Atomic.Error.Test.`Edge Case` {
     @Test

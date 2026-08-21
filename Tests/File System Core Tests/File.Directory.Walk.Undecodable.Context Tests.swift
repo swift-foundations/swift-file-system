@@ -1,8 +1,3 @@
-//
-//  File.Directory.Walk.Undecodable.Context Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -19,11 +14,7 @@ extension File.Directory.Walk.Undecodable.Context {
 }
 #if os(macOS) || os(Linux)
 
-    // MARK: - Unit Tests
-
     extension File.Directory.Walk.Undecodable.Context.Test.Unit {
-
-        // MARK: - Initialization
 
         @Test
         func `init stores all properties`() {
@@ -45,8 +36,6 @@ extension File.Directory.Walk.Undecodable.Context {
             #expect(context.depth == depth)
         }
 
-        // MARK: - Parent Property
-
         @Test
         func `parent property returns the parent path`() {
             let parent: File.Path = "/usr/local/bin"
@@ -60,8 +49,6 @@ extension File.Directory.Walk.Undecodable.Context {
             #expect(context.parent == parent)
             #expect(context.parent == "/usr/local/bin")
         }
-
-        // MARK: - Name Property
 
         @Test
         func `name property returns the undecodable name`() {
@@ -104,8 +91,6 @@ extension File.Directory.Walk.Undecodable.Context {
             let lossy = Swift.String(lossy: context.name)
             #expect(lossy.contains("\u{FFFD}"))
         }
-
-        // MARK: - Type Property
 
         @Test
         func `type property returns file`() {
@@ -155,8 +140,6 @@ extension File.Directory.Walk.Undecodable.Context {
             #expect(context.type == .other)
         }
 
-        // MARK: - Depth Property
-
         @Test
         func `depth property returns zero for root directory`() {
             let context = File.Directory.Walk.Undecodable.Context(
@@ -193,8 +176,6 @@ extension File.Directory.Walk.Undecodable.Context {
             #expect(context.depth == 100)
         }
 
-        // MARK: - Sendable
-
         @Test
         func `Context is Sendable`() async {
             let parent: File.Path = "/tmp"
@@ -216,8 +197,6 @@ extension File.Directory.Walk.Undecodable.Context {
             #expect(result.3 == 1)
         }
     }
-
-    // MARK: - Edge Cases
 
     extension File.Directory.Walk.Undecodable.Context.Test.`Edge Case` {
 
@@ -247,7 +226,7 @@ extension File.Directory.Walk.Undecodable.Context {
 
         @Test
         func `context with various invalid byte patterns`() {
-            // Lone continuation byte
+
             let context1 = File.Directory.Walk.Undecodable.Context(
                 parent: "/tmp",
                 name: File.Name(rawBytes: [0x80]),
@@ -256,7 +235,6 @@ extension File.Directory.Walk.Undecodable.Context {
             )
             #expect(Swift.String(context1.name) == nil)
 
-            // Invalid start byte
             let context2 = File.Directory.Walk.Undecodable.Context(
                 parent: "/tmp",
                 name: File.Name(rawBytes: [0xFF]),
@@ -265,7 +243,6 @@ extension File.Directory.Walk.Undecodable.Context {
             )
             #expect(Swift.String(context2.name) == nil)
 
-            // Overlong encoding
             let context3 = File.Directory.Walk.Undecodable.Context(
                 parent: "/tmp",
                 name: File.Name(rawBytes: [0xC0, 0xAF]),

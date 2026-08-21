@@ -1,23 +1,9 @@
-//
-//  IO+File.System+Blocking.swift
-//  swift-file-system
-//
-//  Blocking-strategy factory for the file-system domain. Pairs a
-//  Kernel.Thread.Actor (swift-threads) with a Runner (swift-io-primitives)
-//  to yield an `IO<File.System.IO.Capabilities>`.
-//
-
 public import Executors
 public import IO
 import Thread_Actor
 
 extension IO where Capabilities == File.System.IO.Capabilities {
-    /// Blocking-strategy file-system I/O bound to an explicit executor.
-    ///
-    /// Every operation runs on `executor`'s pinned OS thread via actor
-    /// isolation. Consumers that forward their `unownedExecutor` to
-    /// the returned bundle (TCA26 shared-executor pattern) incur no
-    /// per-op hop.
+
     public static func blocking(
         on executor: Kernel.Thread.Executor
     ) -> IO<File.System.IO.Capabilities> {
@@ -42,8 +28,7 @@ extension IO where Capabilities == File.System.IO.Capabilities {
         let runner = unsafe Self.Runner(
             executor: { unsafe actor.unownedExecutor },
             shutdown: {
-                // Caller owns the supplied executor's lifecycle. The
-                // factory does not shut it down.
+
             }
         )
         return IO(capabilities: capabilities, runner: runner)

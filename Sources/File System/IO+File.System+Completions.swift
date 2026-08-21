@@ -1,19 +1,3 @@
-//
-//  IO+File.System+Completions.swift
-//  swift-file-system
-//
-//  Completions-strategy factory for the file-system domain.
-//
-//  Hybrid dispatch: fd byte ops (`read`, `write`) go through the
-//  Completion.Actor's `submit` primitive (io_uring). Path-level ops
-//  (`open`, `stat`) and `close` go through a Kernel.Thread.Actor on a
-//  co-supplied executor — `Opcode` does not yet carry `.openat` or
-//  `.statx`, and `close` benefits no more from io_uring than from a
-//  direct `close(2)` syscall (same as Basic's completions factory).
-//
-//  Linux-only (io_uring). On Darwin/Windows, use ``blocking(on:)``.
-//
-
 #if os(Linux)
 
     public import Executors
@@ -24,9 +8,7 @@
     public import Thread_Actor
 
     extension IO where Capabilities == File.System.IO.Capabilities {
-        /// Completions-strategy file-system I/O bound to an explicit
-        /// ``Completion/Actor`` for fd ops and a
-        /// ``Kernel/Thread/Executor`` for path ops.
+
         public static func completions(
             on completion: Completion.Actor,
             blockingOn executor: Kernel.Thread.Executor

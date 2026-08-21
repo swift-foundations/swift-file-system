@@ -1,10 +1,3 @@
-//
-//  File.System.Write.Streaming Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 20/12/2025.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -23,15 +16,13 @@ extension File.System.Write.Streaming {
 
 extension File.System.Write.Streaming.Test.Unit {
 
-    // MARK: - Basic Streaming Write
-
     @Test
     func `Write multiple chunks and read back`() throws {
         try File.Directory.temporary { dir in
             let chunks: [[Byte]] = [
-                [72, 101, 108, 108, 111],  // "Hello"
-                [32],  // " "
-                [87, 111, 114, 108, 100],  // "World"
+                [72, 101, 108, 108, 111],
+                [32],
+                [87, 111, 114, 108, 100],
             ]
 
             let filePath = dir.path / "test.txt"
@@ -79,7 +70,7 @@ extension File.System.Write.Streaming.Test.Unit {
         try File.Directory.temporary { dir in
             let chunks: [[Byte]] = [
                 [1, 2, 3],
-                [],  // Empty chunk
+                [],
                 [4, 5, 6],
             ]
 
@@ -96,7 +87,7 @@ extension File.System.Write.Streaming.Test.Unit {
     @Test
     func `Write large file in chunks`() throws {
         try File.Directory.temporary { dir in
-            // 256KB total in 64KB chunks
+
             let chunkSize = 64 * 1024
             let chunks: [[Byte]] = (0..<4).map { i in
                 [Byte](repeating: Byte(UInt8(truncatingIfNeeded: i)), count: chunkSize)
@@ -112,12 +103,10 @@ extension File.System.Write.Streaming.Test.Unit {
         }
     }
 
-    // MARK: - Lazy Swift.Sequence Support
-
     @Test
     func `Write from lazy sequence`() throws {
         try File.Directory.temporary { dir in
-            // Lazy sequence that generates chunks on demand
+
             let lazyChunks = (0..<3).lazy.map { i -> [Byte] in
                 [Byte](repeating: Byte(UInt8(i)), count: 10)
             }
@@ -135,15 +124,12 @@ extension File.System.Write.Streaming.Test.Unit {
         }
     }
 
-    // MARK: - CommitPolicy Tests
-
     @Test
     func `Atomic write (default) creates file`() throws {
         try File.Directory.temporary { dir in
             let chunks: [[Byte]] = [[1, 2, 3]]
             let filePath = dir.path / "test.txt"
 
-            // Default is atomic
             try File.System.Write.Streaming.write(chunks, to: filePath)
 
             let readData = try File.System.Read.Full.read(from: filePath) {
@@ -189,17 +175,13 @@ extension File.System.Write.Streaming.Test.Unit {
         }
     }
 
-    // MARK: - Strategy Tests
-
     @Test
     func `Atomic noClobber prevents overwrite`() throws {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "test.txt"
 
-            // First write
             try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath)
 
-            // Second write with noClobber should fail
             let options = File.System.Write.Streaming.Options(
                 commit: .atomic(.init(strategy: .noClobber))
             )
@@ -207,7 +189,6 @@ extension File.System.Write.Streaming.Test.Unit {
                 try File.System.Write.Streaming.write([[4, 5, 6]], to: filePath, options: options)
             }
 
-            // Original content preserved
             let readData = try File.System.Read.Full.read(from: filePath) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -220,7 +201,6 @@ extension File.System.Write.Streaming.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "test.txt"
 
-            // First write
             let createOptions = File.System.Write.Streaming.Options(
                 commit: .direct(.init(strategy: .truncate))
             )
@@ -230,7 +210,6 @@ extension File.System.Write.Streaming.Test.Unit {
                 options: createOptions
             )
 
-            // Second write with create strategy should fail
             let options = File.System.Write.Streaming.Options(
                 commit: .direct(.init(strategy: .create))
             )
@@ -245,10 +224,8 @@ extension File.System.Write.Streaming.Test.Unit {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "test.txt"
 
-            // First write
             try File.System.Write.Streaming.write([[1, 2, 3]], to: filePath)
 
-            // Second write with truncate should succeed
             let options = File.System.Write.Streaming.Options(
                 commit: .direct(.init(strategy: .truncate))
             )
@@ -261,8 +238,6 @@ extension File.System.Write.Streaming.Test.Unit {
         }
     }
 
-    // MARK: - Error Tests
-
     @Test
     func `parentNotFound error for invalid path`() {
         #expect(throws: File.System.Write.Streaming.Error.self) {
@@ -271,8 +246,6 @@ extension File.System.Write.Streaming.Test.Unit {
             try File.System.Write.Streaming.write(chunks, to: filePath)
         }
     }
-
-    // MARK: - Error Descriptions
 
     @Test
     func `parentVerificationFailed error description`() {
@@ -303,13 +276,11 @@ extension File.System.Write.Streaming.Test.Unit {
         #expect(error.description.contains("100"))
     }
 
-    // MARK: - Options Tests
-
     @Test
     func `Default options use atomic commit`() {
         let options = File.System.Write.Streaming.Options()
         if case .atomic = options.commit {
-            // Expected
+
         } else {
             Issue.record("Default commit should be atomic")
         }
@@ -371,8 +342,6 @@ extension File.System.Write.Streaming.Test.Unit {
     }
 }
 
-// MARK: - createIntermediates tests
-
 extension File.System.Write.Streaming.Test.Integration {
 
     @Test
@@ -386,13 +355,11 @@ extension File.System.Write.Streaming.Test.Integration {
                 createIntermediates: true
             )
 
-            // Verify file was written
             let readData = try File.System.Read.Full.read(from: nested) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
             #expect(readData == [1, 2, 3])
 
-            // Verify parent directory has correct permissions (execute bit set)
             let parentPath = dir.path / "subdir"
             let permissions = try File.System.Metadata.Permissions(at: parentPath)
             #expect(
@@ -463,11 +430,9 @@ extension File.System.Write.Streaming.Test.Integration {
             let existingFile = subdir / "old.txt"
             try File.System.Write.Streaming.write([[1]], to: existingFile)
 
-            // Write a new file with createIntermediates into the same directory
             let newFile = subdir / "new.txt"
             try File.System.Write.Streaming.write([[2]], to: newFile, createIntermediates: true)
 
-            // Both files should exist
             let oldData = try File.System.Read.Full.read(from: existingFile) {
                 $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
             }
@@ -504,7 +469,7 @@ extension File.System.Write.Streaming.Test.Integration {
     @Test
     func `createIntermediates is independent of Options`() throws {
         try File.Directory.temporary { dir in
-            // Test with different Options configurations to verify orthogonality
+
             let configurations: [(File.System.Write.Streaming.Options, File.Path.Component)] = [
                 (.init(commit: .atomic(.init(durability: .full))), "atomic-full"),
                 (

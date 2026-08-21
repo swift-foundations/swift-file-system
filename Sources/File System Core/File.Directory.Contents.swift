@@ -1,29 +1,13 @@
-//
-//  File.Directory.Contents.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 17/12/2025.
-//
-
 import Either_Primitives
 import Kernel
 
 extension File.Directory {
-    /// List directory contents.
+
     public enum Contents {}
 }
 
-// MARK: - Convenience API (Allocating)
-
 extension File.Directory.Contents {
-    /// Lists the contents of a directory as an array.
-    ///
-    /// This is a convenience wrapper around `iterate(at:body:)` that collects
-    /// entries into an array. Prefer `iterate` for zero-allocation iteration.
-    ///
-    /// - Parameter directory: The directory to list.
-    /// - Returns: An array of directory entries.
-    /// - Throws: `File.Directory.Contents.Error` on failure.
+
     public static func list(
         at directory: borrowing File.Directory
     ) throws(File.Directory.Contents.Error) -> [File.Directory.Entry] {
@@ -34,62 +18,15 @@ extension File.Directory.Contents {
                 return .continue
             }
         } catch {
-            // `E` is `Never` here, so the closure arm is uninhabited.
+
             throw error.value
         }
         return entries
     }
 }
 
-// MARK: - Core API (Callback-Based, Zero-Allocation)
-
 extension File.Directory.Contents {
-    /// Iterates over directory contents, calling a closure for each entry.
-    ///
-    /// This is the canonical directory listing API. It avoids allocating an array
-    /// by yielding each entry to the callback. Use `Control.break` for early exit.
-    ///
-    /// ## Usage
-    ///
-    /// ```swift
-    /// // Non-throwing closure: `E` is `Never`, so the closure arm of the thrown
-    /// // `Either` is uninhabited and `error.value` recovers the directory error.
-    /// do throws(Either<File.Directory.Contents.Error, Never>) {
-    ///     try File.Directory.Contents.iterate(at: directory) { entry in
-    ///         print(entry.name)
-    ///         return .continue
-    ///     }
-    /// } catch {
-    ///     let failure: File.Directory.Contents.Error = error.value
-    /// }
-    ///
-    /// // Throwing closure: both arms are inhabited.
-    /// do throws(Either<File.Directory.Contents.Error, Decode.Error>) {
-    ///     try File.Directory.Contents.iterate(at: directory) { entry in
-    ///         try decode(entry)
-    ///         return .continue
-    ///     }
-    /// } catch {
-    ///     switch error {
-    ///     case .left(let directoryFailure): ...
-    ///     case .right(let closureFailure): ...
-    ///     }
-    /// }
-    ///
-    /// // When you just want an array, `list(at:)` absorbs the `Never` arm for you.
-    /// let entries = try File.Directory.Contents.list(at: directory)
-    /// ```
-    ///
-    /// A non-throwing closure infers `E` as `Never`, so the thrown type collapses
-    /// to `Either<File.Directory.Contents.Error, Never>` and the closure arm is
-    /// statically uninhabited — recover the directory error with `error.value`.
-    ///
-    /// - Parameters:
-    ///   - directory: The directory to iterate.
-    ///   - body: A closure called for each entry. Return `.continue` to keep iterating,
-    ///           or `.break` to stop early.
-    /// - Throws: `Either<Contents.Error, E>` — `.left` for directory failures,
-    ///   `.right` if the closure throws.
+
     public static func iterate<E: Swift.Error>(
         at directory: borrowing File.Directory,
         body: (File.Directory.Entry) throws(E) -> Control
@@ -144,10 +81,8 @@ extension File.Directory.Contents {
     }
 }
 
-// MARK: - Error Mapping
-
 extension File.Directory.Contents {
-    /// Maps Kernel.Directory.Error to File.Directory.Contents.Error.
+
     internal static func mapKernelError(
         _ error: Kernel.Directory.Error,
         path: File.Path
@@ -169,9 +104,7 @@ extension File.Directory.Contents {
             return .readFailed(errno: 0, message: "I/O error")
 
         case .closed:
-            // Programmer error: the Kernel.Directory.Stream was read after
-            // `close()`. Not path-specific, so classify like the other
-            // non-path Kernel.Directory.Error cases above.
+
             return .readFailed(errno: 0, message: "Directory stream used after close")
 
         case .platform(let kernelError):
@@ -181,18 +114,15 @@ extension File.Directory.Contents {
     }
 }
 
-// MARK: - Type Mapping
-
 extension File.Directory.Contents {
-    /// Maps Kernel.File.Stats.Kind to File.Directory.Entry.Kind.
+
     private static func mapEntryType(
         _ kernelType: Kernel.File.Stats.Kind?,
         name: File.Name,
         parent: File.Path
     ) -> File.Directory.Entry.Kind {
         guard let kernelType else {
-            // Type unknown (DT_UNKNOWN on some filesystems)
-            // Fall back to lstat to determine type
+
             return lstatEntryType(name: name, parent: parent)
         }
 
@@ -207,7 +137,7 @@ extension File.Directory.Contents {
             return .symbolicLink
 
         case .link:
-            // Other link types (junction, mount point) treated as symlinks
+
             return .symbolicLink
 
         case .device, .fifo, .socket, .unknown:
@@ -215,7 +145,6 @@ extension File.Directory.Contents {
         }
     }
 
-    /// Falls back to lstat when d_type is unknown.
     private static func lstatEntryType(
         name: File.Name,
         parent: File.Path

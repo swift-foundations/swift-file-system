@@ -1,8 +1,3 @@
-//
-//  File.Directory.Walk.Undecodable.Policy Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,11 +13,7 @@ extension File.Directory.Walk.Undecodable.Policy {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
-
-    // MARK: - Case Existence
 
     @Test
     func `skip case exists`() {
@@ -60,15 +51,12 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         }
     }
 
-    // MARK: - All Cases
-
     @Test
     func `all three cases are distinct`() {
         let skip: File.Directory.Walk.Undecodable.Policy = .skip
         let emit: File.Directory.Walk.Undecodable.Policy = .emit
         let stop: File.Directory.Walk.Undecodable.Policy = .stopAndThrow
 
-        // Each case should match itself in switch
         var matchCount = 0
 
         switch skip {
@@ -107,8 +95,6 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         }
     }
 
-    // MARK: - Sendable
-
     @Test
     func `Policy is Sendable`() async {
         let policy: File.Directory.Walk.Undecodable.Policy = .emit
@@ -136,8 +122,6 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
 
         #expect(results.count == 3)
     }
-
-    // MARK: - Usage Patterns
 
     @Test
     func `Policy can be stored in array`() {
@@ -181,8 +165,6 @@ extension File.Directory.Walk.Undecodable.Policy.Test.Unit {
         }
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.Directory.Walk.Undecodable.Policy.Test.`Edge Case` {
 
@@ -247,7 +229,7 @@ extension File.Directory.Walk.Undecodable.Policy.Test.`Edge Case` {
         func getPolicy(
             _ override: File.Directory.Walk.Undecodable.Policy? = nil
         ) -> File.Directory.Walk.Undecodable.Policy {
-            override ?? .skip  // Default to skip
+            override ?? .skip
         }
 
         switch getPolicy() {

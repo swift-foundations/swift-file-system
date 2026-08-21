@@ -1,10 +1,3 @@
-//
-//  File.System.Read.Full Tests.swift
-//  swift-file-system
-//
-//  Created by Coen ten Thije Boonkkamp on 18/12/2025.
-//
-
 import Either_Primitives
 import File_System_Test_Support
 import Kernel
@@ -24,11 +17,9 @@ extension File.System.Read.Full {
 
 extension File.System.Read.Full.Test.Unit {
 
-    // MARK: - Basic read
-
     @Test
     func `Read small file`() throws {
-        let content: [Byte] = [72, 101, 108, 108, 111]  // "Hello"
+        let content: [Byte] = [72, 101, 108, 108, 111]
         try File.Directory.temporary { dir in
             let filePath = dir.path / "test.bin"
             try File.System.Write.Atomic.write(content.span, to: filePath)
@@ -72,7 +63,7 @@ extension File.System.Read.Full.Test.Unit {
 
     @Test
     func `Read binary data`() throws {
-        // Binary content including null bytes and non-printable characters
+
         let content: [Byte] = [0x00, 0x01, 0xFF, 0xFE, 0x7F, 0x80]
         try File.Directory.temporary { dir in
             let filePath = dir.path / "binary.bin"
@@ -87,7 +78,7 @@ extension File.System.Read.Full.Test.Unit {
 
     @Test
     func `Read larger file`() throws {
-        // Create a 64KB file
+
         let content = [Byte](repeating: 0xAB, count: 64 * 1024)
         try File.Directory.temporary { dir in
             let filePath = dir.path / "large.bin"
@@ -103,7 +94,7 @@ extension File.System.Read.Full.Test.Unit {
 
     @Test
     func `Read file with various byte values`() throws {
-        // All possible byte values
+
         let content = (0...255).map { Byte(UInt8($0)) }
         try File.Directory.temporary { dir in
             let filePath = dir.path / "bytes.bin"
@@ -116,15 +107,11 @@ extension File.System.Read.Full.Test.Unit {
         }
     }
 
-    // MARK: - Error cases
-
     @Test
     func `Read non-existing file throws pathNotFound`() throws {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "non-existing.txt"
 
-            // A non-throwing closure infers `E` as `Never`, so the read failure
-            // arrives in the `.left` arm of `Either<Read.Full.Error, Never>`.
             #expect(throws: Either<File.System.Read.Full.Error, Never>.self) {
                 try File.System.Read.Full.read(from: filePath) {
                     $0.withUnsafeBytes { unsafe $0.map(Byte.init) }
@@ -143,8 +130,6 @@ extension File.System.Read.Full.Test.Unit {
             }
         }
     }
-
-    // MARK: - Async variants
 
     @Test
     func `Async read file`() async throws {
@@ -173,16 +158,12 @@ extension File.System.Read.Full.Test.Unit {
         }
     }
 
-    // MARK: - Throwing-body shim (Result<R, E> internal storage)
-
     @Test
     func `Throwing-body read returning nil preserves the Optional injection`() throws {
         try File.Directory.temporary { dir in
             let filePath = dir.path / "throwing-body-nil.bin"
             try File.System.Write.Atomic.write([Byte]([1, 2, 3]).span, to: filePath)
 
-            // `throws(Never)` closure literal: exercises the throwing-body overload
-            // (not the plain non-throwing overload) while never actually throwing.
             let result: Int? = try File.System.Read.Full.read(from: filePath) {
                 (_: Swift.Span<Byte>) throws(Never) -> Int? in
                 nil
@@ -219,9 +200,6 @@ extension File.System.Read.Full.Test.Unit {
         }
     }
 
-    // MARK: - Semantic Accessors
-
-    // Structural error-case construction (.path(.notFound)); platform-neutral.
     @Test
     func `isNotFound semantic accessor`() {
         let error = File.System.Read.Full.Error.open(.path(.notFound))
@@ -229,7 +207,6 @@ extension File.System.Read.Full.Test.Unit {
         #expect(!error.isPermissionDenied)
     }
 
-    // POSIX error-code construction; the accessor maps Win32 codes on Windows.
     #if !os(Windows)
         @Test
         func `isPermissionDenied semantic accessor`() {
@@ -241,7 +218,6 @@ extension File.System.Read.Full.Test.Unit {
         }
     #endif
 
-    // Windows twin of the POSIX-gated test above: same accessor, Win32 code.
     #if os(Windows)
         @Test
         func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {

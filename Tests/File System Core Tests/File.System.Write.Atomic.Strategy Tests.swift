@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Atomic.Strategy Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.System.Write.Atomic.Strategy {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.System.Write.Atomic.Strategy.Test.Unit {
     @Test
@@ -53,8 +46,6 @@ extension File.System.Write.Atomic.Strategy.Test.Unit {
     }
 
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Atomic.Strategy.Test.`Edge Case` {
     @Test

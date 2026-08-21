@@ -1,8 +1,3 @@
-//
-//  File.System.Create Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,10 +13,7 @@ extension File.System.Create {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Create.Test.Unit {
-    // File.System.Create is a namespace with nested types and Options struct
 
     @Test
     func `Create namespace exists`() {
@@ -61,8 +53,6 @@ extension File.System.Create.Test.Unit {
         }
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Create.Test.`Edge Case` {
     @Test

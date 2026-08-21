@@ -1,20 +1,7 @@
-// ===----------------------------------------------------------------------===//
-//
-// This source file is part of the swift-kernel open source project
-//
-// Copyright (c) 2024-2025 Coen ten Thije Boonkkamp and the swift-kernel project authors
-// Licensed under Apache License v2.0
-//
-// See LICENSE for license information
-//
-// ===----------------------------------------------------------------------===//
-
 public import Kernel
 
-// MARK: - Error Mapping
-
 extension File.System.Write.Atomic.Error {
-    /// Creates an Atomic error from a shared write error.
+
     init(_ error: File.System.Write.Error) {
         switch error {
         case .sync(let msg):
@@ -50,26 +37,8 @@ extension File.System.Write.Atomic.Error {
     }
 }
 
-// MARK: - Core API
-
 extension File.System.Write.Atomic {
-    /// Atomically writes bytes to a file path.
-    ///
-    /// This is the core primitive - all other write operations compose on top of this.
-    ///
-    /// ## Guarantees
-    /// - Either the file exists with complete contents, or the original state is preserved
-    /// - On success, data is synced to physical storage (survives power loss)
-    /// - Safe to call concurrently for different paths
-    ///
-    /// ## Requirements
-    /// - Parent directory must exist and be writable
-    ///
-    /// - Parameters:
-    ///   - bytes: The data to write (borrowed, zero-copy)
-    ///   - path: Destination file path
-    ///   - options: Write options
-    /// - Throws: `File.System.Write.Atomic.Error` on failure
+
     public static func write(
         _ bytes: borrowing Swift.Span<Byte>,
         to path: borrowing Path_Primitives.Path.Borrowed,
@@ -85,7 +54,6 @@ extension File.System.Write.Atomic {
         try write(bytes, toPath: resolved, options: options)
     }
 
-    /// Internal entry point that works with a validated File.Path.
     internal static func write(
         _ bytes: borrowing Swift.Span<Byte>,
         toPath resolved: File.Path,
@@ -95,7 +63,6 @@ extension File.System.Write.Atomic {
 
         var phase: Phase = .pending
 
-        // 1. Resolve parent
         let (_, parent) = File.System.Write.resolvePaths(resolved)
 
         if !File.System.Write.fileExists(parent) {
@@ -106,14 +73,8 @@ extension File.System.Write.Atomic {
             )
         }
 
-        // 2. Stat destination if it exists (for metadata preservation)
         let destStats = statIfExists(resolved)
 
-        // 3. Create temp file with unique name. Extract the descriptor
-        // into a plain local immediately: borrowed-Optional field
-        // projections (tempFile.descriptor!) into throwing calls are the
-        // §A23 ownership-verifier crash class on the Windows asserts
-        // toolchain; borrows of a whole local value are not.
         var tempFile = try createTempFileWithRetry(
             in: parent,
             for: resolved
@@ -123,24 +84,22 @@ extension File.System.Write.Atomic {
         phase = .writing
 
         defer {
-            // CRITICAL: After renamedPublished, NEVER unlink destination!
+
             if phase < .renamedPublished {
                 do throws(Kernel.File.Delete.Error) {
                     try tempPath.withKernelPath { kernelPath throws(Kernel.File.Delete.Error) in
                         try Kernel.File.Delete.delete(kernelPath)
                     }
                 } catch {
-                    // Best-effort cleanup; ignore failures.
+
                 }
             }
         }
 
-        // 4. Write all data
         do throws(File.System.Write.Error) {
             try File.System.Write.writeAll(bytes, to: descriptor)
         } catch { throw Self.Error(error) }
 
-        // 5. Sync file to disk
         do throws(File.System.Write.Error) {
             try File.System.Write.syncFile(
                 descriptor,
@@ -149,7 +108,6 @@ extension File.System.Write.Atomic {
         } catch { throw Self.Error(error) }
         phase = .syncedFile
 
-        // 6. Apply metadata from destination if requested
         if let stats = destStats {
             try applyMetadata(
                 from: stats,
@@ -158,13 +116,11 @@ extension File.System.Write.Atomic {
             )
         }
 
-        // 7. Close file (required before rename on some systems)
         do throws(File.System.Write.Error) {
             try File.System.Write.closeFile(descriptor)
         } catch { throw Self.Error(error) }
         phase = .closed
 
-        // 8. Atomic rename
         switch options.strategy {
         case .replaceExisting:
             do throws(File.System.Write.Error) {
@@ -184,7 +140,6 @@ extension File.System.Write.Atomic {
         }
         phase = .renamedPublished
 
-        // 9. Sync directory to persist the rename
         if options.durability == .full {
             phase = .directorySyncAttempted
             do throws(File.System.Write.Error) {
@@ -206,8 +161,6 @@ extension File.System.Write.Atomic {
     }
 }
 
-// MARK: - File Stats
-
 extension File.System.Write.Atomic {
     private static func statIfExists(
         _ path: File.Path
@@ -222,11 +175,8 @@ extension File.System.Write.Atomic {
     }
 }
 
-// MARK: - Temp File Creation
-
 extension File.System.Write.Atomic {
-    /// Temp file descriptor + path, returned from `createTempFileWithRetry`.
-    /// `~Copyable` because it owns the `Kernel.Descriptor`.
+
     private struct TempFile: ~Copyable, Sendable {
         var descriptor: Kernel.Descriptor?
         let path: File.Path
@@ -257,10 +207,7 @@ extension File.System.Write.Atomic {
             let tempPath = parent.appending(tempComponent)
 
             do throws(Kernel.File.Open.Error) {
-                // Non-optional `var` storage, not a closure return:
-                // `Kernel.Descriptor` is `~Copyable`, and `withKernelPath`'s
-                // generic `R` requires Copyable, so the opened descriptor
-                // cannot flow out as the closure's result.
+
                 var fd: Kernel.Descriptor = .invalid
                 try tempPath.withKernelPath { kernelPath throws(Kernel.File.Open.Error) in
                     fd = try Kernel.File.Open.open(
@@ -287,15 +234,12 @@ extension File.System.Write.Atomic {
 
         throw .tempFileCreationFailed(
             directory: parent,
-            // `._exists` here is `Error_Primitives.Error.Code` (this file's synthesized code);
-            // distinct from `File.System.Write.Error.exists` matched in the init above.
+
             code: ._exists,
             message: "Failed after \(maxTempFileAttempts) attempts"
         )
     }
 }
-
-// MARK: - Metadata Preservation
 
 extension File.System.Write.Atomic {
     private static func applyMetadata(

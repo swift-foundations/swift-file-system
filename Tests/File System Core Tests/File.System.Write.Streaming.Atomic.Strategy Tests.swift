@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Atomic.Strategy Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,8 +13,6 @@ extension File.System.Write.Streaming.Atomic.Strategy {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Write.Streaming.Atomic.Strategy.Test.Unit {
     @Test
     func `all cases are distinct`() {
@@ -34,7 +27,7 @@ extension File.System.Write.Streaming.Atomic.Strategy.Test.Unit {
     func `.replaceExisting case`() {
         let strategy: File.System.Write.Streaming.Atomic.Strategy = .replaceExisting
         if case .replaceExisting = strategy {
-            // Success
+
         } else {
             Issue.record("Expected replaceExisting case")
         }
@@ -44,7 +37,7 @@ extension File.System.Write.Streaming.Atomic.Strategy.Test.Unit {
     func `.noClobber case`() {
         let strategy: File.System.Write.Streaming.Atomic.Strategy = .noClobber
         if case .noClobber = strategy {
-            // Success
+
         } else {
             Issue.record("Expected noClobber case")
         }

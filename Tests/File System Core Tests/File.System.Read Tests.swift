@@ -1,8 +1,3 @@
-//
-//  File.System.Read Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -18,15 +13,11 @@ extension File.System.Read {
     }
 }
 
-// MARK: - Unit Tests
-
 extension File.System.Read.Test.Unit {
-    // File.System.Read is a namespace enum
-    // Tests verify the namespace and nested types exist
 
     @Test
     func `Read namespace exists`() {
-        // Verify nested types are accessible through the namespace
+
         _ = File.System.Read.self
         _ = File.System.Read.Full.self
     }

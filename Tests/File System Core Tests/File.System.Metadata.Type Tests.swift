@@ -1,14 +1,7 @@
-//
-//  File.System.Metadata.Kind Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
 @testable import File_System_Core
-
-// Note: Cannot use #Tests macro due to `Type` being a Swift keyword
 
 @Suite
 struct `File.System.Metadata.Kind Tests` {

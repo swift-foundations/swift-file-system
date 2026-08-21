@@ -1,8 +1,3 @@
-//
-//  File.System.Write.Streaming.Error Tests.swift
-//  swift-file-system
-//
-
 import Kernel
 import Testing
 
@@ -17,8 +12,6 @@ extension File.System.Write.Streaming.Error {
         @Suite(.serialized) struct Performance {}
     }
 }
-
-// MARK: - Unit Tests
 
 extension File.System.Write.Streaming.Error.Test.Unit {
     @Test
@@ -202,7 +195,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
         let error = File.System.Write.Streaming.Error.invalidState
 
         if case .invalidState = error {
-            // pass
+
         } else {
             Issue.record("Expected invalidState case")
         }
@@ -268,8 +261,6 @@ extension File.System.Write.Streaming.Error.Test.Unit {
         #expect(error is File.System.Write.Streaming.Error)
     }
 }
-
-// MARK: - Edge Cases
 
 extension File.System.Write.Streaming.Error.Test.`Edge Case` {
     @Test

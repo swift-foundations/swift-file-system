@@ -1,10 +1,3 @@
-//
-//  File.System Tests+Windows.swift
-//  swift-file-system
-//
-//  Windows-specific tests for core file system operations.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -17,12 +10,9 @@ import Testing
 
     extension File.System.Test.`Edge Case` {
 
-        // MARK: - Windows Path Tests
-
         @Test
         func `Handle Windows drive letter paths`() throws {
-            // Use GetWindowsDirectoryW to get the system Windows directory
-            // This avoids Foundation dependency and works across Windows installations
+
             var buffer = [UInt16](repeating: 0, count: Int(MAX_PATH))
             let length = GetWindowsDirectoryW(&buffer, DWORD(buffer.count))
 
@@ -37,20 +27,18 @@ import Testing
         @Test
         func `Handle Windows UNC-style paths in temp`() throws {
             try File.Directory.temporary { dir in
-                // Temp directory should be accessible
+
                 let filePath = dir.path / "test.txt"
                 try File.System.Write.Atomic.write([], to: filePath)
                 #expect(File.System.Stat.exists(at: filePath))
             }
         }
 
-        // MARK: - Windows File Operations
-
         @Test
         func `Create and read file with Windows line endings`() throws {
             try File.Directory.temporary { dir in
                 let filePath = dir.path / "crlf.txt"
-                // Windows-style line endings: CRLF
+
                 let content: [Byte] = Array("Hello\r\nWorld\r\n".utf8).map(Byte.init)
 
                 try File.System.Write.Atomic.write(content, to: filePath)
@@ -65,8 +53,7 @@ import Testing
         @Test
         func `Handle long file names on Windows`() throws {
             try File.Directory.temporary { dir in
-                // Use 100 chars to stay well within MAX_PATH (260) when combined
-                // with temp directory path (~60 chars) and atomic write temp suffix
+
                 let longName = Swift.String(repeating: "a", count: 100) + ".txt"
                 let filePath = dir.path / "\(longName)"
 
@@ -95,8 +82,6 @@ import Testing
             }
         }
 
-        // MARK: - Windows-Specific Features
-
         @Test
         func `File stat returns valid info on Windows`() throws {
             try File.Directory.temporary { dir in
@@ -107,8 +92,8 @@ import Testing
                 let info = try File.System.Stat.info(at: filePath)
 
                 #expect(info.type == .regular)
-                #expect(info.size == 5)  // testData.count
-                // Windows returns device ID and file index
+                #expect(info.size == 5)
+
                 #expect(info.device.rawValue > 0 || info.inode.rawValue > 0)
             }
         }

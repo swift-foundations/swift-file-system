@@ -1,8 +1,3 @@
-//
-//  File.Name Tests.swift
-//  swift-file-system
-//
-
 import ASCII
 @_spi(Syscall) import Kernel
 import Testing
@@ -21,11 +16,7 @@ extension File.Name {
 
 #if os(macOS) || os(Linux)
 
-    // MARK: - Unit Tests
-
     extension File.Name.Test.Unit {
-
-        // MARK: - Semantic Predicates
 
         @Test
         func `isHiddenByDotPrefix returns true for dot-prefixed names`() {
@@ -50,8 +41,6 @@ extension File.Name {
             #expect(dsstore.isHiddenByDotPrefix)
         }
 
-        // MARK: - String Conversion (Strict)
-
         @Test
         func `Swift.String(fileName) succeeds for valid ASCII`() {
             let name = File.Name(rawBytes: Array("hello.txt".utf8))
@@ -68,7 +57,7 @@ extension File.Name {
 
         @Test
         func `Swift.String(fileName) returns nil for invalid UTF-8`() {
-            // Invalid UTF-8: 0x80 is a continuation byte without a leading byte
+
             let name = File.Name(rawBytes: [0x80, 0x81, 0x82])
             let str = Swift.String(name)
             #expect(str == nil)
@@ -76,16 +65,14 @@ extension File.Name {
 
         @Test
         func `Swift.String(fileName) returns nil for invalid UTF-8 sequence in middle`() {
-            // "hello" + invalid byte + "world"
+
             var bytes = Array("hello".utf8)
-            bytes.append(0xFF)  // Invalid UTF-8 byte
+            bytes.append(0xFF)
             bytes.append(contentsOf: Array("world".utf8))
 
             let name = File.Name(rawBytes: bytes)
             #expect(Swift.String(name) == nil)
         }
-
-        // MARK: - String Conversion (Lossy)
 
         @Test
         func `Swift.String(lossy:) succeeds for valid UTF-8`() {
@@ -96,25 +83,23 @@ extension File.Name {
 
         @Test
         func `Swift.String(lossy:) replaces invalid bytes with replacement character`() {
-            // Invalid UTF-8: 0x80 is a continuation byte
+
             let name = File.Name(rawBytes: [0x80])
             let str = Swift.String(lossy: name)
-            #expect(str == "\u{FFFD}")  // Unicode replacement character
+            #expect(str == "\u{FFFD}")
         }
 
         @Test
         func `Swift.String(lossy:) replaces multiple invalid bytes`() {
-            // "A" + invalid + "B" + invalid + "C"
+
             let name = File.Name(rawBytes: [0x41, 0x80, 0x42, 0xFF, 0x43])
             let str = Swift.String(lossy: name)
-            // Each invalid byte becomes a replacement character
+
             #expect(str.contains("\u{FFFD}"))
             #expect(str.contains("A"))
             #expect(str.contains("B"))
             #expect(str.contains("C"))
         }
-
-        // MARK: - String Conversion (Validating)
 
         @Test
         func `Swift.String(validating:) succeeds for valid UTF-8`() throws {
@@ -141,8 +126,6 @@ extension File.Name {
             }
         }
 
-        // MARK: - Equatable
-
         @Test
         func `File.Name is Equatable - same bytes are equal`() {
             let name1 = File.Name(rawBytes: Array("file.txt".utf8))
@@ -164,8 +147,6 @@ extension File.Name {
             #expect(lower != upper)
         }
 
-        // MARK: - Hashable
-
         @Test
         func `File.Name is Hashable - same bytes have same hash`() {
             let name1 = File.Name(rawBytes: Array("file.txt".utf8))
@@ -177,7 +158,7 @@ extension File.Name {
         func `File.Name works in Set`() {
             let name1 = File.Name(rawBytes: Array("file1.txt".utf8))
             let name2 = File.Name(rawBytes: Array("file2.txt".utf8))
-            let name3 = File.Name(rawBytes: Array("file1.txt".utf8))  // Duplicate
+            let name3 = File.Name(rawBytes: Array("file1.txt".utf8))
 
             let set: Set<File.Name> = [name1, name2, name3]
             #expect(set.count == 2)
@@ -196,8 +177,6 @@ extension File.Name {
             #expect(dict[name2] == 2)
         }
 
-        // MARK: - CustomStringConvertible
-
         @Test
         func `description returns decoded string for valid UTF-8`() {
             let name = File.Name(rawBytes: Array("document.pdf".utf8))
@@ -207,11 +186,9 @@ extension File.Name {
         @Test
         func `description returns lossy decoded string for invalid UTF-8`() {
             let name = File.Name(rawBytes: [0x80])
-            // Should use lossy decoding, replacing invalid byte with replacement character
+
             #expect(name.description.contains("\u{FFFD}"))
         }
-
-        // MARK: - CustomDebugStringConvertible
 
         @Test
         func `debugDescription shows File.Name wrapper for valid UTF-8`() {
@@ -222,18 +199,15 @@ extension File.Name {
         @Test
         func `debugDescription shows hex for invalid UTF-8`() {
             let name = File.Name(rawBytes: [0x80, 0x81])
-            // Should include hex representation
+
             #expect(name.debugDescription.contains("invalidUTF8"))
             #expect(name.debugDescription.contains("8081"))
         }
-
-        // MARK: - Sendable
 
         @Test
         func `File.Name is Sendable`() async {
             let name = File.Name(rawBytes: Array("sendable.txt".utf8))
 
-            // Pass to async task to verify Sendable conformance
             let result = await Task {
                 Swift.String(name)
             }.value
@@ -242,30 +216,26 @@ extension File.Name {
         }
     }
 
-    // MARK: - Edge Cases
-
     extension File.Name.Test.`Edge Case` {
 
         @Test
         func `empty name`() {
             let name = File.Name(rawBytes: [])
-            // `?.` forces the domain-specific `String.init?(_:File.Name)` (strict
-            // decode) over the generic `String.init<T: Binary.Serializable>(_:)`
-            // overloads the byte-typed-primitives cascade introduced.
+
             #expect(Swift.String(name)?.isEmpty == true)
             #expect(!name.isHiddenByDotPrefix)
         }
 
         @Test
         func `single dot`() {
-            let name = File.Name(rawBytes: [0x2E])  // "."
+            let name = File.Name(rawBytes: [0x2E])
             #expect(Swift.String(name) == ".")
             #expect(name.isHiddenByDotPrefix)
         }
 
         @Test
         func `double dot`() {
-            let name = File.Name(rawBytes: [0x2E, 0x2E])  // ".."
+            let name = File.Name(rawBytes: [0x2E, 0x2E])
             #expect(Swift.String(name) == "..")
             #expect(name.isHiddenByDotPrefix)
         }
@@ -305,12 +275,12 @@ extension File.Name {
         func `name with leading space`() {
             let name = File.Name(rawBytes: Array(" leadingspace.txt".utf8))
             #expect(Swift.String(name) == " leadingspace.txt")
-            #expect(!name.isHiddenByDotPrefix)  // Space, not dot
+            #expect(!name.isHiddenByDotPrefix)
         }
 
         @Test
         func `invalid UTF-8: lone continuation byte`() {
-            // 0x80-0xBF are continuation bytes
+
             let name = File.Name(rawBytes: [0x80])
             #expect(Swift.String(name) == nil)
             #expect(Swift.String(lossy: name) == "\u{FFFD}")
@@ -318,36 +288,35 @@ extension File.Name {
 
         @Test
         func `invalid UTF-8: incomplete multibyte sequence`() {
-            // 0xC0-0xDF expect 1 continuation byte
-            let name = File.Name(rawBytes: [0xC0])  // Missing continuation
+
+            let name = File.Name(rawBytes: [0xC0])
             #expect(Swift.String(name) == nil)
         }
 
         @Test
         func `invalid UTF-8: overlong encoding`() {
-            // Overlong encoding of '/' (should be 0x2F)
-            // 0xC0 0xAF is an overlong encoding - rejected by strict UTF-8
+
             let name = File.Name(rawBytes: [0xC0, 0xAF])
             #expect(Swift.String(name) == nil)
         }
 
         @Test
         func `invalid UTF-8: 0xFF byte`() {
-            // 0xFF is never valid in UTF-8
+
             let name = File.Name(rawBytes: [0xFF])
             #expect(Swift.String(name) == nil)
         }
 
         @Test
         func `invalid UTF-8: truncated 4-byte sequence`() {
-            // 0xF0 starts a 4-byte sequence but we only provide 2 bytes
+
             let name = File.Name(rawBytes: [0xF0, 0x90])
             #expect(Swift.String(name) == nil)
         }
 
         @Test
         func `very long filename`() {
-            // Create a 255-character filename (common filesystem limit)
+
             let longName = Swift.String(repeating: "a", count: 255)
             let name = File.Name(rawBytes: Array(longName.utf8))
             #expect(Swift.String(name) == longName)
@@ -355,8 +324,8 @@ extension File.Name {
 
         @Test
         func `filename with null byte`() {
-            // Null byte in the middle - still valid UTF-8, but unusual
-            let name = File.Name(rawBytes: [0x61, 0x00, 0x62])  // "a\0b"
+
+            let name = File.Name(rawBytes: [0x61, 0x00, 0x62])
             let str = Swift.String(name)
             #expect(str != nil)
             #expect(str?.count == 3)
@@ -364,23 +333,18 @@ extension File.Name {
 
         @Test
         func `filename with all ASCII control characters`() {
-            // Tab and other control characters - valid UTF-8
-            let name = File.Name(rawBytes: [0x09, 0x0A, 0x0D])  // tab, newline, carriage return
+
+            let name = File.Name(rawBytes: [0x09, 0x0A, 0x0D])
             let str = Swift.String(name)
             #expect(str != nil)
         }
 
         @Test
         func `init(from: Kernel.Directory.Entry) strips trailing NUL terminator`() {
-            // Kernel.Directory.Entry.rawName is NUL-terminated by convention.
-            // File.Name.init(from:) must route through entry.nameView.span
-            // (NUL-excluded) so the rawEncoding never contains the terminator.
-            let entry = Kernel.Directory.Entry(rawName: [0x66, 0x69, 0x6C, 0x65, 0x00])  // "file\0"
+
+            let entry = Kernel.Directory.Entry(rawName: [0x66, 0x69, 0x6C, 0x65, 0x00])
             let name = File.Name(from: entry)
-            // "file", no trailing NUL — verified via `withCodeUnits` (the
-            // platform-agnostic accessor that replaced `posixBytes`).
-            // Materialize the span into a [UInt8] for array-equality assertion
-            // (POSIX-only block: `Path.Char == UInt8`).
+
             let bytes = name.withCodeUnits { span -> [UInt8] in
                 var collected: [UInt8] = []
                 collected.reserveCapacity(span.count)

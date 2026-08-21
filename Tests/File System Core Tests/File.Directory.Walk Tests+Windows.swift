@@ -1,10 +1,3 @@
-//
-//  File.Directory.Walk Tests+Windows.swift
-//  swift-file-system
-//
-//  Windows-specific tests for directory walking.
-//
-
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -14,8 +7,6 @@ import Testing
 #if os(Windows)
 
     extension File.Directory.Walk.Test.Unit {
-
-        // MARK: - Basic Walk Tests
 
         @Test
         func `Walk empty directory`() throws {
@@ -31,7 +22,7 @@ import Testing
         @Test
         func `Walk directory with files`() throws {
             try File.Directory.temporary { dir in
-                // Create some files
+
                 for i in 0..<3 {
                     let filePath = dir.path / "file\(i).txt"
                     try File.System.Write.Atomic.write([Byte(UInt8(i))], to: filePath)
@@ -45,11 +36,7 @@ import Testing
         @Test
         func `Walk directory with subdirectories`() throws {
             try File.Directory.temporary { dir in
-                // Create structure:
-                // dir/
-                //   file.txt
-                //   subdir/
-                //     nested.txt
+
                 let filePath = dir.path / "file.txt"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
@@ -60,16 +47,14 @@ import Testing
                 try File.System.Write.Atomic.write([2], to: nestedPath)
 
                 let entries = try dir.walk()
-                #expect(entries.count == 3)  // file.txt, subdir, nested.txt
+                #expect(entries.count == 3)
             }
         }
-
-        // MARK: - Options Tests
 
         @Test
         func `Walk respects maxDepth`() throws {
             try File.Directory.temporary { dir in
-                // Create nested structure
+
                 let subPath = dir.path / "level1"
                 try File.System.Create.Directory.create(at: subPath)
 
@@ -79,41 +64,35 @@ import Testing
                 let filePath = sub2Path / "deep.txt"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
-                // maxDepth 0 should only return immediate children
                 let options0 = File.Directory.Walk.Options(maxDepth: 0)
                 let entries0 = try dir.walk(options: options0)
-                #expect(entries0.count == 1)  // Just level1
+                #expect(entries0.count == 1)
 
-                // maxDepth 1 should return level1 and level2
                 let options1 = File.Directory.Walk.Options(maxDepth: 1)
                 let entries1 = try dir.walk(options: options1)
-                #expect(entries1.count == 2)  // level1, level2
+                #expect(entries1.count == 2)
             }
         }
 
         @Test
         func `Walk can exclude hidden files`() throws {
             try File.Directory.temporary { dir in
-                // Create visible and hidden files
+
                 let visiblePath = dir.path / "visible.txt"
                 try File.System.Write.Atomic.write([1], to: visiblePath)
 
                 let hiddenPath = dir.path / ".hidden"
                 try File.System.Write.Atomic.write([2], to: hiddenPath)
 
-                // Without hidden files
                 let optionsNoHidden = File.Directory.Walk.Options(includeHidden: false)
                 let entriesNoHidden = try dir.walk(options: optionsNoHidden)
                 #expect(entriesNoHidden.count == 1)
 
-                // With hidden files
                 let optionsWithHidden = File.Directory.Walk.Options(includeHidden: true)
                 let entriesWithHidden = try dir.walk(options: optionsWithHidden)
                 #expect(entriesWithHidden.count == 2)
             }
         }
-
-        // MARK: - Windows-Specific Tests
 
         @Test
         func `Walk handles Windows path separators`() throws {
@@ -124,9 +103,8 @@ import Testing
                 let filePath = subPath / "file.txt"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
-                // Walk should work regardless of path separator style
                 let entries = try dir.walk()
-                #expect(entries.count == 2)  // subdir, file.txt
+                #expect(entries.count == 2)
             }
         }
 
@@ -148,7 +126,7 @@ import Testing
         @Test
         func `Walk handles deep nesting`() throws {
             try File.Directory.temporary { dir in
-                // Create a reasonably deep directory structure
+
                 var currentPath = dir.path
                 let depth = 10
 
@@ -158,13 +136,11 @@ import Testing
                     try File.System.Create.Directory.create(at: currentPath)
                 }
 
-                // Create a file at the deepest level
                 let filePath = currentPath / "deep.txt"
                 try File.System.Write.Atomic.write([1], to: filePath)
 
-                // Walk should find all directories and the file
                 let entries = try dir.walk()
-                #expect(entries.count == depth + 1)  // 10 dirs + 1 file
+                #expect(entries.count == depth + 1)
             }
         }
     }
