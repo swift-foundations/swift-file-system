@@ -120,7 +120,7 @@ extension File.Handle {
     @inlinable
     public mutating func write(_ bytes: borrowing Swift.Span<Byte>) throws(File.Handle.Error) {
         if bytes.count == 0 { return }
-        try unsafe bytes.withUnsafeBytes {
+        try bytes.withUnsafeBytes {
             (rawBuffer: UnsafeRawBufferPointer) throws(File.Handle.Error) in
             try unsafe writeAll(rawBuffer)
         }

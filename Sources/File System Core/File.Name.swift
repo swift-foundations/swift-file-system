@@ -282,7 +282,7 @@ extension File.Name {
         #if os(Windows)
             return nil
         #else
-            return unsafe try rawBytes.withUnsafeBufferPointer(body)
+            return try rawBytes.withUnsafeBufferPointer(body)
         #endif
     }
 

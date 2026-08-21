@@ -96,7 +96,7 @@ extension File.System.Write.Streaming {
         // Try to use contiguous storage directly (zero-copy path)
         var capturedError: Self.Error? = nil
 
-        let wasContiguous = unsafe bytes.withContiguousStorageIfAvailable { buffer -> Bool in
+        let wasContiguous = bytes.withContiguousStorageIfAvailable { buffer -> Bool in
             do throws(Error) {
                 // Non-optional-turned-`Optional` + `take()` once: `Context` is
                 // `~Copyable`, and `withKernelPath`'s generic `R` requires

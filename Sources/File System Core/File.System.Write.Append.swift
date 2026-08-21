@@ -166,7 +166,7 @@ extension File.System.Write.Append {
         if bytes.count == 0 { return }
 
         // Write all bytes
-        try unsafe bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(Self.Error) in
+        try bytes.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) throws(Self.Error) in
             try unsafe writeAll(descriptor, from: rawBuffer)
         }
     }

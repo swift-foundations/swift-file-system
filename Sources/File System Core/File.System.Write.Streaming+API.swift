@@ -176,7 +176,7 @@ extension File.System.Write.Streaming {
             // the borrow to end before the consuming call, aborting the SIL
             // ownership verifier ("Found outside of lifetime use?!").
             do throws(Error) {
-                try unsafe buffer.withUnsafeBufferPointer { ptr throws(Error) in
+                try buffer.withUnsafeBufferPointer { ptr throws(Error) in
                     guard let base = ptr.baseAddress else { return }
                     try unsafe write(
                         chunk: UnsafeRawBufferPointer(
@@ -291,7 +291,7 @@ extension File.System.Write.Streaming {
         to context: borrowing Context
     ) throws(Error) {
         do throws(File.System.Write.Error) {
-            try context.write(chunk: buffer)
+            try unsafe context.write(chunk: buffer)
         } catch { throw Self.Error(error) }
     }
 

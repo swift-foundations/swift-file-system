@@ -89,7 +89,7 @@ extension File.System.Write {
 
         var written = 0
 
-        unsafe try span.withUnsafeBufferPointer { buffer throws(Self.Error) in
+        try span.withUnsafeBufferPointer { buffer throws(Self.Error) in
             guard let base = buffer.baseAddress else { return }
 
             while written < total {
