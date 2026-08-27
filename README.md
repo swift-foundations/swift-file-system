@@ -1,6 +1,6 @@
 # swift-file-system
 
-![CI](https://github.com/swift-foundations/swift-file-system/actions/workflows/ci.yml/badge.svg) ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
+![CI](https://github.com/swift-compositions/swift-file-system/actions/workflows/ci.yml/badge.svg) ![Development Status](https://img.shields.io/badge/status-active--development-blue.svg)
 
 File system operations for Swift, exposing a `File` value type for reading, writing, scoped handles, atomic writes, and directory traversal with typed-throws error handling.
 
@@ -46,7 +46,7 @@ for entry in try project.entries() where entry.type == .file {
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/swift-foundations/swift-file-system.git", from: "0.6.0")
+    .package(url: "https://github.com/swift-compositions/swift-file-system.git", from: "0.6.0")
 ]
 ```
 
@@ -70,7 +70,7 @@ Three library products. `File System` re-exports `File System Core`, so most con
 | Product | Import | When to import |
 |---------|--------|----------------|
 | `File System` | `File_System` | Default. The full `File` / `File.Directory` API: sync and async read, write, open, and stat; directory creation, listing, recursive walk, glob, copy, move, and delete. |
-| `File System Core` | `File_System_Core` | The synchronous `File.System.*` primitives and core value types (`File.Path`, `File.Directory.Entry`, error types) without the thread-pool-backed async surface or glob. |
+| `File System Core` | `File_System_Core` | The synchronous `File.System.*` operations and core value types (`File.Path`, `File.Directory.Entry`, error types) without the thread-pool-backed async surface or glob. |
 | `File System Test Support` | `File_System_Test_Support` | Test targets exercising file-system code; provides fixtures and helpers built on `File System` and the kernel test support. |
 
 ---

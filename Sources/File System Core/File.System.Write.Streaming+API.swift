@@ -48,7 +48,7 @@ extension File.System.Write.Streaming {
 
     public static func write<Chunks: Swift.Sequence>(
         _ chunks: Chunks,
-        to path: borrowing Path_Primitives.Path.Borrowed,
+        to path: borrowing Path.Path.Borrowed,
         options: Options = Options()
     ) throws(Error) where Chunks.Element == [Byte] {
         let context = try open(path: path, options: options)
@@ -67,7 +67,7 @@ extension File.System.Write.Streaming {
     @inlinable
     public static func write(
         _ bytes: [Byte],
-        to path: borrowing Path_Primitives.Path.Borrowed,
+        to path: borrowing Path.Path.Borrowed,
         options: Options = Options()
     ) throws(Error) {
         let context = try open(path: path, options: options)
@@ -83,7 +83,7 @@ extension File.System.Write.Streaming {
     @inlinable
     public static func write(
         _ bytes: borrowing Swift.Span<Byte>,
-        to path: borrowing Path_Primitives.Path.Borrowed,
+        to path: borrowing Path.Path.Borrowed,
         options: Options = Options()
     ) throws(Error) {
         let context = try open(path: path, options: options)
@@ -100,7 +100,7 @@ extension File.System.Write.Streaming {
 extension File.System.Write.Streaming {
 
     public static func write<E: Swift.Error>(
-        to path: borrowing Path_Primitives.Path.Borrowed,
+        to path: borrowing Path.Path.Borrowed,
         options: Options = Options(),
         using buffer: inout [Byte],
         fill: (inout [Byte]) throws(E) -> Int
@@ -166,7 +166,7 @@ extension File.System.Write.Streaming {
 extension File.System.Write.Streaming {
 
     public static func open(
-        path: borrowing Path_Primitives.Path.Borrowed,
+        path: borrowing Path.Path.Borrowed,
         options: Options
     ) throws(Error) -> Context {
         let pathString = Swift.String(path)

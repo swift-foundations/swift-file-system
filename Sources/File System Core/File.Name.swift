@@ -1,4 +1,4 @@
-import Binary_Primitives
+import Binary
 public import Kernel
 import RFC_4648
 public import Strings
@@ -82,7 +82,7 @@ extension File.Name {
     public init(from entry: Kernel.Directory.Entry) {
         self = entry.withName { view in
             let span = view.span
-            var bytes: [Path_Primitives.Path.Char] = []
+            var bytes: [Path.Path.Char] = []
             bytes.reserveCapacity(span.count)
             for i in 0..<span.count {
                 bytes.append(span[i])
@@ -104,7 +104,7 @@ extension File.Name {
 
     @inlinable
     public borrowing func withCodeUnits<R: ~Copyable, E: Swift.Error>(
-        _ body: (Swift.Span<Path_Primitives.Path.Char>) throws(E) -> R
+        _ body: (Swift.Span<Path.Path.Char>) throws(E) -> R
     ) throws(E) -> R {
         try body(rawBytes.span)
     }

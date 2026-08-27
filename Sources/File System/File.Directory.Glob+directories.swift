@@ -1,4 +1,4 @@
-public import Glob_Primitives
+public import Glob
 public import IO
 import Kernel
 public import Thread_Pool

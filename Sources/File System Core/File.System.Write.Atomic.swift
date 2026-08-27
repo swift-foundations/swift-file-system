@@ -1,4 +1,4 @@
-import Binary_Primitives
+import Binary
 public import Kernel
 
 extension File.System.Write {

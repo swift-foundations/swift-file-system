@@ -1,4 +1,4 @@
-import Binary_Primitives
+import Binary
 
 extension File.System.Metadata {
 

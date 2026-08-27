@@ -1,5 +1,5 @@
 internal import Environment
-internal import Path_Primitives
+internal import Path
 
 extension File.Path {
 

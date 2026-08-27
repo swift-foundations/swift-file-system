@@ -1,11 +1,11 @@
 import Executors
 import File_System
 import File_System_Test_Support
-import IO_Primitives
+import IO
 @_spi(Syscall) import Kernel
 import Kernel_Test_Support
-import Memory_Primitives
-import Span_Raw_Primitives
+import Memory
+import Span_Raw
 import Testing
 
 @Suite

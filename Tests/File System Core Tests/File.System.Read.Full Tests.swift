@@ -1,4 +1,4 @@
-import Either_Primitives
+import Either
 import File_System_Test_Support
 import Kernel
 import Testing
@@ -211,7 +211,7 @@ extension File.System.Read.Full.Test.Unit {
         @Test
         func `isPermissionDenied semantic accessor`() {
             let error = File.System.Read.Full.Error.open(
-                .platform(Error_Primitives.Error(code: .POSIX.EACCES))
+                .platform(Error.Error(code: .POSIX.EACCES))
             )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
@@ -222,7 +222,7 @@ extension File.System.Read.Full.Test.Unit {
         @Test
         func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
             let error = File.System.Read.Full.Error.open(
-                .platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED))
+                .platform(Error.Error(code: .Windows.ERROR_ACCESS_DENIED))
             )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)

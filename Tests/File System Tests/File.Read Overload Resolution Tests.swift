@@ -1,4 +1,4 @@
-import Either_Primitives
+import Either
 import File_System
 import File_System_Test_Support
 import Kernel

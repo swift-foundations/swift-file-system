@@ -6,30 +6,30 @@ extension File.System.Write.Streaming {
 
         case parentVerificationFailed(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case fileCreationFailed(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case writeFailed(
             bytesWritten: Int,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
-        case syncFailed(code: Error_Primitives.Error.Code, message: Swift.String)
+        case syncFailed(code: Error.Error.Code, message: Swift.String)
 
-        case closeFailed(code: Error_Primitives.Error.Code, message: Swift.String)
+        case closeFailed(code: Error.Error.Code, message: Swift.String)
 
         case renameFailed(
             from: File.Path,
             to: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
@@ -37,7 +37,7 @@ extension File.System.Write.Streaming {
 
         case directorySyncFailed(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
@@ -45,13 +45,13 @@ extension File.System.Write.Streaming {
 
         case directorySyncFailedAfterCommit(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case invalidState
 
-        case randomGenerationFailed(code: Error_Primitives.Error.Code, message: Swift.String)
+        case randomGenerationFailed(code: Error.Error.Code, message: Swift.String)
 
         case userError(message: Swift.String)
 

@@ -3,8 +3,8 @@
     public import Executors
     public import IO
     public import Kernel
-    public import Memory_Primitives
-    public import Span_Raw_Primitives
+    public import Memory
+    public import Span_Raw
     public import Thread_Actor
 
     extension IO where Capabilities == File.System.IO.Capabilities {

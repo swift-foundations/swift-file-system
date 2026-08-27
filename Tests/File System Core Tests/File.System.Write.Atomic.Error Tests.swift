@@ -17,7 +17,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     @Test
     func `Error.parentVerificationFailed`() {
         let path: File.Path = "/nonexistent/parent"
-        let code = Error_Primitives.Error.Code.posix(2)
+        let code = Error.Error.Code.posix(2)
         let error = File.System.Write.Atomic.Error.parentVerificationFailed(
             path: path,
             code: code,
@@ -38,7 +38,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     @Test
     func `Error.destinationStatFailed`() {
         let path: File.Path = "/tmp/dest.txt"
-        let code = Error_Primitives.Error.Code.posix(2)
+        let code = Error.Error.Code.posix(2)
         let error = File.System.Write.Atomic.Error.destinationStatFailed(
             path: path,
             code: code,
@@ -59,7 +59,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     @Test
     func `Error.tempFileCreationFailed`() {
         let directory: File.Path = "/tmp"
-        let code = Error_Primitives.Error.Code.posix(13)
+        let code = Error.Error.Code.posix(13)
         let error = File.System.Write.Atomic.Error.tempFileCreationFailed(
             directory: directory,
             code: code,
@@ -94,7 +94,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
 
     @Test
     func `Error.writeFailed`() {
-        let code = Error_Primitives.Error.Code.posix(28)
+        let code = Error.Error.Code.posix(28)
         let error = File.System.Write.Atomic.Error.writeFailed(
             bytesWritten: 100,
             bytesExpected: 1000,
@@ -117,7 +117,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
 
     @Test
     func `Error.syncFailed`() {
-        let code = Error_Primitives.Error.Code.posix(5)
+        let code = Error.Error.Code.posix(5)
         let error = File.System.Write.Atomic.Error.syncFailed(
             code: code,
             message: "I/O error"
@@ -135,7 +135,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
 
     @Test
     func `Error.closeFailed`() {
-        let code = Error_Primitives.Error.Code.posix(9)
+        let code = Error.Error.Code.posix(9)
         let error = File.System.Write.Atomic.Error.closeFailed(
             code: code,
             message: "Bad file descriptor"
@@ -155,7 +155,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     func `Error.renameFailed`() {
         let from: File.Path = "/tmp/temp.txt"
         let to: File.Path = "/tmp/dest.txt"
-        let code = Error_Primitives.Error.Code.posix(18)
+        let code = Error.Error.Code.posix(18)
         let error = File.System.Write.Atomic.Error.renameFailed(
             from: from,
             to: to,
@@ -195,7 +195,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
 
     @Test
     func `Error.metadataPreservationFailed`() {
-        let code = Error_Primitives.Error.Code.posix(1)
+        let code = Error.Error.Code.posix(1)
         let error = File.System.Write.Atomic.Error.metadataPreservationFailed(
             operation: "fchmod",
             code: code,
@@ -216,7 +216,7 @@ extension File.System.Write.Atomic.Error.Test.Unit {
     @Test
     func `Error is Equatable`() {
         let path: File.Path = "/test"
-        let code = Error_Primitives.Error.Code.posix(2)
+        let code = Error.Error.Code.posix(2)
         let error1 = File.System.Write.Atomic.Error.parentVerificationFailed(
             path: path,
             code: code,
@@ -263,7 +263,7 @@ extension File.System.Write.Atomic.Error.Test.`Edge Case` {
     @Test
     func `Error.directorySyncFailedAfterCommit`() {
         let path: File.Path = "/tmp/committed.txt"
-        let code = Error_Primitives.Error.Code.posix(5)
+        let code = Error.Error.Code.posix(5)
         let error = File.System.Write.Atomic.Error.directorySyncFailedAfterCommit(
             path: path,
             code: code,
@@ -283,7 +283,7 @@ extension File.System.Write.Atomic.Error.Test.`Edge Case` {
 
     @Test
     func `Error.randomGenerationFailed`() {
-        let code = Error_Primitives.Error.Code.posix(38)
+        let code = Error.Error.Code.posix(38)
         let error = File.System.Write.Atomic.Error.randomGenerationFailed(
             code: code,
             operation: "getrandom",
@@ -304,7 +304,7 @@ extension File.System.Write.Atomic.Error.Test.`Edge Case` {
     @Test
     func `Error.directorySyncFailed`() {
         let path: File.Path = "/tmp"
-        let code = Error_Primitives.Error.Code.posix(5)
+        let code = Error.Error.Code.posix(5)
         let error = File.System.Write.Atomic.Error.directorySyncFailed(
             path: path,
             code: code,

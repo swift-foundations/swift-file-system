@@ -1,4 +1,4 @@
-public import Binary_Primitives
+public import Binary
 public import Kernel
 
 extension Binary.Serializable {

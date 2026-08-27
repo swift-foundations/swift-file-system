@@ -143,7 +143,7 @@ extension File.System.Write.Append.Test.Unit {
         @Test
         func `isPermissionDenied semantic accessor`() {
             let error = File.System.Write.Append.Error.open(
-                .platform(Error_Primitives.Error(code: .POSIX.EACCES))
+                .platform(Error.Error(code: .POSIX.EACCES))
             )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
@@ -154,7 +154,7 @@ extension File.System.Write.Append.Test.Unit {
         @Test
         func `isPermissionDenied semantic accessor maps Win32 ERROR_ACCESS_DENIED`() {
             let error = File.System.Write.Append.Error.open(
-                .platform(Error_Primitives.Error(code: .Windows.ERROR_ACCESS_DENIED))
+                .platform(Error.Error(code: .Windows.ERROR_ACCESS_DENIED))
             )
             #expect(error.isPermissionDenied)
             #expect(!error.isNotFound)
@@ -172,7 +172,7 @@ extension File.System.Write.Append.Test.Unit {
         @Test
         func `isReadOnly semantic accessor`() {
             let error = File.System.Write.Append.Error.open(
-                .platform(Error_Primitives.Error(code: .POSIX.EROFS))
+                .platform(Error.Error(code: .POSIX.EROFS))
             )
             #expect(error.isReadOnly)
             #expect(!error.isPermissionDenied)
@@ -183,7 +183,7 @@ extension File.System.Write.Append.Test.Unit {
         @Test
         func `isNoSpace semantic accessor`() {
             let error = File.System.Write.Append.Error.open(
-                .platform(Error_Primitives.Error(code: .POSIX.ENOSPC))
+                .platform(Error.Error(code: .POSIX.ENOSPC))
             )
             #expect(error.isNoSpace)
             #expect(!error.isNotFound)

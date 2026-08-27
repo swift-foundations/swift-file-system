@@ -1,7 +1,7 @@
 public import IO
 public import Kernel
-import Memory_Primitives
-public import Span_Raw_Primitives
+import Memory
+public import Span_Raw
 public import Thread_Actor
 
 extension Kernel.Thread.Actor {

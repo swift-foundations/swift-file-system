@@ -41,7 +41,7 @@ extension File.System.Write.Atomic {
 
     public static func write(
         _ bytes: borrowing Swift.Span<Byte>,
-        to path: borrowing Path_Primitives.Path.Borrowed,
+        to path: borrowing Path.Path.Borrowed,
         options: borrowing Options = Options()
     ) throws(Error) {
         let pathString = Swift.String(path)
@@ -254,7 +254,7 @@ extension File.System.Write.Atomic {
                     on: descriptor
                 )
             } catch {
-                let code: Error_Primitives.Error.Code
+                let code: Error.Error.Code
                 switch error {
                 case .platform(let e): code = e.code
                 case .permission: code = ._accessDenied
@@ -278,7 +278,7 @@ extension File.System.Write.Atomic {
                 )
             } catch {
                 if strict {
-                    let code: Error_Primitives.Error.Code
+                    let code: Error.Error.Code
                     switch error {
                     case .platform(let e): code = e.code
                     case .permission: code = ._accessDenied

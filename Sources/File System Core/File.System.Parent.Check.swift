@@ -84,7 +84,7 @@ extension File.System.Parent.Check {
 
         case missing(path: File.Path)
 
-        case statFailed(path: File.Path, operation: Operation, code: Error_Primitives.Error.Code)
+        case statFailed(path: File.Path, operation: Operation, code: Error.Error.Code)
 
         case invalidPath(path: File.Path)
 

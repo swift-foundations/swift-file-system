@@ -1,4 +1,4 @@
-import Either_Primitives
+import Either
 import Kernel
 
 extension File.Directory {

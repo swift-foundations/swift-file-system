@@ -17,7 +17,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     @Test
     func `parentVerificationFailed case`() {
         let path: File.Path = "/nonexistent/parent"
-        let code = Error_Primitives.Error.Code.posix(2)
+        let code = Error.Error.Code.posix(2)
         let error = File.System.Write.Streaming.Error.parentVerificationFailed(
             path: path,
             code: code,
@@ -36,7 +36,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     @Test
     func `fileCreationFailed case`() {
         let path: File.Path = "/tmp/test.txt"
-        let code = Error_Primitives.Error.Code.posix(13)
+        let code = Error.Error.Code.posix(13)
         let error = File.System.Write.Streaming.Error.fileCreationFailed(
             path: path,
             code: code,
@@ -54,7 +54,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test
     func `writeFailed case`() {
-        let code = Error_Primitives.Error.Code.posix(28)
+        let code = Error.Error.Code.posix(28)
         let error = File.System.Write.Streaming.Error.writeFailed(
             bytesWritten: 1024,
             code: code,
@@ -72,7 +72,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test
     func `syncFailed case`() {
-        let code = Error_Primitives.Error.Code.posix(5)
+        let code = Error.Error.Code.posix(5)
         let error = File.System.Write.Streaming.Error.syncFailed(
             code: code,
             message: "I/O error"
@@ -88,7 +88,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test
     func `closeFailed case`() {
-        let code = Error_Primitives.Error.Code.posix(9)
+        let code = Error.Error.Code.posix(9)
         let error = File.System.Write.Streaming.Error.closeFailed(
             code: code,
             message: "Bad file descriptor"
@@ -106,7 +106,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     func `renameFailed case`() {
         let from: File.Path = "/tmp/temp.txt"
         let to: File.Path = "/tmp/final.txt"
-        let code = Error_Primitives.Error.Code.posix(18)
+        let code = Error.Error.Code.posix(18)
         let error = File.System.Write.Streaming.Error.renameFailed(
             from: from,
             to: to,
@@ -139,7 +139,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     @Test
     func `directorySyncFailed case`() {
         let path: File.Path = "/tmp"
-        let code = Error_Primitives.Error.Code.posix(5)
+        let code = Error.Error.Code.posix(5)
         let error = File.System.Write.Streaming.Error.directorySyncFailed(
             path: path,
             code: code,
@@ -174,7 +174,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
     @Test
     func `directorySyncFailedAfterCommit case`() {
         let path: File.Path = "/tmp/test.txt"
-        let code = Error_Primitives.Error.Code.posix(5)
+        let code = Error.Error.Code.posix(5)
         let error = File.System.Write.Streaming.Error.directorySyncFailedAfterCommit(
             path: path,
             code: code,
@@ -203,7 +203,7 @@ extension File.System.Write.Streaming.Error.Test.Unit {
 
     @Test
     func `randomGenerationFailed case`() {
-        let code = Error_Primitives.Error.Code.posix(38)
+        let code = Error.Error.Code.posix(38)
         let error = File.System.Write.Streaming.Error.randomGenerationFailed(
             code: code,
             message: "CSPRNG failure"
@@ -268,7 +268,7 @@ extension File.System.Write.Streaming.Error.Test.`Edge Case` {
         let path: File.Path = "/tmp/test.txt"
         let error1 = File.System.Write.Streaming.Error.destinationExists(path: path)
         let error2 = File.System.Write.Streaming.Error.destinationExists(path: path)
-        let code = Error_Primitives.Error.Code.posix(2)
+        let code = Error.Error.Code.posix(2)
         let error3 = File.System.Write.Streaming.Error.parentVerificationFailed(
             path: path,
             code: code,
@@ -282,7 +282,7 @@ extension File.System.Write.Streaming.Error.Test.`Edge Case` {
     @Test
     func `description for parentVerificationFailed`() {
         let path: File.Path = "/nonexistent/parent"
-        let code = Error_Primitives.Error.Code.posix(2)
+        let code = Error.Error.Code.posix(2)
         let error = File.System.Write.Streaming.Error.parentVerificationFailed(
             path: path,
             code: code,
@@ -301,7 +301,7 @@ extension File.System.Write.Streaming.Error.Test.`Edge Case` {
 
     @Test
     func `description for writeFailed includes bytesWritten`() {
-        let code = Error_Primitives.Error.Code.posix(28)
+        let code = Error.Error.Code.posix(28)
         let error = File.System.Write.Streaming.Error.writeFailed(
             bytesWritten: 1024,
             code: code,

@@ -14,6 +14,6 @@ extension File.System.IO {
 
         case cancelled
 
-        case platform(Error_Primitives.Error.Code)
+        case platform(Error.Error.Code)
     }
 }

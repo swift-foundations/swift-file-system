@@ -16,35 +16,35 @@ let package = Package(
         .library(name: "File System Test Support", targets: ["File System Test Support"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swift-foundations/swift-ascii.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-environment.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-kernel.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-paths.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-strings.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-io.git", branch: "main"),
-        .package(url: "https://github.com/swift-foundations/swift-threads.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-ascii.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-environment.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-kernel.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-paths.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-strings.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-io.git", branch: "main"),
+        .package(url: "https://github.com/swift-compositions/swift-threads.git", branch: "main"),
         .package(
-            url: "https://github.com/swift-primitives/swift-either-primitives.git",
+            url: "https://github.com/swift-molecules/swift-either.git",
             branch: "main"
         ),
         .package(
-            url: "https://github.com/swift-primitives/swift-binary-primitives.git",
+            url: "https://github.com/swift-molecules/swift-binary.git",
             branch: "main"
         ),
         .package(
-            url: "https://github.com/swift-primitives/swift-span-primitives.git",
+            url: "https://github.com/swift-molecules/swift-span.git",
             branch: "main"
         ),
         .package(
-            url: "https://github.com/swift-primitives/swift-glob-primitives.git",
+            url: "https://github.com/swift-molecules/swift-glob.git",
             branch: "main"
         ),
         .package(
-            url: "https://github.com/swift-primitives/swift-path-primitives.git",
+            url: "https://github.com/swift-molecules/swift-path.git",
             branch: "main"
         ),
         .package(
-            url: "https://github.com/swift-primitives/swift-tagged-primitives.git",
+            url: "https://github.com/swift-molecules/swift-tagged.git",
             branch: "main"
         ),
         .package(url: "https://github.com/swift-ietf/swift-rfc-4648.git", branch: "main"),
@@ -55,11 +55,11 @@ let package = Package(
             dependencies: [
                 .product(name: "Environment", package: "swift-environment"),
                 .product(name: "Kernel", package: "swift-kernel"),
-                .product(name: "Path Primitives", package: "swift-path-primitives"),
+                .product(name: "Path", package: "swift-path"),
                 .product(name: "Paths", package: "swift-paths"),
                 .product(name: "Strings", package: "swift-strings"),
-                .product(name: "Either Primitives", package: "swift-either-primitives"),
-                .product(name: "Binary Primitives", package: "swift-binary-primitives"),
+                .product(name: "Either", package: "swift-either"),
+                .product(name: "Binary", package: "swift-binary"),
                 .product(name: "ASCII", package: "swift-ascii"),
                 .product(name: "RFC 4648", package: "swift-rfc-4648"),
             ]
@@ -68,9 +68,9 @@ let package = Package(
             name: "File System",
             dependencies: [
                 "File System Core",
-                .product(name: "Glob Primitives", package: "swift-glob-primitives"),
+                .product(name: "Glob", package: "swift-glob"),
                 .product(name: "IO", package: "swift-io"),
-                .product(name: "Span Raw Primitives", package: "swift-span-primitives"),
+                .product(name: "Span Raw", package: "swift-span"),
                 .product(name: "Thread Pool", package: "swift-threads"),
                 .product(name: "Thread Actor", package: "swift-threads"),
             ]
@@ -92,8 +92,8 @@ let package = Package(
                 "File System Test Support",
                 .product(name: "Kernel", package: "swift-kernel"),
                 .product(
-                    name: "Tagged Primitives Standard Library Integration",
-                    package: "swift-tagged-primitives"
+                    name: "Tagged Standard Library Integration",
+                    package: "swift-tagged"
                 ),
             ]
         ),
@@ -104,8 +104,8 @@ let package = Package(
                 "File System Test Support",
                 .product(name: "Kernel", package: "swift-kernel"),
                 .product(
-                    name: "Tagged Primitives Standard Library Integration",
-                    package: "swift-tagged-primitives"
+                    name: "Tagged Standard Library Integration",
+                    package: "swift-tagged"
                 ),
             ]
         ),

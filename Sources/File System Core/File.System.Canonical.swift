@@ -1,5 +1,5 @@
 internal import Kernel
-internal import Path_Primitives
+internal import Path
 
 extension File.System {
 
@@ -12,10 +12,10 @@ extension File.System.Canonical {
         _ path: borrowing File.Path
     ) throws(File.System.Canonical.Error) -> File.Path {
         let canonical: Result<File.Path, File.Path.Error>
-        do throws(Path_Primitives.Path.Canonical.Error) {
+        do throws(Path.Path.Canonical.Error) {
             canonical = try path.withKernelPath {
-                kernelPath throws(Path_Primitives.Path.Canonical.Error) in
-                try Path_Primitives.Path.Canonical.withCanonicalBytes(kernelPath) { bytes in
+                kernelPath throws(Path.Path.Canonical.Error) in
+                try Path.Path.Canonical.withCanonicalBytes(kernelPath) { bytes in
                     do throws(File.Path.Error) {
                         return .success(try File.Path(copying: bytes))
                     } catch {

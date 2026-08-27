@@ -6,36 +6,36 @@ extension File.System.Write.Atomic {
 
         case parentVerificationFailed(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case destinationStatFailed(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case tempFileCreationFailed(
             directory: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case writeFailed(
             bytesWritten: Int,
             bytesExpected: Int,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
-        case syncFailed(code: Error_Primitives.Error.Code, message: Swift.String)
+        case syncFailed(code: Error.Error.Code, message: Swift.String)
 
-        case closeFailed(code: Error_Primitives.Error.Code, message: Swift.String)
+        case closeFailed(code: Error.Error.Code, message: Swift.String)
 
         case metadataPreservationFailed(
             operation: Swift.String,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
@@ -44,7 +44,7 @@ extension File.System.Write.Atomic {
         case renameFailed(
             from: File.Path,
             to: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
@@ -52,18 +52,18 @@ extension File.System.Write.Atomic {
 
         case directorySyncFailed(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case directorySyncFailedAfterCommit(
             path: File.Path,
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             message: Swift.String
         )
 
         case randomGenerationFailed(
-            code: Error_Primitives.Error.Code,
+            code: Error.Error.Code,
             operation: Swift.String,
             message: Swift.String
         )

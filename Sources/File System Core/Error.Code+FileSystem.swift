@@ -1,6 +1,6 @@
-internal import Error_Primitives
+internal import Error
 
-extension Error_Primitives.Error.Code {
+extension Error.Error.Code {
 
     internal static var _io: Self {
         #if os(Windows)
